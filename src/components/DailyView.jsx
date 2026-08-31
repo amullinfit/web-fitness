@@ -14,13 +14,20 @@ const formatDuration = (totalSeconds) => {
   return `${hours}:${pad(minutes)}:${pad(seconds)}`;
 };
 
-// Convert speed in m/s to pace in mm:ss per mile
+// Convert speed in m/s to pace in mm:ss per mile, rounded to nearest 5 seconds
 const metersPerSecondToPaceStr = (mps) => {
   if (!mps || mps <= 0) return "N/A";
+  
+  // Total seconds per mile
   const secPerMile = 1609.34 / mps;
-  const mins = Math.floor(secPerMile / 60);
-  const secs = Math.round(secPerMile % 60);
+  
+  // Round to nearest 5 seconds
+  const roundedSecPerMile = Math.round(secPerMile / 5) * 5;
+  
+  const mins = Math.floor(roundedSecPerMile / 60);
+  const secs = roundedSecPerMile % 60;
   const padSecs = String(secs).padStart(2, '0');
+  
   return `${mins}:${padSecs} /mi`;
 };
 
@@ -56,6 +63,21 @@ const getThresholdPaceForSport = (sportType, sportSettings) => {
   return match?.threshold_pace || match?.pace_threshold || null;
 };
 
+// Helper to extract an averaged numeric value if target is a object with ranges (start/end or min/max)
+const extractTargetValue = (targetObj) => {
+  if (typeof targetObj === 'number') return targetObj;
+  if (!targetObj || typeof targetObj !== 'object') return null;
+
+  const start = targetObj.start ?? targetObj.min ?? targetObj.value;
+  const end = targetObj.end ?? targetObj.max;
+
+  if (start !== undefined && end !== undefined && start !== end) {
+    return (Number(start) + Number(end)) / 2;
+  }
+  
+  return start !== undefined ? Number(start) : null;
+};
+
 // Recursively parse steps and evaluate target pace using threshold_pace
 const parseStepsForDebug = (stepList, thresholdPaceMps) => {
   let result = [];
@@ -74,26 +96,26 @@ const parseStepsForDebug = (stepList, thresholdPaceMps) => {
       let intensityPctStr = "N/A";
       let calculatedPaceMps = null;
 
-      // Extract raw target/intensity percentage
+      // Extract raw target/intensity (handles single value or ranges)
       if (s.pace) {
-        intensityPctVal = typeof s.pace === 'object' ? (s.pace.value || s.pace.start || 0) : s.pace;
-        intensityPctStr = `${intensityPctVal}% Pace`;
+        intensityPctVal = extractTargetValue(s.pace);
+        intensityPctStr = `${Math.round(intensityPctVal)}% Pace`;
       } else if (s.power) {
-        intensityPctVal = typeof s.power === 'object' ? (s.power.value || s.power.start || 0) : s.power;
-        intensityPctStr = `${intensityPctVal}% Power`;
+        intensityPctVal = extractTargetValue(s.power);
+        intensityPctStr = `${Math.round(intensityPctVal)}% Power`;
       } else if (s.hr) {
-        intensityPctVal = typeof s.hr === 'object' ? (s.hr.value || s.hr.start || 0) : s.hr;
-        intensityPctStr = `${intensityPctVal}% HR`;
+        intensityPctVal = extractTargetValue(s.hr);
+        intensityPctStr = `${Math.round(intensityPctVal)}% HR`;
       } else if (s.target) {
-        intensityPctVal = typeof s.target === 'object' ? (s.target.value || 0) : s.target;
-        intensityPctStr = `${intensityPctVal}% Target`;
+        intensityPctVal = extractTargetValue(s.target);
+        intensityPctStr = `${Math.round(intensityPctVal)}% Target`;
       }
 
-      // Check for direct step speed/pace first
+      // Check for direct step speed/pace
       if (s.speed) {
-        calculatedPaceMps = s.speed;
+        calculatedPaceMps = extractTargetValue(s.speed);
       } else if (typeof s.pace === 'object' && s.pace.value && s.pace.value > 15) {
-        calculatedPaceMps = s.pace.value;
+        calculatedPaceMps = extractTargetValue(s.pace);
       } else if (thresholdPaceMps && intensityPctVal) {
         calculatedPaceMps = thresholdPaceMps * (intensityPctVal / 100);
       }
