@@ -43,13 +43,15 @@ const getLocalDateString = (dateInput) => {
 };
 
 const isWorkoutCompleted = (workout) => {
-  return (
-    workout.completed === true ||
-    workout.state === 'DONE' ||
-    Boolean(workout.moving_time) ||
-    Boolean(workout.elapsed_time) ||
-    Boolean(workout.distance_completed)
-  );
+  if (workout.feedSource === 'OVERVIEW') {
+    return true;
+  }
+
+  // If from WORKOUTS feed, check if paired_event or compliance are not null
+  const hasPairedEvent = workout.paired_event !== null && workout.paired_event !== undefined;
+  const hasCompliance = workout.compliance !== null && workout.compliance !== undefined;
+
+  return hasPairedEvent || hasCompliance;
 };
 
 export default function DailyView() {
@@ -75,18 +77,20 @@ export default function DailyView() {
       .then(([valJson, overviewJson]) => {
         if (!isMounted) return;
 
-        // 1. Extract planned workouts from val-workouts
-        const valList = valJson?.planned || valJson?.workouts || (Array.isArray(valJson) ? valJson : []);
+        // Extract and tag feedSource
+        const valList = (valJson?.planned || valJson?.workouts || (Array.isArray(valJson) ? valJson : []))
+          .map((item) => ({ ...item, feedSource: 'WORKOUTS' }));
+
+        const overviewList = (overviewJson?.activities || overviewJson?.workouts || (Array.isArray(overviewJson) ? overviewJson : []))
+          .map((item) => ({ ...item, feedSource: 'OVERVIEW' }));
+
         const settings = Array.isArray(valJson?.sportSettings)
           ? valJson.sportSettings
           : Array.isArray(overviewJson?.sportSettings)
           ? overviewJson.sportSettings
           : [];
 
-        // 2. Extract historical activities from api_overview
-        const overviewList = overviewJson?.activities || overviewJson?.workouts || (Array.isArray(overviewJson) ? overviewJson : []);
-
-        // 3. Merge and deduplicate records by ID / date composite
+        // Merge & deduplicate by ID / composite key
         const rawMerged = [...valList, ...overviewList];
         const seenIds = new Set();
         const mergedList = [];
@@ -94,7 +98,7 @@ export default function DailyView() {
         for (const item of rawMerged) {
           if (!item) continue;
           const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
-          const uniqueKey = item.id ? String(item.id) : `${item.name || item.type}-${itemDate}`;
+          const uniqueKey = item.id ? String(item.id) : `${item.name || item.type}-${itemDate}-${item.feedSource}`;
 
           if (!seenIds.has(uniqueKey)) {
             seenIds.add(uniqueKey);
@@ -119,10 +123,10 @@ export default function DailyView() {
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
   const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
 
-  // Compute the absolute oldest and newest workout dates in the entire dataset
+  // Compute oldest & newest dates across the merged list
   const workoutDateBounds = useMemo(() => {
     if (!Array.isArray(workouts) || workouts.length === 0) {
-      return { oldest: 'N/A', newest: 'N/A' };
+      return { oldest: 'N/A', newest: 'N/A', overviewCount: 0, workoutCount: 0 };
     }
 
     const validDates = workouts
@@ -130,13 +134,18 @@ export default function DailyView() {
       .filter(Boolean)
       .sort();
 
+    const overviewCount = workouts.filter((w) => w.feedSource === 'OVERVIEW').length;
+    const workoutCount = workouts.filter((w) => w.feedSource === 'WORKOUTS').length;
+
     if (validDates.length === 0) {
-      return { oldest: 'N/A', newest: 'N/A' };
+      return { oldest: 'N/A', newest: 'N/A', overviewCount, workoutCount };
     }
 
     return {
       oldest: validDates[0],
-      newest: validDates[validDates.length - 1]
+      newest: validDates[validDates.length - 1],
+      overviewCount,
+      workoutCount
     };
   }, [workouts]);
 
@@ -213,16 +222,17 @@ export default function DailyView() {
     return (
       <div key={workout.id || index} className="daily-workout-card">
         <div className="daily-workout-card-header">
-          <div className="daily-workout-title-group">
+          <h3 className="daily-workout-title">
+            {workout.name || workout.title || `${workout.type || 'Workout'}`}
+          </h3>
+
+          <div className="daily-workout-header-right">
             {completed && <span className="status-badge badge-completed">COMPLETED</span>}
             {isMissed && <span className="status-badge badge-missed">MISSED</span>}
-            <h3 className="daily-workout-title">
-              {workout.name || workout.title || `${workout.type || 'Workout'}`}
-            </h3>
+            <span className="daily-workout-type">
+              {workout.type || 'Activity'}
+            </span>
           </div>
-          <span className="daily-workout-type">
-            {workout.type || 'Activity'}
-          </span>
         </div>
 
         {rawSteps.length > 0 && (
@@ -261,9 +271,9 @@ export default function DailyView() {
 
   return (
     <div className="daily-view-container">
-      {/* Debug Line displaying dataset bounds */}
+      {/* Debug Line displaying merged range and feed breakdown */}
       <div className="daily-debug-bar">
-        [DEBUG] Combined Data Range: Oldest = <strong>{workoutDateBounds.oldest}</strong> | Newest = <strong>{workoutDateBounds.newest}</strong> (Total Items: {workouts.length})
+        [DEBUG] Merged Range: Oldest = <strong>{workoutDateBounds.oldest}</strong> | Newest = <strong>{workoutDateBounds.newest}</strong> (Total: {workouts.length} [OVERVIEW: {workoutDateBounds.overviewCount}, WORKOUTS: {workoutDateBounds.workoutCount}])
       </div>
 
       {/* Date Navigation Bar */}
