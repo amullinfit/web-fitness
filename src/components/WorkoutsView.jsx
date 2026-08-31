@@ -65,14 +65,6 @@ export default function WorkoutsView() {
               Duration: {durationStr} {distanceMi && `| Distance: ${distanceMi} mi`}
             </div>
 
-            {/* Graphic Workout Chart */}
-            {rawSteps.length > 0 && (
-              <WorkoutChart 
-                steps={rawSteps} 
-                containerId={`chart-${workoutId}`} 
-              />
-            )}
-
             {/* Unified Reusable Text Component */}
             <WorkoutTextSection 
               workout={w} 
