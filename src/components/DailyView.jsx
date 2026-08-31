@@ -14,10 +14,9 @@ const formatDuration = (totalSeconds) => {
   return `${hours}:${pad(minutes)}:${pad(seconds)}`;
 };
 
-// Convert speed in m/s to pace in mm:ss per mile or km
+// Convert speed in m/s to pace in mm:ss per mile
 const metersPerSecondToPaceStr = (mps) => {
   if (!mps || mps <= 0) return "N/A";
-  // Seconds per mile
   const secPerMile = 1609.34 / mps;
   const mins = Math.floor(secPerMile / 60);
   const secs = Math.round(secPerMile % 60);
@@ -25,8 +24,23 @@ const metersPerSecondToPaceStr = (mps) => {
   return `${mins}:${padSecs} /mi`;
 };
 
-// Recursively parse steps and build a linear diagnostic list
-const parseStepsForDebug = (stepList) => {
+// Find matching threshold_pace from sportSettings
+const getThresholdPaceForSport = (sportType, sportSettings) => {
+  if (!sportType || !Array.isArray(sportSettings)) return null;
+
+  const normalizedSport = sportType.toLowerCase();
+  
+  const match = sportSettings.find((s) => {
+    const settingType = (s.type || s.id || s.sport || "").toLowerCase();
+    const typesList = Array.isArray(s.types) ? s.types.map((t) => t.toLowerCase()) : [];
+    return settingType === normalizedSport || typesList.includes(normalizedSport);
+  });
+
+  return match?.threshold_pace || match?.pace_threshold || null;
+};
+
+// Recursively parse steps and evaluate target pace using threshold_pace
+const parseStepsForDebug = (stepList, thresholdPaceMps) => {
   let result = [];
   if (!Array.isArray(stepList)) return result;
 
@@ -36,33 +50,45 @@ const parseStepsForDebug = (stepList) => {
     if (Array.isArray(s.steps)) {
       const repeats = s.repetition || 1;
       for (let r = 0; r < repeats; r++) {
-        result = result.concat(parseStepsForDebug(s.steps));
+        result = result.concat(parseStepsForDebug(s.steps, thresholdPaceMps));
       }
     } else {
-      // Extract intensity % (Power/HR/Target)
-      let intensityPct = "N/A";
-      let paceMps = null;
+      let intensityPctVal = null;
+      let intensityPctStr = "N/A";
+      let calculatedPaceMps = null;
 
-      if (s.power) {
-        intensityPct = typeof s.power === 'object' ? `${s.power.value || s.power.start || 0}% Power` : `${s.power}% Power`;
+      // Extract raw target/intensity percentage
+      if (s.pace) {
+        intensityPctVal = typeof s.pace === 'object' ? (s.pace.value || s.pace.start || 0) : s.pace;
+        intensityPctStr = `${intensityPctVal}% Pace`;
+      } else if (s.power) {
+        intensityPctVal = typeof s.power === 'object' ? (s.power.value || s.power.start || 0) : s.power;
+        intensityPctStr = `${intensityPctVal}% Power`;
       } else if (s.hr) {
-        intensityPct = typeof s.hr === 'object' ? `${s.hr.value || s.hr.start || 0}% HR` : `${s.hr}% HR`;
-      } else if (s.pace) {
-        intensityPct = typeof s.pace === 'object' ? `${s.pace.value || s.pace.start || 0}% Pace` : `${s.pace}% Pace`;
-        if (typeof s.pace === 'object' && s.pace.value) paceMps = s.pace.value;
+        intensityPctVal = typeof s.hr === 'object' ? (s.hr.value || s.hr.start || 0) : s.hr;
+        intensityPctStr = `${intensityPctVal}% HR`;
       } else if (s.target) {
-        intensityPct = typeof s.target === 'object' ? `${s.target.value || 0}% Target` : `${s.target}% Target`;
+        intensityPctVal = typeof s.target === 'object' ? (s.target.value || 0) : s.target;
+        intensityPctStr = `${intensityPctVal}% Target`;
       }
 
-      // Fallback pace check if direct speed is provided on step
-      if (!paceMps && s.speed) paceMps = s.speed;
+      // Check for direct step speed/pace first
+      if (s.speed) {
+        calculatedPaceMps = s.speed;
+      } else if (typeof s.pace === 'object' && s.pace.value && s.pace.value > 15) {
+        // Direct m/s speed value
+        calculatedPaceMps = s.pace.value;
+      } else if (thresholdPaceMps && intensityPctVal) {
+        // Calculate step target pace from sport threshold speed
+        calculatedPaceMps = thresholdPaceMps * (intensityPctVal / 100);
+      }
 
       result.push({
         id: idx,
         name: s.name || s.type || `Step ${idx + 1}`,
         durationSec: s.duration || s.moving_time || 0,
-        intensity: intensityPct,
-        paceStr: paceMps ? metersPerSecondToPaceStr(paceMps) : "N/A",
+        intensity: intensityPctStr,
+        paceStr: calculatedPaceMps ? metersPerSecondToPaceStr(calculatedPaceMps) : "N/A",
         text: s.description || s.text || s.notes || "No description text"
       });
     }
@@ -72,7 +98,7 @@ const parseStepsForDebug = (stepList) => {
 };
 
 export default function DailyView() {
-  const [data, setData] = useState({ planned: [], completed: [] });
+  const [data, setData] = useState({ planned: [], completed: [], sportSettings: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -86,7 +112,8 @@ export default function DailyView() {
         if (json && typeof json === 'object') {
           setData({
             planned: Array.isArray(json.planned) ? json.planned : [],
-            completed: Array.isArray(json.completed) ? json.completed : []
+            completed: Array.isArray(json.completed) ? json.completed : [],
+            sportSettings: Array.isArray(json.sportSettings) ? json.sportSettings : []
           });
         }
         setLoading(false);
@@ -119,7 +146,12 @@ export default function DailyView() {
         }
       }
 
-      const debugSteps = parseStepsForDebug(rawSteps);
+      // Resolve threshold pace for workout sport type
+      const thresholdPaceMps = getThresholdPaceForSport(workout.type, data.sportSettings);
+      const thresholdPaceStr = thresholdPaceMps ? metersPerSecondToPaceStr(thresholdPaceMps) : "Not Set";
+
+      const debugSteps = parseStepsForDebug(rawSteps, thresholdPaceMps);
+      
       let gearName = null;
       if (workout.gear) {
         gearName = typeof workout.gear === 'object' ? workout.gear.name : workout.gear;
@@ -149,10 +181,15 @@ export default function DailyView() {
             </div>
           )}
 
-          {/* Debug / Diagnostic Breakdown List */}
+          {/* Step Debug & Threshold Write-up */}
           <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px', border: '1px solid #e9ecef' }}>
-            <div style={{ fontWeight: 'bold', fontSize: '12px', marginBottom: '6px', color: '#495057', textTransform: 'uppercase' }}>
-              Step Debug Write-up ({debugSteps.length} step{debugSteps.length === 1 ? '' : 's'})
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontWeight: 'bold', fontSize: '12px', color: '#495057', textTransform: 'uppercase' }}>
+                Step Debug Write-up ({debugSteps.length} step{debugSteps.length === 1 ? '' : 's'})
+              </span>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: '#0d6efd', backgroundColor: '#e7f1ff', padding: '2px 8px', borderRadius: '4px' }}>
+                Threshold Pace ({workout.type || 'Sport'}): {thresholdPaceStr}
+              </span>
             </div>
             
             {debugSteps.length === 0 ? (
@@ -161,7 +198,7 @@ export default function DailyView() {
               <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#212529' }}>
                 {debugSteps.map((step, sIdx) => (
                   <li key={sIdx} style={{ marginBottom: '4px' }}>
-                    <strong>{step.name}</strong> — Intensity: <code>{step.intensity}</code> | Pace: <code>{step.paceStr}</code> | Duration: <code>{formatDuration(step.durationSec)}</code>
+                    <strong>{step.name}</strong> — Intensity: <code>{step.intensity}</code> | Target Pace: <code>{step.paceStr}</code> | Duration: <code>{formatDuration(step.durationSec)}</code>
                     <div style={{ fontSize: '11px', color: '#6c757d', marginTop: '1px' }}>
                       Text: "{step.text}"
                     </div>
