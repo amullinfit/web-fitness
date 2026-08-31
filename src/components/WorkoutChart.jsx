@@ -24,15 +24,6 @@ const mpsToPaceStr = (mps) => {
   return `${mins}:${padSecs}`;
 };
 
-// Format seconds-per-mile into mm:ss for Y-axis labels
-const secPerMileToPaceLabel = (secPerMile) => {
-  if (!secPerMile || secPerMile <= 0 || !isFinite(secPerMile)) return "";
-  const mins = Math.floor(secPerMile / 60);
-  const secs = Math.round(secPerMile % 60);
-  const padSecs = String(secs).padStart(2, '0');
-  return `${mins}:${padSecs}`;
-};
-
 // Helper to extract numeric value from intensity object/range
 const extractTargetValue = (targetObj) => {
   if (typeof targetObj === 'number') return targetObj;
@@ -51,7 +42,6 @@ const extractTargetValue = (targetObj) => {
 const getZoneDetails = (targetPct, stepType = '') => {
   const typeLower = String(stepType).toLowerCase();
 
-  // Handle explicit warmups, cooldowns, or recoveries
   if (typeLower.includes('warm') || typeLower.includes('cool') || typeLower.includes('rest') || targetPct < 75) {
     return { name: 'Warmup / Recovery (Z1)', color: '#6c757d' }; // Gray
   }
@@ -59,7 +49,7 @@ const getZoneDetails = (targetPct, stepType = '') => {
     return { name: 'Endurance (Z2)', color: '#28a745' }; // Green
   }
   if (targetPct < 96) {
-    return { name: 'Tempo (Z3)', color: '#ffc107' }; // Yellow/Amber
+    return { name: 'Tempo (Z3)', color: '#ffc107' }; // Amber
   }
   if (targetPct <= 105) {
     return { name: 'Threshold (Z4)', color: '#fd7e14' }; // Orange
@@ -95,6 +85,7 @@ export default function WorkoutChart({ steps, containerId, thresholdPace }) {
 
     const seriesData = [];
     let currentX = 0;
+    let maxMps = 0;
 
     flatSteps.forEach((step, idx) => {
       const stepName = step.name || step.type || `Step ${idx + 1}`;
@@ -108,8 +99,8 @@ export default function WorkoutChart({ steps, containerId, thresholdPace }) {
       else if (step.target) targetPct = extractTargetValue(step.target);
       else if (step.value) targetPct = Number(step.value) || 0;
 
-      // 2. Resolve speed in m/s
-      let stepMps = null;
+      // 2. Resolve speed in m/s (higher speed = taller bar)
+      let stepMps = 0;
       if (step.speed) {
         stepMps = extractTargetValue(step.speed);
       } else if (typeof step.pace === 'object' && step.pace?.value > 15) {
@@ -118,22 +109,22 @@ export default function WorkoutChart({ steps, containerId, thresholdPace }) {
         stepMps = thresholdPace * (targetPct / 100);
       }
 
-      // 3. Convert m/s to seconds per mile (for Y-axis mapping)
-      let secPerMile = null;
-      if (stepMps && stepMps > 0) {
-        const rawSec = 1609.34 / stepMps;
-        secPerMile = Math.round(rawSec / 5) * 5; // Round to nearest 5s
+      if (stepMps > maxMps) {
+        maxMps = stepMps;
       }
 
-      // 4. Resolve Zone Name and Color
+      // 3. Resolve Zone Name and Color
       const roundedPct = Math.round(targetPct);
       const zone = getZoneDetails(roundedPct, stepName);
 
-      // Position bar along continuous duration axis
+      // Variwide data point format:
+      // x = start timestamp/time offset
+      // y = height (speed)
+      // z = width (duration in seconds)
       seriesData.push({
-        x: currentX + durationSec / 2,
-        y: secPerMile,
-        pointRange: durationSec,
+        x: currentX,
+        y: stepMps,
+        z: durationSec,
         durationSec: durationSec,
         stepName: stepName,
         targetPct: roundedPct,
@@ -147,10 +138,15 @@ export default function WorkoutChart({ steps, containerId, thresholdPace }) {
 
     if (!chartRef.current) return;
 
-    // Render Highcharts Column Chart with color-coded bars
+    // Buffer above fastest speed interval
+    const yAxisBufferMax = maxMps > 0 ? maxMps * 1.15 : 5;
+
+    // Load variwide module dynamically if not present
+    const isVariwideAvailable = typeof window.Highcharts.seriesTypes.variwide !== 'undefined';
+
     window.Highcharts.chart(chartRef.current, {
       chart: {
-        type: 'column',
+        type: isVariwideAvailable ? 'variwide' : 'column',
         height: 180,
         backgroundColor: 'transparent',
         spacing: [10, 10, 10, 10]
@@ -169,11 +165,12 @@ export default function WorkoutChart({ steps, containerId, thresholdPace }) {
         }
       },
       yAxis: {
-        reversed: true, // Reversed so faster pace (lower sec/mi) sits higher up
+        min: 0,
+        max: yAxisBufferMax,
         title: { text: 'Pace', style: { fontSize: '10px' } },
         labels: {
           formatter: function() {
-            return secPerMileToPaceLabel(this.value);
+            return this.value > 0 ? mpsToPaceStr(this.value) : '';
           },
           style: { fontSize: '9px' }
         }
@@ -181,6 +178,13 @@ export default function WorkoutChart({ steps, containerId, thresholdPace }) {
       legend: { enabled: false },
       credits: { enabled: false },
       plotOptions: {
+        variwide: {
+          groupPadding: 0,
+          pointPadding: 0,
+          borderWidth: 1,
+          borderColor: '#ffffff',
+          crisp: false
+        },
         column: {
           groupPadding: 0,
           pointPadding: 0,
