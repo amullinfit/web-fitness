@@ -1,148 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import { fetch } from "https://esm.town/v/std/fetch";
 
-// Replace with your actual Val Town HTTP URL for api_gear
-const VAL_GEAR_URL = "https://amullinfit--de20b782a4cf11f1832e1607ee4eb77e.web.val.run";
-
-export default function GearView() {
-  const [gearList, setGearList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
-
-  // Form State
-  const [name, setName] = useState('');
-  const [firstUsed, setFirstUsed] = useState('');
-  const [startingDistance, setStartingDistance] = useState(0);
-  const [allowedDistance, setAllowedDistance] = useState(0);
-  const [imageUrl, setImageUrl] = useState('');
-
-  const loadGear = () => {
-    setLoading(true);
-    fetch(VAL_GEAR_URL)
-      .then((res) => res.json())
-      .then((json) => {
-        setGearList(json);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching gear:", err);
-        setLoading(false);
-      });
+function getDetroitDateString(date: Date = new Date()): string {
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: "America/Detroit",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
   };
+  const parts = new Intl.DateTimeFormat("en-CA", options).formatToParts(date);
+  const year = parts.find(p => p.type === "year")?.value;
+  const month = parts.find(p => p.type === "month")?.value;
+  const day = parts.find(p => p.type === "day")?.value;
+  return `${year}-${month}-${day}`;
+}
 
-  useEffect(() => {
-    loadGear();
-  }, []);
+export default async function(req: Request): Promise<Response> {
+  const apiKey = Deno.env.get("INTERVALS_API_KEY");
+  const athleteId = Deno.env.get("INTERVALS_ATHLETE_ID");
+  const authHeader = "Basic " + btoa(`API_KEY:${apiKey}`);
 
-  const handleRetire = (gearId) => {
-    fetch(VAL_GEAR_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'retire', gearId })
-    }).then(() => loadGear());
-  };
+  const todayDate = new Date();
+  const futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + 30);
 
-  const handleDelete = (gearId) => {
-    fetch(VAL_GEAR_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'delete', gearId })
-    }).then(() => loadGear());
-  };
+  const oldest = getDetroitDateString(todayDate);
+  const newest = getDetroitDateString(futureDate);
 
-  const handleCreateGear = (e) => {
-    e.preventDefault();
-    const gearData = {
-      name,
-      created: firstUsed,
-      distance: Number(startingDistance),
-      distance_limit: Number(allowedDistance)
-    };
+  try {
+    const res = await fetch(
+      `https://intervals.icu/api/v1/athlete/${athleteId}/events?oldest=${oldest}&newest=${newest}`,
+      { headers: { "Authorization": authHeader } }
+    );
+    const events = await res.json();
 
-    fetch(VAL_GEAR_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create', gearData, imageUrl })
-    }).then(() => {
-      setShowAddForm(false);
-      setName('');
-      setFirstUsed('');
-      setStartingDistance(0);
-      setAllowedDistance(0);
-      setImageUrl('');
-      loadGear();
+    const cleanedWorkouts = events
+      .filter((e: any) => e.category === "WORKOUT" || e.type)
+      .slice(0, 10)
+      .map((w: any) => ({
+        ...w,
+        name: w.name ? w.name.replace(/IntervalCoach\s*-?\s*/gi, "").trim() : "Workout"
+      }));
+
+    return Response.json(cleanedWorkouts, {
+      headers: { "Access-Control-Allow-Origin": "*" }
     });
-  };
-
-  if (loading) return <div>Loading Gear...</div>;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Gear Management</h2>
-        <button 
-          onClick={() => setShowAddForm(!showAddForm)}
-          style={{ backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', width: '32px', height: '32px', fontSize: '20px', cursor: 'pointer' }}
-          title="Add New Gear"
-        >
-          +
-        </button>
-      </div>
-
-      {/* Add Gear Form Modal / Section */}
-      {showAddForm && (
-        <form onSubmit={handleCreateGear} style={{ border: '1px solid #28a745', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <h3>Add New Gear</h3>
-          <input type="text" placeholder="Gear Name" value={name} onChange={(e) => setName(e.target.value)} required />
-          <input type="date" placeholder="First Used" value={firstUsed} onChange={(e) => setFirstUsed(e.target.value)} required />
-          <input type="number" placeholder="Starting Distance (m)" value={startingDistance} onChange={(e) => setStartingDistance(e.target.value)} />
-          <input type="number" placeholder="Allowed Distance (m)" value={allowedDistance} onChange={(e) => setAllowedDistance(e.target.value)} />
-          <input type="url" placeholder="Image Link (IMGBB / Hosted URL)" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
-          <button type="submit" style={{ backgroundColor: '#28a745', color: '#fff', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Save Gear</button>
-        </form>
-      )}
-
-      {/* Gear Listing */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-        {gearList.map((g) => {
-          const usedMiles = ((g.distance || 0) * 0.000621371).toFixed(1);
-          const limitMiles = ((g.distance_limit || 0) * 0.000621371).toFixed(1);
-          const pct = g.distance_limit ? Math.min(100, Math.round((g.distance / g.distance_limit) * 100)) : 0;
-
-          return (
-            <div key={g.id} style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: '#fff' }}>
-              {g.image_url && <img src={g.image_url} alt={g.name} style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '4px' }} />}
-              <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{g.name}</div>
-              <div style={{ fontSize: '12px', color: '#666' }}>First Used: {g.created || 'N/A'}</div>
-              
-              {/* Distance Progress Bar */}
-              <div>
-                <div style={{ fontSize: '12px', marginBottom: '4px' }}>{usedMiles} / {limitMiles} miles ({pct}%)</div>
-                <div style={{ width: '100%', backgroundColor: '#e0e0e0', height: '10px', borderRadius: '5px' }}>
-                  <div style={{ width: `${pct}%`, backgroundColor: pct > 90 ? '#dc3545' : '#007bff', height: '100%', borderRadius: '5px' }} />
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '8px', marginTop: 'auto', paddingTop: '8px' }}>
-                <button 
-                  onClick={() => handleRetire(g.id)}
-                  style={{ width: '32px', height: '32px', backgroundColor: '#6c757d', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  title="Retire Gear"
-                >
-                  🕒
-                </button>
-                <button 
-                  onClick={() => handleDelete(g.id)}
-                  style={{ width: '32px', height: '32px', backgroundColor: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  title="Delete Gear"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  } catch (err) {
+    return Response.json({ error: err.message }, { status: 500 });
+  }
 }
