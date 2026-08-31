@@ -1,59 +1,137 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
-export default function OptionsView({ layoutVersion, setLayoutVersion, themeView, setThemeView, rightOffset, setRightOffset }) {
+export default function OptionsView({ options, onSaveOptions }) {
+  const [athleteId, setAthleteId] = useState(options?.athleteId || '');
+  const [popStreakField, setPopStreakField] = useState(options?.popStreakField || 'PopStreak');
+  const [useImperial, setUseImperial] = useState(options?.useImperial ?? true);
+  const [showCharts, setShowCharts] = useState(options?.showCharts ?? true);
+  const [statusMessage, setStatusMessage] = useState('');
+
+  useEffect(() => {
+    if (options) {
+      setAthleteId(options.athleteId || '');
+      setPopStreakField(options.popStreakField || 'PopStreak');
+      setUseImperial(options.useImperial ?? true);
+      setShowCharts(options.showCharts ?? true);
+    }
+  }, [options]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const updatedOptions = {
+      athleteId,
+      popStreakField,
+      useImperial,
+      showCharts
+    };
+    
+    if (onSaveOptions) {
+      onSaveOptions(updatedOptions);
+    }
+    
+    setStatusMessage('Settings successfully saved!');
+    setTimeout(() => setStatusMessage(''), 3000);
+  };
+
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <h2>Dashboard Options</h2>
+    <div 
+      style={{
+        maxWidth: '600px',
+        margin: '0 auto',
+        paddingTop: '100px', 
+        paddingLeft: '20px',
+        paddingRight: '20px',
+        boxSizing: 'border-box'
+      }}
+    >
+      <h2 style={{ marginTop: 0, marginBottom: '20px' }}>App Settings & Configuration</h2>
       
-      {/* Layout Selection */}
-      <div>
-        <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Layout Mode</label>
-        <button 
-          onClick={() => setLayoutVersion('desktop')} 
-          style={{ fontWeight: layoutVersion === 'desktop' ? 'bold' : 'normal', marginRight: '8px' }}
+      {statusMessage && (
+        <div style={{ padding: '10px', backgroundColor: '#d4edda', color: '#155724', borderRadius: '4px', marginBottom: '16px' }}>
+          {statusMessage}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Athlete ID */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label htmlFor="athleteId" style={{ fontWeight: 'bold', fontSize: '14px' }}>
+            Intervals.icu Athlete ID
+          </label>
+          <input
+            id="athleteId"
+            type="text"
+            value={athleteId}
+            onChange={(e) => setAthleteId(e.target.value)}
+            placeholder="e.g. i12345"
+            style={{
+              padding: '8px 12px',
+              fontSize: '14px',
+              borderRadius: '4px',
+              border: '1px solid #ccc'
+            }}
+          />
+        </div>
+
+        {/* Custom Wellness Field Key */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label htmlFor="popStreakField" style={{ fontWeight: 'bold', fontSize: '14px' }}>
+            Wellness Field Name (PopStreak Key)
+          </label>
+          <input
+            id="popStreakField"
+            type="text"
+            value={popStreakField}
+            onChange={(e) => setPopStreakField(e.target.value)}
+            placeholder="PopStreak"
+            style={{
+              padding: '8px 12px',
+              fontSize: '14px',
+              borderRadius: '4px',
+              border: '1px solid #ccc'
+            }}
+          />
+          <span style={{ fontSize: '12px', color: '#666' }}>Must match your Intervals.icu custom wellness field key exactly (PascalCase).</span>
+        </div>
+
+        {/* Display Toggles */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
+            <input
+              type="checkbox"
+              checked={useImperial}
+              onChange={(e) => setUseImperial(e.target.checked)}
+            />
+            Use Imperial Units (Miles / Yards)
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
+            <input
+              type="checkbox"
+              checked={showCharts}
+              onChange={(e) => setShowCharts(e.target.checked)}
+            />
+            Render Workout Charts by Default
+          </label>
+        </div>
+
+        <button
+          type="submit"
+          style={{
+            alignSelf: 'flex-start',
+            padding: '10px 20px',
+            backgroundColor: '#007bff',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}
         >
-          Desktop
+          Save Configuration
         </button>
-        <button 
-          onClick={() => setLayoutVersion('mobile')} 
-          style={{ fontWeight: layoutVersion === 'mobile' ? 'bold' : 'normal' }}
-        >
-          Mobile
-        </button>
-      </div>
-
-      {/* Visual Theme Selection */}
-      <div>
-        <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Color Theme</label>
-        <button onClick={() => setThemeView('light')} style={{ marginRight: '8px' }}>Light</button>
-        <button onClick={() => setThemeView('dark')} style={{ marginRight: '8px' }}>Dark</button>
-        <button onClick={() => setThemeView('bw')}>Black & White</button>
-      </div>
-
-      {/* Right Offset Control */}
-      <div>
-        <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>
-          Right-Hand Offset Buffer: {rightOffset}px
-        </label>
-        <input 
-          type="range" 
-          min="0" 
-          max="500" 
-          value={rightOffset} 
-          onChange={(e) => setRightOffset(Number(e.target.value))} 
-          style={{ width: '100%' }}
-        />
-      </div>
-
-      <hr style={{ width: '100%', margin: '20px 0' }} />
-
-      {/* About Section */}
-      <div>
-        <h3>About Web Fitness</h3>
-        <p><strong>Started:</strong> August 2026</p>
-        <p><strong>Architecture:</strong> Hosted on Vercel via GitHub continuous deployment. Data proxied through Val Town from Intervals.icu and stored in Turso DB.</p>
-        <p>Created by Andrew Mullin with a big assist from Gemini.</p>
-      </div>
+      </form>
     </div>
   );
 }
