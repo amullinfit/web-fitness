@@ -3,7 +3,7 @@ import WorkoutChart from './WorkoutChart';
 
 const VAL_DAILY_URL = "https://amullinfit--50c3784ea4ce11f1bcc71607ee4eb77e.web.val.run";
 
-// Helper function to format seconds to H:MM:SS
+// Helper function to format seconds into H:MM:SS
 const formatDuration = (totalSeconds) => {
   if (!totalSeconds) return "0:00:00";
   const hours = Math.floor(totalSeconds / 3600);
@@ -15,7 +15,7 @@ const formatDuration = (totalSeconds) => {
 };
 
 export default function DailyView() {
-  const [data, setData] = useState({ planned: [], completed: [] });
+  const [data, setData] = useState({ planned: [], completed: [], sportSettings: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,7 +39,13 @@ export default function DailyView() {
     return workoutList.map((workout, idx) => {
       const durationStr = formatDuration(workout.moving_time || workout.elapsed_time);
       const distanceMi = workout.distance ? (workout.distance * 0.000621371).toFixed(1) : null;
-      const steps = workout.workout_doc?.steps;
+      
+      // Parse steps from workout_doc
+      let steps = null;
+      if (workout.workout_doc) {
+        const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
+        steps = doc?.steps;
+      }
 
       return (
         <div key={workout.id || idx} style={{ marginBottom: '16px', borderBottom: '1px solid #eee', paddingBottom: '12px' }}>
@@ -52,7 +58,12 @@ export default function DailyView() {
           </div>
 
           {Array.isArray(steps) && steps.length > 0 && (
-            <WorkoutChart steps={steps} containerId={`${isCompleted ? 'completed' : 'planned'}-chart-${workout.id || idx}`} />
+            <WorkoutChart 
+              steps={steps} 
+              sportType={workout.type}
+              sportSettings={data.sportSettings}
+              containerId={`${isCompleted ? 'completed' : 'planned'}-chart-${workout.id || idx}`} 
+            />
           )}
 
           {isCompleted && workout.gear && (
