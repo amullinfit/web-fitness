@@ -64,6 +64,14 @@ export default function WorkoutsView() {
             <div style={{ fontSize: '14px', color: '#555', margin: '6px 0 12px 0' }}>
               Duration: {durationStr} {distanceMi && `| Distance: ${distanceMi} mi`}
             </div>
+            
+            {/* Graphic Workout Chart */}
+            {rawSteps.length > 0 && (
+              <WorkoutChart 
+                steps={rawSteps} 
+                containerId={`chart-${workoutId}`} 
+              />
+            )}
 
             {/* Unified Reusable Text Component */}
             <WorkoutTextSection 
