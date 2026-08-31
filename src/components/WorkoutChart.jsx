@@ -16,19 +16,18 @@ const formatIntensityTitleCase = (val) => {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
 
-// Safely extracts target percentage relative to threshold
+// Extracts numerical target percentage from step objects safely
 const extractTargetValue = (step) => {
-  if (!step) return 80;
+  if (!step) return 60;
 
   // Handle step.pace = { start: X, end: Y }
   if (step.pace && typeof step.pace === 'object') {
     const start = step.pace.start || 0;
     const end = step.pace.end || start;
-    const avg = (start + end) / 2;
-    // If pace is expressed directly as m/s (< 10), don't treat it as raw percentage
-    return avg;
+    return (start + end) / 2;
   }
 
+  // Handle step.target or step.intensityPct
   const val = step.target || step.intensityPct || step.pace;
   if (typeof val === 'number') return val;
   if (typeof val === 'object' && val !== null) {
@@ -37,7 +36,7 @@ const extractTargetValue = (step) => {
     return (start + end) / 2;
   }
 
-  return 80;
+  return 60;
 };
 
 const getZoneDetails = (targetPct, stepType = '') => {
@@ -56,19 +55,16 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
   const totalDurationSec = steps.reduce((sum, s) => sum + (s.duration || 0), 0) || 1;
 
-  // Extract step target values
+  // Compute pace bounds with dynamic padding so bars don't bunch at the top edge
   const targetPcts = steps.map((s) => extractTargetValue(s));
+  const rawMaxPct = Math.max(...targetPcts, 100);
+  const rawMinPct = Math.min(...targetPcts, 50);
   
-  // Calculate tight bounds strictly off the data set (no hardcoded 0 or 50 floor)
-  const actualMin = Math.min(...targetPcts);
-  const actualMax = Math.max(...targetPcts);
-  
-  // Create a tight padding range (5% buffer)
-  const delta = (actualMax - actualMin) || 20; 
-  const yMax = actualMax + delta * 0.08;
-  const yMin = Math.max(0, actualMin - delta * 0.08);
+  const pctRange = rawMaxPct - rawMinPct || 20;
+  const yMax = rawMaxPct + pctRange * 0.1; // 10% top padding
+  const yMin = Math.max(0, rawMinPct - pctRange * 0.1); // 10% bottom padding
 
-  // Distribute 4 Y-Axis ticks evenly across the full height
+  // Generate 4 Y-Axis ticks from top (fastest/highest) to bottom (slowest/lowest)
   const yTicksPct = [
     yMax,
     yMax - (yMax - yMin) * (1 / 3),
@@ -93,7 +89,7 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
   return (
     <div style={{ margin: '16px 0', border: '1px solid #e9ecef', borderRadius: '8px', padding: '16px', backgroundColor: '#fcfcfc' }}>
       <div style={{ display: 'flex' }}>
-        {/* EVENLY DISTRIBUTED Y-AXIS LABELS */}
+        {/* Y-AXIS LABELS */}
         <div 
           style={{ 
             display: 'flex', 
@@ -159,8 +155,8 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
               const paceRangeFormatted = startPaceStr === endPaceStr ? avgPaceStr : `${startPaceStr} - ${endPaceStr}`;
               
-              // Full-span vertical scaling between yMin and yMax
-              const heightPct = Math.min(Math.max(((targetPct - yMin) / (yMax - yMin || 1)) * 100, 4), 100);
+              // Scale bar height dynamically between yMin and yMax
+              const heightPct = Math.min(Math.max(((targetPct - yMin) / (yMax - yMin || 1)) * 100, 5), 100);
 
               const tooltipText = `Step ${idx + 1}: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
 
