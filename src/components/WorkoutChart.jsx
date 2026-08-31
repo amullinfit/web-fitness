@@ -17,7 +17,7 @@ const formatIntensityTitleCase = (val) => {
 };
 
 const extractTargetValue = (step) => {
-  if (!step) return 60;
+  if (!step) return 80;
 
   if (step.pace && typeof step.pace === 'object') {
     const start = step.pace.start || 0;
@@ -33,7 +33,7 @@ const extractTargetValue = (step) => {
     return (start + end) / 2;
   }
 
-  return 60;
+  return 80;
 };
 
 const getZoneDetails = (targetPct, stepType = '') => {
@@ -52,20 +52,20 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
   const totalDurationSec = steps.reduce((sum, s) => sum + (s.duration || 0), 0) || 1;
 
+  // Extract values strictly from current step data
   const targetPcts = steps.map((s) => extractTargetValue(s));
-  const rawMaxPct = Math.max(...targetPcts, 100);
-  const rawMinPct = Math.min(...targetPcts, 50);
+  const dataMin = Math.min(...targetPcts);
+  const dataMax = Math.max(...targetPcts);
   
-  const pctRange = rawMaxPct - rawMinPct || 20;
-  const yMax = rawMaxPct + pctRange * 0.1; 
-  const yMin = Math.max(0, rawMinPct - pctRange * 0.1); 
+  // Dynamic scale: span strictly between actual data bounds with 5% margin
+  const range = (dataMax - dataMin) || 20;
+  const yMax = dataMax + range * 0.05;
+  const yMin = Math.max(0, dataMin - range * 0.05);
+  const ySpan = yMax - yMin || 1;
 
-  const yTicksPct = [
-    yMax,
-    yMax - (yMax - yMin) * (1 / 3),
-    yMax - (yMax - yMin) * (2 / 3),
-    yMin
-  ];
+  // Generate 4 perfectly spaced tick values (0%, 33%, 66%, 100% of range)
+  const yTickPercentages = [1.0, 0.666, 0.333, 0];
+  const yTicksPct = yTickPercentages.map((ratio) => yMin + ySpan * ratio);
 
   const yTickLabels = yTicksPct.map((pct) => {
     if (thresholdPace) {
@@ -83,34 +83,36 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
   return (
     <div style={{ margin: '16px 0', border: '1px solid #e9ecef', borderRadius: '8px', padding: '16px', backgroundColor: '#fcfcfc' }}>
       <div style={{ display: 'flex' }}>
-        {/* Y-AXIS CONTAINER WITH ALIGNED LABELS */}
+        {/* EVENLY SPACED Y-AXIS LABELS */}
         <div 
           style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            justify: 'space-between', 
+            position: 'relative',
             height: chartHeight, 
-            paddingRight: '12px', 
+            width: '60px',
+            marginRight: '12px', 
             fontSize: '10px', 
             color: '#6c757d', 
-            textAlign: 'right',
             fontWeight: '600',
-            lineHeight: '1',
-            boxSizing: 'content-box',
-            marginBottom: '6px' // Aligns bottom label with the chart floor (4px padding + 2px border)
+            lineHeight: '1'
           }}
         >
-          {yTickLabels.map((label, idx) => (
-            <span 
-              key={idx}
-              style={{
-                // Center-align tick text relative to exact vertical tick points
-                transform: idx === 0 ? 'translateY(0%)' : idx === yTickLabels.length - 1 ? 'translateY(50%)' : 'translateY(25%)'
-              }}
-            >
-              {label}
-            </span>
-          ))}
+          {yTickLabels.map((label, idx) => {
+            const topPct = (1 - yTickPercentages[idx]) * 100;
+            return (
+              <span 
+                key={idx}
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: `${topPct}%`,
+                  transform: 'translateY(-50%)',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {label}
+              </span>
+            );
+          })}
         </div>
 
         {/* CHART & X-AXIS AREA */}
@@ -159,7 +161,8 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
               const paceRangeFormatted = startPaceStr === endPaceStr ? avgPaceStr : `${startPaceStr} - ${endPaceStr}`;
               
-              const heightPct = Math.min(Math.max(((targetPct - yMin) / (yMax - yMin || 1)) * 100, 5), 100);
+              // Scale height across the full dynamic range (min 4% to remain visible)
+              const heightPct = Math.min(Math.max(((targetPct - yMin) / ySpan) * 100, 4), 100);
 
               const tooltipText = `Step ${idx + 1}: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
 
