@@ -284,13 +284,39 @@ export default function GeneralOverview({ overviewData }) {
     const key = `${yyyy}-${mm}-${dd}`;
 
     const entry = wellnessMap.get(key);
-    const popValue = entry ? (entry.popandsugar ?? entry.popAndSugar ?? 0) : 0;
+    // Case-sensitive lookup for PopAndSugar
+    const popValue = entry ? (entry.PopAndSugar ?? entry.popandSugar ?? entry.popandsugar ?? 0) : 0;
 
     popSugarDays.push({
       dateStr: key,
       value: Number(popValue)
     });
   }
+
+  // Extract PopStreak count for today (or most recent entry with PopStreak)
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const todayEntry = wellnessMap.get(todayKey);
+  
+  // Case-sensitive lookup for PopStreak with fallback search through recent wellness items
+  let popStreakDays = todayEntry ? (todayEntry.PopStreak ?? todayEntry.popStreak) : undefined;
+
+  if (popStreakDays === undefined && wellness.length > 0) {
+    const sortedWellness = [...wellness].sort((a, b) => {
+      const dA = new Date(a.date || a.id || a.day);
+      const dB = new Date(b.date || b.id || b.day);
+      return dB - dA;
+    });
+
+    for (const item of sortedWellness) {
+      const val = item.PopStreak ?? item.popStreak;
+      if (val !== undefined && val !== null) {
+        popStreakDays = val;
+        break;
+      }
+    }
+  }
+
+  const popStreakCount = popStreakDays !== undefined && popStreakDays !== null ? Number(popStreakDays) : 0;
 
   // Render Helpers
   const renderWeekGrid = (gridData, title) => (
@@ -456,7 +482,7 @@ export default function GeneralOverview({ overviewData }) {
       {/* SECTION 6: POP AND SUGAR GRID */}
       <div className="popsugar-card">
         <h3 className="section-subtitle-center">
-          POP AND SUGAR
+          POP AND SUGAR - {popStreakCount} DAYS
         </h3>
 
         <div className="popsugar-grid-container">
