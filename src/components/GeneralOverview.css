@@ -69,57 +69,43 @@
   margin-left: 6px;
 }
 
-/* Compact Annual Table (3 Columns: Year, Act, Total) */
+/* Auto-Fit Annual Table with Gapped Bottom Border Under Headers */
 .annual-table {
-  width: fit-content;
+  width: auto;
   margin-left: auto;
   margin-right: auto;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 12px 0; /* Horizontal gap between columns */
   color: #6c757d;
   font-size: 11px;
 }
 
 .annual-table th {
-  padding: 2px 8px 4px 8px;
-  border-bottom: 1px solid #ced4da;
+  padding: 0 0 4px 0;
   font-weight: 600;
   white-space: nowrap;
-  line-height: 1.1;
   vertical-align: bottom;
 }
 
-.annual-table th.col-year {
-  text-align: left;
-  padding-left: 0;
+.annual-table th span {
+  display: inline-block;
+  border-bottom: 1px solid #ced4da; /* Line applies only under header text */
+  padding-bottom: 2px;
+  width: 100%;
 }
 
-.annual-table th.col-act {
-  text-align: center;
-}
-
-.annual-table th.col-total {
-  text-align: right;
-  padding-right: 0;
-}
+.annual-table th.col-year { text-align: left; }
+.annual-table th.col-act { text-align: center; }
+.annual-table th.col-total { text-align: right; }
 
 .annual-table td {
-  padding: 4px 8px;
+  padding: 4px 0;
   white-space: nowrap;
 }
 
-.annual-table td.col-year {
-  text-align: left;
-  padding-left: 0;
-}
-
-.annual-table td.col-act {
-  text-align: center;
-}
-
-.annual-table td.col-total {
-  text-align: right;
-  padding-right: 0;
-}
+.annual-table td.col-year { text-align: left; }
+.annual-table td.col-act { text-align: center; }
+.annual-table td.col-total { text-align: right; }
 
 /* SECTION 2: Weekly Activity Grids */
 .section-title {

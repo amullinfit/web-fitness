@@ -124,7 +124,7 @@ export default function GeneralOverview({ overviewData }) {
     };
   });
 
-  // 1. WEEKLY BUCKETS & ANNUAL TABLES DATA (With Activity Count)
+  // 1. WEEKLY BUCKETS & ANNUAL TABLES DATA (Swim, Bike, Run)
   const sportCategories = ['Swim', 'Bike', 'Run'];
   const buckets = sportCategories.map((sport) => {
     const sportWorkouts = parsedWorkouts.filter(w => w.category === sport);
@@ -162,7 +162,7 @@ export default function GeneralOverview({ overviewData }) {
     };
   });
 
-  // 2. WEEKLY ACTIVITY GRIDS (Current vs Prior Week)
+  // 2. WEEKLY ACTIVITY GRIDS
   const buildGridWeek = (monDate, sunDate) => {
     const days = [];
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -202,7 +202,7 @@ export default function GeneralOverview({ overviewData }) {
   const currentWeekGrid = buildGridWeek(currentMon, currentSun);
   const priorWeekGrid = buildGridWeek(priorMon, priorSun);
 
-  // 3. CONSISTENCY GRID DATA (7 rows x 61 columns)
+  // 3. CONSISTENCY GRID DATA
   const consistencyWeeks = [];
   for (let w = 60; w >= 0; w--) {
     const weekMon = addDays(currentMon, -w * 7);
@@ -224,7 +224,7 @@ export default function GeneralOverview({ overviewData }) {
     consistencyWeeks.push(weekDays);
   }
 
-  // 4 & 5. MONTHLY TOTALS (Run & Bike Bar Charts - Rounded Down)
+  // 4 & 5. MONTHLY TOTALS
   const buildMonthlyTotals = (sportCategory) => {
     const monthlyTotals = [];
     let maxDist = 0;
@@ -261,7 +261,6 @@ export default function GeneralOverview({ overviewData }) {
         {title}: {gridData.range} ({gridData.totalActivities} activities)
       </div>
       
-      {/* 7 Days Header Boxes */}
       <div className="weekly-grid-headers-row">
         {gridData.days.map((d, idx) => {
           let countClass = 'count-0';
@@ -276,7 +275,6 @@ export default function GeneralOverview({ overviewData }) {
         })}
       </div>
 
-      {/* Activities Breakdown per Day */}
       <div className="weekly-grid-items-row">
         {gridData.days.map((d, idx) => (
           <div key={idx} className="weekly-day-column">
@@ -342,17 +340,17 @@ export default function GeneralOverview({ overviewData }) {
             <table className="annual-table">
               <thead>
                 <tr>
-                  <th className="col-year">Year</th>
-                  <th className="col-act">Act</th>
-                  <th className="col-total">Total</th>
+                  <th className="col-year"><span>Year</span></th>
+                  <th className="col-act"><span>Act</span></th>
+                  <th className="col-total"><span>Total</span></th>
                 </tr>
               </thead>
               <tbody>
                 {b.annualTable.map((row, rIdx) => (
                   <tr key={rIdx}>
-                    <td className="col-year">{row.year}</td>
-                    <td className="col-act">{row.activitiesCount}</td>
-                    <td className="col-total">{row.total}</td>
+                    <td className="col-year"><span>{row.year}</span></td>
+                    <td className="col-act"><span>{row.activitiesCount}</span></td>
+                    <td className="col-total"><span>{row.total}</span></td>
                   </tr>
                 ))}
               </tbody>
