@@ -24,6 +24,12 @@ const safeStringLower = (val) => {
   return String(val.id || val.type || val.name || val).toLowerCase();
 };
 
+const formatIntensityTitleCase = (val) => {
+  if (!val) return "N/A";
+  const str = String(val);
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 const getThresholdPaceForSport = (sportType, sportSettings) => {
   if (!sportType || !Array.isArray(sportSettings)) return null;
   const normalizedSport = safeStringLower(sportType);
@@ -54,15 +60,14 @@ const parseWorkoutSteps = (stepList, thresholdPaceMps) => {
       }
     }
 
-    let stepName = s.text || s.name || (s.warmup ? "Warmup" : s.cooldown ? "Cooldown" : `Step ${idx + 1}`);
     const calculatedPaceStr = calcPaceMps ? metersPerSecondToPaceStr(calcPaceMps) : null;
     const finalPaceStr = calculatedPaceStr ? `${paceRangeStr} (${calculatedPaceStr})` : paceRangeStr;
+    const rawIntensity = s.intensity || (s.warmup ? "warmup" : s.cooldown ? "cooldown" : "active");
 
     return {
       id: idx,
-      name: stepName,
       durationSec: s.duration || 0,
-      intensity: s.intensity || (s.warmup ? "warmup" : s.cooldown ? "cooldown" : "active"),
+      intensity: formatIntensityTitleCase(rawIntensity),
       paceStr: finalPaceStr,
       text: s.text || "No step text"
     };
@@ -74,7 +79,6 @@ export default function WorkoutTextSection({ workout, sportSettings = [] }) {
 
   if (!workout) return null;
 
-  // Extract raw steps safely from workout_doc
   let rawSteps = [];
   if (workout.workout_doc) {
     try {
@@ -91,7 +95,7 @@ export default function WorkoutTextSection({ workout, sportSettings = [] }) {
 
   return (
     <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px', border: '1px solid #e9ecef' }}>
-      {/* Clickable Header Bar matching requested layout */}
+      {/* Clickable Header Bar */}
       <div 
         onClick={() => setIsOpen((prev) => !prev)}
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
@@ -113,7 +117,7 @@ export default function WorkoutTextSection({ workout, sportSettings = [] }) {
             <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#212529' }}>
               {debugSteps.map((step, sIdx) => (
                 <li key={sIdx} style={{ marginBottom: '4px' }}>
-                  <strong>{step.name}</strong> — Intensity: <code>{step.intensity}</code> | Target Pace: <code>{step.paceStr}</code> | Duration: <code>{formatDuration(step.durationSec)}</code>
+                  Intensity: <code>{step.intensity}</code> | Target Pace: <code>{step.paceStr}</code> | Duration: <code>{formatDuration(step.durationSec)}</code>
                   <div style={{ fontSize: '11px', color: '#6c757d', marginTop: '1px' }}>
                     Text: "{step.text}"
                   </div>

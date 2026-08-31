@@ -9,6 +9,12 @@ const metersPerSecondToPaceStr = (mps) => {
   return `${mins}:${String(secs).padStart(2, '0')}`;
 };
 
+const formatIntensityTitleCase = (val) => {
+  if (!val) return "Active";
+  const str = String(val);
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 // Helper to extract numeric value from intensity object/range
 const extractTargetValue = (targetObj) => {
   if (typeof targetObj === 'number') return targetObj;
@@ -59,31 +65,43 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
       >
         {steps.map((step, idx) => {
           const duration = step.duration || 60;
+          const durationMins = Math.round(duration / 60);
           const widthPct = (duration / totalDuration) * 100;
 
-          // Determine step type for zone identification
-          const stepType = step.intensity || (step.warmup ? 'warmup' : step.cooldown ? 'cooldown' : step.type || '');
+          // Determine step type & intensity
+          const rawIntensity = step.intensity || (step.warmup ? 'warmup' : step.cooldown ? 'cooldown' : step.type || 'active');
+          const intensityFormatted = formatIntensityTitleCase(rawIntensity);
           
-          // Extract intensity target value using the helper
+          // Extract target value and zone color details
           const targetPct = extractTargetValue(step.pace || step.target || step.intensityPct);
-
-          // Retrieve color and zone metadata using getZoneDetails
-          const zoneDetails = getZoneDetails(targetPct, stepType);
+          const zoneDetails = getZoneDetails(targetPct, rawIntensity);
           const barColor = zoneDetails.color;
 
-          // Height Scaling (20% to 100%)
-          const heightPct = Math.min(Math.max((targetPct / 100) * 100, 20), 100);
-
+          // Compute pace string for bar label and tooltip
           let paceDisplay = `${Math.round(targetPct)}%`;
+          let paceRangeDisplay = paceDisplay;
+
+          if (step.pace && (step.pace.start !== undefined || step.pace.end !== undefined)) {
+            const start = step.pace.start || 0;
+            const end = step.pace.end || start;
+            paceRangeDisplay = `${start}-${end}% pace`;
+          }
+
           if (thresholdPace) {
             const stepMps = thresholdPace * (targetPct / 100);
             paceDisplay = metersPerSecondToPaceStr(stepMps);
           }
 
+          // Height Scaling (20% to 100%)
+          const heightPct = Math.min(Math.max((targetPct / 100) * 100, 20), 100);
+
+          // Construct tooltip showing Intensity, Target Pace Range, and Duration
+          const tooltipText = `Intensity: ${intensityFormatted} | Target Pace: ${paceRangeDisplay} | Duration: ${durationMins}m`;
+
           return (
             <div
               key={idx}
-              title={`${step.text || 'Step ' + (idx + 1)}: ${Math.round(duration / 60)}m @ ${paceDisplay} (${zoneDetails.name})`}
+              title={tooltipText}
               style={{
                 width: `${widthPct}%`,
                 height: `${heightPct}%`,
@@ -109,7 +127,7 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
               }}
             >
               <span style={{ fontSize: '10px', fontWeight: '600', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {Math.round(duration / 60)}m
+                {durationMins}m
               </span>
               <span style={{ fontSize: '9px', color: '#ffffff', fontWeight: '500' }}>
                 {paceDisplay}
