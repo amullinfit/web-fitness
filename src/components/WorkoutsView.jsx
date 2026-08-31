@@ -3,7 +3,6 @@ import WorkoutChart from './WorkoutChart';
 
 const VAL_WORKOUTS_URL = "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run";
 
-// Helper function to format seconds to H:MM:SS
 const formatDuration = (totalSeconds) => {
   if (!totalSeconds) return "0:00:00";
   const hours = Math.floor(totalSeconds / 3600);
@@ -65,7 +64,12 @@ export default function WorkoutsView() {
           const durationStr = formatDuration(w.moving_time || w.elapsed_time);
           const distanceMi = w.distance ? (w.distance * 0.000621371).toFixed(1) : null;
           
-          const steps = w.workout_doc?.steps;
+          // Parse workout_doc if returned as stringified JSON
+          let steps = null;
+          if (w.workout_doc) {
+            const doc = typeof w.workout_doc === 'string' ? JSON.parse(w.workout_doc) : w.workout_doc;
+            steps = doc?.steps;
+          }
 
           return (
             <div 
@@ -80,10 +84,9 @@ export default function WorkoutsView() {
                 Duration: {durationStr} {distanceMi && `| Distance: ${distanceMi} mi`}
               </div>
 
+              {/* Render chart for first 3 workouts */}
               {index < 3 && Array.isArray(steps) && steps.length > 0 && (
-                <div style={{ marginTop: '12px' }}>
-                  <WorkoutChart steps={steps} containerId={`upcoming-chart-${w.id || index}`} />
-                </div>
+                <WorkoutChart steps={steps} containerId={`upcoming-chart-${w.id || index}`} />
               )}
             </div>
           );
