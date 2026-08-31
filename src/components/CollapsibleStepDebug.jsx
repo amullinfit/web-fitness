@@ -1,52 +1,91 @@
 import React, { useState } from 'react';
 
-export default function CollapsibleStepDebug({ debugSteps, thresholdPaceStr, sportType, formatDuration }) {
+export default function CollapsibleStepDebug({ workout }) {
   const [isOpen, setIsOpen] = useState(false);
 
+  if (!workout) {
+    return (
+      <div style={{ padding: '10px', color: '#6c757d', fontSize: '12px' }}>
+        No workout selected for step debugging.
+      </div>
+    );
+  }
+
+  // Handle varying API payload key structures (icu_steps, steps, or parsed_steps)
+  const steps = workout.icu_steps || workout.steps || workout.parsed_steps || [];
+
   return (
-    <div style={{ marginTop: '12px', border: '1px solid #e9ecef', borderRadius: '6px', backgroundColor: '#f8f9fa', overflow: 'hidden' }}>
-      {/* Clickable Header Bar */}
-      <div 
-        onClick={() => setIsOpen(!isOpen)}
+    <div style={{ marginTop: '16px', border: '1px solid #dee2e6', borderRadius: '6px', overflow: 'hidden' }}>
+      {/* Toggle Header */}
+      <button
+        onClick={() => setIsOpen((prev) => !prev)}
         style={{
-          display: 'flex',
-          justify: 'space-between',
-          alignItems: 'center',
+          width: '100%',
           padding: '10px 14px',
+          backgroundColor: '#f8f9fa',
+          border: 'none',
+          borderBottom: isOpen ? '1px solid #dee2e6' : 'none',
+          textAlign: 'left',
+          fontWeight: '600',
+          fontSize: '13px',
+          color: '#343a40',
           cursor: 'pointer',
-          userSelect: 'none',
-          backgroundColor: isOpen ? '#eef2f6' : '#f8f9fa'
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}
       >
-        <div style={{ fontSize: '13px', color: '#495057' }}>
-          <span style={{ fontWeight: 'bold' }}>
-            {isOpen ? '▼' : '►'} Steps ({debugSteps.length})
-          </span>
-          <span style={{ marginLeft: '12px', color: '#0d6efd', fontWeight: '600' }}>
-            Threshold Pace: {thresholdPaceStr}
-          </span>
-        </div>
-        <span style={{ fontSize: '11px', color: '#6c757d', fontStyle: 'italic' }}>
-          {isOpen ? 'Click to collapse' : 'Click to expand'}
+        <span>
+          🐛 Step Debug Inspector ({steps.length} {steps.length === 1 ? 'step' : 'steps'})
         </span>
-      </div>
+        <span>{isOpen ? '▲ Hide' : '▼ Show'}</span>
+      </button>
 
-      {/* Expanded Content */}
+      {/* Collapsible Content Area */}
       {isOpen && (
-        <div style={{ padding: '12px 14px 14px 14px', borderTop: '1px solid #e9ecef', backgroundColor: '#fff' }}>
-          {debugSteps.length === 0 ? (
-            <div style={{ fontSize: '12px', color: '#6c757d' }}>No parsed step data available in workout_doc.</div>
+        <div style={{ padding: '14px', backgroundColor: '#ffffff' }}>
+          {steps.length === 0 ? (
+            <div style={{ color: '#6c757d', fontSize: '12px', italic: 'true' }}>
+              No structured steps found on this workout object.
+            </div>
           ) : (
-            <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#212529' }}>
-              {debugSteps.map((step, sIdx) => (
-                <li key={sIdx} style={{ marginBottom: '6px' }}>
-                  <strong>{step.name}</strong> — Intensity: <code>{step.intensity}</code> | Target Pace: <code>{step.paceStr}</code> | Duration: <code>{formatDuration(step.durationSec)}</code>
-                  <div style={{ fontSize: '11px', color: '#6c757d', marginTop: '1px' }}>
-                    Text: "{step.text}"
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {steps.map((step, idx) => {
+                const duration = step.duration || step.elapsed_time || step.seconds || 0;
+                const type = step.type || step.category || 'Step';
+                const targetPace = step.target_pace || step.pace || step.intensity || 'N/A';
+
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: '#f8f9fa',
+                      borderLeft: '4px solid #0d6efd',
+                      borderRadius: '4px',
+                      fontSize: '12px'
+                    }}
+                  >
+                    <div style={{ fontWeight: 'bold', color: '#212529' }}>
+                      Step #{idx + 1}: {type}
+                    </div>
+                    <div style={{ color: '#495057', marginTop: '2px' }}>
+                      Duration: {Math.floor(duration / 60)}m {duration % 60}s | Target: {targetPace}
+                    </div>
+
+                    {/* Raw step key/value inspector */}
+                    <details style={{ marginTop: '6px' }}>
+                      <summary style={{ cursor: 'pointer', color: '#6c757d', fontSize: '11px' }}>
+                        Raw JSON Payload
+                      </summary>
+                      <pre style={{ margin: '4px 0 0 0', padding: '6px', backgroundColor: '#e9ecef', borderRadius: '4px', fontSize: '10px', overflowX: 'auto' }}>
+                        {JSON.stringify(step, null, 2)}
+                      </pre>
+                    </details>
                   </div>
-                </li>
-              ))}
-            </ul>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
