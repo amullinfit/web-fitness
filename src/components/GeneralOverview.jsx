@@ -124,8 +124,8 @@ export default function GeneralOverview({ overviewData }) {
     };
   });
 
-  // 1. WEEKLY BUCKETS & ANNUAL TABLES DATA
-  const sportCategories = ['Run', 'Bike', 'Swim'];
+  // 1. WEEKLY BUCKETS & ANNUAL TABLES DATA (With Activity Count)
+  const sportCategories = ['Swim', 'Bike', 'Run'];
   const buckets = sportCategories.map((sport) => {
     const sportWorkouts = parsedWorkouts.filter(w => w.category === sport);
 
@@ -147,6 +147,7 @@ export default function GeneralOverview({ overviewData }) {
 
       return {
         year: String(yr),
+        activitiesCount: yrWorkouts.length,
         total: formatSportTotal(sport, yrDistMiles, yrMeters)
       };
     });
@@ -306,7 +307,7 @@ export default function GeneralOverview({ overviewData }) {
           const heightPercent = maxVal > 0 ? (item.rawDistance / maxVal) * 100 : 0;
           return (
             <div key={mIdx} className="monthly-bar-column">
-              <div className="monthly-bar-val">{item.rawDistance > 0 ? item.distanceStr : ''}</div>
+              <div className="monthly-bar-val">{item.distanceStr}</div>
               <div className="monthly-bar-track">
                 <div 
                   className="monthly-bar-fill" 
@@ -325,7 +326,7 @@ export default function GeneralOverview({ overviewData }) {
   return (
     <div className="overview-container">
       
-      {/* SECTION 1: WEEKLY BUCKETS & ANNUAL TABLES */}
+      {/* SECTION 1: WEEKLY BUCKETS & ANNUAL TABLES (Swim, Bike, Run) */}
       <div className="sport-buckets-container">
         {buckets.map((b, idx) => (
           <div key={idx} className="sport-bucket-card">
@@ -342,6 +343,7 @@ export default function GeneralOverview({ overviewData }) {
               <thead>
                 <tr>
                   <th className="col-year">Year</th>
+                  <th className="col-act">Act</th>
                   <th className="col-total">Total</th>
                 </tr>
               </thead>
@@ -349,6 +351,7 @@ export default function GeneralOverview({ overviewData }) {
                 {b.annualTable.map((row, rIdx) => (
                   <tr key={rIdx}>
                     <td className="col-year">{row.year}</td>
+                    <td className="col-act">{row.activitiesCount}</td>
                     <td className="col-total">{row.total}</td>
                   </tr>
                 ))}
