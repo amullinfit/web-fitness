@@ -229,6 +229,9 @@ export default function GeneralOverview({ overviewData }) {
     consistencyWeeks.push(weekDays);
   }
 
+  // Day Label Column Array
+  const dayLabelsList = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
   // 4 & 5. MONTHLY TOTALS
   const buildMonthlyTotals = (sportCategory) => {
     const monthlyTotals = [];
@@ -429,46 +432,53 @@ export default function GeneralOverview({ overviewData }) {
           --- CONSISTENCY GRID ---
         </h3>
 
-        <div className="consistency-grid-wrapper">
-          {/* Left Day Labels */}
-          <div className="consistency-day-labels left">
-            <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+        <div className="consistency-weeks-container">
+          {/* Left Labels Column */}
+          <div className="consistency-week-column label-column">
+            {dayLabelsList.map((label, lIdx) => (
+              <div key={lIdx} className="consistency-cell label-cell">
+                {label}
+              </div>
+            ))}
           </div>
 
-          <div className="consistency-weeks-container">
-            {consistencyWeeks.map((week, wIdx) => {
-              const isCurrentWeek = wIdx === 60;
-              const hasFourWeekDivider = (60 - wIdx) % 4 === 0 && wIdx !== 60;
+          {/* 61 Weeks Columns */}
+          {consistencyWeeks.map((week, wIdx) => {
+            const isCurrentWeek = wIdx === 60;
+            const hasFourWeekDivider = (60 - wIdx) % 4 === 0 && wIdx !== 60;
 
-              return (
-                <React.Fragment key={wIdx}>
-                  {(isCurrentWeek || hasFourWeekDivider) && (
-                    <div className={`consistency-divider ${isCurrentWeek ? 'current-week' : ''}`} />
-                  )}
+            return (
+              <React.Fragment key={wIdx}>
+                {(isCurrentWeek || hasFourWeekDivider) && (
+                  <div className={`consistency-divider ${isCurrentWeek ? 'current-week' : ''}`} />
+                )}
 
-                  <div className="consistency-week-column">
-                    {week.map((day, dIdx) => {
-                      let countClass = 'count-0';
-                      if (day.count === 1) countClass = 'count-1';
-                      else if (day.count >= 2) countClass = 'count-2plus';
+                <div className="consistency-week-column">
+                  {week.map((day, dIdx) => {
+                    let countClass = 'count-0';
+                    if (day.count === 1) countClass = 'count-1';
+                    else if (day.count >= 2) countClass = 'count-2plus';
 
-                      return (
-                        <div
-                          key={dIdx}
-                          title={day.isRace ? "Race Day" : undefined}
-                          className={`consistency-cell ${countClass} ${day.isRace ? 'race-cell' : ''}`}
-                        />
-                      );
-                    })}
-                  </div>
-                </React.Fragment>
-              );
-            })}
-          </div>
+                    return (
+                      <div
+                        key={dIdx}
+                        title={day.isRace ? "Race Day" : undefined}
+                        className={`consistency-cell ${countClass} ${day.isRace ? 'race-cell' : ''}`}
+                      />
+                    );
+                  })}
+                </div>
+              </React.Fragment>
+            );
+          })}
 
-          {/* Right Day Labels */}
-          <div className="consistency-day-labels right">
-            <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+          {/* Right Labels Column */}
+          <div className="consistency-week-column label-column">
+            {dayLabelsList.map((label, lIdx) => (
+              <div key={lIdx} className="consistency-cell label-cell">
+                {label}
+              </div>
+            ))}
           </div>
         </div>
       </div>

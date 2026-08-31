@@ -206,44 +206,10 @@
   box-sizing: border-box;
 }
 
-.consistency-grid-wrapper {
+.consistency-weeks-container {
   display: flex;
   width: 100%;
   box-sizing: border-box;
-  align-items: flex-start;
-}
-
-.consistency-day-labels {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 9px;
-  color: #000;
-  font-weight: bold;
-  line-height: 1;
-}
-
-.consistency-day-labels.left {
-  padding-right: 8px;
-}
-
-.consistency-day-labels.right {
-  padding-left: 8px;
-}
-
-.consistency-day-labels span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1 1 0px;
-  aspect-ratio: 1 / 1;
-}
-
-.consistency-weeks-container {
-  display: flex;
-  flex: 1 1 0px;
-  min-width: 0;
-  width: 100%;
   gap: 2px;
   align-items: center;
 }
@@ -262,6 +228,19 @@
   border: 1px solid #000;
   box-sizing: border-box;
   border-radius: 2px;
+}
+
+/* Transparent label cell inside grid */
+.consistency-cell.label-cell {
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: bold;
+  color: #000;
+  line-height: 1;
 }
 
 .consistency-cell.count-0 {
