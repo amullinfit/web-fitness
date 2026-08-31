@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import WorkoutChart from './WorkoutChart';
 
 const formatDuration = (totalSeconds) => {
   if (!totalSeconds) return "0:00";
@@ -61,7 +62,7 @@ const parseWorkoutSteps = (stepList, thresholdPaceMps) => {
     }
 
     const calculatedPaceStr = calcPaceMps ? metersPerSecondToPaceStr(calcPaceMps) : null;
-    const finalPaceStr = calculatedPaceStr ? `${paceRangeStr} (${calculatedPaceStr})` : paceRangeStr;
+    const finalPaceStr = calculatedPaceStr ? `${calculatedPaceStr} (${paceRangeStr})` : paceRangeStr;
     const rawIntensity = s.intensity || (s.warmup ? "warmup" : s.cooldown ? "cooldown" : "active");
 
     return {
@@ -94,39 +95,46 @@ export default function WorkoutTextSection({ workout, sportSettings = [] }) {
   const debugSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps);
 
   return (
-    <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px', border: '1px solid #e9ecef' }}>
-      {/* Clickable Header Bar */}
-      <div 
-        onClick={() => setIsOpen((prev) => !prev)}
-        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
-      >
-        <span style={{ fontWeight: 'bold', fontSize: '12px', color: '#495057', textTransform: 'uppercase' }}>
-          {isOpen ? '▼' : '►'} Step Debug Write-up ({debugSteps.length} step{debugSteps.length === 1 ? '' : 's'})
-        </span>
-        <span style={{ fontSize: '12px', fontWeight: '600', color: '#0d6efd', backgroundColor: '#e7f1ff', padding: '2px 8px', borderRadius: '4px' }}>
-          Threshold Pace ({workout.type || 'Sport'}): {thresholdPaceStr}
-        </span>
-      </div>
-
-      {/* Collapsible Content Area */}
-      {isOpen && (
-        <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e9ecef' }}>
-          {debugSteps.length === 0 ? (
-            <div style={{ fontSize: '12px', color: '#6c757d' }}>No parsed step data available in workout_doc.</div>
-          ) : (
-            <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#212529' }}>
-              {debugSteps.map((step, sIdx) => (
-                <li key={sIdx} style={{ marginBottom: '4px' }}>
-                  Intensity: <code>{step.intensity}</code> | Target Pace: <code>{step.paceStr}</code> | Duration: <code>{formatDuration(step.durationSec)}</code>
-                  <div style={{ fontSize: '11px', color: '#6c757d', marginTop: '1px' }}>
-                    Text: "{step.text}"
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+    <div style={{ marginTop: '12px' }}>
+      {/* Graphic Chart Pass Through with thresholdPace for Axis Translation */}
+      {rawSteps.length > 0 && (
+        <WorkoutChart steps={rawSteps} thresholdPace={thresholdPaceMps} />
       )}
+
+      {/* Clickable Debug Section Header */}
+      <div style={{ padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px', border: '1px solid #e9ecef' }}>
+        <div 
+          onClick={() => setIsOpen((prev) => !prev)}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
+        >
+          <span style={{ fontWeight: 'bold', fontSize: '12px', color: '#495057', textTransform: 'uppercase' }}>
+            {isOpen ? '▼' : '►'} Step Debug Write-up ({debugSteps.length} step{debugSteps.length === 1 ? '' : 's'})
+          </span>
+          <span style={{ fontSize: '12px', fontWeight: '600', color: '#0d6efd', backgroundColor: '#e7f1ff', padding: '2px 8px', borderRadius: '4px' }}>
+            Threshold Pace ({workout.type || 'Sport'}): {thresholdPaceStr}
+          </span>
+        </div>
+
+        {/* Collapsible Write-up */}
+        {isOpen && (
+          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e9ecef' }}>
+            {debugSteps.length === 0 ? (
+              <div style={{ fontSize: '12px', color: '#6c757d' }}>No parsed step data available in workout_doc.</div>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#212529' }}>
+                {debugSteps.map((step, sIdx) => (
+                  <li key={sIdx} style={{ marginBottom: '4px' }}>
+                    Intensity: <code>{step.intensity}</code> | Target Pace: <code>{step.paceStr}</code> | Duration: <code>{formatDuration(step.durationSec)}</code>
+                    <div style={{ fontSize: '11px', color: '#6c757d', marginTop: '1px' }}>
+                      Text: "{step.text}"
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
