@@ -1,6 +1,32 @@
 import React, { useEffect, useRef } from 'react';
 
-export default function WorkoutChart({ steps, containerId }) {
+// Convert speed in m/s to pace string in mm:ss /mi (rounded to nearest 5 seconds)
+const metersPerSecondToPaceStr = (mps) => {
+  if (!mps || mps <= 0) return null;
+  const secPerMile = 1609.34 / mps;
+  const roundedSecPerMile = Math.round(secPerMile / 5) * 5;
+  const mins = Math.floor(roundedSecPerMile / 60);
+  const secs = roundedSecPerMile % 60;
+  const padSecs = String(secs).padStart(2, '0');
+  return `${mins}:${padSecs} /mi`;
+};
+
+// Extract numeric value from step intensity objects/ranges (averages min/max if a range is given)
+const extractTargetValue = (targetObj) => {
+  if (typeof targetObj === 'number') return targetObj;
+  if (!targetObj || typeof targetObj !== 'object') return 0;
+
+  const start = targetObj.start ?? targetObj.min ?? targetObj.value;
+  const end = targetObj.end ?? targetObj.max;
+
+  if (start !== undefined && end !== undefined && start !== end) {
+    return (Number(start) + Number(end)) / 2;
+  }
+  
+  return start !== undefined ? Number(start) : 0;
+};
+
+export default function WorkoutChart({ steps, containerId, thresholdPace }) {
   const chartRef = useRef(null);
 
   useEffect(() => {
@@ -12,7 +38,6 @@ export default function WorkoutChart({ steps, containerId }) {
       stepList.forEach((s) => {
         if (!s) return;
         if (Array.isArray(s.steps)) {
-          // Flatten nested step groups / repetitions
           const repeatCount = s.repetition || 1;
           for (let i = 0; i < repeatCount; i++) {
             result = result.concat(flattenSteps(s.steps));
@@ -34,14 +59,37 @@ export default function WorkoutChart({ steps, containerId }) {
       const label = step.name || (step.type ? step.type : `Step ${idx + 1}`);
       categories.push(label);
 
-      // Extract target intensity from various possible Intervals.icu fields
+      // Extract target intensity percentage
       let targetVal = 0;
-      if (step.power) targetVal = typeof step.power === 'object' ? (step.power.value || step.power.start || 0) : step.power;
-      else if (step.hr) targetVal = typeof step.hr === 'object' ? (step.hr.value || step.hr.start || 0) : step.hr;
-      else if (step.target) targetVal = typeof step.target === 'object' ? (step.target.value || 0) : step.target;
-      else if (step.value) targetVal = step.value;
+      let calculatedPaceStr = null;
 
-      seriesData.push(Math.round(targetVal));
+      if (step.pace) {
+        targetVal = extractTargetValue(step.pace);
+      } else if (step.power) {
+        targetVal = extractTargetValue(step.power);
+      } else if (step.hr) {
+        targetVal = extractTargetValue(step.hr);
+      } else if (step.target) {
+        targetVal = extractTargetValue(step.target);
+      } else if (step.value) {
+        targetVal = Number(step.value) || 0;
+      }
+
+      // Calculate pace from direct speed/pace or threshold pace
+      if (step.speed) {
+        const mps = extractTargetValue(step.speed);
+        calculatedPaceStr = metersPerSecondToPaceStr(mps);
+      } else if (typeof step.pace === 'object' && step.pace?.value > 15) {
+        calculatedPaceStr = metersPerSecondToPaceStr(step.pace.value);
+      } else if (thresholdPace && targetVal > 0) {
+        const stepMps = thresholdPace * (targetVal / 100);
+        calculatedPaceStr = metersPerSecondToPaceStr(stepMps);
+      }
+
+      seriesData.push({
+        y: Math.round(targetVal),
+        paceStr: calculatedPaceStr
+      });
     });
 
     // Ensure DOM container exists
@@ -68,7 +116,8 @@ export default function WorkoutChart({ steps, containerId }) {
       credits: { enabled: false },
       tooltip: {
         formatter: function() {
-          return `<b>${this.x}</b>: ${this.y}% Target`;
+          const paceInfo = this.point.paceStr ? `<br/>Pace: <b>${this.point.paceStr}</b>` : '';
+          return `<b>${this.x}</b><br/>Target: <b>${this.y}%</b>${paceInfo}`;
         }
       },
       series: [{
@@ -77,7 +126,7 @@ export default function WorkoutChart({ steps, containerId }) {
         color: '#007bff'
       }]
     });
-  }, [steps]);
+  }, [steps, thresholdPace]);
 
   return <div ref={chartRef} id={containerId} style={{ width: '100%', height: '160px', marginTop: '10px' }} />;
 }

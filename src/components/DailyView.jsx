@@ -63,7 +63,7 @@ const getThresholdPaceForSport = (sportType, sportSettings) => {
   return match?.threshold_pace || match?.pace_threshold || null;
 };
 
-// Helper to extract an averaged numeric value if target is a object with ranges (start/end or min/max)
+// Helper to extract an averaged numeric value if target is an object with ranges (start/end or min/max)
 const extractTargetValue = (targetObj) => {
   if (typeof targetObj === 'number') return targetObj;
   if (!targetObj || typeof targetObj !== 'object') return null;
@@ -211,6 +211,7 @@ export default function DailyView() {
             <WorkoutChart 
               steps={rawSteps} 
               containerId={`chart-${workoutId}`} 
+              thresholdPace={thresholdPaceMps}
             />
           ) : (
             <div style={{ fontSize: '12px', color: '#888', fontStyle: 'italic', margin: '8px 0' }}>
