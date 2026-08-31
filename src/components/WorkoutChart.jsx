@@ -9,15 +9,35 @@ const metersPerSecondToPaceStr = (mps) => {
   return `${mins}:${String(secs).padStart(2, '0')}`;
 };
 
-// Color Palette Definition
-const ZONE_COLORS = {
-  warmup: '#ffe066',   // Yellow
-  cooldown: '#8ce99a', // Light Green
-  z1: '#74c0fc',       // Light Blue (< 65%)
-  z2: '#4dabf7',       // Moderate Blue (65-75%)
-  z3: '#b197fc',       // Purple (75-85%)
-  z4: '#ff922b',       // Orange (85-95%)
-  z5: '#ff6b6b'        // Red (95%+)
+// Helper to extract numeric value from intensity object/range
+const extractTargetValue = (targetObj) => {
+  if (typeof targetObj === 'number') return targetObj;
+  if (typeof targetObj === 'object' && targetObj !== null) {
+    const start = targetObj.start || 0;
+    const end = targetObj.end || start;
+    return (start + end) / 2;
+  }
+  return 60; // default fallback percentage
+};
+
+// Helper to determine zone name and color based on target percentage and step type
+const getZoneDetails = (targetPct, stepType = '') => {
+  const typeLower = String(stepType).toLowerCase();
+
+  // Handle explicit warmups, cooldowns, or recoveries
+  if (typeLower.includes('warm') || typeLower.includes('cool') || typeLower.includes('rest') || targetPct < 75) {
+    return { name: 'Warmup / Recovery (Z1)', color: '#6c757d' }; // Gray
+  }
+  if (targetPct < 88) {
+    return { name: 'Endurance (Z2)', color: '#28a745' }; // Green
+  }
+  if (targetPct < 96) {
+    return { name: 'Tempo (Z3)', color: '#ffc107' }; // Yellow/Amber
+  }
+  if (targetPct <= 105) {
+    return { name: 'Threshold (Z4)', color: '#fd7e14' }; // Orange
+  }
+  return { name: 'Anaerobic / VO2 Max (Z5+)', color: '#dc3545' }; // Red
 };
 
 export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = '140px' }) {
@@ -41,35 +61,29 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
           const duration = step.duration || 60;
           const widthPct = (duration / totalDuration) * 100;
 
-          let intensityPct = 60;
-          if (step.pace) {
-            const start = step.pace.start || 60;
-            const end = step.pace.end || start;
-            intensityPct = (start + end) / 2;
-          }
+          // Determine step type for zone identification
+          const stepType = step.intensity || (step.warmup ? 'warmup' : step.cooldown ? 'cooldown' : step.type || '');
+          
+          // Extract intensity target value using the helper
+          const targetPct = extractTargetValue(step.pace || step.target || step.intensityPct);
 
-          // Dynamic Zone Coloring
-          let barColor = ZONE_COLORS.z1;
-          if (step.warmup) barColor = ZONE_COLORS.warmup;
-          else if (step.cooldown) barColor = ZONE_COLORS.cooldown;
-          else if (intensityPct >= 95) barColor = ZONE_COLORS.z5;
-          else if (intensityPct >= 85) barColor = ZONE_COLORS.z4;
-          else if (intensityPct >= 75) barColor = ZONE_COLORS.z3;
-          else if (intensityPct >= 65) barColor = ZONE_COLORS.z2;
+          // Retrieve color and zone metadata using getZoneDetails
+          const zoneDetails = getZoneDetails(targetPct, stepType);
+          const barColor = zoneDetails.color;
 
           // Height Scaling (20% to 100%)
-          const heightPct = Math.min(Math.max((intensityPct / 100) * 100, 20), 100);
+          const heightPct = Math.min(Math.max((targetPct / 100) * 100, 20), 100);
 
-          let paceDisplay = `${Math.round(intensityPct)}%`;
+          let paceDisplay = `${Math.round(targetPct)}%`;
           if (thresholdPace) {
-            const stepMps = thresholdPace * (intensityPct / 100);
+            const stepMps = thresholdPace * (targetPct / 100);
             paceDisplay = metersPerSecondToPaceStr(stepMps);
           }
 
           return (
             <div
               key={idx}
-              title={`${step.text || 'Step ' + (idx + 1)}: ${Math.round(duration / 60)}m @ ${paceDisplay}`}
+              title={`${step.text || 'Step ' + (idx + 1)}: ${Math.round(duration / 60)}m @ ${paceDisplay} (${zoneDetails.name})`}
               style={{
                 width: `${widthPct}%`,
                 height: `${heightPct}%`,
@@ -94,10 +108,10 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
                 e.currentTarget.style.transform = 'scaleY(1)';
               }}
             >
-              <span style={{ fontSize: '10px', fontWeight: '600', color: '#212529', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontSize: '10px', fontWeight: '600', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {Math.round(duration / 60)}m
               </span>
-              <span style={{ fontSize: '9px', color: '#495057', fontWeight: '500' }}>
+              <span style={{ fontSize: '9px', color: '#ffffff', fontWeight: '500' }}>
                 {paceDisplay}
               </span>
             </div>
