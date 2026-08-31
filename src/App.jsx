@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DailyView from './components/DailyView';
-import OverviewView from './components/OverviewView';
+import GeneralOverview from './components/GeneralOverview'; 
 import WorkoutsView from './components/WorkoutsView';
 import GearView from './components/GearView';
 import OptionsView from './components/OptionsView';
@@ -88,9 +88,7 @@ export default function App() {
           }}
         >
           <button onClick={() => setActiveTab('daily')}>Daily View</button>
-          <button onClick={() => setActiveTab('overview')}>
-            General Overview
-          </button>
+          <button onClick={() => setActiveTab('overview')}>General Overview</button>
           <button onClick={() => setActiveTab('workouts')}>Workouts</button>
           <button onClick={() => setActiveTab('gear')}>Gear</button>
           <button onClick={() => setActiveTab('options')}>Options</button>
@@ -106,7 +104,7 @@ export default function App() {
         }}
       >
         {activeTab === 'daily' && <DailyView />}
-        {activeTab === 'overview' && <OverviewView />}
+        {activeTab === 'overview' && <GeneralOverview />}
         {activeTab === 'workouts' && <WorkoutsView />}
         {activeTab === 'gear' && <GearView />}
         {activeTab === 'options' && (
