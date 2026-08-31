@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 
-const formatDurationMinutes = (seconds) => {
-  if (!seconds) return '0m';
-  const mins = Math.round(seconds / 60);
-  return `${mins}m`;
+const formatDuration = (totalSeconds) => {
+  if (!totalSeconds) return "0:00";
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  const pad = (num) => String(num).padStart(2, '0');
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
 };
 
 const metersPerSecondToPaceStr = (mps) => {
-  if (!mps || mps <= 0) return null;
+  if (!mps || mps <= 0) return "N/A";
   const secPerMile = 1609.34 / mps;
   const roundedSecPerMile = Math.round(secPerMile / 5) * 5;
   const mins = Math.floor(roundedSecPerMile / 60);
@@ -33,98 +36,90 @@ const getThresholdPaceForSport = (sportType, sportSettings) => {
   return match?.threshold_pace || match?.pace_threshold || null;
 };
 
+const parseWorkoutSteps = (stepList, thresholdPaceMps) => {
+  if (!Array.isArray(stepList)) return [];
+
+  return stepList.map((s, idx) => {
+    let paceRangeStr = "N/A";
+    let calcPaceMps = null;
+
+    if (s.pace) {
+      const startPct = s.pace.start || 0;
+      const endPct = s.pace.end || 0;
+      paceRangeStr = `${startPct}-${endPct}% pace`;
+
+      if (thresholdPaceMps) {
+        const avgPct = (startPct + endPct) / 2;
+        calcPaceMps = thresholdPaceMps * (avgPct / 100);
+      }
+    }
+
+    let stepName = s.text || s.name || (s.warmup ? "Warmup" : s.cooldown ? "Cooldown" : `Step ${idx + 1}`);
+    const calculatedPaceStr = calcPaceMps ? metersPerSecondToPaceStr(calcPaceMps) : null;
+    const finalPaceStr = calculatedPaceStr ? `${paceRangeStr} (${calculatedPaceStr})` : paceRangeStr;
+
+    return {
+      id: idx,
+      name: stepName,
+      durationSec: s.duration || 0,
+      intensity: s.intensity || (s.warmup ? "warmup" : s.cooldown ? "cooldown" : "active"),
+      paceStr: finalPaceStr,
+      text: s.text || "No step text"
+    };
+  });
+};
+
 export default function WorkoutTextSection({ workout, sportSettings = [] }) {
   const [isOpen, setIsOpen] = useState(false);
 
   if (!workout) return null;
 
-  // Extract steps safely
-  let steps = [];
+  // Extract raw steps safely from workout_doc
+  let rawSteps = [];
   if (workout.workout_doc) {
     try {
       const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
-      steps = doc?.steps || [];
+      rawSteps = doc?.steps || [];
     } catch (e) {
-      console.error("Error parsing workout_doc", e);
+      console.error("Failed to parse workout_doc", e);
     }
   }
 
   const thresholdPaceMps = getThresholdPaceForSport(workout.type, sportSettings);
+  const thresholdPaceStr = thresholdPaceMps ? metersPerSecondToPaceStr(thresholdPaceMps) : "Not Set";
+  const debugSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps);
 
   return (
-    <div style={{ marginTop: '14px', border: '1px solid #dee2e6', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#fff' }}>
-      {/* Clickable Header Bar */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          width: '100%',
-          padding: '10px 14px',
-          backgroundColor: '#f8f9fa',
-          border: 'none',
-          borderBottom: isOpen ? '1px solid #dee2e6' : 'none',
-          textAlign: 'left',
-          fontWeight: '600',
-          fontSize: '13px',
-          color: '#343a40',
-          cursor: 'pointer',
-          display: 'flex',
-          justify: 'space-between',
-          alignItems: 'center'
-        }}
+    <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px', border: '1px solid #e9ecef' }}>
+      {/* Clickable Header Bar matching requested layout */}
+      <div 
+        onClick={() => setIsOpen((prev) => !prev)}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
       >
-        <span>
-          {isOpen ? '▼' : '►'} Workout Details & Steps ({steps.length} {steps.length === 1 ? 'step' : 'steps'})
+        <span style={{ fontWeight: 'bold', fontSize: '12px', color: '#495057', textTransform: 'uppercase' }}>
+          {isOpen ? '▼' : '►'} Step Debug Write-up ({debugSteps.length} step{debugSteps.length === 1 ? '' : 's'})
         </span>
-        <span style={{ fontSize: '11px', color: '#6c757d' }}>
-          {isOpen ? 'Hide Details' : 'Show Details'}
+        <span style={{ fontSize: '12px', fontWeight: '600', color: '#0d6efd', backgroundColor: '#e7f1ff', padding: '2px 8px', borderRadius: '4px' }}>
+          Threshold Pace ({workout.type || 'Sport'}): {thresholdPaceStr}
         </span>
-      </button>
+      </div>
 
-      {/* Expanded Details matching DailyView original format */}
+      {/* Collapsible Content Area */}
       {isOpen && (
-        <div style={{ padding: '14px', backgroundColor: '#ffffff', fontSize: '14px', lineHeight: '1.6' }}>
-          {/* Raw Description if present */}
-          {workout.description && (
-            <div style={{ marginBottom: '14px', paddingBottom: '10px', borderBottom: '1px solid #eee', whiteSpace: 'pre-line', color: '#495057' }}>
-              {workout.description}
-            </div>
-          )}
-
-          {/* Formatted Steps List */}
-          {steps.length > 0 && (
-            <div>
-              <strong style={{ display: 'block', marginBottom: '8px', color: '#212529' }}>Step Breakdown:</strong>
-              <ul style={{ margin: 0, paddingLeft: '20px', color: '#333' }}>
-                {steps.map((step, idx) => {
-                  const durationStr = formatDurationMinutes(step.duration);
-                  let paceStr = '';
-
-                  if (step.pace) {
-                    const startPct = step.pace.start || 0;
-                    const endPct = step.pace.end || startPct;
-                    paceStr = `${startPct}-${endPct}% pace`;
-
-                    if (thresholdPaceMps) {
-                      const avgPct = (startPct + endPct) / 2;
-                      const calculatedMps = thresholdPaceMps * (avgPct / 100);
-                      const targetPaceStr = metersPerSecondToPaceStr(calculatedMps);
-                      if (targetPaceStr) {
-                        paceStr += ` (${targetPaceStr})`;
-                      }
-                    }
-                  }
-
-                  const stepText = step.text ? ` - ${step.text}` : '';
-                  const prefix = step.warmup ? '[Warmup] ' : step.cooldown ? '[Cooldown] ' : '';
-
-                  return (
-                    <li key={idx} style={{ marginBottom: '4px' }}>
-                      <strong>{prefix}{durationStr}</strong> {paceStr && `@ ${paceStr}`}{stepText}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+        <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e9ecef' }}>
+          {debugSteps.length === 0 ? (
+            <div style={{ fontSize: '12px', color: '#6c757d' }}>No parsed step data available in workout_doc.</div>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#212529' }}>
+              {debugSteps.map((step, sIdx) => (
+                <li key={sIdx} style={{ marginBottom: '4px' }}>
+                  <strong>{step.name}</strong> — Intensity: <code>{step.intensity}</code> | Target Pace: <code>{step.paceStr}</code> | Duration: <code>{formatDuration(step.durationSec)}</code>
+                  <div style={{ fontSize: '11px', color: '#6c757d', marginTop: '1px' }}>
+                    Text: "{step.text}"
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       )}
