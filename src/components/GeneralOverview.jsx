@@ -20,17 +20,27 @@ const getCategory = (rawType) => {
 
 // --- UNIT FORMATTING HELPERS ---
 
+// Formats Swim distance into "0.0k yd"
 const formatSwimYards = (meters) => {
   const yards = meters * 1.09361;
   const kYards = yards / 1000;
   return `${kYards.toFixed(1)}k yd`;
 };
 
+// Formats sport total string according to type for Annual tables
 const formatSportTotal = (sport, distanceMiles, rawMeters) => {
   if (sport === 'Swim') {
     return formatSwimYards(rawMeters);
   }
   return `${Math.round(distanceMiles)} mi`;
+};
+
+// Formats sport distance for Weekly Grids (1 decimal place)
+const formatGridDistance = (sport, distanceMiles, rawMeters) => {
+  if (sport === 'Swim') {
+    return formatSwimYards(rawMeters);
+  }
+  return `${distanceMiles.toFixed(1)} mi`;
 };
 
 // --- DATE HELPER UTILITIES ---
@@ -184,7 +194,7 @@ export default function GeneralOverview({ overviewData }) {
           return {
             category: w.category,
             displayLabel,
-            distance: formatSportTotal(w.category, w.distanceMiles, w.rawMeters)
+            distance: formatGridDistance(w.category, w.distanceMiles, w.rawMeters)
           };
         })
       });
@@ -252,11 +262,10 @@ export default function GeneralOverview({ overviewData }) {
   const { monthlyTotals: monthlyRunTotals, maxDist: maxRunDist } = buildMonthlyTotals('Run');
   const { monthlyTotals: monthlyBikeTotals, maxDist: maxBikeDist } = buildMonthlyTotals('Bike');
 
-  // 6. POP AND SUGAR GRID DATA
-  const totalDaysPop = 61 * 7;
+  // 6. POP AND SUGAR GRID DATA (Last 60 days including today)
+  const totalDaysPop = 60;
   const popSugarDays = [];
   
-  // Index wellness entries by normalized YYYY-MM-DD
   const wellnessMap = new Map();
   wellness.forEach((item) => {
     const dStr = item.date || item.id || item.day;
@@ -266,7 +275,7 @@ export default function GeneralOverview({ overviewData }) {
     }
   });
 
-  const startDatePop = addDays(currentMon, -(60 * 7));
+  const startDatePop = addDays(now, -(totalDaysPop - 1));
   for (let i = 0; i < totalDaysPop; i++) {
     const curDate = addDays(startDatePop, i);
     const yyyy = curDate.getFullYear();

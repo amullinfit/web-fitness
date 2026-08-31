@@ -347,7 +347,7 @@
   text-align: center;
 }
 
-/* SECTION 6: Pop & Sugar Grid */
+/* SECTION 6: Pop & Sugar Grid (60 Days Display) */
 .popsugar-card {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
@@ -359,11 +359,10 @@
 
 .popsugar-grid-container {
   display: grid;
-  grid-template-columns: repeat(427, 1fr);
-  gap: 2px;
+  grid-template-columns: repeat(60, minmax(0, 1fr));
+  gap: 3px;
   width: 100%;
   box-sizing: border-box;
-  padding-left: 17px; /* Align precisely with Consistency Grid columns */
 }
 
 .popsugar-cell {
