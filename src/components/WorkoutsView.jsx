@@ -3,7 +3,7 @@ import WorkoutChart from './WorkoutChart';
 
 const VAL_WORKOUTS_URL = "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run";
 
-// Helper function to format seconds into H:MM:SS
+// Helper function to format seconds to H:MM:SS
 const formatDuration = (totalSeconds) => {
   if (!totalSeconds) return "0:00:00";
   const hours = Math.floor(totalSeconds / 3600);
@@ -16,7 +16,6 @@ const formatDuration = (totalSeconds) => {
 
 export default function WorkoutsView() {
   const [workouts, setWorkouts] = useState([]);
-  const [sportSettings, setSportSettings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -27,10 +26,7 @@ export default function WorkoutsView() {
         return res.json();
       })
       .then((json) => {
-        if (json.workouts && Array.isArray(json.workouts)) {
-          setWorkouts(json.workouts);
-          setSportSettings(json.sportSettings || []);
-        } else if (Array.isArray(json)) {
+        if (Array.isArray(json)) {
           setWorkouts(json);
         } else {
           setWorkouts([]);
@@ -69,12 +65,7 @@ export default function WorkoutsView() {
           const durationStr = formatDuration(w.moving_time || w.elapsed_time);
           const distanceMi = w.distance ? (w.distance * 0.000621371).toFixed(1) : null;
           
-          // Parse steps from workout_doc
-          let steps = null;
-          if (w.workout_doc) {
-            const doc = typeof w.workout_doc === 'string' ? JSON.parse(w.workout_doc) : w.workout_doc;
-            steps = doc?.steps;
-          }
+          const steps = w.workout_doc?.steps;
 
           return (
             <div 
@@ -82,21 +73,17 @@ export default function WorkoutsView() {
               style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '12px', backgroundColor: '#fff' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px' }}>
-                <span>{w.name || "Workout"} ({w.type || 'Run'})</span>
+                <span>{w.name || "Workout"}</span>
                 <span>{workoutDate}</span>
               </div>
               <div style={{ fontSize: '14px', color: '#555', margin: '6px 0' }}>
                 Duration: {durationStr} {distanceMi && `| Distance: ${distanceMi} mi`}
               </div>
 
-              {/* Render chart for first 3 workouts using target conversions */}
               {index < 3 && Array.isArray(steps) && steps.length > 0 && (
-                <WorkoutChart 
-                  steps={steps} 
-                  sportType={w.type}
-                  sportSettings={sportSettings}
-                  containerId={`upcoming-chart-${w.id || index}`} 
-                />
+                <div style={{ marginTop: '12px' }}>
+                  <WorkoutChart steps={steps} containerId={`upcoming-chart-${w.id || index}`} />
+                </div>
               )}
             </div>
           );
