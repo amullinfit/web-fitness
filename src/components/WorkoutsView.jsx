@@ -1,86 +1,101 @@
-import React, { useState, useEffect } from 'react';
-import WorkoutChart from './WorkoutChart';
+import React from 'react';
 import WorkoutTextSection from './WorkoutTextSection';
 
-const VAL_WORKOUTS_URL = "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run";
-
-const formatDuration = (totalSeconds) => {
-  if (!totalSeconds) return "0:00:00";
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = Math.floor(totalSeconds % 60);
-  const pad = (num) => String(num).padStart(2, '0');
-  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
+const formatDateHeader = (dateVal) => {
+  if (!dateVal) return '';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return String(dateVal);
+  return d.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
 };
 
-export default function WorkoutsView() {
-  const [workouts, setWorkouts] = useState([]);
-  const [sportSettings, setSportSettings] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(VAL_WORKOUTS_URL)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json) {
-          const list = json.planned || json.workouts || (Array.isArray(json) ? json : []);
-          setWorkouts(list);
-          setSportSettings(Array.isArray(json.sportSettings) ? json.sportSettings : []);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching workouts:", err);
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) return <div style={{ padding: '20px', color: '#6c757d' }}>Loading Upcoming Workouts...</div>;
+export default function WorkoutsView({ workouts = [], sportSettings = [] }) {
+  if (!Array.isArray(workouts) || workouts.length === 0) {
+    return (
+      <div 
+        style={{ 
+          maxWidth: '800px', 
+          margin: '32px auto', 
+          padding: '32px', 
+          textAlign: 'center', 
+          backgroundColor: '#f8f9fa', 
+          borderRadius: '8px', 
+          border: '1px dashed #dee2e6',
+          color: '#6c757d' 
+        }}
+      >
+        No workouts found.
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '10px' }}>
-      <h2>Upcoming Workouts</h2>
-      {workouts.map((w, index) => {
-        const rawDate = w.start_date_local || w.icu_start_date || w.start_date;
-        const workoutDate = rawDate ? new Date(rawDate).toLocaleDateString() : 'TBD';
-        const durationStr = formatDuration(w.moving_time || w.elapsed_time);
-        const distanceMi = w.distance ? (w.distance * 0.000621371).toFixed(1) : null;
-        
-        let rawSteps = [];
-        if (w.workout_doc) {
-          const doc = typeof w.workout_doc === 'string' ? JSON.parse(w.workout_doc) : w.workout_doc;
-          rawSteps = doc?.steps || [];
-        }
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px' }}>
+      <h2 style={{ marginBottom: '20px', fontSize: '22px', color: '#212529', borderBottom: '2px solid #e9ecef', paddingBottom: '8px' }}>
+        All Workouts ({workouts.length})
+      </h2>
 
-        const workoutId = w.id || `upcoming-${index}`;
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {workouts.map((workout, index) => {
+          const rawDate = workout.date || workout.workout_date || workout.start_date || workout.date_string;
+          const displayDate = formatDateHeader(rawDate);
 
-        return (
-          <div key={workoutId} style={{ border: '1px solid #ced4da', borderRadius: '8px', padding: '16px', backgroundColor: '#fff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px' }}>
-              <span>{w.name || "Workout"} ({w.type || 'Run'})</span>
-              <span>{workoutDate}</span>
+          return (
+            <div 
+              key={workout.id || workout._id || index}
+              style={{
+                border: '1px solid #e9ecef',
+                borderRadius: '8px',
+                padding: '16px',
+                backgroundColor: '#ffffff',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+              }}
+            >
+              {/* Card Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#212529' }}>
+                    {workout.title || workout.name || `${workout.type || 'Workout'}`}
+                  </h3>
+                  {displayDate && (
+                    <span style={{ fontSize: '12px', color: '#6c757d', fontWeight: '500' }}>
+                      {displayDate}
+                    </span>
+                  )}
+                </div>
+
+                <span 
+                  style={{ 
+                    fontSize: '12px', 
+                    fontWeight: '600', 
+                    textTransform: 'uppercase',
+                    backgroundColor: '#e9ecef', 
+                    padding: '3px 8px', 
+                    borderRadius: '4px',
+                    color: '#495057'
+                  }}
+                >
+                  {workout.type || 'Activity'}
+                </span>
+              </div>
+
+              {/* Description */}
+              {workout.description && (
+                <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#6c757d' }}>
+                  {workout.description}
+                </p>
+              )}
+
+              {/* SINGLE CHART RENDER via WorkoutTextSection (mm:ss paces + step details) */}
+              <WorkoutTextSection workout={workout} sportSettings={sportSettings} />
             </div>
-
-            <div style={{ fontSize: '14px', color: '#555', margin: '6px 0 12px 0' }}>
-              Duration: {durationStr} {distanceMi && `| Distance: ${distanceMi} mi`}
-            </div>
-
-            {/* Graphic Workout Chart */}
-            {rawSteps.length > 0 && (
-              <WorkoutChart 
-                steps={rawSteps} 
-                containerId={`chart-${workoutId}`} 
-              />
-            )}
-
-            {/* Unified Reusable Text Component */}
-            <WorkoutTextSection 
-              workout={w} 
-              sportSettings={sportSettings} 
-            />
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

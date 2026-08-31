@@ -2,12 +2,24 @@ import React, { useState, useMemo } from 'react';
 import WorkoutTextSection from './WorkoutTextSection';
 
 /**
- * Safely converts any Date object, ISO string, or timestamp into a local 'YYYY-MM-DD' string.
- * Using split('T')[0] prevents UTC midnight shifts from showing yesterday's workout.
+ * Universal date normalizer that handles ISO strings, Date objects, 
+ * numeric timestamps, and simple YYYY-MM-DD strings.
  */
 const getLocalDateString = (dateInput) => {
   if (!dateInput) return '';
 
+  // 1. If it's a number/timestamp (e.g., 1788182400000)
+  if (typeof dateInput === 'number') {
+    const d = new Date(dateInput);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  }
+
+  // 2. If it's a string
   if (typeof dateInput === 'string') {
     if (dateInput.includes('T')) {
       return dateInput.split('T')[0];
@@ -17,36 +29,55 @@ const getLocalDateString = (dateInput) => {
     }
   }
 
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return '';
+  // 3. If it's a Date object
+  if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
+    const year = dateInput.getFullYear();
+    const month = String(dateInput.getMonth() + 1).padStart(2, '0');
+    const day = String(dateInput.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
 
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
+  return '';
 };
 
 export default function DailyView({ workouts = [], sportSettings = [], initialDate = new Date() }) {
-  // Currently selected date state
   const [selectedDate, setSelectedDate] = useState(() => new Date(initialDate));
 
-  // YYYY-MM-DD representation of the active selected date
   const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
 
-  // Filter workouts that match the selected date
+  // Filter workouts for selected date
   const todaysWorkouts = useMemo(() => {
     if (!Array.isArray(workouts)) return [];
-    
-    return workouts.filter((workout) => {
-      const rawDate = workout.date || workout.workout_date || workout.start_date || workout.date_string;
+
+    const matched = workouts.filter((workout) => {
+      // Robust key lookup covering common API date field variations
+      const rawDate = 
+        workout.date || 
+        workout.workout_date || 
+        workout.start_date || 
+        workout.date_string ||
+        workout.scheduled_date ||
+        (workout.attributes && workout.attributes.date);
+
       const workoutDateStr = getLocalDateString(rawDate);
       return workoutDateStr === selectedDateStr;
     });
+
+    // Console debug logger to diagnose missing workouts
+    if (matched.length === 0 && workouts.length > 0) {
+      console.warn(`[DailyView] No workouts matched for date "${selectedDateStr}". Sample workout date values:`, 
+        workouts.slice(0, 3).map(w => ({
+          id: w.id || w.name,
+          rawDate: w.date || w.workout_date || w.start_date || w.date_string,
+          parsedDate: getLocalDateString(w.date || w.workout_date || w.start_date || w.date_string)
+        }))
+      );
+    }
+
+    return matched;
   }, [workouts, selectedDateStr]);
 
-  // Date Navigation Handlers
   const handlePrevDay = () => {
     setSelectedDate((prev) => {
       const next = new Date(prev);
@@ -76,7 +107,7 @@ export default function DailyView({ workouts = [], sportSettings = [], initialDa
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px' }}>
-      {/* Date Header & Navigation Toolbar */}
+      {/* Date Header & Navigation Controls */}
       <div 
         style={{ 
           display: 'flex', 
@@ -141,7 +172,7 @@ export default function DailyView({ workouts = [], sportSettings = [], initialDa
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Workout Display Area */}
       {todaysWorkouts.length === 0 ? (
         <div 
           style={{ 
@@ -153,7 +184,7 @@ export default function DailyView({ workouts = [], sportSettings = [], initialDa
             color: '#6c757d'
           }}
         >
-          No workouts scheduled for this day.
+          No workouts scheduled for {selectedDateStr === todayStr ? 'today' : selectedDateStr}.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -168,7 +199,6 @@ export default function DailyView({ workouts = [], sportSettings = [], initialDa
                 boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
               }}
             >
-              {/* Workout Metadata Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#212529' }}>
                   {workout.title || workout.name || `${workout.type || 'Workout'}`}
@@ -188,14 +218,13 @@ export default function DailyView({ workouts = [], sportSettings = [], initialDa
                 </span>
               </div>
 
-              {/* Workout Description if present */}
               {workout.description && (
                 <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#6c757d' }}>
                   {workout.description}
                 </p>
               )}
 
-              {/* Chart & Debug Section Component */}
+              {/* Workout Text Section renders the single pace (mm:ss) chart */}
               <WorkoutTextSection workout={workout} sportSettings={sportSettings} />
             </div>
           ))}
