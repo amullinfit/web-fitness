@@ -14,7 +14,7 @@ const formatDuration = (totalSeconds) => {
 };
 
 export default function DailyView() {
-  const [plannedWorkouts, setPlannedWorkouts] = useState([]);
+  const [todayWorkout, setTodayWorkout] = useState(null);
   const [sportSettings, setSportSettings] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,9 +23,24 @@ export default function DailyView() {
       .then((res) => res.json())
       .then((json) => {
         if (json) {
-          const planned = json.planned || (Array.isArray(json) ? json : []);
-          setPlannedWorkouts(planned);
-          setSportSettings(Array.isArray(json.sportSettings) ? json.sportSettings : []);
+          // Extract planned array safely regardless of wrapping depth
+          let plannedList = [];
+          if (Array.isArray(json.planned)) {
+            plannedList = json.planned;
+          } else if (Array.isArray(json)) {
+            plannedList = json;
+          } else if (json.planned && typeof json.planned === 'object') {
+            plannedList = [json.planned];
+          }
+
+          // Pick the first available workout object from planned array
+          if (plannedList.length > 0) {
+            setTodayWorkout(plannedList[0]);
+          }
+
+          if (Array.isArray(json.sportSettings)) {
+            setSportSettings(json.sportSettings);
+          }
         }
         setLoading(false);
       })
@@ -37,10 +52,12 @@ export default function DailyView() {
 
   if (loading) return <div style={{ padding: '20px', color: '#6c757d' }}>Loading Daily Workout...</div>;
 
-  const todayWorkout = plannedWorkouts[0]; // Active daily workout target
-
   if (!todayWorkout) {
-    return <div style={{ padding: '20px' }}>No workouts scheduled for today.</div>;
+    return (
+      <div style={{ padding: '20px', color: '#6c757d' }}>
+        No scheduled workouts found for today.
+      </div>
+    );
   }
 
   const rawDate = todayWorkout.start_date_local || todayWorkout.icu_start_date || todayWorkout.start_date;
@@ -48,10 +65,17 @@ export default function DailyView() {
   const durationStr = formatDuration(todayWorkout.moving_time || todayWorkout.elapsed_time);
   const distanceMi = todayWorkout.distance ? (todayWorkout.distance * 0.000621371).toFixed(1) : null;
 
+  // Extract steps from workout_doc
   let rawSteps = [];
   if (todayWorkout.workout_doc) {
-    const doc = typeof todayWorkout.workout_doc === 'string' ? JSON.parse(todayWorkout.workout_doc) : todayWorkout.workout_doc;
-    rawSteps = doc?.steps || [];
+    try {
+      const doc = typeof todayWorkout.workout_doc === 'string' 
+        ? JSON.parse(todayWorkout.workout_doc) 
+        : todayWorkout.workout_doc;
+      rawSteps = doc?.steps || [];
+    } catch (e) {
+      console.error("Error parsing workout_doc steps:", e);
+    }
   }
 
   return (
@@ -75,7 +99,7 @@ export default function DailyView() {
           />
         )}
 
-        {/* Unified Reusable Text Component */}
+        {/* Unified Text & Step Details Component */}
         <WorkoutTextSection 
           workout={todayWorkout} 
           sportSettings={sportSettings} 
