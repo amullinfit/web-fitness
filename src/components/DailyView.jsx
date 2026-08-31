@@ -4,7 +4,7 @@ import WorkoutTextSection from './WorkoutTextSection';
 import './DailyView.css';
 
 const VAL_WORKOUTS_URL = "/api/val-workouts";
-const OVERVIEW_URL = "/api/overview";
+const OVERVIEW_URL = "/api/val-overview";
 
 const safeStringLower = (val) => {
   if (!val) return "";
