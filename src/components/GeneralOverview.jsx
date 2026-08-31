@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const VAL_WORKOUTS_URL = "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run";
+const VAL_OVERVIEW_URL = "/api/val-overview";
 
 // --- DATE HELPER UTILITIES ---
 
@@ -40,15 +40,21 @@ const RenderIndicator = ({ current, previous }) => {
 
 export default function GeneralOverview({ overviewData }) {
   const [workouts, setWorkouts] = useState([]);
+  const [wellness, setWellness] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  
   useEffect(() => {
-    fetch(VAL_WORKOUTS_URL)
+    fetch(VAL_OVERVIEW_URL)
       .then((res) => res.json())
       .then((json) => {
         if (json) {
-          const list = Array.isArray(json.workouts) ? json.workouts : (Array.isArray(json) ? json : []);
-          setWorkouts(list);
+          // Extract activities / workouts
+          const workoutList = json.activities || json.workouts || (Array.isArray(json) ? json : []);
+          setWorkouts(workoutList);
+  
+          // Extract wellness data
+          const wellnessList = json.wellness || [];
+          setWellness(wellnessList);
         }
         setLoading(false);
       })
@@ -57,7 +63,7 @@ export default function GeneralOverview({ overviewData }) {
         setLoading(false);
       });
   }, []);
-
+  
   if (loading) {
     return <div style={{ padding: '20px', color: '#6c757d' }}>Loading overview data...</div>;
   }

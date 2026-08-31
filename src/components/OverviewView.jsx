@@ -89,7 +89,7 @@ export default function OverviewView() {
       {/* Pop & Sugar 60-Day Tracking Row */}
       <div style={{ marginTop: '14px', width: '100%' }}>
         <h3 style={{ fontSize: '12px', color: '#000', fontWeight: 'bold', textAlign: 'center', margin: '0 0 8px 0' }}>
-          --- POP AND SUGAR RECAP ---
+          --- POP AND SUGAR RECAP NOT USED ---
         </h3>
         <div style={{ display: 'flex', gap: '2px', width: '100%', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box' }}>
           {latest60Wellness.map((day, idx) => {

@@ -3,6 +3,14 @@
       {
         "source": "/api/val-workouts",
         "destination": "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run"
+      },
+      {
+        "source": "/api/val-overview",
+        "destination": "https://amullinfit--254cc3a4a4cf11f1a9e41607ee4eb77e.web.val.run"
+      },
+      {
+        "source": "/api/val-gear",
+        "destination": "https://amullinfit--de20b782a4cf11f1832e1607ee4eb77e.web.val.run"
       }
     ]
   }

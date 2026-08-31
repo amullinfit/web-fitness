@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import WorkoutChart from './WorkoutChart';
 import WorkoutTextSection from './WorkoutTextSection';
 
-const VAL_WORKOUTS_URL = "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run";
+// Proxy endpoint defined in vercel.json / vite.config.js
+const VAL_WORKOUTS_URL = "/api/val-workouts";
 
 const formatDuration = (totalSeconds) => {
   if (!totalSeconds) return "0:00:00";
