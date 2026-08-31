@@ -24,15 +24,32 @@ const metersPerSecondToPaceStr = (mps) => {
   return `${mins}:${padSecs} /mi`;
 };
 
-// Find matching threshold_pace from sportSettings
+// Safely convert any value to lower-case string
+const safeStringLower = (val) => {
+  if (val === null || val === undefined) return "";
+  if (typeof val === 'string') return val.toLowerCase();
+  if (typeof val === 'object') {
+    return (val.id || val.type || val.name || JSON.stringify(val)).toLowerCase();
+  }
+  return String(val).toLowerCase();
+};
+
+// Find matching threshold_pace from sportSettings safely
 const getThresholdPaceForSport = (sportType, sportSettings) => {
   if (!sportType || !Array.isArray(sportSettings)) return null;
 
-  const normalizedSport = sportType.toLowerCase();
+  const normalizedSport = safeStringLower(sportType);
   
   const match = sportSettings.find((s) => {
-    const settingType = (s.type || s.id || s.sport || "").toLowerCase();
-    const typesList = Array.isArray(s.types) ? s.types.map((t) => t.toLowerCase()) : [];
+    if (!s) return false;
+
+    const settingType = safeStringLower(s.type || s.id || s.sport);
+    
+    let typesList = [];
+    if (Array.isArray(s.types)) {
+      typesList = s.types.map((t) => safeStringLower(t));
+    }
+
     return settingType === normalizedSport || typesList.includes(normalizedSport);
   });
 
@@ -76,10 +93,8 @@ const parseStepsForDebug = (stepList, thresholdPaceMps) => {
       if (s.speed) {
         calculatedPaceMps = s.speed;
       } else if (typeof s.pace === 'object' && s.pace.value && s.pace.value > 15) {
-        // Direct m/s speed value
         calculatedPaceMps = s.pace.value;
       } else if (thresholdPaceMps && intensityPctVal) {
-        // Calculate step target pace from sport threshold speed
         calculatedPaceMps = thresholdPaceMps * (intensityPctVal / 100);
       }
 
@@ -146,7 +161,7 @@ export default function DailyView() {
         }
       }
 
-      // Resolve threshold pace for workout sport type
+      // Safe threshold pace lookup
       const thresholdPaceMps = getThresholdPaceForSport(workout.type, data.sportSettings);
       const thresholdPaceStr = thresholdPaceMps ? metersPerSecondToPaceStr(thresholdPaceMps) : "Not Set";
 
