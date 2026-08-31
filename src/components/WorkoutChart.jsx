@@ -1,8 +1,8 @@
 import React from 'react';
 
 // Adjustable buffer parameters (in minutes) for easy debugging
-const SLOW_BUFFER_MINUTES = 4; // Buffer added below the slowest interval (slower pace)
-const FAST_BUFFER_MINUTES = 2; // Buffer subtracted above the fastest interval (faster pace)
+const SLOW_BUFFER_MINUTES = 2; // Buffer added below the slowest interval (slower pace)
+const FAST_BUFFER_MINUTES = 1; // Buffer subtracted above the fastest interval (faster pace)
 
 // Converts meters per second to "mm:ss /mi"
 const metersPerSecondToPaceStr = (mps) => {
@@ -70,13 +70,14 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
   const dataMinPct = Math.min(...targetPcts); // Slowest step
   const dataMaxPct = Math.max(...targetPcts); // Fastest step
 
-  let yMin, yMax;
   let yTicks = [];
+  let yFastestSec = 0; // Pace at the top of chart (lowest seconds/mile value)
+  let ySlowestSec = 0; // Pace at the bottom of chart (highest seconds/mile value)
 
   if (thresholdPace && thresholdPace > 0) {
     const thresholdSecPerMile = 1609.34 / thresholdPace;
 
-    // Convert step bounds to sec/mi
+    // Convert step bounds to seconds per mile
     const fastestStepSec = thresholdSecPerMile / (dataMaxPct / 100);
     const slowestStepSec = thresholdSecPerMile / (dataMinPct / 100);
 
@@ -84,7 +85,7 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
     const rawFastSec = Math.max(30, fastestStepSec - (FAST_BUFFER_MINUTES * 60));
     const rawSlowSec = slowestStepSec + (SLOW_BUFFER_MINUTES * 60);
 
-    // Allowed tick intervals (in seconds): 60s (1:00), 90s (1:30), 120s (2:00)
+    // Allowed tick step intervals (in seconds): 60s (1:00), 90s (1:30), 120s (2:00)
     const allowedStepSecs = [60, 90, 120];
 
     let chosenStepSec = 60;
@@ -94,15 +95,12 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
     // Evaluate allowed step intervals to pick 4-6 ticks (preferring higher tick count)
     for (const stepSec of allowedStepSecs) {
-      // Round fast end (top of chart/lower sec) down to nearest step interval
       const roundedFast = Math.floor(rawFastSec / stepSec) * stepSec;
-      // Round slow end (bottom of chart/higher sec) up to nearest step interval
       const roundedSlow = Math.ceil(rawSlowSec / stepSec) * stepSec;
-
       const count = Math.round((roundedSlow - roundedFast) / stepSec) + 1;
 
       if (count >= 4 && count <= 6) {
-        if (count >= bestTickCount) { // Pick highest tick count among valid choices
+        if (count >= bestTickCount) {
           bestTickCount = count;
           chosenStepSec = stepSec;
           chosenStartSec = roundedFast;
@@ -118,39 +116,36 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
       chosenEndSec = Math.ceil(rawSlowSec / 60) * 60;
     }
 
-    // Build pace ticks from fastest (top) to slowest (bottom)
-    const paceTicksSec = [];
-    for (let sec = chosenStartSec; sec <= chosenEndSec; sec += chosenStepSec) {
-      paceTicksSec.push(sec);
+    yFastestSec = chosenStartSec;
+    ySlowestSec = chosenEndSec;
+
+    // Generate tick objects (evenly spaced from top to bottom)
+    const totalTicks = Math.round((chosenEndSec - chosenStartSec) / chosenStepSec) + 1;
+    for (let i = 0; i < totalTicks; i++) {
+      const currentSec = chosenStartSec + i * chosenStepSec;
+      const topPct = (i / (totalTicks - 1)) * 100;
+      yTicks.push({
+        label: formatSecPerMileToStr(currentSec),
+        topPct: topPct
+      });
     }
 
-    // Convert rounded boundaries back to percentage space for rendering
-    yMax = (thresholdSecPerMile / chosenStartSec) * 100;
-    yMin = Math.max(1, (thresholdSecPerMile / chosenEndSec) * 100);
-
-    yTicks = paceTicksSec.map((sec) => {
-      const pct = (thresholdSecPerMile / sec) * 100;
-      return {
-        label: formatSecPerMileToStr(sec),
-        pct: pct
-      };
-    });
-
   } else {
-    // Percentage fallback mode
+    // Percentage fallback mode with evenly spaced ticks
     const slowBufferPct = SLOW_BUFFER_MINUTES * 10;
     const fastBufferPct = FAST_BUFFER_MINUTES * 10;
-    yMin = Math.max(0, dataMinPct - slowBufferPct);
-    yMax = dataMaxPct + fastBufferPct;
+    const yMinPct = Math.max(0, dataMinPct - slowBufferPct);
+    const yMaxPct = dataMaxPct + fastBufferPct;
 
-    const tickRatios = [1.0, 0.75, 0.5, 0.25, 0];
+    const tickRatios = [0, 0.25, 0.5, 0.75, 1.0];
     yTicks = tickRatios.map((r) => {
-      const pct = yMin + (yMax - yMin) * r;
-      return { label: `${Math.round(pct)}%`, pct };
+      const pctVal = yMaxPct - (yMaxPct - yMinPct) * r;
+      return {
+        label: `${Math.round(pctVal)}%`,
+        topPct: r * 100
+      };
     });
   }
-
-  const ySpan = yMax - yMin || 1;
 
   let accumulatedSec = 0;
   const timeTicks = steps.map((step) => {
@@ -161,7 +156,7 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
   return (
     <div style={{ margin: '16px 0', border: '1px solid #e9ecef', borderRadius: '8px', padding: '16px', backgroundColor: '#fcfcfc' }}>
       <div style={{ display: 'flex' }}>
-        {/* DYNAMIC Y-AXIS LABELS */}
+        {/* EVENLY SPACED Y-AXIS LABELS */}
         <div 
           style={{ 
             position: 'relative',
@@ -174,24 +169,20 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
             lineHeight: '1'
           }}
         >
-          {yTicks.map((tick, idx) => {
-            // Compute visual position (0% = top, 100% = bottom)
-            const topPct = Math.min(Math.max((1 - (tick.pct - yMin) / ySpan) * 100, 0), 100);
-            return (
-              <span 
-                key={idx}
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: `${topPct}%`,
-                  transform: 'translateY(-50%)',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {tick.label}
-              </span>
-            );
-          })}
+          {yTicks.map((tick, idx) => (
+            <span 
+              key={idx}
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: `${tick.topPct}%`,
+                transform: 'translateY(-50%)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {tick.label}
+            </span>
+          ))}
         </div>
 
         {/* CHART & X-AXIS AREA */}
@@ -240,8 +231,23 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
               const paceRangeFormatted = startPaceStr === endPaceStr ? avgPaceStr : `${startPaceStr} - ${endPaceStr}`;
               
-              // Dynamic height positioning bounded to calculated scale
-              const heightPct = Math.min(Math.max(((targetPct - yMin) / ySpan) * 100, 4), 100);
+              // Calculate height directly from tick pace bounds
+              let heightPct = 50;
+              if (thresholdPace && thresholdPace > 0 && ySlowestSec > yFastestSec) {
+                const thresholdSecPerMile = 1609.34 / thresholdPace;
+                const stepSec = thresholdSecPerMile / (targetPct / 100);
+                // Scale height based on position between slowest (bottom = 0%) and fastest (top = 100%)
+                heightPct = ((ySlowestSec - stepSec) / (ySlowestSec - yFastestSec)) * 100;
+              } else {
+                // Fallback percentage calculation
+                const slowBufferPct = SLOW_BUFFER_MINUTES * 10;
+                const fastBufferPct = FAST_BUFFER_MINUTES * 10;
+                const yMinPct = Math.max(0, dataMinPct - slowBufferPct);
+                const yMaxPct = dataMaxPct + fastBufferPct;
+                heightPct = ((targetPct - yMinPct) / (yMaxPct - yMinPct || 1)) * 100;
+              }
+
+              heightPct = Math.min(Math.max(heightPct, 4), 100);
 
               const tooltipText = `Step ${idx + 1}: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
 
