@@ -3,7 +3,6 @@ import WorkoutChart from './WorkoutChart';
 
 const VAL_WORKOUTS_URL = "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run";
 
-// Helper function to format seconds to H:MM:SS
 const formatDuration = (totalSeconds) => {
   if (!totalSeconds) return "0:00:00";
   const hours = Math.floor(totalSeconds / 3600);
@@ -22,11 +21,13 @@ export default function WorkoutsView() {
   useEffect(() => {
     fetch(VAL_WORKOUTS_URL)
       .then((res) => {
-        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
         return res.json();
       })
       .then((json) => {
-        if (Array.isArray(json)) {
+        if (json.workouts && Array.isArray(json.workouts)) {
+          setWorkouts(json.workouts);
+        } else if (Array.isArray(json)) {
           setWorkouts(json);
         } else {
           setWorkouts([]);
@@ -59,21 +60,33 @@ export default function WorkoutsView() {
         <p>No upcoming workouts found.</p>
       ) : (
         workouts.map((w, index) => {
+          if (!w) return null;
+
           const rawDate = w.start_date_local || w.icu_start_date || w.start_date;
           const workoutDate = rawDate ? new Date(rawDate).toLocaleDateString() : 'TBD';
           
           const durationStr = formatDuration(w.moving_time || w.elapsed_time);
           const distanceMi = w.distance ? (w.distance * 0.000621371).toFixed(1) : null;
           
-          const steps = w.workout_doc?.steps;
+          let steps = null;
+          if (w.workout_doc) {
+            try {
+              const doc = typeof w.workout_doc === 'string' ? JSON.parse(w.workout_doc) : w.workout_doc;
+              steps = doc?.steps;
+            } catch (e) {
+              console.warn("Failed to parse workout_doc", e);
+            }
+          }
+
+          const workoutId = w.id || `upcoming-${index}`;
 
           return (
             <div 
-              key={w.id || index}
+              key={workoutId}
               style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '12px', backgroundColor: '#fff' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px' }}>
-                <span>{w.name || "Workout"}</span>
+                <span>{w.name || "Workout"} ({w.type || 'Run'})</span>
                 <span>{workoutDate}</span>
               </div>
               <div style={{ fontSize: '14px', color: '#555', margin: '6px 0' }}>
@@ -81,9 +94,10 @@ export default function WorkoutsView() {
               </div>
 
               {index < 3 && Array.isArray(steps) && steps.length > 0 && (
-                <div style={{ marginTop: '12px' }}>
-                  <WorkoutChart steps={steps} containerId={`upcoming-chart-${w.id || index}`} />
-                </div>
+                <WorkoutChart 
+                  steps={steps} 
+                  containerId={`upcoming-chart-${workoutId}`} 
+                />
               )}
             </div>
           );
