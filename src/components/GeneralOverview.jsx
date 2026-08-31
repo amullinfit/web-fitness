@@ -20,14 +20,12 @@ const getCategory = (rawType) => {
 
 // --- UNIT FORMATTING HELPERS ---
 
-// Formats Swim distance into "0.0k yd"
 const formatSwimYards = (meters) => {
   const yards = meters * 1.09361;
   const kYards = yards / 1000;
   return `${kYards.toFixed(1)}k yd`;
 };
 
-// Formats sport total string according to type
 const formatSportTotal = (sport, distanceMiles, rawMeters) => {
   if (sport === 'Swim') {
     return formatSwimYards(rawMeters);
@@ -124,7 +122,7 @@ export default function GeneralOverview({ overviewData }) {
     };
   });
 
-  // 1. WEEKLY BUCKETS & ANNUAL TABLES DATA (Swim, Bike, Run)
+  // 1. WEEKLY BUCKETS & ANNUAL TABLES DATA
   const sportCategories = ['Swim', 'Bike', 'Run'];
   const buckets = sportCategories.map((sport) => {
     const sportWorkouts = parsedWorkouts.filter(w => w.category === sport);
@@ -254,7 +252,38 @@ export default function GeneralOverview({ overviewData }) {
   const { monthlyTotals: monthlyRunTotals, maxDist: maxRunDist } = buildMonthlyTotals('Run');
   const { monthlyTotals: monthlyBikeTotals, maxDist: maxBikeDist } = buildMonthlyTotals('Bike');
 
-  // Helper render for Weekly Grids
+  // 6. POP AND SUGAR GRID DATA
+  const totalDaysPop = 61 * 7;
+  const popSugarDays = [];
+  
+  // Index wellness entries by normalized YYYY-MM-DD
+  const wellnessMap = new Map();
+  wellness.forEach((item) => {
+    const dStr = item.date || item.id || item.day;
+    if (dStr) {
+      const norm = dStr.split('T')[0];
+      wellnessMap.set(norm, item);
+    }
+  });
+
+  const startDatePop = addDays(currentMon, -(60 * 7));
+  for (let i = 0; i < totalDaysPop; i++) {
+    const curDate = addDays(startDatePop, i);
+    const yyyy = curDate.getFullYear();
+    const mm = String(curDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(curDate.getDate()).padStart(2, '0');
+    const key = `${yyyy}-${mm}-${dd}`;
+
+    const entry = wellnessMap.get(key);
+    const popValue = entry ? (entry.popandsugar ?? entry.popAndSugar ?? 0) : 0;
+
+    popSugarDays.push({
+      dateStr: key,
+      value: Number(popValue)
+    });
+  }
+
+  // Render Helpers
   const renderWeekGrid = (gridData, title) => (
     <div className="weekly-grid-card">
       <div className="weekly-grid-header">
@@ -296,7 +325,6 @@ export default function GeneralOverview({ overviewData }) {
     </div>
   );
 
-  // Helper render for Monthly Bar Charts
   const renderBarChart = (title, dataList, maxVal) => (
     <div className="monthly-card">
       <h3 className="section-subtitle">{title}</h3>
@@ -324,7 +352,7 @@ export default function GeneralOverview({ overviewData }) {
   return (
     <div className="overview-container">
       
-      {/* SECTION 1: WEEKLY BUCKETS & ANNUAL TABLES (Swim, Bike, Run) */}
+      {/* SECTION 1: WEEKLY BUCKETS & ANNUAL TABLES */}
       <div className="sport-buckets-container">
         {buckets.map((b, idx) => (
           <div key={idx} className="sport-bucket-card">
@@ -383,7 +411,7 @@ export default function GeneralOverview({ overviewData }) {
               const hasFourWeekDivider = (60 - wIdx) % 4 === 0 && wIdx !== 60;
 
               return (
-                <div key={wIdx} className="consistency-week-group">
+                <React.Fragment key={wIdx}>
                   {(isCurrentWeek || hasFourWeekDivider) && (
                     <div className={`consistency-divider ${isCurrentWeek ? 'current-week' : ''}`} />
                   )}
@@ -403,7 +431,7 @@ export default function GeneralOverview({ overviewData }) {
                       );
                     })}
                   </div>
-                </div>
+                </React.Fragment>
               );
             })}
           </div>
@@ -415,6 +443,26 @@ export default function GeneralOverview({ overviewData }) {
 
       {/* SECTION 5: MONTHLY BIKE TOTALS */}
       {renderBarChart("MONTHLY BIKE TOTALS", monthlyBikeTotals, maxBikeDist)}
+
+      {/* SECTION 6: POP AND SUGAR GRID */}
+      <div className="popsugar-card">
+        <h3 className="section-subtitle-center">
+          POP AND SUGAR
+        </h3>
+
+        <div className="popsugar-grid-container">
+          {popSugarDays.map((day, idx) => {
+            const countClass = day.value !== 0 ? 'count-1' : 'count-0';
+            return (
+              <div
+                key={idx}
+                title={`${day.dateStr}: ${day.value}`}
+                className={`popsugar-cell ${countClass}`}
+              />
+            );
+          })}
+        </div>
+      </div>
 
     </div>
   );
