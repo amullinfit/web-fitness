@@ -81,16 +81,6 @@ export default function DailyView() {
           <div style={{ fontSize: '14px', color: '#555', margin: '6px 0' }}>
             Duration: {durationStr} {distanceMi && `| Distance: ${distanceMi} mi`}
           </div>
-
-          {Array.isArray(steps) && steps.length > 0 && (
-            <WorkoutChart 
-              steps={steps} 
-              sportType={workout.type}
-              sportSettings={data.sportSettings}
-              containerId={`chart-${workoutId}`} 
-            />
-          )}
-
           {isCompleted && gearName && (
             <div style={{ marginTop: '8px', fontSize: '14px', fontStyle: 'italic' }}>
               Gear Used: {gearName}
