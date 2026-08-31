@@ -211,7 +211,8 @@
   width: 100%;
   box-sizing: border-box;
   gap: 2px;
-  align-items: center;
+  /* Changed from center to stretch so child dividers take 100% height of day columns */
+  align-items: stretch;
 }
 
 .consistency-week-column {
@@ -261,10 +262,11 @@
 
 .consistency-divider {
   width: 1px;
-  height: 100%;
   flex-shrink: 0;
   background-color: #ced4da;
   margin: 0 1px;
+  /* Explicit min-height ensures visibility across browsers */
+  min-height: 100%;
 }
 
 .consistency-divider.current-week {
