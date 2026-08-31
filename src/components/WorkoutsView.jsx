@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import WorkoutChart from './WorkoutChart';
 
-// Updated Val Town endpoint for Workouts
 const VAL_WORKOUTS_URL = "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run";
+
+// Helper function to format seconds to H:MM:SS
+const formatDuration = (totalSeconds) => {
+  if (!totalSeconds) return "0:00:00";
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+
+  const pad = (num) => String(num).padStart(2, '0');
+  return `${hours}:${pad(minutes)}:${pad(seconds)}`;
+};
 
 export default function WorkoutsView() {
   const [workouts, setWorkouts] = useState([]);
@@ -12,16 +22,13 @@ export default function WorkoutsView() {
   useEffect(() => {
     fetch(VAL_WORKOUTS_URL)
       .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! Status: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
         return res.json();
       })
       .then((json) => {
         if (Array.isArray(json)) {
           setWorkouts(json);
         } else {
-          console.error("Expected array from API but got:", json);
           setWorkouts([]);
           if (json.error) setError(json.error);
         }
@@ -55,7 +62,7 @@ export default function WorkoutsView() {
           const rawDate = w.start_date_local || w.icu_start_date || w.start_date;
           const workoutDate = rawDate ? new Date(rawDate).toLocaleDateString() : 'TBD';
           
-          const durationMin = w.moving_time ? Math.round(w.moving_time / 60) : 0;
+          const durationStr = formatDuration(w.moving_time || w.elapsed_time);
           const distanceMi = w.distance ? (w.distance * 0.000621371).toFixed(1) : null;
           
           const steps = w.workout_doc?.steps;
@@ -70,7 +77,7 @@ export default function WorkoutsView() {
                 <span>{workoutDate}</span>
               </div>
               <div style={{ fontSize: '14px', color: '#555', margin: '6px 0' }}>
-                Duration: {durationMin} mins {distanceMi && `| Distance: ${distanceMi} mi`}
+                Duration: {durationStr} {distanceMi && `| Distance: ${distanceMi} mi`}
               </div>
 
               {index < 3 && Array.isArray(steps) && steps.length > 0 && (
