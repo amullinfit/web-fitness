@@ -77,6 +77,27 @@ export default function DailyView() {
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
   const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
 
+  // Compute the absolute oldest and newest workout dates in the entire dataset
+  const workoutDateBounds = useMemo(() => {
+    if (!Array.isArray(workouts) || workouts.length === 0) {
+      return { oldest: 'N/A', newest: 'N/A' };
+    }
+
+    const validDates = workouts
+      .map((w) => getLocalDateString(w.start_date_local || w.icu_start_date || w.start_date || w.date))
+      .filter(Boolean)
+      .sort();
+
+    if (validDates.length === 0) {
+      return { oldest: 'N/A', newest: 'N/A' };
+    }
+
+    return {
+      oldest: validDates[0],
+      newest: validDates[validDates.length - 1]
+    };
+  }, [workouts]);
+
   const nextDateObj = useMemo(() => {
     const next = new Date(selectedDate);
     next.setDate(next.getDate() + 1);
@@ -198,9 +219,9 @@ export default function DailyView() {
 
   return (
     <div className="daily-view-container">
-      {/* Debug Line displaying oldest and newest dates */}
+      {/* Debug Line displaying dataset bounds */}
       <div className="daily-debug-bar">
-        [DEBUG] Range: Oldest Date = <strong>{selectedDateStr}</strong> | Newest Date = <strong>{nextDateStr}</strong>
+        [DEBUG] Data Range: Oldest = <strong>{workoutDateBounds.oldest}</strong> | Newest = <strong>{workoutDateBounds.newest}</strong> (Total Workouts: {workouts.length})
       </div>
 
       {/* Date Navigation Bar */}
