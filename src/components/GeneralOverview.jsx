@@ -20,14 +20,12 @@ const getCategory = (rawType) => {
 
 // --- UNIT FORMATTING HELPERS ---
 
-// Formats Swim distance into "0.0k yd"
 const formatSwimYards = (meters) => {
   const yards = meters * 1.09361;
   const kYards = yards / 1000;
   return `${kYards.toFixed(1)}k yd`;
 };
 
-// Formats sport total string according to type for Annual tables
 const formatSportTotal = (sport, distanceMiles, rawMeters) => {
   if (sport === 'Swim') {
     return formatSwimYards(rawMeters);
@@ -35,7 +33,6 @@ const formatSportTotal = (sport, distanceMiles, rawMeters) => {
   return `${Math.round(distanceMiles)} mi`;
 };
 
-// Formats sport distance for Weekly Grids (1 decimal place)
 const formatGridDistance = (sport, distanceMiles, rawMeters) => {
   if (sport === 'Swim') {
     return formatSwimYards(rawMeters);
@@ -262,7 +259,7 @@ export default function GeneralOverview({ overviewData }) {
   const { monthlyTotals: monthlyRunTotals, maxDist: maxRunDist } = buildMonthlyTotals('Run');
   const { monthlyTotals: monthlyBikeTotals, maxDist: maxBikeDist } = buildMonthlyTotals('Bike');
 
-  // 6. POP AND SUGAR GRID DATA (Last 60 days including today)
+  // 6. POP AND SUGAR GRID DATA
   const totalDaysPop = 60;
   const popSugarDays = [];
   
@@ -284,7 +281,6 @@ export default function GeneralOverview({ overviewData }) {
     const key = `${yyyy}-${mm}-${dd}`;
 
     const entry = wellnessMap.get(key);
-    // Case-sensitive lookup for PopAndSugar
     const popValue = entry ? (entry.PopAndSugar ?? entry.popandSugar ?? entry.popandsugar ?? 0) : 0;
 
     popSugarDays.push({
@@ -293,11 +289,9 @@ export default function GeneralOverview({ overviewData }) {
     });
   }
 
-  // Extract PopStreak count for today (or most recent entry with PopStreak)
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const todayEntry = wellnessMap.get(todayKey);
   
-  // Case-sensitive lookup for PopStreak with fallback search through recent wellness items
   let popStreakDays = todayEntry ? (todayEntry.PopStreak ?? todayEntry.popStreak) : undefined;
 
   if (popStreakDays === undefined && wellness.length > 0) {
@@ -436,7 +430,8 @@ export default function GeneralOverview({ overviewData }) {
         </h3>
 
         <div className="consistency-grid-wrapper">
-          <div className="consistency-day-labels">
+          {/* Left Day Labels */}
+          <div className="consistency-day-labels left">
             <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
           </div>
 
@@ -469,6 +464,11 @@ export default function GeneralOverview({ overviewData }) {
                 </React.Fragment>
               );
             })}
+          </div>
+
+          {/* Right Day Labels */}
+          <div className="consistency-day-labels right">
+            <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
           </div>
         </div>
       </div>
