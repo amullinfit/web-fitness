@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import WorkoutChart from './WorkoutChart';
 
 const formatDuration = (totalSeconds) => {
   if (!totalSeconds) return "0:00";
@@ -96,12 +95,7 @@ export default function WorkoutTextSection({ workout, sportSettings = [] }) {
 
   return (
     <div style={{ marginTop: '12px' }}>
-      {/* Graphic Chart Pass Through with thresholdPace for Axis Translation */}
-      {rawSteps.length > 0 && (
-        <WorkoutChart steps={rawSteps} thresholdPace={thresholdPaceMps} />
-      )}
-
-      {/* Clickable Debug Section Header */}
+      {/* Step Debug Section Header */}
       <div style={{ padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px', border: '1px solid #e9ecef' }}>
         <div 
           onClick={() => setIsOpen((prev) => !prev)}

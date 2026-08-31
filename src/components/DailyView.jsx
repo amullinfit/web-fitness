@@ -1,7 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import WorkoutChart from './WorkoutChart';
 import WorkoutTextSection from './WorkoutTextSection';
 
 const VAL_WORKOUTS_URL = "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run";
+
+const safeStringLower = (val) => {
+  if (!val) return "";
+  if (typeof val === 'string') return val.toLowerCase();
+  return String(val.id || val.type || val.name || val).toLowerCase();
+};
+
+const getThresholdPaceForSport = (sportType, sportSettings) => {
+  if (!sportType || !Array.isArray(sportSettings)) return null;
+  const normalizedSport = safeStringLower(sportType);
+  const match = sportSettings.find((s) => {
+    if (!s) return false;
+    const settingType = safeStringLower(s.type || s.id || s.sport);
+    let typesList = Array.isArray(s.types) ? s.types.map((t) => safeStringLower(t)) : [];
+    return settingType === normalizedSport || typesList.includes(normalizedSport);
+  });
+  return match?.threshold_pace || match?.pace_threshold || null;
+};
 
 const getLocalDateString = (dateInput) => {
   if (!dateInput) return '';
@@ -51,7 +70,6 @@ export default function DailyView() {
     if (!Array.isArray(workouts)) return [];
     
     return workouts.filter((w) => {
-      // Matches your API payload keys
       const rawDate = w.start_date_local || w.icu_start_date || w.start_date || w.date;
       return getLocalDateString(rawDate) === selectedDateStr;
     });
@@ -115,20 +133,35 @@ export default function DailyView() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {todaysWorkouts.map((workout, index) => (
-            <div key={workout.id || index} style={{ border: '1px solid #e9ecef', borderRadius: '8px', padding: '16px', backgroundColor: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', color: '#212529' }}>
-                  {workout.name || workout.title || `${workout.type || 'Workout'}`}
-                </h3>
-                <span style={{ fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', backgroundColor: '#e9ecef', padding: '3px 8px', borderRadius: '4px', color: '#495057' }}>
-                  {workout.type || 'Activity'}
-                </span>
-              </div>
+          {todaysWorkouts.map((workout, index) => {
+            let rawSteps = [];
+            if (workout.workout_doc) {
+              const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
+              rawSteps = doc?.steps || [];
+            }
+            const thresholdPaceMps = getThresholdPaceForSport(workout.type, sportSettings);
 
-              <WorkoutTextSection workout={workout} sportSettings={sportSettings} />
-            </div>
-          ))}
+            return (
+              <div key={workout.id || index} style={{ border: '1px solid #e9ecef', borderRadius: '8px', padding: '16px', backgroundColor: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', color: '#212529' }}>
+                    {workout.name || workout.title || `${workout.type || 'Workout'}`}
+                  </h3>
+                  <span style={{ fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', backgroundColor: '#e9ecef', padding: '3px 8px', borderRadius: '4px', color: '#495057' }}>
+                    {workout.type || 'Activity'}
+                  </span>
+                </div>
+
+                {/* Independent Chart Render */}
+                {rawSteps.length > 0 && (
+                  <WorkoutChart steps={rawSteps} thresholdPace={thresholdPaceMps} />
+                )}
+
+                {/* Independent Text Render */}
+                <WorkoutTextSection workout={workout} sportSettings={sportSettings} />
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

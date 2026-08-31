@@ -1,5 +1,6 @@
 import React from 'react';
 
+// Converts meters per second to "mm:ss /mi"
 const metersPerSecondToPaceStr = (mps) => {
   if (!mps || mps <= 0) return "N/A";
   const secPerMile = 1609.34 / mps;
@@ -15,13 +16,26 @@ const formatIntensityTitleCase = (val) => {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
 
-const extractTargetValue = (targetObj) => {
-  if (typeof targetObj === 'number') return targetObj;
-  if (typeof targetObj === 'object' && targetObj !== null) {
-    const start = targetObj.start || 0;
-    const end = targetObj.end || start;
+// Extracts numerical target percentage from step objects safely
+const extractTargetValue = (step) => {
+  if (!step) return 60;
+
+  // Handle step.pace = { start: X, end: Y }
+  if (step.pace && typeof step.pace === 'object') {
+    const start = step.pace.start || 0;
+    const end = step.pace.end || start;
     return (start + end) / 2;
   }
+
+  // Handle step.target or step.intensityPct
+  const val = step.target || step.intensityPct || step.pace;
+  if (typeof val === 'number') return val;
+  if (typeof val === 'object' && val !== null) {
+    const start = val.start || 0;
+    const end = val.end || start;
+    return (start + end) / 2;
+  }
+
   return 60;
 };
 
@@ -40,16 +54,27 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
   if (!Array.isArray(steps) || steps.length === 0) return null;
 
   const totalDurationSec = steps.reduce((sum, s) => sum + (s.duration || 0), 0) || 1;
-  const totalDurationMin = Math.round(totalDurationSec / 60);
 
-  // Compute pace bounds for Y-Axis labels
-  const targetPcts = steps.map((s) => extractTargetValue(s.pace || s.target || s.intensityPct));
+  // Compute pace bounds
+  const targetPcts = steps.map((s) => extractTargetValue(s));
   const maxPct = Math.max(...targetPcts, 100);
   const minPct = Math.min(...targetPcts, 50);
 
-  const topPaceStr = thresholdPace ? metersPerSecondToPaceStr(thresholdPace * (maxPct / 100)) : `${maxPct}%`;
-  const midPaceStr = thresholdPace ? metersPerSecondToPaceStr(thresholdPace * (((maxPct + minPct) / 2) / 100)) : `${Math.round((maxPct + minPct) / 2)}%`;
-  const botPaceStr = thresholdPace ? metersPerSecondToPaceStr(thresholdPace * (minPct / 100)) : `${minPct}%`;
+  // Evenly distribute 4 Y-Axis ticks (Top, Upper-Mid, Lower-Mid, Bottom)
+  const yTicksPct = [
+    maxPct,
+    maxPct - (maxPct - minPct) * (1 / 3),
+    maxPct - (maxPct - minPct) * (2 / 3),
+    minPct
+  ];
+
+  const yTickLabels = yTicksPct.map((pct) => {
+    if (thresholdPace) {
+      // Calculate speed in m/s based on percentage of threshold pace
+      return metersPerSecondToPaceStr(thresholdPace * (pct / 100));
+    }
+    return `${Math.round(pct)}%`;
+  });
 
   // Calculate accumulated minute ticks for X-Axis
   let accumulatedSec = 0;
@@ -61,23 +86,24 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
   return (
     <div style={{ margin: '16px 0', border: '1px solid #e9ecef', borderRadius: '8px', padding: '16px', backgroundColor: '#fcfcfc' }}>
       <div style={{ display: 'flex' }}>
-        {/* Y-AXIS LABELS */}
+        {/* EVENLY DISTRIBUTED Y-AXIS LABELS */}
         <div 
           style={{ 
             display: 'flex', 
             flexDirection: 'column', 
             justify: 'space-between', 
             height: chartHeight, 
-            paddingRight: '8px', 
+            paddingRight: '12px', 
             fontSize: '10px', 
             color: '#6c757d', 
             textAlign: 'right',
-            fontWeight: '600'
+            fontWeight: '600',
+            lineHeight: '1'
           }}
         >
-          <span>{topPaceStr}</span>
-          <span>{midPaceStr}</span>
-          <span>{botPaceStr}</span>
+          {yTickLabels.map((label, idx) => (
+            <span key={idx}>{label}</span>
+          ))}
         </div>
 
         {/* CHART & X-AXIS AREA */}
@@ -91,7 +117,8 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
               gap: '3px', 
               paddingBottom: '4px', 
               borderBottom: '2px solid #dee2e6',
-              borderLeft: '1px solid #dee2e6'
+              borderLeft: '1px solid #dee2e6',
+              position: 'relative'
             }}
           >
             {steps.map((step, idx) => {
@@ -102,35 +129,34 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
               const rawIntensity = step.intensity || (step.warmup ? 'warmup' : step.cooldown ? 'cooldown' : step.type || 'active');
               const intensityFormatted = formatIntensityTitleCase(rawIntensity);
               
-              const targetPct = extractTargetValue(step.pace || step.target || step.intensityPct);
+              const targetPct = extractTargetValue(step);
               const zoneDetails = getZoneDetails(targetPct, rawIntensity);
               const barColor = zoneDetails.color;
 
-              // Format Pace in mm:ss for Tooltips
+              // Compute Pace for Tooltip and Bar Label in mm:ss /mi
               let startPaceStr = "N/A";
               let endPaceStr = "N/A";
               let avgPaceStr = "N/A";
 
-              if (step.pace) {
-                const startPct = step.pace.start || targetPct;
-                const endPct = step.pace.end || startPct;
+              const startPct = step.pace?.start || targetPct;
+              const endPct = step.pace?.end || startPct;
 
-                if (thresholdPace) {
-                  startPaceStr = metersPerSecondToPaceStr(thresholdPace * (startPct / 100));
-                  endPaceStr = metersPerSecondToPaceStr(thresholdPace * (endPct / 100));
-                  avgPaceStr = metersPerSecondToPaceStr(thresholdPace * (targetPct / 100));
-                } else {
-                  startPaceStr = `${startPct}%`;
-                  endPaceStr = `${endPct}%`;
-                  avgPaceStr = `${Math.round(targetPct)}%`;
-                }
+              if (thresholdPace) {
+                startPaceStr = metersPerSecondToPaceStr(thresholdPace * (startPct / 100));
+                endPaceStr = metersPerSecondToPaceStr(thresholdPace * (endPct / 100));
+                avgPaceStr = metersPerSecondToPaceStr(thresholdPace * (targetPct / 100));
+              } else {
+                startPaceStr = `${startPct}%`;
+                endPaceStr = `${endPct}%`;
+                avgPaceStr = `${Math.round(targetPct)}%`;
               }
 
               const paceRangeFormatted = startPaceStr === endPaceStr ? avgPaceStr : `${startPaceStr} - ${endPaceStr}`;
-              const heightPct = Math.min(Math.max((targetPct / maxPct) * 100, 15), 100);
+              
+              // Scale bar height dynamically between minPct and maxPct
+              const heightPct = Math.min(Math.max(((targetPct - minPct) / (maxPct - minPct || 1)) * 85 + 15, 15), 100);
 
-              // Tooltip formatting
-              const tooltipText = `Intensity: ${intensityFormatted} | Target Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
+              const tooltipText = `Intensity: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
 
               return (
                 <div
@@ -175,7 +201,7 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px', fontSize: '10px', color: '#6c757d' }}>
             <span>0m</span>
             {timeTicks.map((t, i) => (
-              <span key={i} style={{ fontSize: '10px' }}>{t}m</span>
+              <span key={i}>{t}m</span>
             ))}
           </div>
         </div>

@@ -13,6 +13,24 @@ const formatDuration = (totalSeconds) => {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
 };
 
+const safeStringLower = (val) => {
+  if (!val) return "";
+  if (typeof val === 'string') return val.toLowerCase();
+  return String(val.id || val.type || val.name || val).toLowerCase();
+};
+
+const getThresholdPaceForSport = (sportType, sportSettings) => {
+  if (!sportType || !Array.isArray(sportSettings)) return null;
+  const normalizedSport = safeStringLower(sportType);
+  const match = sportSettings.find((s) => {
+    if (!s) return false;
+    const settingType = safeStringLower(s.type || s.id || s.sport);
+    let typesList = Array.isArray(s.types) ? s.types.map((t) => safeStringLower(t)) : [];
+    return settingType === normalizedSport || typesList.includes(normalizedSport);
+  });
+  return match?.threshold_pace || match?.pace_threshold || null;
+};
+
 export default function WorkoutsView() {
   const [workouts, setWorkouts] = useState([]);
   const [sportSettings, setSportSettings] = useState([]);
@@ -52,6 +70,7 @@ export default function WorkoutsView() {
           rawSteps = doc?.steps || [];
         }
 
+        const thresholdPaceMps = getThresholdPaceForSport(w.type, sportSettings);
         const workoutId = w.id || `upcoming-${index}`;
 
         return (
@@ -64,16 +83,16 @@ export default function WorkoutsView() {
             <div style={{ fontSize: '14px', color: '#555', margin: '6px 0 12px 0' }}>
               Duration: {durationStr} {distanceMi && `| Distance: ${distanceMi} mi`}
             </div>
-            
-            {/* Graphic Workout Chart */}
+
+            {/* Independent Chart Render with thresholdPace for mm:ss */}
             {rawSteps.length > 0 && (
               <WorkoutChart 
                 steps={rawSteps} 
-                containerId={`chart-${workoutId}`} 
+                thresholdPace={thresholdPaceMps}
               />
             )}
 
-            {/* Unified Reusable Text Component */}
+            {/* Independent Text Render */}
             <WorkoutTextSection 
               workout={w} 
               sportSettings={sportSettings} 
