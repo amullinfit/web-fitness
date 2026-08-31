@@ -182,8 +182,10 @@ export default function GeneralOverview({ overviewData }) {
     consistencyWeeks.push(weekDays);
   }
 
-  // 4. MONTHLY RUN TOTALS (Last 13 Months)
+  // 4. MONTHLY RUN TOTALS (Last 13 Months Data for Bar Chart)
   const monthlyRunTotals = [];
+  let maxMonthlyDist = 0;
+
   for (let m = 12; m >= 0; m--) {
     const targetMonth = new Date(now.getFullYear(), now.getMonth() - m, 1);
     const monthStart = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
@@ -193,9 +195,12 @@ export default function GeneralOverview({ overviewData }) {
       .filter(w => w.type.toLowerCase() === 'run' && w.dateObj >= monthStart && w.dateObj <= monthEnd)
       .reduce((acc, w) => acc + w.distanceMiles, 0);
 
+    if (runDist > maxMonthlyDist) maxMonthlyDist = runDist;
+
     monthlyRunTotals.push({
       month: formatMMMYYYY(targetMonth),
-      distance: `${runDist.toFixed(1)} mi`
+      rawDistance: runDist,
+      distanceStr: `${runDist.toFixed(1)} mi`
     });
   }
 
@@ -263,8 +268,8 @@ export default function GeneralOverview({ overviewData }) {
               <thead>
                 <tr>
                   <th className="col-year">Year</th>
-                  <th className="col-total">Total</th>
-                  <th className="col-count">#</th>
+                  <th className="col-total">Total<br />Dist</th>
+                  <th className="col-count"># of<br />Workouts</th>
                 </tr>
               </thead>
               <tbody>
@@ -332,19 +337,29 @@ export default function GeneralOverview({ overviewData }) {
         </div>
       </div>
 
-      {/* SECTION 4: MONTHLY RUN TOTALS */}
+      {/* SECTION 4: MONTHLY RUN TOTALS (Bar Chart Representation) */}
       <div className="monthly-card">
         <h3 className="section-subtitle">
           MONTHLY RUN TOTALS
         </h3>
 
-        <div className="monthly-grid">
-          {monthlyRunTotals.map((item, mIdx) => (
-            <div key={mIdx} className="monthly-item">
-              <div className="monthly-item-month">{item.month}</div>
-              <div className="monthly-item-distance">{item.distance}</div>
-            </div>
-          ))}
+        <div className="monthly-barchart-container">
+          {monthlyRunTotals.map((item, mIdx) => {
+            const heightPercent = maxMonthlyDist > 0 ? (item.rawDistance / maxMonthlyDist) * 100 : 0;
+            return (
+              <div key={mIdx} className="monthly-bar-column">
+                <div className="monthly-bar-val">{item.rawDistance > 0 ? item.distanceStr : ''}</div>
+                <div className="monthly-bar-track">
+                  <div 
+                    className="monthly-bar-fill" 
+                    style={{ height: `${heightPercent}%` }}
+                    title={`${item.month}: ${item.distanceStr}`}
+                  />
+                </div>
+                <div className="monthly-bar-label">{item.month}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
