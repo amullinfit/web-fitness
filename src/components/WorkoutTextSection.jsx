@@ -95,14 +95,14 @@ export default function WorkoutTextSection({ workout, sportSettings = [] }) {
 
   return (
     <div style={{ marginTop: '12px' }}>
-      {/* Step Debug Section Header */}
+      {/* Workout Details Section Header */}
       <div style={{ padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '6px', border: '1px solid #e9ecef' }}>
         <div 
           onClick={() => setIsOpen((prev) => !prev)}
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
         >
           <span style={{ fontWeight: 'bold', fontSize: '12px', color: '#495057', textTransform: 'uppercase' }}>
-            {isOpen ? '▼' : '►'} Step Debug Write-up ({debugSteps.length} step{debugSteps.length === 1 ? '' : 's'})
+            {isOpen ? '▼' : '►'} Workout Details ({debugSteps.length} step{debugSteps.length === 1 ? '' : 's'})
           </span>
           <span style={{ fontSize: '12px', fontWeight: '600', color: '#0d6efd', backgroundColor: '#e7f1ff', padding: '2px 8px', borderRadius: '4px' }}>
             Threshold Pace ({workout.type || 'Sport'}): {thresholdPaceStr}

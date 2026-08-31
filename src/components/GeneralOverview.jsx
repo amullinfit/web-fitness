@@ -1,58 +1,52 @@
 import React, { useState, useEffect } from 'react';
+import './GeneralOverview.css';
 
 const VAL_OVERVIEW_URL = "/api/val-overview";
 
 // --- DATE HELPER UTILITIES ---
 
-// Get Monday of a given date's week
 const getMonday = (d) => {
   const date = new Date(d);
   const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(date.setDate(diff));
   monday.setHours(0, 0, 0, 0);
   return monday;
 };
 
-// Add/Subtract days
 const addDays = (date, days) => {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
   return result;
 };
 
-// Format Date to "MMM D" (e.g., "Aug 31")
 const formatMMMD = (d) => {
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-  
-  // Format Date to "MMM YYYY" (e.g., "Aug 2026")
-  const formatMMMYYYY = (d) => {
-    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  };
-  
-// Comparison indicator arrow
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+const formatMMMYYYY = (d) => {
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+};
+
 const RenderIndicator = ({ current, previous }) => {
-  if (current > previous) return <span style={{ color: '#28a745', marginLeft: '6px' }}>▲</span>;
-  if (current < previous) return <span style={{ color: '#dc3545', marginLeft: '6px' }}>▼</span>;
-  return <span style={{ color: '#6c757d', marginLeft: '6px' }}>►</span>;
+  if (current > previous) return <span className="indicator-up">▲</span>;
+  if (current < previous) return <span className="indicator-down">▼</span>;
+  return <span className="indicator-same">►</span>;
 };
 
 export default function GeneralOverview({ overviewData }) {
   const [workouts, setWorkouts] = useState([]);
   const [wellness, setWellness] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
     fetch(VAL_OVERVIEW_URL)
       .then((res) => res.json())
       .then((json) => {
         if (json) {
-          // Extract activities / workouts
           const workoutList = json.activities || json.workouts || (Array.isArray(json) ? json : []);
           setWorkouts(workoutList);
-  
-          // Extract wellness data
+
           const wellnessList = json.wellness || [];
           setWellness(wellnessList);
         }
@@ -63,9 +57,9 @@ export default function GeneralOverview({ overviewData }) {
         setLoading(false);
       });
   }, []);
-  
+
   if (loading) {
-    return <div style={{ padding: '20px', color: '#6c757d' }}>Loading overview data...</div>;
+    return <div className="overview-loading">Loading overview data...</div>;
   }
 
   // --- DATA PROCESSING LOGIC ---
@@ -77,7 +71,6 @@ export default function GeneralOverview({ overviewData }) {
   const priorMon = addDays(currentMon, -7);
   const priorSun = addDays(priorMon, 6); priorSun.setHours(23, 59, 59, 999);
 
-  // Normalize workouts with parsed dates
   const parsedWorkouts = workouts.map((w) => {
     const rawDate = w.start_date_local || w.icu_start_date || w.start_date;
     const dateObj = rawDate ? new Date(rawDate) : new Date();
@@ -99,17 +92,14 @@ export default function GeneralOverview({ overviewData }) {
   const buckets = sportCategories.map((sport) => {
     const sportWorkouts = parsedWorkouts.filter(w => w.type.toLowerCase() === sport.toLowerCase());
 
-    // Cur week distance
     const curWeekVal = sportWorkouts
       .filter(w => w.dateObj >= currentMon && w.dateObj <= currentSun)
       .reduce((acc, w) => acc + w.distanceMiles, 0);
 
-    // Prev week distance
     const prevWeekVal = sportWorkouts
       .filter(w => w.dateObj >= priorMon && w.dateObj <= priorSun)
       .reduce((acc, w) => acc + w.distanceMiles, 0);
 
-    // Annualized tables (Current Year vs Prior Year)
     const currentYear = now.getFullYear();
     const priorYear = currentYear - 1;
 
@@ -171,7 +161,6 @@ export default function GeneralOverview({ overviewData }) {
   const priorWeekGrid = buildGridWeek(priorMon, priorSun);
 
   // 3. CONSISTENCY GRID DATA (7 rows x 61 columns)
-  // Generating 61 weeks: index 60 is current week, index 0 is 60 weeks ago
   const consistencyWeeks = [];
   for (let w = 60; w >= 0; w--) {
     const weekMon = addDays(currentMon, -w * 7);
@@ -206,53 +195,43 @@ export default function GeneralOverview({ overviewData }) {
 
     monthlyRunTotals.push({
       month: formatMMMYYYY(targetMonth),
-      distance: '${runDist.toFixed(1)} mi'
+      distance: `${runDist.toFixed(1)} mi`
     });
   }
 
   // Helper render for Weekly Grids
   const renderWeekGrid = (gridData, title) => (
-    <div style={{ marginBottom: '20px', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '14px', backgroundColor: '#fff' }}>
-      <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '10px' }}>
+    <div className="weekly-grid-card">
+      <div className="weekly-grid-header">
         {title}: {gridData.range} ({gridData.totalActivities} activities)
       </div>
       
       {/* 7 Days Header Boxes */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginBottom: '8px' }}>
+      <div className="weekly-grid-headers-row">
         {gridData.days.map((d, idx) => {
-          let bgColor = '#ffffff';
-          let textColor = '#212529';
-          if (d.count === 1) { bgColor = '#adb5bd'; textColor = '#fff'; }
-          else if (d.count >= 2) { bgColor = '#212529'; textColor = '#fff'; }
+          let countClass = 'count-0';
+          if (d.count === 1) countClass = 'count-1';
+          else if (d.count >= 2) countClass = 'count-2plus';
 
           return (
-            <div key={idx} style={{
-              backgroundColor: bgColor,
-              color: textColor,
-              border: '1px solid #ced4da',
-              borderRadius: '4px',
-              padding: '6px',
-              textAlign: 'center',
-              fontWeight: 'bold',
-              fontSize: '12px'
-            }}>
-              {d.day} ({d.count})
+            <div key={idx} className={`weekly-day-header ${countClass}`}>
+              {d.day}
             </div>
           );
         })}
       </div>
 
       {/* Activities Breakdown per Day */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+      <div className="weekly-grid-items-row">
         {gridData.days.map((d, idx) => (
-          <div key={idx} style={{ fontSize: '11px', color: '#495057' }}>
+          <div key={idx} className="weekly-day-column">
             {d.items.length === 0 ? (
-              <span style={{ color: '#ced4da' }}>—</span>
+              <span className="empty-day-dash">—</span>
             ) : (
               d.items.map((item, iIdx) => {
                 const isTriSport = ['swim', 'bike', 'run'].includes(item.type.toLowerCase());
                 return (
-                  <div key={iIdx} style={{ marginBottom: '2px' }}>
+                  <div key={iIdx} className="activity-item">
                     {isTriSport ? `${item.type} ${item.distance || ''}` : item.type}
                   </div>
                 );
@@ -265,37 +244,35 @@ export default function GeneralOverview({ overviewData }) {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '10px' }}>
+    <div className="overview-container">
       
       {/* SECTION 1: WEEKLY BUCKETS & ANNUAL TABLES */}
-      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+      <div className="sport-buckets-container">
         {buckets.map((b, idx) => (
-          <div key={idx} style={{ flex: '1', minWidth: '280px', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '16px', backgroundColor: '#fff' }}>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{b.type}</div>
+          <div key={idx} className="sport-bucket-card">
+            <div className="sport-bucket-title">{b.type}</div>
             
-            <div style={{ fontSize: '28px', fontWeight: 'bold', margin: '8px 0 4px 0', color: '#111' }}>
-              {b.currentWeekDist}
-            </div>
+            <div className="sport-bucket-dist">{b.currentWeekDist}</div>
 
-            <div style={{ fontSize: '13px', color: '#6c757d', marginBottom: '16px', display: 'flex', alignItems: 'center' }}>
+            <div className="sport-bucket-prev">
               Prev Week: {b.prevWeekDist}
               <RenderIndicator current={b.currentWeekVal} previous={b.prevWeekVal} />
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', color: '#6c757d', fontSize: '12px' }}>
+            <table className="annual-table">
               <thead>
                 <tr>
-                  <th style={{ textAlign: 'left', paddingBottom: '4px', borderBottom: '1px solid #ced4da', fontWeight: '600' }}>Year</th>
-                  <th style={{ textAlign: 'center', paddingBottom: '4px', borderBottom: '1px solid #ced4da', fontWeight: '600', paddingLeft: '8px', paddingRight: '8px' }}>Total</th>
-                  <th style={{ textAlign: 'right', paddingBottom: '4px', borderBottom: '1px solid #ced4da', fontWeight: '600' }}>#</th>
+                  <th className="col-year">Year</th>
+                  <th className="col-total">Total</th>
+                  <th className="col-count">#</th>
                 </tr>
               </thead>
               <tbody>
                 {b.annualTable.map((row, rIdx) => (
                   <tr key={rIdx}>
-                    <td style={{ padding: '4px 0' }}>{row.year}</td>
-                    <td style={{ textAlign: 'center', padding: '4px 8px' }}>{row.total}</td>
-                    <td style={{ textAlign: 'right', padding: '4px 0' }}>{row.count}</td>
+                    <td className="col-year">{row.year}</td>
+                    <td className="col-total">{row.total}</td>
+                    <td className="col-count">{row.count}</td>
                   </tr>
                 ))}
               </tbody>
@@ -306,67 +283,44 @@ export default function GeneralOverview({ overviewData }) {
 
       {/* SECTION 2: WEEKLY ACTIVITY GRIDS */}
       <div>
-        <h3 style={{ fontSize: '16px', marginBottom: '12px' }}>Weekly Activity Grids</h3>
+        <h3 className="section-title">Weekly Activity Grids</h3>
         {renderWeekGrid(currentWeekGrid, "Current Week")}
         {renderWeekGrid(priorWeekGrid, "Prior Week")}
       </div>
 
       {/* SECTION 3: CONSISTENCY GRID */}
-      <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '16px', backgroundColor: '#fff', overflowX: 'auto' }}>
-        <h3 style={{ fontSize: '14px', letterSpacing: '1px', textTransform: 'uppercase', color: '#495057', marginTop: 0, marginBottom: '16px', textAlign: 'center' }}>
+      <div className="consistency-card">
+        <h3 className="section-subtitle-center">
           --- CONSISTENCY GRID ---
         </h3>
 
-        <div style={{ display: 'flex', gap: '0px', alignItems: 'center' }}>
-          {/* Day Labels */}
-          <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 12px)', gap: '3px', paddingRight: '6px', fontSize: '9px', color: '#6c757d', fontWeight: 'bold' }}>
+        <div className="consistency-grid-wrapper">
+          <div className="consistency-day-labels">
             <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
           </div>
 
-          {/* 61 Columns of Weeks */}
-          <div style={{ display: 'flex' }}>
+          <div className="consistency-weeks-container">
             {consistencyWeeks.map((week, wIdx) => {
               const isCurrentWeek = wIdx === 60;
               const hasFourWeekDivider = (60 - wIdx) % 4 === 0 && wIdx !== 60;
 
               return (
-                <div key={wIdx} style={{ display: 'flex' }}>
+                <div key={wIdx} className="consistency-week-group">
                   {(isCurrentWeek || hasFourWeekDivider) && (
-                    <div style={{ width: '1px', backgroundColor: isCurrentWeek ? '#0d6efd' : '#ced4da', margin: '0 2px' }} />
+                    <div className={`consistency-divider ${isCurrentWeek ? 'current-week' : ''}`} />
                   )}
 
-                  <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 12px)', gap: '3px', margin: '0 1px' }}>
+                  <div className="consistency-week-column">
                     {week.map((day, dIdx) => {
-                      let bgColor = '#ffffff';
-                      if (day.count === 1) bgColor = '#adb5bd';
-                      else if (day.count >= 2) bgColor = '#212529';
-
-                      if (day.isRace) {
-                        return (
-                          <div
-                            key={dIdx}
-                            title="Race Day"
-                            style={{
-                              width: '12px',
-                              height: '12px',
-                              border: '1px solid #ced4da',
-                              boxSizing: 'border-box',
-                              background: 'linear-gradient(135deg, #0d6efd 50%, #ffffff 50%)'
-                            }}
-                          />
-                        );
-                      }
+                      let countClass = 'count-0';
+                      if (day.count === 1) countClass = 'count-1';
+                      else if (day.count >= 2) countClass = 'count-2plus';
 
                       return (
                         <div
                           key={dIdx}
-                          style={{
-                            width: '12px',
-                            height: '12px',
-                            backgroundColor: bgColor,
-                            border: '1px solid #ced4da',
-                            boxSizing: 'border-box'
-                          }}
+                          title={day.isRace ? "Race Day" : undefined}
+                          className={`consistency-cell ${countClass} ${day.isRace ? 'race-cell' : ''}`}
                         />
                       );
                     })}
@@ -379,16 +333,16 @@ export default function GeneralOverview({ overviewData }) {
       </div>
 
       {/* SECTION 4: MONTHLY RUN TOTALS */}
-      <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '16px', backgroundColor: '#fff' }}>
-        <h3 style={{ fontSize: '14px', letterSpacing: '1px', textTransform: 'uppercase', color: '#495057', marginTop: 0, marginBottom: '16px' }}>
+      <div className="monthly-card">
+        <h3 className="section-subtitle">
           MONTHLY RUN TOTALS
         </h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
+        <div className="monthly-grid">
           {monthlyRunTotals.map((item, mIdx) => (
-            <div key={mIdx} style={{ padding: '10px', border: '1px solid #e9ecef', borderRadius: '6px', backgroundColor: '#f8f9fa' }}>
-              <div style={{ fontSize: '11px', color: '#6c757d', fontWeight: '600' }}>{item.month}</div>
-              <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#212529', marginTop: '4px' }}>{item.distance}</div>
+            <div key={mIdx} className="monthly-item">
+              <div className="monthly-item-month">{item.month}</div>
+              <div className="monthly-item-distance">{item.distance}</div>
             </div>
           ))}
         </div>
