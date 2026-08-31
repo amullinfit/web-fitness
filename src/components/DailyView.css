@@ -11,6 +11,18 @@
     font-weight: 500;
   }
   
+  /* Debug Range Bar */
+  .daily-debug-bar {
+    font-family: monospace;
+    font-size: 11px;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    color: #6c757d;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+  
   /* Header & Controls */
   .daily-nav-bar {
     display: flex;
@@ -25,13 +37,6 @@
     margin: 0;
     font-size: 20px;
     color: #212529;
-  }
-  
-  .daily-header-subtitle {
-    font-size: 12px;
-    color: #6c757d;
-    display: block;
-    margin-top: 2px;
   }
   
   .daily-nav-buttons {
@@ -94,16 +99,20 @@
     font-size: 16px;
     color: #343a40;
     font-weight: 700;
+    line-height: 1;
   }
   
+  /* Scaled TODAY Badge to match heading size */
   .daily-today-indicator {
-    font-size: 11px;
-    font-weight: bold;
+    font-size: 12px;
+    font-weight: 700;
     color: #ffffff;
     background-color: #0d6efd;
     padding: 2px 6px;
-    border-radius: 4px;
-    text-transform: uppercase;
+    border-radius: 3px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
   }
   
   .daily-empty-card {

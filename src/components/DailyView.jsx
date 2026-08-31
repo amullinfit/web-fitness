@@ -171,7 +171,7 @@ export default function DailyView() {
     );
   };
 
-  const renderDaySection = (dateObj, dateStr, dayWorkouts, isMainSelected) => {
+  const renderDaySection = (dateObj, dateStr, dayWorkouts) => {
     const isToday = dateStr === todayStr;
 
     return (
@@ -180,7 +180,7 @@ export default function DailyView() {
           <h3 className="daily-day-section-title">
             {formatHeaderDate(dateObj)}
           </h3>
-          {isToday && <span className="daily-today-indicator">Today</span>}
+          {isToday && <span className="daily-today-indicator">TODAY</span>}
         </div>
 
         {dayWorkouts.length === 0 ? (
@@ -198,15 +198,17 @@ export default function DailyView() {
 
   return (
     <div className="daily-view-container">
+      {/* Debug Line displaying oldest and newest dates */}
+      <div className="daily-debug-bar">
+        [DEBUG] Range: Oldest Date = <strong>{selectedDateStr}</strong> | Newest Date = <strong>{nextDateStr}</strong>
+      </div>
+
       {/* Date Navigation Bar */}
       <div className="daily-nav-bar">
         <div>
           <h2 className="daily-header-title">
             {formatHeaderDate(selectedDate)}
           </h2>
-          <span className="daily-header-subtitle">
-            Showing 2-Day Schedule ({selectedDateStr} & {nextDateStr})
-          </span>
         </div>
 
         <div className="daily-nav-buttons">
@@ -227,8 +229,8 @@ export default function DailyView() {
 
       {/* Two Days Grid */}
       <div className="daily-two-day-grid">
-        {renderDaySection(selectedDate, selectedDateStr, selectedDayWorkouts, true)}
-        {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts, false)}
+        {renderDaySection(selectedDate, selectedDateStr, selectedDayWorkouts)}
+        {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts)}
       </div>
     </div>
   );
