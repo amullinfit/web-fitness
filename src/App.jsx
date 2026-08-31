@@ -5,6 +5,7 @@ import WorkoutsView from './components/WorkoutsView';
 import GearView from './components/GearView';
 import OptionsView from './components/OptionsView';
 
+
 const APP_TITLE = 'Web Fitness'; // Central title configuration
 
 export default function App() {
