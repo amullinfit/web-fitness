@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import WorkoutChart from './WorkoutChart';
 import WorkoutTextSection from './WorkoutTextSection';
+import './DailyView.css';
 
-// Simplified internal route mapped by vercel.json / Vite proxy
 const VAL_WORKOUTS_URL = "/api/val-workouts";
 
 const safeStringLower = (val) => {
@@ -41,6 +41,16 @@ const getLocalDateString = (dateInput) => {
   return `${year}-${month}-${day}`;
 };
 
+const isWorkoutCompleted = (workout) => {
+  return (
+    workout.completed === true ||
+    workout.state === 'DONE' ||
+    Boolean(workout.moving_time) ||
+    Boolean(workout.elapsed_time) ||
+    Boolean(workout.distance_completed)
+  );
+};
+
 export default function DailyView() {
   const [workouts, setWorkouts] = useState([]);
   const [sportSettings, setSportSettings] = useState([]);
@@ -64,17 +74,33 @@ export default function DailyView() {
       });
   }, []);
 
-  const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
+  const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
 
-  const todaysWorkouts = useMemo(() => {
+  const nextDateObj = useMemo(() => {
+    const next = new Date(selectedDate);
+    next.setDate(next.getDate() + 1);
+    return next;
+  }, [selectedDate]);
+
+  const nextDateStr = useMemo(() => getLocalDateString(nextDateObj), [nextDateObj]);
+
+  // Group workouts by date
+  const selectedDayWorkouts = useMemo(() => {
     if (!Array.isArray(workouts)) return [];
-    
     return workouts.filter((w) => {
       const rawDate = w.start_date_local || w.icu_start_date || w.start_date || w.date;
       return getLocalDateString(rawDate) === selectedDateStr;
     });
   }, [workouts, selectedDateStr]);
+
+  const nextDayWorkouts = useMemo(() => {
+    if (!Array.isArray(workouts)) return [];
+    return workouts.filter((w) => {
+      const rawDate = w.start_date_local || w.icu_start_date || w.start_date || w.date;
+      return getLocalDateString(rawDate) === nextDateStr;
+    });
+  }, [workouts, nextDateStr]);
 
   const handlePrevDay = () => {
     setSelectedDate((prev) => {
@@ -94,77 +120,116 @@ export default function DailyView() {
 
   const handleToday = () => setSelectedDate(new Date());
 
-  if (loading) return <div style={{ padding: '20px', color: '#6c757d' }}>Loading Daily Workout...</div>;
+  if (loading) return <div className="daily-view-loading">Loading Daily Workouts...</div>;
 
-  const formattedHeaderDate = selectedDate.toLocaleDateString(undefined, {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const formatHeaderDate = (dateObj) => {
+    return dateObj.toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
 
-  return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '16px' }}>
-      {/* Date Navigation Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid #dee2e6' }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: '20px', color: '#212529' }}>{formattedHeaderDate}</h2>
-          {selectedDateStr === todayStr && (
-            <span style={{ fontSize: '12px', color: '#0d6efd', fontWeight: 'bold' }}>Today</span>
-          )}
+  const renderWorkoutCard = (workout, index) => {
+    let rawSteps = [];
+    if (workout.workout_doc) {
+      const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
+      rawSteps = doc?.steps || [];
+    }
+    const thresholdPaceMps = getThresholdPaceForSport(workout.type, sportSettings);
+
+    const workoutDateStr = getLocalDateString(
+      workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date
+    );
+
+    const completed = isWorkoutCompleted(workout);
+    const isPast = workoutDateStr < todayStr;
+    const isMissed = isPast && !completed;
+
+    return (
+      <div key={workout.id || index} className="daily-workout-card">
+        <div className="daily-workout-card-header">
+          <div className="daily-workout-title-group">
+            {completed && <span className="status-badge badge-completed">COMPLETED</span>}
+            {isMissed && <span className="status-badge badge-missed">MISSED</span>}
+            <h3 className="daily-workout-title">
+              {workout.name || workout.title || `${workout.type || 'Workout'}`}
+            </h3>
+          </div>
+          <span className="daily-workout-type">
+            {workout.type || 'Activity'}
+          </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={handlePrevDay} style={{ padding: '6px 12px', fontSize: '13px', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#ffffff', cursor: 'pointer' }}>
+        {rawSteps.length > 0 && (
+          <WorkoutChart steps={rawSteps} thresholdPace={thresholdPaceMps} />
+        )}
+
+        <WorkoutTextSection workout={workout} sportSettings={sportSettings} />
+      </div>
+    );
+  };
+
+  const renderDaySection = (dateObj, dateStr, dayWorkouts, isMainSelected) => {
+    const isToday = dateStr === todayStr;
+
+    return (
+      <div className="daily-day-column">
+        <div className="daily-day-section-header">
+          <h3 className="daily-day-section-title">
+            {formatHeaderDate(dateObj)}
+          </h3>
+          {isToday && <span className="daily-today-indicator">Today</span>}
+        </div>
+
+        {dayWorkouts.length === 0 ? (
+          <div className="daily-empty-card">
+            No workouts scheduled for {isToday ? 'today' : dateStr}.
+          </div>
+        ) : (
+          <div className="daily-workouts-list">
+            {dayWorkouts.map((workout, idx) => renderWorkoutCard(workout, idx))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="daily-view-container">
+      {/* Date Navigation Bar */}
+      <div className="daily-nav-bar">
+        <div>
+          <h2 className="daily-header-title">
+            {formatHeaderDate(selectedDate)}
+          </h2>
+          <span className="daily-header-subtitle">
+            Showing 2-Day Schedule ({selectedDateStr} & {nextDateStr})
+          </span>
+        </div>
+
+        <div className="daily-nav-buttons">
+          <button onClick={handlePrevDay} className="nav-btn">
             ← Prev Day
           </button>
-          <button onClick={handleToday} style={{ padding: '6px 12px', fontSize: '13px', border: '1px solid #0d6efd', borderRadius: '4px', backgroundColor: selectedDateStr === todayStr ? '#0d6efd' : '#ffffff', color: selectedDateStr === todayStr ? '#ffffff' : '#0d6efd', fontWeight: '600', cursor: 'pointer' }}>
+          <button
+            onClick={handleToday}
+            className={`nav-btn ${selectedDateStr === todayStr ? 'nav-btn-today-active' : 'nav-btn-today'}`}
+          >
             Today
           </button>
-          <button onClick={handleNextDay} style={{ padding: '6px 12px', fontSize: '13px', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#ffffff', cursor: 'pointer' }}>
+          <button onClick={handleNextDay} className="nav-btn">
             Next Day →
           </button>
         </div>
       </div>
 
-      {/* Content */}
-      {todaysWorkouts.length === 0 ? (
-        <div style={{ padding: '32px', textAlign: 'center', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px dashed #dee2e6', color: '#6c757d' }}>
-          No workouts scheduled for {selectedDateStr === todayStr ? 'today' : selectedDateStr}.
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {todaysWorkouts.map((workout, index) => {
-            let rawSteps = [];
-            if (workout.workout_doc) {
-              const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
-              rawSteps = doc?.steps || [];
-            }
-            const thresholdPaceMps = getThresholdPaceForSport(workout.type, sportSettings);
-
-            return (
-              <div key={workout.id || index} style={{ border: '1px solid #e9ecef', borderRadius: '8px', padding: '16px', backgroundColor: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', color: '#212529' }}>
-                    {workout.name || workout.title || `${workout.type || 'Workout'}`}
-                  </h3>
-                  <span style={{ fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', backgroundColor: '#e9ecef', padding: '3px 8px', borderRadius: '4px', color: '#495057' }}>
-                    {workout.type || 'Activity'}
-                  </span>
-                </div>
-
-                {/* Independent Chart Render */}
-                {rawSteps.length > 0 && (
-                  <WorkoutChart steps={rawSteps} thresholdPace={thresholdPaceMps} />
-                )}
-
-                {/* Independent Text Render */}
-                <WorkoutTextSection workout={workout} sportSettings={sportSettings} />
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Two Days Grid */}
+      <div className="daily-two-day-grid">
+        {renderDaySection(selectedDate, selectedDateStr, selectedDayWorkouts, true)}
+        {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts, false)}
+      </div>
     </div>
   );
 }
