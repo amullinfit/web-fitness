@@ -14,6 +14,15 @@ const metersPerSecondToPaceStr = (mps) => {
   return `${mins}:${String(secs).padStart(2, '0')} /mi`;
 };
 
+// Formats raw seconds per mile to "mm:ss /mi"
+const formatSecPerMileToStr = (secPerMile) => {
+  if (!secPerMile || secPerMile <= 0) return "N/A";
+  const roundedSecPerMile = Math.round(secPerMile / 5) * 5;
+  const mins = Math.floor(roundedSecPerMile / 60);
+  const secs = roundedSecPerMile % 60;
+  return `${mins}:${String(secs).padStart(2, '0')} /mi`;
+};
+
 const formatIntensityTitleCase = (val) => {
   if (!val) return "Active";
   const str = String(val);
@@ -56,50 +65,92 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
   const totalDurationSec = steps.reduce((sum, s) => sum + (s.duration || 0), 0) || 1;
 
-  // Extract step percentages
+  // Extract step target percentages
   const targetPcts = steps.map((s) => extractTargetValue(s));
-  const dataMinPct = Math.min(...targetPcts); // Slowest step (lowest % target)
-  const dataMaxPct = Math.max(...targetPcts); // Fastest step (highest % target)
+  const dataMinPct = Math.min(...targetPcts); // Slowest step
+  const dataMaxPct = Math.max(...targetPcts); // Fastest step
 
   let yMin, yMax;
+  let yTicks = [];
 
   if (thresholdPace && thresholdPace > 0) {
-    // Threshold speed in m/s -> threshold pace in seconds per mile
     const thresholdSecPerMile = 1609.34 / thresholdPace;
 
-    // Convert step target % to pace (sec/mi)
-    // Lower % = slower speed (mps) = HIGHER sec/mi
-    // Higher % = faster speed (mps) = LOWER sec/mi
-    const fastestStepSecPerMile = thresholdSecPerMile / (dataMaxPct / 100);
-    const slowestStepSecPerMile = thresholdSecPerMile / (dataMinPct / 100);
+    // Convert step bounds to sec/mi
+    const fastestStepSec = thresholdSecPerMile / (dataMaxPct / 100);
+    const slowestStepSec = thresholdSecPerMile / (dataMinPct / 100);
 
     // Apply minute buffers in sec/mi space
-    const yMaxPaceSecPerMile = Math.max(30, fastestStepSecPerMile - (FAST_BUFFER_MINUTES * 60)); // Faster pace at top
-    const yMinPaceSecPerMile = slowestStepSecPerMile + (SLOW_BUFFER_MINUTES * 60); // Slower pace at bottom
+    const rawFastSec = Math.max(30, fastestStepSec - (FAST_BUFFER_MINUTES * 60));
+    const rawSlowSec = slowestStepSec + (SLOW_BUFFER_MINUTES * 60);
 
-    // Convert buffered sec/mi bounds back to target percentage values
-    yMax = (thresholdSecPerMile / yMaxPaceSecPerMile) * 100;
-    yMin = Math.max(5, (thresholdSecPerMile / yMinPaceSecPerMile) * 100);
+    // Allowed tick intervals (in seconds): 60s (1:00), 90s (1:30), 120s (2:00)
+    const allowedStepSecs = [60, 90, 120];
+
+    let chosenStepSec = 60;
+    let bestTickCount = -1;
+    let chosenStartSec = rawFastSec;
+    let chosenEndSec = rawSlowSec;
+
+    // Evaluate allowed step intervals to pick 4-6 ticks (preferring higher tick count)
+    for (const stepSec of allowedStepSecs) {
+      // Round fast end (top of chart/lower sec) down to nearest step interval
+      const roundedFast = Math.floor(rawFastSec / stepSec) * stepSec;
+      // Round slow end (bottom of chart/higher sec) up to nearest step interval
+      const roundedSlow = Math.ceil(rawSlowSec / stepSec) * stepSec;
+
+      const count = Math.round((roundedSlow - roundedFast) / stepSec) + 1;
+
+      if (count >= 4 && count <= 6) {
+        if (count >= bestTickCount) { // Pick highest tick count among valid choices
+          bestTickCount = count;
+          chosenStepSec = stepSec;
+          chosenStartSec = roundedFast;
+          chosenEndSec = roundedSlow;
+        }
+      }
+    }
+
+    // Fallback if bounds fall outside standard 4-6 range
+    if (bestTickCount === -1) {
+      chosenStepSec = 60;
+      chosenStartSec = Math.floor(rawFastSec / 60) * 60;
+      chosenEndSec = Math.ceil(rawSlowSec / 60) * 60;
+    }
+
+    // Build pace ticks from fastest (top) to slowest (bottom)
+    const paceTicksSec = [];
+    for (let sec = chosenStartSec; sec <= chosenEndSec; sec += chosenStepSec) {
+      paceTicksSec.push(sec);
+    }
+
+    // Convert rounded boundaries back to percentage space for rendering
+    yMax = (thresholdSecPerMile / chosenStartSec) * 100;
+    yMin = Math.max(1, (thresholdSecPerMile / chosenEndSec) * 100);
+
+    yTicks = paceTicksSec.map((sec) => {
+      const pct = (thresholdSecPerMile / sec) * 100;
+      return {
+        label: formatSecPerMileToStr(sec),
+        pct: pct
+      };
+    });
+
   } else {
-    // Fallback scaling when thresholdPace is not available
+    // Percentage fallback mode
     const slowBufferPct = SLOW_BUFFER_MINUTES * 10;
     const fastBufferPct = FAST_BUFFER_MINUTES * 10;
     yMin = Math.max(0, dataMinPct - slowBufferPct);
     yMax = dataMaxPct + fastBufferPct;
+
+    const tickRatios = [1.0, 0.75, 0.5, 0.25, 0];
+    yTicks = tickRatios.map((r) => {
+      const pct = yMin + (yMax - yMin) * r;
+      return { label: `${Math.round(pct)}%`, pct };
+    });
   }
 
   const ySpan = yMax - yMin || 1;
-
-  // Generate 4 evenly distributed ticks (0%, 33%, 66%, 100% of range)
-  const yTickPercentages = [1.0, 0.666, 0.333, 0];
-  const yTicksPct = yTickPercentages.map((ratio) => yMin + ySpan * ratio);
-
-  const yTickLabels = yTicksPct.map((pct) => {
-    if (thresholdPace) {
-      return metersPerSecondToPaceStr(thresholdPace * (pct / 100));
-    }
-    return `${Math.round(pct)}%`;
-  });
 
   let accumulatedSec = 0;
   const timeTicks = steps.map((step) => {
@@ -110,7 +161,7 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
   return (
     <div style={{ margin: '16px 0', border: '1px solid #e9ecef', borderRadius: '8px', padding: '16px', backgroundColor: '#fcfcfc' }}>
       <div style={{ display: 'flex' }}>
-        {/* Y-AXIS LABELS */}
+        {/* DYNAMIC Y-AXIS LABELS */}
         <div 
           style={{ 
             position: 'relative',
@@ -123,8 +174,9 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
             lineHeight: '1'
           }}
         >
-          {yTickLabels.map((label, idx) => {
-            const topPct = (1 - yTickPercentages[idx]) * 100;
+          {yTicks.map((tick, idx) => {
+            // Compute visual position (0% = top, 100% = bottom)
+            const topPct = Math.min(Math.max((1 - (tick.pct - yMin) / ySpan) * 100, 0), 100);
             return (
               <span 
                 key={idx}
@@ -136,7 +188,7 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
                   whiteSpace: 'nowrap'
                 }}
               >
-                {label}
+                {tick.label}
               </span>
             );
           })}
@@ -188,8 +240,8 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
               const paceRangeFormatted = startPaceStr === endPaceStr ? avgPaceStr : `${startPaceStr} - ${endPaceStr}`;
               
-              // Dynamic height calculations relative to buffered pace bounds
-              const heightPct = Math.min(Math.max(((targetPct - yMin) / ySpan) * 100, 6), 100);
+              // Dynamic height positioning bounded to calculated scale
+              const heightPct = Math.min(Math.max(((targetPct - yMin) / ySpan) * 100, 4), 100);
 
               const tooltipText = `Step ${idx + 1}: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
 
