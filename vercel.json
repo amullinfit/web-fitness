@@ -1,0 +1,8 @@
+{
+    "rewrites": [
+      {
+        "source": "/api/val-workouts",
+        "destination": "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run"
+      }
+    ]
+  }
