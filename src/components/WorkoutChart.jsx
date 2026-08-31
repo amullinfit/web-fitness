@@ -55,22 +55,25 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
   const totalDurationSec = steps.reduce((sum, s) => sum + (s.duration || 0), 0) || 1;
 
-  // Compute pace bounds
+  // Compute pace bounds with dynamic padding so bars don't bunch at the top edge
   const targetPcts = steps.map((s) => extractTargetValue(s));
-  const maxPct = Math.max(...targetPcts, 100);
-  const minPct = Math.min(...targetPcts, 50);
+  const rawMaxPct = Math.max(...targetPcts, 100);
+  const rawMinPct = Math.min(...targetPcts, 50);
+  
+  const pctRange = rawMaxPct - rawMinPct || 20;
+  const yMax = rawMaxPct + pctRange * 0.1; // 10% top padding
+  const yMin = Math.max(0, rawMinPct - pctRange * 0.1); // 10% bottom padding
 
-  // Evenly distribute 4 Y-Axis ticks (Top, Upper-Mid, Lower-Mid, Bottom)
+  // Generate 4 Y-Axis ticks from top (fastest/highest) to bottom (slowest/lowest)
   const yTicksPct = [
-    maxPct,
-    maxPct - (maxPct - minPct) * (1 / 3),
-    maxPct - (maxPct - minPct) * (2 / 3),
-    minPct
+    yMax,
+    yMax - (yMax - yMin) * (1 / 3),
+    yMax - (yMax - yMin) * (2 / 3),
+    yMin
   ];
 
   const yTickLabels = yTicksPct.map((pct) => {
     if (thresholdPace) {
-      // Calculate speed in m/s based on percentage of threshold pace
       return metersPerSecondToPaceStr(thresholdPace * (pct / 100));
     }
     return `${Math.round(pct)}%`;
@@ -86,7 +89,7 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
   return (
     <div style={{ margin: '16px 0', border: '1px solid #e9ecef', borderRadius: '8px', padding: '16px', backgroundColor: '#fcfcfc' }}>
       <div style={{ display: 'flex' }}>
-        {/* EVENLY DISTRIBUTED Y-AXIS LABELS */}
+        {/* Y-AXIS LABELS */}
         <div 
           style={{ 
             display: 'flex', 
@@ -133,7 +136,6 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
               const zoneDetails = getZoneDetails(targetPct, rawIntensity);
               const barColor = zoneDetails.color;
 
-              // Compute Pace for Tooltip and Bar Label in mm:ss /mi
               let startPaceStr = "N/A";
               let endPaceStr = "N/A";
               let avgPaceStr = "N/A";
@@ -153,10 +155,10 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
               const paceRangeFormatted = startPaceStr === endPaceStr ? avgPaceStr : `${startPaceStr} - ${endPaceStr}`;
               
-              // Scale bar height dynamically between minPct and maxPct
-              const heightPct = Math.min(Math.max(((targetPct - minPct) / (maxPct - minPct || 1)) * 85 + 15, 15), 100);
+              // Scale bar height dynamically between yMin and yMax
+              const heightPct = Math.min(Math.max(((targetPct - yMin) / (yMax - yMin || 1)) * 100, 5), 100);
 
-              const tooltipText = `Intensity: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
+              const tooltipText = `Step ${idx + 1}: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
 
               return (
                 <div
@@ -166,33 +168,21 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
                     width: `${widthPct}%`,
                     height: `${heightPct}%`,
                     backgroundColor: barColor,
-                    borderRadius: '4px 4px 0 0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justify: 'space-between',
-                    alignItems: 'center',
-                    padding: '4px 1px',
+                    borderRadius: '3px 3px 0 0',
                     boxSizing: 'border-box',
                     transition: 'transform 0.15s ease, filter 0.15s ease',
                     cursor: 'pointer',
-                    minWidth: '8px'
+                    minWidth: '4px'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.filter = 'brightness(0.9)';
+                    e.currentTarget.style.filter = 'brightness(0.85)';
                     e.currentTarget.style.transform = 'scaleY(1.02)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.filter = 'none';
                     e.currentTarget.style.transform = 'scaleY(1)';
                   }}
-                >
-                  <span style={{ fontSize: '10px', fontWeight: '600', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {durationMins}m
-                  </span>
-                  <span style={{ fontSize: '9px', color: '#ffffff', fontWeight: '500' }}>
-                    {avgPaceStr}
-                  </span>
-                </div>
+                />
               );
             })}
           </div>
