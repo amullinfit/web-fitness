@@ -7,7 +7,7 @@ const VAL_OVERVIEW_URL = "/api/val-overview";
 
 const SWIM_TYPES = new Set(['swim', 'openwaterswim']);
 const BIKE_TYPES = new Set(['ride', 'virtualride']);
-const RUN_TYPES = new Set(['run', 'virtualrun', 'trailrun', 'hike', 'walk', 'virtualwalk']);
+const RUN_TYPES = new Set(['run', 'virtualrun', 'trailrun', 'hike', 'walk', 'virtualwalk', 'snowshoe']);
 
 const getCategory = (rawType) => {
   if (!rawType) return null;
@@ -16,6 +16,23 @@ const getCategory = (rawType) => {
   if (BIKE_TYPES.has(lower)) return 'Bike';
   if (RUN_TYPES.has(lower)) return 'Run';
   return null;
+};
+
+// --- UNIT FORMATTING HELPERS ---
+
+// Formats Swim distance into "0.0k yd"
+const formatSwimYards = (meters) => {
+  const yards = meters * 1.09361;
+  const kYards = yards / 1000;
+  return `${kYards.toFixed(1)}k yd`;
+};
+
+// Formats sport total string according to type
+const formatSportTotal = (sport, distanceMiles, rawMeters) => {
+  if (sport === 'Swim') {
+    return formatSwimYards(rawMeters);
+  }
+  return `${Math.round(distanceMiles)} mi`;
 };
 
 // --- DATE HELPER UTILITIES ---
@@ -91,7 +108,8 @@ export default function GeneralOverview({ overviewData }) {
     const dateObj = rawDate ? new Date(rawDate) : new Date();
     const rawType = w.type || w.sport || 'Run';
     const category = getCategory(rawType);
-    const distanceMiles = w.distance ? w.distance * 0.000621371 : 0;
+    const rawMeters = w.distance || 0;
+    const distanceMiles = rawMeters * 0.000621371;
     const isRace = w.is_race || w.race || (w.name && w.name.toLowerCase().includes('race'));
 
     return {
@@ -100,6 +118,7 @@ export default function GeneralOverview({ overviewData }) {
       rawType,
       category,
       name: w.name || '',
+      rawMeters,
       distanceMiles,
       isRace
     };
@@ -110,33 +129,33 @@ export default function GeneralOverview({ overviewData }) {
   const buckets = sportCategories.map((sport) => {
     const sportWorkouts = parsedWorkouts.filter(w => w.category === sport);
 
-    const curWeekVal = sportWorkouts
-      .filter(w => w.dateObj >= currentMon && w.dateObj <= currentSun)
-      .reduce((acc, w) => acc + w.distanceMiles, 0);
+    const curWeekWorkouts = sportWorkouts.filter(w => w.dateObj >= currentMon && w.dateObj <= currentSun);
+    const curWeekVal = curWeekWorkouts.reduce((acc, w) => acc + w.distanceMiles, 0);
+    const curWeekMeters = curWeekWorkouts.reduce((acc, w) => acc + w.rawMeters, 0);
 
-    const prevWeekVal = sportWorkouts
-      .filter(w => w.dateObj >= priorMon && w.dateObj <= priorSun)
-      .reduce((acc, w) => acc + w.distanceMiles, 0);
+    const prevWeekWorkouts = sportWorkouts.filter(w => w.dateObj >= priorMon && w.dateObj <= priorSun);
+    const prevWeekVal = prevWeekWorkouts.reduce((acc, w) => acc + w.distanceMiles, 0);
+    const prevWeekMeters = prevWeekWorkouts.reduce((acc, w) => acc + w.rawMeters, 0);
 
     const currentYear = now.getFullYear();
     const priorYear = currentYear - 1;
 
     const annualData = [currentYear, priorYear].map((yr) => {
       const yrWorkouts = sportWorkouts.filter(w => w.dateObj.getFullYear() === yr);
-      const yrDist = yrWorkouts.reduce((acc, w) => acc + w.distanceMiles, 0);
+      const yrDistMiles = yrWorkouts.reduce((acc, w) => acc + w.distanceMiles, 0);
+      const yrMeters = yrWorkouts.reduce((acc, w) => acc + w.rawMeters, 0);
+
       return {
         year: String(yr),
-        total: sport === 'Swim' ? `${Math.round(yrDist * 1609.34)}m` : `${yrDist.toFixed(1)} mi`,
-        count: yrWorkouts.length
+        total: formatSportTotal(sport, yrDistMiles, yrMeters)
       };
     });
 
-    const isSwim = sport === 'Swim';
     return {
       type: sport,
-      currentWeekDist: isSwim ? `${Math.round(curWeekVal * 1609.34)}m` : `${curWeekVal.toFixed(1)} mi`,
+      currentWeekDist: formatSportTotal(sport, curWeekVal, curWeekMeters),
       currentWeekVal: curWeekVal,
-      prevWeekDist: isSwim ? `${Math.round(prevWeekVal * 1609.34)}m` : `${prevWeekVal.toFixed(1)} mi`,
+      prevWeekDist: formatSportTotal(sport, prevWeekVal, prevWeekMeters),
       prevWeekVal: prevWeekVal,
       annualTable: annualData
     };
@@ -160,16 +179,13 @@ export default function GeneralOverview({ overviewData }) {
         day: dayNames[i],
         count: dayWorkouts.length,
         items: dayWorkouts.map(w => {
-          // If type is WeightTraining, use Name instead
           const isWeight = w.rawType.toLowerCase() === 'weighttraining';
           const displayLabel = isWeight ? (w.name || w.rawType) : w.rawType;
 
           return {
             category: w.category,
             displayLabel,
-            distance: w.category === 'Swim' 
-              ? `${Math.round(w.distanceMiles * 1609.34)}m`
-              : `${w.distanceMiles.toFixed(1)} mi`
+            distance: formatSportTotal(w.category, w.distanceMiles, w.rawMeters)
           };
         })
       });
@@ -207,27 +223,35 @@ export default function GeneralOverview({ overviewData }) {
     consistencyWeeks.push(weekDays);
   }
 
-  // 4. MONTHLY RUN TOTALS (Last 13 Months Data for Bar Chart)
-  const monthlyRunTotals = [];
-  let maxMonthlyDist = 0;
+  // 4 & 5. MONTHLY TOTALS (Run & Bike Bar Charts - Rounded Down)
+  const buildMonthlyTotals = (sportCategory) => {
+    const monthlyTotals = [];
+    let maxDist = 0;
 
-  for (let m = 12; m >= 0; m--) {
-    const targetMonth = new Date(now.getFullYear(), now.getMonth() - m, 1);
-    const monthStart = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
-    const monthEnd = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0, 23, 59, 59, 999);
+    for (let m = 12; m >= 0; m--) {
+      const targetMonth = new Date(now.getFullYear(), now.getMonth() - m, 1);
+      const monthStart = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
+      const monthEnd = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const runDist = parsedWorkouts
-      .filter(w => w.category === 'Run' && w.dateObj >= monthStart && w.dateObj <= monthEnd)
-      .reduce((acc, w) => acc + w.distanceMiles, 0);
+      const totalDist = parsedWorkouts
+        .filter(w => w.category === sportCategory && w.dateObj >= monthStart && w.dateObj <= monthEnd)
+        .reduce((acc, w) => acc + w.distanceMiles, 0);
 
-    if (runDist > maxMonthlyDist) maxMonthlyDist = runDist;
+      const roundedDist = Math.floor(totalDist);
+      if (roundedDist > maxDist) maxDist = roundedDist;
 
-    monthlyRunTotals.push({
-      month: formatMMMYYYY(targetMonth),
-      rawDistance: runDist,
-      distanceStr: `${runDist.toFixed(1)} mi`
-    });
-  }
+      monthlyTotals.push({
+        month: formatMMMYYYY(targetMonth),
+        rawDistance: roundedDist,
+        distanceStr: `${roundedDist} mi`
+      });
+    }
+
+    return { monthlyTotals, maxDist };
+  };
+
+  const { monthlyTotals: monthlyRunTotals, maxDist: maxRunDist } = buildMonthlyTotals('Run');
+  const { monthlyTotals: monthlyBikeTotals, maxDist: maxBikeDist } = buildMonthlyTotals('Bike');
 
   // Helper render for Weekly Grids
   const renderWeekGrid = (gridData, title) => (
@@ -273,6 +297,31 @@ export default function GeneralOverview({ overviewData }) {
     </div>
   );
 
+  // Helper render for Monthly Bar Charts
+  const renderBarChart = (title, dataList, maxVal) => (
+    <div className="monthly-card">
+      <h3 className="section-subtitle">{title}</h3>
+      <div className="monthly-barchart-container">
+        {dataList.map((item, mIdx) => {
+          const heightPercent = maxVal > 0 ? (item.rawDistance / maxVal) * 100 : 0;
+          return (
+            <div key={mIdx} className="monthly-bar-column">
+              <div className="monthly-bar-val">{item.rawDistance > 0 ? item.distanceStr : ''}</div>
+              <div className="monthly-bar-track">
+                <div 
+                  className="monthly-bar-fill" 
+                  style={{ height: `${heightPercent}%` }}
+                  title={`${item.month}: ${item.distanceStr}`}
+                />
+              </div>
+              <div className="monthly-bar-label">{item.month}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
     <div className="overview-container">
       
@@ -293,8 +342,7 @@ export default function GeneralOverview({ overviewData }) {
               <thead>
                 <tr>
                   <th className="col-year">Year</th>
-                  <th className="col-total">Total<br />Dist</th>
-                  <th className="col-count"># of<br />Workouts</th>
+                  <th className="col-total">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -302,7 +350,6 @@ export default function GeneralOverview({ overviewData }) {
                   <tr key={rIdx}>
                     <td className="col-year">{row.year}</td>
                     <td className="col-total">{row.total}</td>
-                    <td className="col-count">{row.count}</td>
                   </tr>
                 ))}
               </tbody>
@@ -362,31 +409,11 @@ export default function GeneralOverview({ overviewData }) {
         </div>
       </div>
 
-      {/* SECTION 4: MONTHLY RUN TOTALS (Bar Chart Representation) */}
-      <div className="monthly-card">
-        <h3 className="section-subtitle">
-          MONTHLY RUN TOTALS
-        </h3>
+      {/* SECTION 4: MONTHLY RUN TOTALS */}
+      {renderBarChart("MONTHLY RUN TOTALS", monthlyRunTotals, maxRunDist)}
 
-        <div className="monthly-barchart-container">
-          {monthlyRunTotals.map((item, mIdx) => {
-            const heightPercent = maxMonthlyDist > 0 ? (item.rawDistance / maxMonthlyDist) * 100 : 0;
-            return (
-              <div key={mIdx} className="monthly-bar-column">
-                <div className="monthly-bar-val">{item.rawDistance > 0 ? item.distanceStr : ''}</div>
-                <div className="monthly-bar-track">
-                  <div 
-                    className="monthly-bar-fill" 
-                    style={{ height: `${heightPercent}%` }}
-                    title={`${item.month}: ${item.distanceStr}`}
-                  />
-                </div>
-                <div className="monthly-bar-label">{item.month}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* SECTION 5: MONTHLY BIKE TOTALS */}
+      {renderBarChart("MONTHLY BIKE TOTALS", monthlyBikeTotals, maxBikeDist)}
 
     </div>
   );
