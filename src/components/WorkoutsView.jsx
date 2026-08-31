@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import WorkoutChart from './WorkoutChart';
 
-// Update with your actual Val Town endpoint URL
-const VAL_WORKOUTS_URL = "https://andrewmullin-api_workouts.web.val.run";
+// Updated Val Town endpoint for Workouts
+const VAL_WORKOUTS_URL = "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run";
 
 export default function WorkoutsView() {
   const [workouts, setWorkouts] = useState([]);
@@ -18,7 +18,6 @@ export default function WorkoutsView() {
         return res.json();
       })
       .then((json) => {
-        // Ensure data is an array before setting state
         if (Array.isArray(json)) {
           setWorkouts(json);
         } else {
@@ -53,14 +52,12 @@ export default function WorkoutsView() {
         <p>No upcoming workouts found.</p>
       ) : (
         workouts.map((w, index) => {
-          // Fallback date handling
           const rawDate = w.start_date_local || w.icu_start_date || w.start_date;
           const workoutDate = rawDate ? new Date(rawDate).toLocaleDateString() : 'TBD';
           
           const durationMin = w.moving_time ? Math.round(w.moving_time / 60) : 0;
           const distanceMi = w.distance ? (w.distance * 0.000621371).toFixed(1) : null;
           
-          // Safe access to nested workout doc steps
           const steps = w.workout_doc?.steps;
 
           return (
@@ -76,7 +73,6 @@ export default function WorkoutsView() {
                 Duration: {durationMin} mins {distanceMi && `| Distance: ${distanceMi} mi`}
               </div>
 
-              {/* Only render chart if steps exist and index < 3 */}
               {index < 3 && Array.isArray(steps) && steps.length > 0 && (
                 <div style={{ marginTop: '12px' }}>
                   <WorkoutChart steps={steps} containerId={`upcoming-chart-${w.id || index}`} />
