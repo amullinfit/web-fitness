@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import WorkoutChart from './WorkoutChart';
 
 // Replace with your actual Val Town HTTP URL for api_workouts
-const VAL_WORKOUTS_URL = "https://andrewmullin-api_workouts.web.val.run";
+const VAL_WORKOUTS_URL = "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run";
 
 export default function WorkoutsView() {
   const [workouts, setWorkouts] = useState([]);

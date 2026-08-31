@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // Replace with your actual Val Town HTTP URL for api_gear
-const VAL_GEAR_URL = "https://andrewmullin-api_gear.web.val.run";
+const VAL_GEAR_URL = "https://amullinfit--de20b782a4cf11f1832e1607ee4eb77e.web.val.run";
 
 export default function GearView() {
   const [gearList, setGearList] = useState([]);

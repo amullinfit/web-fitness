@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import WorkoutChart from './WorkoutChart';
 
 // Replace with your actual Val Town HTTP URL for api_daily
-const VAL_DAILY_URL = "https://andrewmullin-api_daily.web.val.run";
+const VAL_DAILY_URL = "https://amullinfit--50c3784ea4ce11f1bcc71607ee4eb77e.web.val.run";
 
 export default function DailyView() {
   const [data, setData] = useState({ planned: [], completed: [] });

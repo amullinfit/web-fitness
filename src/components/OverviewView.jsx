@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // Replace with your actual Val Town HTTP URL for api_overview
-const VAL_OVERVIEW_URL = "https://andrewmullin-api_overview.web.val.run";
+const VAL_OVERVIEW_URL = "https://amullinfit--254cc3a4a4cf11f1a9e41607ee4eb77e.web.val.run";
 
 export default function OverviewView() {
   const [data, setData] = useState({ activities: [], wellness: [] });
