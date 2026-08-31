@@ -1,5 +1,9 @@
 import React from 'react';
 
+// Adjustable buffer parameters (in minutes) for easy debugging
+const SLOW_BUFFER_MINUTES = 4; // Buffer added below the slowest interval (slower pace)
+const FAST_BUFFER_MINUTES = 2; // Buffer subtracted above the fastest interval (faster pace)
+
 // Converts meters per second to "mm:ss /mi"
 const metersPerSecondToPaceStr = (mps) => {
   if (!mps || mps <= 0) return "N/A";
@@ -52,18 +56,41 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
   const totalDurationSec = steps.reduce((sum, s) => sum + (s.duration || 0), 0) || 1;
 
-  // Extract values strictly from current step data
+  // Extract step percentages
   const targetPcts = steps.map((s) => extractTargetValue(s));
-  const dataMin = Math.min(...targetPcts);
-  const dataMax = Math.max(...targetPcts);
-  
-  // Dynamic scale: span strictly between actual data bounds with 5% margin
-  const range = (dataMax - dataMin) || 20;
-  const yMax = dataMax + range * 0.05;
-  const yMin = Math.max(0, dataMin - range * 0.05);
+  const dataMinPct = Math.min(...targetPcts); // Slowest step (lowest % target)
+  const dataMaxPct = Math.max(...targetPcts); // Fastest step (highest % target)
+
+  let yMin, yMax;
+
+  if (thresholdPace && thresholdPace > 0) {
+    // Threshold speed in m/s -> threshold pace in seconds per mile
+    const thresholdSecPerMile = 1609.34 / thresholdPace;
+
+    // Convert step target % to pace (sec/mi)
+    // Lower % = slower speed (mps) = HIGHER sec/mi
+    // Higher % = faster speed (mps) = LOWER sec/mi
+    const fastestStepSecPerMile = thresholdSecPerMile / (dataMaxPct / 100);
+    const slowestStepSecPerMile = thresholdSecPerMile / (dataMinPct / 100);
+
+    // Apply minute buffers in sec/mi space
+    const yMaxPaceSecPerMile = Math.max(30, fastestStepSecPerMile - (FAST_BUFFER_MINUTES * 60)); // Faster pace at top
+    const yMinPaceSecPerMile = slowestStepSecPerMile + (SLOW_BUFFER_MINUTES * 60); // Slower pace at bottom
+
+    // Convert buffered sec/mi bounds back to target percentage values
+    yMax = (thresholdSecPerMile / yMaxPaceSecPerMile) * 100;
+    yMin = Math.max(5, (thresholdSecPerMile / yMinPaceSecPerMile) * 100);
+  } else {
+    // Fallback scaling when thresholdPace is not available
+    const slowBufferPct = SLOW_BUFFER_MINUTES * 10;
+    const fastBufferPct = FAST_BUFFER_MINUTES * 10;
+    yMin = Math.max(0, dataMinPct - slowBufferPct);
+    yMax = dataMaxPct + fastBufferPct;
+  }
+
   const ySpan = yMax - yMin || 1;
 
-  // Generate 4 perfectly spaced tick values (0%, 33%, 66%, 100% of range)
+  // Generate 4 evenly distributed ticks (0%, 33%, 66%, 100% of range)
   const yTickPercentages = [1.0, 0.666, 0.333, 0];
   const yTicksPct = yTickPercentages.map((ratio) => yMin + ySpan * ratio);
 
@@ -83,12 +110,12 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
   return (
     <div style={{ margin: '16px 0', border: '1px solid #e9ecef', borderRadius: '8px', padding: '16px', backgroundColor: '#fcfcfc' }}>
       <div style={{ display: 'flex' }}>
-        {/* EVENLY SPACED Y-AXIS LABELS */}
+        {/* Y-AXIS LABELS */}
         <div 
           style={{ 
             position: 'relative',
             height: chartHeight, 
-            width: '60px',
+            width: '65px',
             marginRight: '12px', 
             fontSize: '10px', 
             color: '#6c757d', 
@@ -161,8 +188,8 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
               const paceRangeFormatted = startPaceStr === endPaceStr ? avgPaceStr : `${startPaceStr} - ${endPaceStr}`;
               
-              // Scale height across the full dynamic range (min 4% to remain visible)
-              const heightPct = Math.min(Math.max(((targetPct - yMin) / ySpan) * 100, 4), 100);
+              // Dynamic height calculations relative to buffered pace bounds
+              const heightPct = Math.min(Math.max(((targetPct - yMin) / ySpan) * 100, 6), 100);
 
               const tooltipText = `Step ${idx + 1}: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
 
