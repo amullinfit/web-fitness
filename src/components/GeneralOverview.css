@@ -29,6 +29,7 @@
   padding: 16px;
   background-color: #fff;
   box-sizing: border-box;
+  text-align: center; /* Center aligns title and main distance */
 }
 
 .sport-bucket-title {
@@ -50,6 +51,7 @@
   margin-bottom: 16px;
   display: flex;
   align-items: center;
+  justify-content: center; /* Center align Prev Week info */
 }
 
 .indicator-up {
@@ -69,7 +71,7 @@
 
 /* Squeezed Annual Table */
 .annual-table {
-  width: fit-content; /* Fit tightly to content */
+  width: fit-content;
   margin-left: auto;
   margin-right: auto;
   border-collapse: collapse;
@@ -81,7 +83,7 @@
   padding: 2px 6px 4px 6px;
   border-bottom: 1px solid #ced4da;
   font-weight: 600;
-  white-space: normal; /* Allows header line breaking */
+  white-space: normal;
   line-height: 1.1;
   vertical-align: bottom;
 }
@@ -208,7 +210,7 @@
   margin-bottom: 2px;
 }
 
-/* SECTION 3: Consistency Grid (Equal Aspect Squares & Aligned Labels) */
+/* SECTION 3: Consistency Grid */
 .consistency-card {
   border: 1px solid #e0e0e0;
   border-radius: 8px;

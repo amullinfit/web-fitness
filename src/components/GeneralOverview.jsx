@@ -3,6 +3,21 @@ import './GeneralOverview.css';
 
 const VAL_OVERVIEW_URL = "/api/val-overview";
 
+// --- SPORT CATEGORY MAPPING HELPERS ---
+
+const SWIM_TYPES = new Set(['swim', 'openwaterswim']);
+const BIKE_TYPES = new Set(['ride', 'virtualride']);
+const RUN_TYPES = new Set(['run', 'virtualrun', 'trailrun', 'hike', 'walk', 'virtualwalk']);
+
+const getCategory = (rawType) => {
+  if (!rawType) return null;
+  const lower = rawType.toLowerCase();
+  if (SWIM_TYPES.has(lower)) return 'Swim';
+  if (BIKE_TYPES.has(lower)) return 'Bike';
+  if (RUN_TYPES.has(lower)) return 'Run';
+  return null;
+};
+
 // --- DATE HELPER UTILITIES ---
 
 const getMonday = (d) => {
@@ -74,14 +89,17 @@ export default function GeneralOverview({ overviewData }) {
   const parsedWorkouts = workouts.map((w) => {
     const rawDate = w.start_date_local || w.icu_start_date || w.start_date;
     const dateObj = rawDate ? new Date(rawDate) : new Date();
-    const type = w.type || w.sport || 'Run';
+    const rawType = w.type || w.sport || 'Run';
+    const category = getCategory(rawType);
     const distanceMiles = w.distance ? w.distance * 0.000621371 : 0;
     const isRace = w.is_race || w.race || (w.name && w.name.toLowerCase().includes('race'));
 
     return {
       ...w,
       dateObj,
-      type,
+      rawType,
+      category,
+      name: w.name || '',
       distanceMiles,
       isRace
     };
@@ -90,7 +108,7 @@ export default function GeneralOverview({ overviewData }) {
   // 1. WEEKLY BUCKETS & ANNUAL TABLES DATA
   const sportCategories = ['Run', 'Bike', 'Swim'];
   const buckets = sportCategories.map((sport) => {
-    const sportWorkouts = parsedWorkouts.filter(w => w.type.toLowerCase() === sport.toLowerCase());
+    const sportWorkouts = parsedWorkouts.filter(w => w.category === sport);
 
     const curWeekVal = sportWorkouts
       .filter(w => w.dateObj >= currentMon && w.dateObj <= currentSun)
@@ -141,12 +159,19 @@ export default function GeneralOverview({ overviewData }) {
       days.push({
         day: dayNames[i],
         count: dayWorkouts.length,
-        items: dayWorkouts.map(w => ({
-          type: w.type,
-          distance: w.type.toLowerCase() === 'swim' 
-            ? `${Math.round(w.distanceMiles * 1609.34)}m`
-            : `${w.distanceMiles.toFixed(1)} mi`
-        }))
+        items: dayWorkouts.map(w => {
+          // If type is WeightTraining, use Name instead
+          const isWeight = w.rawType.toLowerCase() === 'weighttraining';
+          const displayLabel = isWeight ? (w.name || w.rawType) : w.rawType;
+
+          return {
+            category: w.category,
+            displayLabel,
+            distance: w.category === 'Swim' 
+              ? `${Math.round(w.distanceMiles * 1609.34)}m`
+              : `${w.distanceMiles.toFixed(1)} mi`
+          };
+        })
       });
     }
 
@@ -192,7 +217,7 @@ export default function GeneralOverview({ overviewData }) {
     const monthEnd = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0, 23, 59, 59, 999);
 
     const runDist = parsedWorkouts
-      .filter(w => w.type.toLowerCase() === 'run' && w.dateObj >= monthStart && w.dateObj <= monthEnd)
+      .filter(w => w.category === 'Run' && w.dateObj >= monthStart && w.dateObj <= monthEnd)
       .reduce((acc, w) => acc + w.distanceMiles, 0);
 
     if (runDist > maxMonthlyDist) maxMonthlyDist = runDist;
@@ -234,10 +259,10 @@ export default function GeneralOverview({ overviewData }) {
               <span className="empty-day-dash">—</span>
             ) : (
               d.items.map((item, iIdx) => {
-                const isTriSport = ['swim', 'bike', 'run'].includes(item.type.toLowerCase());
+                const isTriSport = !!item.category;
                 return (
                   <div key={iIdx} className="activity-item">
-                    {isTriSport ? `${item.type} ${item.distance || ''}` : item.type}
+                    {isTriSport ? `${item.displayLabel} ${item.distance || ''}` : item.displayLabel}
                   </div>
                 );
               })
