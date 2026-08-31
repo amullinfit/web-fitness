@@ -4,6 +4,7 @@ import WorkoutTextSection from './WorkoutTextSection';
 import './DailyView.css';
 
 const VAL_WORKOUTS_URL = "/api/val-workouts";
+const OVERVIEW_URL = "/api/overview";
 
 const safeStringLower = (val) => {
   if (!val) return "";
@@ -58,20 +59,61 @@ export default function DailyView() {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
 
   useEffect(() => {
-    fetch(VAL_WORKOUTS_URL)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json) {
-          const list = json.planned || json.workouts || (Array.isArray(json) ? json : []);
-          setWorkouts(list);
-          setSportSettings(Array.isArray(json.sportSettings) ? json.sportSettings : []);
+    let isMounted = true;
+    setLoading(true);
+
+    Promise.all([
+      fetch(VAL_WORKOUTS_URL).then((res) => res.json()).catch((err) => {
+        console.error("Error fetching val-workouts:", err);
+        return null;
+      }),
+      fetch(OVERVIEW_URL).then((res) => res.json()).catch((err) => {
+        console.error("Error fetching overview activities:", err);
+        return null;
+      })
+    ])
+      .then(([valJson, overviewJson]) => {
+        if (!isMounted) return;
+
+        // 1. Extract planned workouts from val-workouts
+        const valList = valJson?.planned || valJson?.workouts || (Array.isArray(valJson) ? valJson : []);
+        const settings = Array.isArray(valJson?.sportSettings)
+          ? valJson.sportSettings
+          : Array.isArray(overviewJson?.sportSettings)
+          ? overviewJson.sportSettings
+          : [];
+
+        // 2. Extract historical activities from api_overview
+        const overviewList = overviewJson?.activities || overviewJson?.workouts || (Array.isArray(overviewJson) ? overviewJson : []);
+
+        // 3. Merge and deduplicate records by ID / date composite
+        const rawMerged = [...valList, ...overviewList];
+        const seenIds = new Set();
+        const mergedList = [];
+
+        for (const item of rawMerged) {
+          if (!item) continue;
+          const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
+          const uniqueKey = item.id ? String(item.id) : `${item.name || item.type}-${itemDate}`;
+
+          if (!seenIds.has(uniqueKey)) {
+            seenIds.add(uniqueKey);
+            mergedList.push(item);
+          }
         }
+
+        setWorkouts(mergedList);
+        setSportSettings(settings);
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Error fetching workouts:", err);
-        setLoading(false);
+        console.error("Error loading workout data:", err);
+        if (isMounted) setLoading(false);
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
@@ -141,7 +183,7 @@ export default function DailyView() {
 
   const handleToday = () => setSelectedDate(new Date());
 
-  if (loading) return <div className="daily-view-loading">Loading Daily Workouts...</div>;
+  if (loading) return <div className="daily-view-loading">Loading Daily Workouts & Activities...</div>;
 
   const formatHeaderDate = (dateObj) => {
     return dateObj.toLocaleDateString(undefined, {
@@ -206,7 +248,7 @@ export default function DailyView() {
 
         {dayWorkouts.length === 0 ? (
           <div className="daily-empty-card">
-            No workouts scheduled for {isToday ? 'today' : dateStr}.
+            No workouts or activities scheduled for {isToday ? 'today' : dateStr}.
           </div>
         ) : (
           <div className="daily-workouts-list">
@@ -221,7 +263,7 @@ export default function DailyView() {
     <div className="daily-view-container">
       {/* Debug Line displaying dataset bounds */}
       <div className="daily-debug-bar">
-        [DEBUG] Data Range: Oldest = <strong>{workoutDateBounds.oldest}</strong> | Newest = <strong>{workoutDateBounds.newest}</strong> (Total Workouts: {workouts.length})
+        [DEBUG] Combined Data Range: Oldest = <strong>{workoutDateBounds.oldest}</strong> | Newest = <strong>{workoutDateBounds.newest}</strong> (Total Items: {workouts.length})
       </div>
 
       {/* Date Navigation Bar */}
