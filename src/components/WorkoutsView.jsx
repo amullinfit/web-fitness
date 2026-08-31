@@ -10,7 +10,7 @@ const formatDuration = (totalSeconds) => {
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = Math.floor(totalSeconds % 60);
   const pad = (num) => String(num).padStart(2, '0');
-  return `${hours}:${pad(minutes)}:${pad(seconds)}`;
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
 };
 
 const metersPerSecondToPaceStr = (mps) => {
@@ -40,53 +40,36 @@ const getThresholdPaceForSport = (sportType, sportSettings) => {
   return match?.threshold_pace || match?.pace_threshold || null;
 };
 
-const extractTargetValue = (targetObj) => {
-  if (typeof targetObj === 'number') return targetObj;
-  if (!targetObj || typeof targetObj !== 'object') return null;
-  const start = targetObj.start ?? targetObj.min ?? targetObj.value;
-  const end = targetObj.end ?? targetObj.max;
-  if (start !== undefined && end !== undefined && start !== end) {
-    return (Number(start) + Number(end)) / 2;
-  }
-  return start !== undefined ? Number(start) : null;
-};
+const parseWorkoutSteps = (stepList, thresholdPaceMps) => {
+  if (!Array.isArray(stepList)) return [];
 
-const parseStepsForDebug = (stepList, thresholdPaceMps) => {
-  let result = [];
-  if (!Array.isArray(stepList)) return result;
+  return stepList.map((s, idx) => {
+    let paceRangeStr = "N/A";
+    let calcPaceMps = null;
 
-  stepList.forEach((s, idx) => {
-    if (!s) return;
-    if (Array.isArray(s.steps)) {
-      const repeats = s.repetition || 1;
-      for (let r = 0; r < repeats; r++) {
-        result = result.concat(parseStepsForDebug(s.steps, thresholdPaceMps));
+    if (s.pace) {
+      const startPct = s.pace.start || 0;
+      const endPct = s.pace.end || 0;
+      paceRangeStr = `${startPct}-${endPct}% pace`;
+
+      if (thresholdPaceMps) {
+        const avgPct = (startPct + endPct) / 2;
+        calcPaceMps = thresholdPaceMps * (avgPct / 100);
       }
-    } else {
-      let intensityPctVal = null;
-      let intensityPctStr = "N/A";
-      let calculatedPaceMps = null;
-
-      if (s.pace) { intensityPctVal = extractTargetValue(s.pace); intensityPctStr = `${Math.round(intensityPctVal)}% Pace`; }
-      else if (s.power) { intensityPctVal = extractTargetValue(s.power); intensityPctStr = `${Math.round(intensityPctVal)}% Power`; }
-      else if (s.hr) { intensityPctVal = extractTargetValue(s.hr); intensityPctStr = `${Math.round(intensityPctVal)}% HR`; }
-      else if (s.target) { intensityPctVal = extractTargetValue(s.target); intensityPctStr = `${Math.round(intensityPctVal)}% Target`; }
-
-      if (s.speed) calculatedPaceMps = extractTargetValue(s.speed);
-      else if (typeof s.pace === 'object' && s.pace?.value > 15) calculatedPaceMps = extractTargetValue(s.pace);
-      else if (thresholdPaceMps && intensityPctVal) calculatedPaceMps = thresholdPaceMps * (intensityPctVal / 100);
-
-      result.push({
-        id: idx,
-        name: s.name || s.type || `Step ${idx + 1}`,
-        durationSec: s.duration || s.moving_time || 0,
-        intensity: intensityPctStr,
-        paceStr: calculatedPaceMps ? metersPerSecondToPaceStr(calculatedPaceMps) : "N/A",
-        text: s.description || s.text || s.notes || "No description text"
-      });
     }
+
+    let stepName = s.text || s.name || (s.warmup ? "Warmup" : s.cooldown ? "Cooldown" : `Step ${idx + 1}`);
+
+    return {
+      id: idx,
+      name: stepName,
+      durationSec: s.duration || 0,
+      intensity: s.intensity || (s.warmup ? "warmup" : s.cooldown ? "cooldown" : "active"),
+      pacePctStr: paceRangeStr,
+      calculatedPaceStr: calcPaceMps ? metersPerSecondToPaceStr(calcPaceMps) : "N/A",
+      text: s.text || "No step text"
+    };
   });
-  return result;
 };
 
 export default function WorkoutsView() {
@@ -99,14 +82,16 @@ export default function WorkoutsView() {
       .then((res) => res.json())
       .then((json) => {
         if (json) {
-          setWorkouts(Array.isArray(json.workouts) ? json.workouts : (Array.isArray(json) ? json : []));
+          const list = json.planned || json.workouts || (Array.isArray(json) ? json : []);
+          setWorkouts(list);
           setSportSettings(Array.isArray(json.sportSettings) ? json.sportSettings : []);
         }
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, []);
 
-  if (loading) return <div style={{ padding: '20px' }}>Loading Workouts...</div>;
+  if (loading) return <div style={{ padding: '20px', color: '#6c757d' }}>Loading Workouts...</div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -117,31 +102,31 @@ export default function WorkoutsView() {
         const durationStr = formatDuration(w.moving_time || w.elapsed_time);
         const distanceMi = w.distance ? (w.distance * 0.000621371).toFixed(1) : null;
         
-        let rawSteps = null;
+        // Extract steps directly from workout_doc JSON object
+        let rawSteps = [];
         if (w.workout_doc) {
-          try {
-            const doc = typeof w.workout_doc === 'string' ? JSON.parse(w.workout_doc) : w.workout_doc;
-            rawSteps = doc?.steps;
-          } catch (e) {}
+          const doc = typeof w.workout_doc === 'string' ? JSON.parse(w.workout_doc) : w.workout_doc;
+          rawSteps = doc?.steps || [];
         }
 
         const thresholdPaceMps = getThresholdPaceForSport(w.type, sportSettings);
         const thresholdPaceStr = thresholdPaceMps ? metersPerSecondToPaceStr(thresholdPaceMps) : "Not Set";
-        const debugSteps = parseStepsForDebug(rawSteps, thresholdPaceMps);
-        const workoutId = w.id || `upcoming-${index}`;
+        const debugSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps);
+        const workoutId = w.id || `workout-${index}`;
 
         return (
-          <div key={workoutId} style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '16px', backgroundColor: '#fff' }}>
+          <div key={workoutId} style={{ border: '1px solid #ced4da', borderRadius: '8px', padding: '16px', backgroundColor: '#fff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px' }}>
               <span>{w.name || "Workout"} ({w.type || 'Run'})</span>
               <span>{workoutDate}</span>
             </div>
-            <div style={{ fontSize: '14px', color: '#555', margin: '6px 0' }}>
+
+            <div style={{ fontSize: '14px', color: '#555', margin: '6px 0 12px 0' }}>
               Duration: {durationStr} {distanceMi && `| Distance: ${distanceMi} mi`}
             </div>
 
-            {/* Render Graph for ALL Workouts */}
-            {Array.isArray(rawSteps) && rawSteps.length > 0 && (
+            {/* Graphic Chart Display */}
+            {rawSteps.length > 0 && (
               <WorkoutChart 
                 steps={rawSteps} 
                 containerId={`chart-${workoutId}`} 
@@ -149,7 +134,7 @@ export default function WorkoutsView() {
               />
             )}
 
-            {/* Collapsible Step Details */}
+            {/* Collapsible Step Debug: All text details roll up inside here */}
             <CollapsibleStepDebug 
               debugSteps={debugSteps}
               thresholdPaceStr={thresholdPaceStr}
