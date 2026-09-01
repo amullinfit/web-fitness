@@ -292,7 +292,7 @@ export default function DailyView() {
     <div className="daily-view-container">
       {/* Debug Line displaying merged range and feed breakdown */}
       <div className="daily-debug-bar">
-        [DEBUG] Merged Range: Oldest = <strong>{workoutDateBounds.oldest}</strong> | Newest = <strong>{workoutDateBounds.newest}</strong> (Total: {workouts.length} [HISTORICAL: {workoutDateBounds.historicalCount}, WORKOUTS: {workoutDateBounds.workoutCount}])
+        [DEBUG] Range: Oldest = <strong>{workoutDateBounds.oldest}</strong> | Newest = <strong>{workoutDateBounds.newest}</strong> (Total: {workouts.length} [HISTORICAL: {workoutDateBounds.historicalCount}, WORKOUTS: {workoutDateBounds.workoutCount}])
       </div>
 
       {/* Date Navigation Bar */}
