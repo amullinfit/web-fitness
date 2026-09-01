@@ -4,7 +4,7 @@ import WorkoutTextSection from './WorkoutTextSection';
 import './DailyView.css';
 
 const VAL_WORKOUTS_URL = "/api/val-workouts";
-const OVERVIEW_URL = "/api/val-overview";
+const HISTORICAL_URL = "/api/val-historical";
 
 const safeStringLower = (val) => {
   if (!val) return "";
@@ -69,25 +69,25 @@ export default function DailyView() {
         console.error("Error fetching val-workouts:", err);
         return null;
       }),
-      fetch(OVERVIEW_URL).then((res) => res.json()).catch((err) => {
-        console.error("Error fetching overview activities:", err);
+      fetch(HISTORICAL_URL).then((res) => res.json()).catch((err) => {
+        console.error("Error fetching historical activities:", err);
         return null;
       })
     ])
-      .then(([valJson, overviewJson]) => {
+      .then(([valJson, historicalJson]) => {
         if (!isMounted) return;
 
         // Extract and tag feedSource
         const valList = (valJson?.planned || valJson?.workouts || (Array.isArray(valJson) ? valJson : []))
           .map((item) => ({ ...item, feedSource: 'WORKOUTS' }));
 
-        const overviewList = (overviewJson?.activities || overviewJson?.workouts || (Array.isArray(overviewJson) ? overviewJson : []))
+        const overviewList = (historicalJson?.activities || historicalJson?.workouts || (Array.isArray(historicalJson) ? historicalJson : []))
           .map((item) => ({ ...item, feedSource: 'OVERVIEW' }));
 
         const settings = Array.isArray(valJson?.sportSettings)
           ? valJson.sportSettings
-          : Array.isArray(overviewJson?.sportSettings)
-          ? overviewJson.sportSettings
+          : Array.isArray(historicalJson?.sportSettings)
+          ? historicalJson.sportSettings
           : [];
 
         // Merge & deduplicate by ID / composite key

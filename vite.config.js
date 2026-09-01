@@ -18,6 +18,11 @@ export default defineConfig({
         target: 'https://amullinfit--de20b782a4cf11f1832e1607ee4eb77e.web.val.run',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/val-gear/, '')
+      },
+      '/api/historical': {
+        target: 'https://amullinfit--60610b3ea60611f1bbff1607ee4eb77e.web.val.run',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/historical/, '')
       }
     }
   }
