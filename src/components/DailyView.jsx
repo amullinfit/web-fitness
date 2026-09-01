@@ -54,6 +54,29 @@ const isWorkoutCompleted = (workout) => {
   return hasPairedEvent || hasCompliance;
 };
 
+// Helper to convert historical activity intervals into steps format for WorkoutChart
+const getStepsFromWorkout = (workout) => {
+  // 1. If activity has intervals array (Historical Feed)
+  if (Array.isArray(workout.intervals) && workout.intervals.length > 0) {
+    return workout.intervals.map((interval) => ({
+      duration: interval.elapsed_time || 0,
+      pace: interval.average_pace ?? null,
+      watts: interval.weighted_average_watts || interval.average_watts || null,
+      speed: interval.average_speed ?? null,
+      type: interval.type || workout.type || 'Interval',
+      distance: interval.distance || 0
+    }));
+  }
+
+  // 2. Fall back to structured doc steps (Planned Workouts)
+  if (workout.workout_doc) {
+    const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
+    return doc?.steps || [];
+  }
+
+  return [];
+};
+
 export default function DailyView() {
   const [workouts, setWorkouts] = useState([]);
   const [sportSettings, setSportSettings] = useState([]);
@@ -204,11 +227,7 @@ export default function DailyView() {
   };
 
   const renderWorkoutCard = (workout, index) => {
-    let rawSteps = [];
-    if (workout.workout_doc) {
-      const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
-      rawSteps = doc?.steps || [];
-    }
+    const rawSteps = getStepsFromWorkout(workout);
     const thresholdPaceMps = getThresholdPaceForSport(workout.type, sportSettings);
 
     const workoutDateStr = getLocalDateString(
@@ -278,12 +297,6 @@ export default function DailyView() {
 
       {/* Date Navigation Bar */}
       <div className="daily-nav-bar">
-        <div>
-          <h2 className="daily-header-title">
-            {formatHeaderDate(selectedDate)}
-          </h2>
-        </div>
-
         <div className="daily-nav-buttons">
           <button onClick={handlePrevDay} className="nav-btn">
             ← Prev Day
