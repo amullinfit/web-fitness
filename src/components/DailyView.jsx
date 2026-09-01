@@ -43,7 +43,7 @@ const getLocalDateString = (dateInput) => {
 };
 
 const isWorkoutCompleted = (workout) => {
-  if (workout.feedSource === 'OVERVIEW') {
+  if (workout.feedSource === 'HISTORICAL') {
     return true;
   }
 
@@ -81,8 +81,8 @@ export default function DailyView() {
         const valList = (valJson?.planned || valJson?.workouts || (Array.isArray(valJson) ? valJson : []))
           .map((item) => ({ ...item, feedSource: 'WORKOUTS' }));
 
-        const overviewList = (historicalJson?.activities || historicalJson?.workouts || (Array.isArray(historicalJson) ? historicalJson : []))
-          .map((item) => ({ ...item, feedSource: 'OVERVIEW' }));
+        const historicalList = (historicalJson?.activities || historicalJson?.workouts || (Array.isArray(historicalJson) ? historicalJson : []))
+          .map((item) => ({ ...item, feedSource: 'HISTORICAL' }));
 
         const settings = Array.isArray(valJson?.sportSettings)
           ? valJson.sportSettings
@@ -91,7 +91,7 @@ export default function DailyView() {
           : [];
 
         // Merge & deduplicate by ID / composite key
-        const rawMerged = [...valList, ...overviewList];
+        const rawMerged = [...valList, ...historicalList];
         const seenIds = new Set();
         const mergedList = [];
 
@@ -126,7 +126,7 @@ export default function DailyView() {
   // Compute oldest & newest dates across the merged list
   const workoutDateBounds = useMemo(() => {
     if (!Array.isArray(workouts) || workouts.length === 0) {
-      return { oldest: 'N/A', newest: 'N/A', overviewCount: 0, workoutCount: 0 };
+      return { oldest: 'N/A', newest: 'N/A', historicalCount: 0, workoutCount: 0 };
     }
 
     const validDates = workouts
@@ -134,17 +134,17 @@ export default function DailyView() {
       .filter(Boolean)
       .sort();
 
-    const overviewCount = workouts.filter((w) => w.feedSource === 'OVERVIEW').length;
+    const historicalCount = workouts.filter((w) => w.feedSource === 'HISTORICAL').length;
     const workoutCount = workouts.filter((w) => w.feedSource === 'WORKOUTS').length;
 
     if (validDates.length === 0) {
-      return { oldest: 'N/A', newest: 'N/A', overviewCount, workoutCount };
+      return { oldest: 'N/A', newest: 'N/A', historicalCount, workoutCount };
     }
 
     return {
       oldest: validDates[0],
       newest: validDates[validDates.length - 1],
-      overviewCount,
+      historicalCount,
       workoutCount
     };
   }, [workouts]);
@@ -273,7 +273,7 @@ export default function DailyView() {
     <div className="daily-view-container">
       {/* Debug Line displaying merged range and feed breakdown */}
       <div className="daily-debug-bar">
-        [DEBUG] Merged Range: Oldest = <strong>{workoutDateBounds.oldest}</strong> | Newest = <strong>{workoutDateBounds.newest}</strong> (Total: {workouts.length} [OVERVIEW: {workoutDateBounds.overviewCount}, WORKOUTS: {workoutDateBounds.workoutCount}])
+        [DEBUG] Merged Range: Oldest = <strong>{workoutDateBounds.oldest}</strong> | Newest = <strong>{workoutDateBounds.newest}</strong> (Total: {workouts.length} [HISTORICAL: {workoutDateBounds.historicalCount}, WORKOUTS: {workoutDateBounds.workoutCount}])
       </div>
 
       {/* Date Navigation Bar */}
