@@ -11,7 +11,6 @@ const getDistanceInMiles = (gear) => {
   if (gear.distance_miles !== undefined) return gear.distance_miles;
   if (gear.distance_m !== undefined) return gear.distance_m / 1609.34;
   if (gear.distance !== undefined) {
-    // If distance is large, assume meters, otherwise miles
     return gear.distance > 5000 ? gear.distance / 1609.34 : gear.distance;
   }
   return 0;
@@ -27,23 +26,35 @@ const isShoeGear = (gear) => {
   if (type.includes('shoe') || type.includes('footwear') || type.includes('run')) return true;
   if (name.includes('shoe') || name.includes('runner') || name.includes('vaporfly') || name.includes('clifton')) return true;
 
-  // Default assumption if category is not bike/component/apparel
   return !type.includes('bike') && !type.includes('component') && !type.includes('apparel');
 };
 
 /**
- * Checks if the shoe name indicates "Not a shoe" or similar test item.
+ * Checks if item represents unassigned activities ("NOT ASSIGNED TO A SHOE")
  */
-const isNotAShoeNamed = (gear) => {
-  const name = (gear.name || '').toLowerCase();
-  return name.includes('not a shoe') || name.includes('not-a-shoe');
+const isUnassignedActivity = (gear) => {
+  const name = (gear.name || '').toUpperCase();
+  const type = (gear.type || gear.category || '').toUpperCase();
+  return name.includes('NOT ASSIGNED TO A SHOE') || type.includes('NOT ASSIGNED TO A SHOE');
 };
 
 /**
- * Checks if item is marked retired.
+ * Checks whether retired contains a valid date value or string
  */
-const isRetiredGear = (gear) => {
-  return gear.retired === true || gear.status === 'retired' || gear.state === 'retired';
+const hasRetiredDate = (gear) => {
+  if (!gear.retired || gear.retired === false) return false;
+  // Check if string/date presence is non-null
+  return true;
+};
+
+/**
+ * Helper to format date strings cleanly
+ */
+const formatRetiredDate = (dateVal) => {
+  if (typeof dateVal === 'boolean') return 'Retired';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return String(dateVal);
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
 export default function GearView({ gearList: initialGearList }) {
@@ -52,7 +63,6 @@ export default function GearView({ gearList: initialGearList }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // If initial props are provided, use them; otherwise fetch from API
     if (initialGearList && initialGearList.length > 0) {
       setGearData(initialGearList);
       setLoading(false);
@@ -69,7 +79,6 @@ export default function GearView({ gearList: initialGearList }) {
       })
       .then((json) => {
         if (!isMounted) return;
-        // Accept array directly or extracted array property
         const list = Array.isArray(json) ? json : json?.gear || json?.items || [];
         setGearData(list);
         setLoading(false);
@@ -89,21 +98,24 @@ export default function GearView({ gearList: initialGearList }) {
 
   const activeShoes = [];
   const retiredShoes = [];
-  const notAShoeCategory = [];
+  const unassignedActivities = [];
   const otherGear = [];
 
   gearData.forEach((item) => {
+    const isUnassigned = isUnassignedActivity(item);
     const isShoe = isShoeGear(item);
-    const isNotShoeNamed = isNotAShoeNamed(item);
+    const isRetired = hasRetiredDate(item);
 
-    if (isNotShoeNamed) {
-      notAShoeCategory.push(item);
-    } else if (!isShoe) {
-      otherGear.push(item);
-    } else if (isRetiredGear(item)) {
-      retiredShoes.push(item);
+    if (isUnassigned) {
+      unassignedActivities.push(item);
+    } else if (isShoe) {
+      if (isRetired) {
+        retiredShoes.push(item);
+      } else {
+        activeShoes.push(item);
+      }
     } else {
-      activeShoes.push(item);
+      otherGear.push(item);
     }
   });
 
@@ -111,14 +123,16 @@ export default function GearView({ gearList: initialGearList }) {
     const distanceMiles = getDistanceInMiles(item);
     const maxMiles = item.max_distance_miles || DEFAULT_MAX_SHOE_MILES;
     const progressPercent = Math.min(100, (distanceMiles / maxMiles) * 100);
-    const retired = isRetiredGear(item);
+    const isRetired = hasRetiredDate(item);
 
     return (
-      <div key={item.id || item.name} className={`gear-card ${retired ? 'retired-card' : ''}`}>
+      <div key={item.id || item.name} className={`gear-card ${isRetired ? 'retired-card' : ''}`}>
         <div className="gear-card-header">
           <h4>{item.name || 'Unnamed Gear'}</h4>
-          {retired ? (
-            <span className="badge badge-retired">Retired</span>
+          {isRetired ? (
+            <span className="badge badge-retired">
+              Retired: {formatRetiredDate(item.retired)}
+            </span>
           ) : (
             <span className="badge badge-active">Active</span>
           )}
@@ -174,7 +188,19 @@ export default function GearView({ gearList: initialGearList }) {
         )}
       </section>
 
-      {/* 2. Retired Shoes Section */}
+      {/* 2. Unassigned Activities Section */}
+      <section className="gear-section">
+        <h3 className="gear-section-title">Unassigned Activities</h3>
+        {unassignedActivities.length === 0 ? (
+          <p className="no-gear-msg">No unassigned activities found.</p>
+        ) : (
+          <div className="gear-grid">
+            {unassignedActivities.map((item) => renderGearCard(item, false))}
+          </div>
+        )}
+      </section>
+
+      {/* 3. Retired Shoes Section */}
       <section className="gear-section">
         <h3 className="gear-section-title">Retired Shoes</h3>
         {retiredShoes.length === 0 ? (
@@ -186,19 +212,7 @@ export default function GearView({ gearList: initialGearList }) {
         )}
       </section>
 
-      {/* 3. Not a Shoe Section */}
-      <section className="gear-section">
-        <h3 className="gear-section-title">Not a Shoe</h3>
-        {notAShoeCategory.length === 0 ? (
-          <p className="no-gear-msg">No items in this category.</p>
-        ) : (
-          <div className="gear-grid">
-            {notAShoeCategory.map((item) => renderGearCard(item, false))}
-          </div>
-        )}
-      </section>
-
-      {/* 4. Other Non-Shoe Equipment Section */}
+      {/* 4. Other Equipment Section */}
       <section className="gear-section">
         <h3 className="gear-section-title">Other Equipment</h3>
         {otherGear.length === 0 ? (
