@@ -1,0 +1,70 @@
+/* Container */
+.workout-chart-container {
+    margin: 16px 0;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 16px;
+    background-color: #fcfcfc;
+  }
+  
+  .workout-chart-wrapper {
+    display: flex;
+  }
+  
+  /* Y-Axis */
+  .workout-chart-yaxis {
+    position: relative;
+    width: 75px;
+    margin-right: 12px;
+    font-size: 10px;
+    color: #6c757d;
+    font-weight: 600;
+    line-height: 1;
+  }
+  
+  .workout-chart-ytick {
+    position: absolute;
+    right: 0;
+    transform: translateY(-50%);
+    white-space: nowrap;
+  }
+  
+  /* Main Content Area */
+  .workout-chart-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Bars Area */
+  .workout-chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #dee2e6;
+    border-left: 1px solid #dee2e6;
+    position: relative;
+  }
+  
+  .workout-chart-bar {
+    border-radius: 3px 3px 0 0;
+    box-sizing: border-box;
+    transition: transform 0.15s ease, filter 0.15s ease;
+    cursor: pointer;
+    min-width: 4px;
+  }
+  
+  .workout-chart-bar:hover {
+    filter: brightness(0.85);
+    transform: scaleY(1.02);
+  }
+  
+  /* X-Axis */
+  .workout-chart-xaxis {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 4px;
+    font-size: 10px;
+    color: #6c757d;
+  }
