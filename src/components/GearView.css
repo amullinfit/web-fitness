@@ -1,6 +1,17 @@
 /* GearView.css */
 
-.gear-view-container {
+.gear-debug-bar {
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    color: #4b5563;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+  }
+  
+  .gear-view-container {
     padding: 24px;
     max-width: 1200px;
     margin: 0 auto;

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './GearView.css';
 
+const GEAR_URL = "/api/val-gear";
 const DEFAULT_MAX_SHOE_MILES = 400;
 
 /**
@@ -45,13 +46,53 @@ const isRetiredGear = (gear) => {
   return gear.retired === true || gear.status === 'retired' || gear.state === 'retired';
 };
 
-export default function GearView({ gearList = [] }) {
+export default function GearView({ gearList: initialGearList }) {
+  const [gearData, setGearData] = useState(initialGearList || []);
+  const [loading, setLoading] = useState(!initialGearList || initialGearList.length === 0);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // If initial props are provided, use them; otherwise fetch from API
+    if (initialGearList && initialGearList.length > 0) {
+      setGearData(initialGearList);
+      setLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    setLoading(true);
+
+    fetch(GEAR_URL)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
+      .then((json) => {
+        if (!isMounted) return;
+        // Accept array directly or extracted array property
+        const list = Array.isArray(json) ? json : json?.gear || json?.items || [];
+        setGearData(list);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error fetching gear:", err);
+        if (isMounted) {
+          setError(err.message);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [initialGearList]);
+
   const activeShoes = [];
   const retiredShoes = [];
   const notAShoeCategory = [];
   const otherGear = [];
 
-  gearList.forEach((item) => {
+  gearData.forEach((item) => {
     const isShoe = isShoeGear(item);
     const isNotShoeNamed = isNotAShoeNamed(item);
 
@@ -110,11 +151,13 @@ export default function GearView({ gearList = [] }) {
     );
   };
 
+  if (loading) return <div className="gear-view-loading">Loading Gear Data...</div>;
+
   return (
     <div className="gear-view-container">
-      {/* Simple Debug Line */}
+      {/* Debug Line displaying total API items retrieved */}
       <div className="gear-debug-bar">
-        [DEBUG] Total Gear Items via API: <strong>{gearList.length}</strong>
+        [DEBUG] Total Gear Items via API: <strong>{gearData.length}</strong> {error && <span style={{ color: 'red' }}>(Error: {error})</span>}
       </div>
 
       <h2>Gear Tracker</h2>
