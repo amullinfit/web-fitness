@@ -12,6 +12,15 @@ const safeStringLower = (val) => {
   return String(val.id || val.type || val.name || val).toLowerCase();
 };
 
+/**
+ * Converts speed in meters per second (m/s) to pace in seconds per mile.
+ * Returns null if speed is invalid or 0.
+ */
+const speedToPaceSeconds = (speedMps) => {
+  if (typeof speedMps !== 'number' || speedMps <= 0) return null;
+  return 1609.34 / speedMps;
+};
+
 const getThresholdPaceForSport = (sportType, sportSettings) => {
   if (!sportType || !Array.isArray(sportSettings)) return null;
   const normalizedSport = safeStringLower(sportType);
@@ -77,21 +86,25 @@ const flattenSteps = (stepsList) => {
 
 /**
  * Extracts and flattens workout steps for both historical and planned workouts.
+ * Derives pace values strictly from speed (in m/s), ignoring average_pace.
  */
 const getStepsFromWorkout = (workout) => {
   if (!workout) return [];
 
   // 1. If activity has intervals array (Historical Feed)
   if (Array.isArray(workout.intervals) && workout.intervals.length > 0) {
-    return workout.intervals.map((interval) => ({
-      duration: interval.elapsed_time || 0,
-      pace: interval.average_pace ?? null,
-      watts: interval.weighted_average_watts || interval.average_watts || null,
-      speed: interval.average_speed ?? null,
-      type: interval.type || workout.type || 'Interval',
-      distance: interval.distance || 0,
-      name: interval.name || 'Interval'
-    }));
+    return workout.intervals.map((interval) => {
+      const speed = interval.average_speed ?? null;
+      return {
+        duration: interval.elapsed_time || 0,
+        pace: speedToPaceSeconds(speed), // Calculate pace strictly from m/s speed
+        watts: interval.weighted_average_watts || interval.average_watts || null,
+        speed: speed,
+        type: interval.type || workout.type || 'Interval',
+        distance: interval.distance || 0,
+        name: interval.name || 'Interval'
+      };
+    });
   }
 
   // 2. Fall back to structured doc steps (Planned Workouts)
@@ -99,7 +112,15 @@ const getStepsFromWorkout = (workout) => {
     try {
       const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
       const rawSteps = doc?.steps || [];
-      return flattenSteps(rawSteps);
+      const flattened = flattenSteps(rawSteps);
+
+      return flattened.map((step) => {
+        const speed = step.speed ?? (step.pace ? (typeof step.pace === 'number' ? step.pace : null) : null);
+        return {
+          ...step,
+          pace: speedToPaceSeconds(speed) ?? step.pace // Fallback if planned step uses a direct pace value
+        };
+      });
     } catch (e) {
       console.error('Error parsing workout_doc:', e);
       return [];
@@ -330,9 +351,10 @@ export default function DailyView() {
     const rawSteps = getStepsFromWorkout(workout);
     const thresholdPaceMps = getThresholdPaceForSport(workout.type, sportSettings);
 
+    // Extract pace in seconds/mile strictly from step speed (m/s)
     const paceValues = rawSteps
-      .map((s) => (typeof s.pace === 'number' ? s.pace : s.pace?.start || s.pace?.end))
-      .filter(Boolean);
+      .map((s) => speedToPaceSeconds(s.speed))
+      .filter((p) => p !== null && !isNaN(p));
 
     const paceConfig = calculatePaceTicks(paceValues);
 
