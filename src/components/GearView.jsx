@@ -78,6 +78,13 @@ const formatRetiredDate = (dateVal) => {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
+/**
+ * Helper to sort array of gear by distance descending
+ */
+const sortByDistanceDesc = (items) => {
+  return [...items].sort((a, b) => getDistanceInMiles(b) - getDistanceInMiles(a));
+};
+
 export default function GearView({ gearList: initialGearList }) {
   const [gearData, setGearData] = useState(initialGearList || []);
   const [loading, setLoading] = useState(!initialGearList || initialGearList.length === 0);
@@ -130,10 +137,10 @@ export default function GearView({ gearList: initialGearList }) {
     };
   }, [initialGearList]);
 
-  const activeShoes = [];
-  const retiredShoes = [];
-  const unassignedActivities = [];
-  const otherGear = [];
+  const rawActiveShoes = [];
+  const rawRetiredShoes = [];
+  const rawUnassignedActivities = [];
+  const rawOtherGear = [];
 
   gearData.forEach((item) => {
     const isUnassigned = isUnassignedActivity(item);
@@ -141,17 +148,23 @@ export default function GearView({ gearList: initialGearList }) {
     const isRetired = hasRetiredDate(item);
 
     if (isUnassigned) {
-      unassignedActivities.push(item);
+      rawUnassignedActivities.push(item);
     } else if (isShoe) {
       if (isRetired) {
-        retiredShoes.push(item);
+        rawRetiredShoes.push(item);
       } else {
-        activeShoes.push(item);
+        rawActiveShoes.push(item);
       }
     } else {
-      otherGear.push(item);
+      rawOtherGear.push(item);
     }
   });
+
+  // Sort each section by distance descending
+  const activeShoes = sortByDistanceDesc(rawActiveShoes);
+  const retiredShoes = sortByDistanceDesc(rawRetiredShoes);
+  const unassignedActivities = sortByDistanceDesc(rawUnassignedActivities);
+  const otherGear = sortByDistanceDesc(rawOtherGear);
 
   const renderGearCard = (item, isShoe = true) => {
     const distanceMiles = getDistanceInMiles(item);
