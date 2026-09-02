@@ -17,6 +17,29 @@ const getDistanceInMiles = (gear) => {
 };
 
 /**
+ * Extracts threshold distance (in miles) from gear reminders.
+ * Scans for reminder names starting with "Max Usage", "Max Dist", or "Max Distance".
+ */
+const getThresholdFromReminders = (gear) => {
+  if (!Array.isArray(gear?.reminders)) return null;
+
+  const targetPrefixes = ['max usage', 'max dist', 'max distance'];
+
+  const match = gear.reminders.find((r) => {
+    if (!r || !r.name) return false;
+    const lowerName = r.name.toLowerCase().trim();
+    return targetPrefixes.some((prefix) => lowerName.startsWith(prefix));
+  });
+
+  if (match && typeof match.distance === 'number' && match.distance > 0) {
+    // If distance value in API is in meters (> 5000), convert to miles
+    return match.distance > 5000 ? match.distance / 1609.34 : match.distance;
+  }
+
+  return null;
+};
+
+/**
  * Checks if item is a shoe based on type/category/name attributes.
  */
 const isShoeGear = (gear) => {
@@ -118,7 +141,11 @@ export default function GearView({ gearList: initialGearList }) {
 
   const renderGearCard = (item, isShoe = true) => {
     const distanceMiles = getDistanceInMiles(item);
-    const maxMiles = item.max_distance_miles || DEFAULT_MAX_SHOE_MILES;
+    
+    // Check reminders for threshold; fallback to property or default 400
+    const reminderThreshold = getThresholdFromReminders(item);
+    const maxMiles = reminderThreshold || item.max_distance_miles || DEFAULT_MAX_SHOE_MILES;
+
     const rawProgress = (distanceMiles / maxMiles) * 100;
     const progressPercent = Math.min(100, rawProgress);
     const isRetired = hasRetiredDate(item);
@@ -154,7 +181,7 @@ export default function GearView({ gearList: initialGearList }) {
           {isShoe && (
             <div className="gear-stat-row">
               <span>Max Threshold:</span>
-              <span>{maxMiles} miles</span>
+              <span>{Math.round(maxMiles)} miles</span>
             </div>
           )}
         </div>
