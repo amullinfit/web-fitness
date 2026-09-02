@@ -54,8 +54,33 @@ const isWorkoutCompleted = (workout) => {
   return hasPairedEvent || hasCompliance;
 };
 
-// Helper to convert historical activity intervals into steps format for WorkoutChart
+/**
+ * Recursive helper to flatten nested repeat steps (reps blocks)
+ */
+const flattenSteps = (stepsList) => {
+  if (!Array.isArray(stepsList)) return [];
+
+  return stepsList.reduce((acc, step) => {
+    if (Array.isArray(step.steps) && step.steps.length > 0) {
+      const reps = step.reps && Number.isInteger(step.reps) && step.reps > 0 ? step.reps : 1;
+      const innerFlattened = flattenSteps(step.steps);
+
+      for (let i = 0; i < reps; i++) {
+        acc.push(...innerFlattened.map((s) => ({ ...s })));
+      }
+    } else {
+      acc.push(step);
+    }
+    return acc;
+  }, []);
+};
+
+/**
+ * Extracts and flattens workout steps for both historical and planned workouts.
+ */
 const getStepsFromWorkout = (workout) => {
+  if (!workout) return [];
+
   // 1. If activity has intervals array (Historical Feed)
   if (Array.isArray(workout.intervals) && workout.intervals.length > 0) {
     return workout.intervals.map((interval) => ({
@@ -64,17 +89,92 @@ const getStepsFromWorkout = (workout) => {
       watts: interval.weighted_average_watts || interval.average_watts || null,
       speed: interval.average_speed ?? null,
       type: interval.type || workout.type || 'Interval',
-      distance: interval.distance || 0
+      distance: interval.distance || 0,
+      name: interval.name || 'Interval'
     }));
   }
 
   // 2. Fall back to structured doc steps (Planned Workouts)
   if (workout.workout_doc) {
-    const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
-    return doc?.steps || [];
+    try {
+      const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
+      const rawSteps = doc?.steps || [];
+      return flattenSteps(rawSteps);
+    } catch (e) {
+      console.error('Error parsing workout_doc:', e);
+      return [];
+    }
   }
 
   return [];
+};
+
+/**
+ * Calculates Y-axis pace bounds and 4-6 tick marks (in seconds per mile/km).
+ * Clamps maximum range to 6-8 minutes (360-480s) and steps by 60s (1:00), 90s (1:30), or 120s (2:00).
+ */
+export const calculatePaceTicks = (paceValuesInSeconds) => {
+  const validPaces = paceValuesInSeconds.filter((p) => p && !isNaN(p) && p > 0);
+  if (validPaces.length === 0) {
+    return { minPace: 300, maxPace: 600, ticks: [300, 360, 420, 480, 540, 600] };
+  }
+
+  let rawMin = Math.min(...validPaces);
+  let rawMax = Math.max(...validPaces);
+
+  // Enforce minimum display window of 3 minutes (180s)
+  if (rawMax - rawMin < 180) {
+    const mid = (rawMin + rawMax) / 2;
+    rawMin = Math.max(120, mid - 90);
+    rawMax = rawMin + 180;
+  }
+
+  // Clamp maximum range to 7 minutes (420s) - within the 6-8 minute window
+  const MAX_SPAN = 420;
+  if (rawMax - rawMin > MAX_SPAN) {
+    const mid = (rawMin + rawMax) / 2;
+    rawMin = Math.max(120, mid - MAX_SPAN / 2);
+    rawMax = rawMin + MAX_SPAN;
+  }
+
+  // Choose step increment: 60s (1:00), 90s (1:30), or 120s (2:00)
+  const span = rawMax - rawMin;
+  let step = 60;
+  if (span > 300) {
+    step = 120;
+  } else if (span > 180) {
+    step = 90;
+  }
+
+  const startTick = Math.floor(rawMin / step) * step;
+  const endTick = Math.ceil(rawMax / step) * step;
+
+  const ticks = [];
+  for (let t = startTick; t <= endTick; t += step) {
+    ticks.push(t);
+  }
+
+  // Ensure tick count stays between 4 and 6
+  if (ticks.length > 6) {
+    const doubleStep = step * 2;
+    const doubleTicks = [];
+    const newStart = Math.floor(rawMin / doubleStep) * doubleStep;
+    const newEnd = Math.ceil(rawMax / doubleStep) * doubleStep;
+    for (let t = newStart; t <= newEnd; t += doubleStep) {
+      doubleTicks.push(t);
+    }
+    return {
+      minPace: doubleTicks[0],
+      maxPace: doubleTicks[doubleTicks.length - 1],
+      ticks: doubleTicks
+    };
+  }
+
+  return {
+    minPace: ticks[0],
+    maxPace: ticks[ticks.length - 1],
+    ticks
+  };
 };
 
 export default function DailyView() {
@@ -230,6 +330,12 @@ export default function DailyView() {
     const rawSteps = getStepsFromWorkout(workout);
     const thresholdPaceMps = getThresholdPaceForSport(workout.type, sportSettings);
 
+    const paceValues = rawSteps
+      .map((s) => (typeof s.pace === 'number' ? s.pace : s.pace?.start || s.pace?.end))
+      .filter(Boolean);
+
+    const paceConfig = calculatePaceTicks(paceValues);
+
     const workoutDateStr = getLocalDateString(
       workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date
     );
@@ -255,7 +361,11 @@ export default function DailyView() {
         </div>
 
         {rawSteps.length > 0 && (
-          <WorkoutChart steps={rawSteps} thresholdPace={thresholdPaceMps} />
+          <WorkoutChart
+            steps={rawSteps}
+            thresholdPace={thresholdPaceMps}
+            paceConfig={paceConfig}
+          />
         )}
 
         <WorkoutTextSection workout={workout} sportSettings={sportSettings} />

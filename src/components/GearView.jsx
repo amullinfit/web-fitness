@@ -1,178 +1,166 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import './GearView.css';
 
-// Updated Val Town endpoint for Gear
-const VAL_GEAR_URL = "/api/val-gear";
+const DEFAULT_MAX_SHOE_MILES = 400;
 
-export default function GearView() {
-  const [gearList, setGearList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
+/**
+ * Normalizes distance values to miles.
+ */
+const getDistanceInMiles = (gear) => {
+  if (gear.distance_miles !== undefined) return gear.distance_miles;
+  if (gear.distance_m !== undefined) return gear.distance_m / 1609.34;
+  if (gear.distance !== undefined) {
+    // If distance is large, assume meters, otherwise miles
+    return gear.distance > 5000 ? gear.distance / 1609.34 : gear.distance;
+  }
+  return 0;
+};
 
-  // Form State
-  const [name, setName] = useState('');
-  const [firstUsed, setFirstUsed] = useState('');
-  const [startingDistance, setStartingDistance] = useState(0);
-  const [allowedDistance, setAllowedDistance] = useState(0);
-  const [imageUrl, setImageUrl] = useState('');
+/**
+ * Checks if item is a shoe based on type/category/name attributes.
+ */
+const isShoeGear = (gear) => {
+  const name = (gear.name || '').toLowerCase();
+  const type = (gear.type || gear.category || '').toLowerCase();
 
-  const loadGear = () => {
-    setLoading(true);
-    fetch(VAL_GEAR_URL)
-      .then((res) => res.json())
-      .then((json) => {
-        if (Array.isArray(json)) {
-          setGearList(json);
-        } else {
-          setGearList([]);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching gear:", err);
-        setLoading(false);
-      });
+  if (type.includes('shoe') || type.includes('footwear') || type.includes('run')) return true;
+  if (name.includes('shoe') || name.includes('runner') || name.includes('vaporfly') || name.includes('clifton')) return true;
+
+  // Default assumption if category is not bike/component/apparel
+  return !type.includes('bike') && !type.includes('component') && !type.includes('apparel');
+};
+
+/**
+ * Checks if the shoe name indicates "Not a shoe" or similar test item.
+ */
+const isNotAShoeNamed = (gear) => {
+  const name = (gear.name || '').toLowerCase();
+  return name.includes('not a shoe') || name.includes('not-a-shoe');
+};
+
+/**
+ * Checks if item is marked retired.
+ */
+const isRetiredGear = (gear) => {
+  return gear.retired === true || gear.status === 'retired' || gear.state === 'retired';
+};
+
+export default function GearView({ gearList = [] }) {
+  const activeShoes = [];
+  const retiredShoes = [];
+  const notAShoeCategory = [];
+  const otherGear = [];
+
+  gearList.forEach((item) => {
+    const isShoe = isShoeGear(item);
+    const isNotShoeNamed = isNotAShoeNamed(item);
+
+    if (isNotShoeNamed) {
+      notAShoeCategory.push(item);
+    } else if (!isShoe) {
+      otherGear.push(item);
+    } else if (isRetiredGear(item)) {
+      retiredShoes.push(item);
+    } else {
+      activeShoes.push(item);
+    }
+  });
+
+  const renderGearCard = (item, isShoe = true) => {
+    const distanceMiles = getDistanceInMiles(item);
+    const maxMiles = item.max_distance_miles || DEFAULT_MAX_SHOE_MILES;
+    const progressPercent = Math.min(100, (distanceMiles / maxMiles) * 100);
+    const retired = isRetiredGear(item);
+
+    return (
+      <div key={item.id || item.name} className={`gear-card ${retired ? 'retired-card' : ''}`}>
+        <div className="gear-card-header">
+          <h4>{item.name || 'Unnamed Gear'}</h4>
+          {retired ? (
+            <span className="badge badge-retired">Retired</span>
+          ) : (
+            <span className="badge badge-active">Active</span>
+          )}
+        </div>
+
+        {item.brand && <p className="gear-subtext">{item.brand} {item.model}</p>}
+
+        <div className="gear-stats">
+          <div className="gear-stat-row">
+            <span>Distance:</span>
+            <strong>{distanceMiles.toFixed(1)} miles</strong>
+          </div>
+          {isShoe && (
+            <div className="gear-stat-row">
+              <span>Max Threshold:</span>
+              <span>{maxMiles} miles</span>
+            </div>
+          )}
+        </div>
+
+        {isShoe && (
+          <div className="progress-bar-container">
+            <div
+              className={`progress-bar-fill ${progressPercent >= 100 ? 'exceeded' : ''}`}
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        )}
+      </div>
+    );
   };
-
-  useEffect(() => {
-    loadGear();
-  }, []);
-
-  const handleRetire = (gearId) => {
-    fetch(VAL_GEAR_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'retire', gearId })
-    }).then(() => loadGear());
-  };
-
-  const handleDelete = (gearId) => {
-    fetch(VAL_GEAR_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'delete', gearId })
-    }).then(() => loadGear());
-  };
-
-  const handleCreateGear = (e) => {
-    e.preventDefault();
-    const gearData = {
-      name,
-      created: firstUsed,
-      distance: Number(startingDistance),
-      distance_limit: Number(allowedDistance)
-    };
-
-    fetch(VAL_GEAR_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'create', gearData, imageUrl })
-    }).then(() => {
-      setShowAddForm(false);
-      setName('');
-      setFirstUsed('');
-      setStartingDistance(0);
-      setAllowedDistance(0);
-      setImageUrl('');
-      loadGear();
-    });
-  };
-
-  if (loading) return <div style={{ padding: '20px' }}>Loading Gear...</div>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Gear Management</h2>
-        <button 
-          onClick={() => setShowAddForm(!showAddForm)}
-          style={{ backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', width: '32px', height: '32px', fontSize: '20px', cursor: 'pointer' }}
-          title="Add New Gear"
-        >
-          +
-        </button>
-      </div>
+    <div className="gear-view-container">
+      <h2>Gear Tracker</h2>
 
-      {/* Add Gear Form Modal / Section */}
-      {showAddForm && (
-        <form onSubmit={handleCreateGear} style={{ border: '1px solid #28a745', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <h3>Add New Gear</h3>
-          <input type="text" placeholder="Gear Name" value={name} onChange={(e) => setName(e.target.value)} required />
-          <input type="date" placeholder="First Used" value={firstUsed} onChange={(e) => setFirstUsed(e.target.value)} required />
-          <input type="number" placeholder="Starting Distance (m)" value={startingDistance} onChange={(e) => setStartingDistance(e.target.value)} />
-          <input type="number" placeholder="Allowed Distance (m)" value={allowedDistance} onChange={(e) => setAllowedDistance(e.target.value)} />
-          <input type="url" placeholder="Image Link (IMGBB / Hosted URL)" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
-          <button type="submit" style={{ backgroundColor: '#28a745', color: '#fff', padding: '8px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Save Gear</button>
-        </form>
-      )}
+      {/* 1. Active Shoes Section */}
+      <section className="gear-section">
+        <h3 className="gear-section-title">Active Shoes</h3>
+        {activeShoes.length === 0 ? (
+          <p className="no-gear-msg">No active shoes found.</p>
+        ) : (
+          <div className="gear-grid">
+            {activeShoes.map((shoe) => renderGearCard(shoe, true))}
+          </div>
+        )}
+      </section>
 
-      {/* Gear Listing */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-        {gearList.map((g) => {
-          const usedMiles = ((g.distance || 0) * 0.000621371).toFixed(1);
-          const limitMiles = ((g.distance_limit || 0) * 0.000621371).toFixed(1);
-          const pct = g.distance_limit ? Math.min(100, Math.round((g.distance / g.distance_limit) * 100)) : 0;
+      {/* 2. Retired Shoes Section */}
+      <section className="gear-section">
+        <h3 className="gear-section-title">Retired Shoes</h3>
+        {retiredShoes.length === 0 ? (
+          <p className="no-gear-msg">No retired shoes.</p>
+        ) : (
+          <div className="gear-grid">
+            {retiredShoes.map((shoe) => renderGearCard(shoe, true))}
+          </div>
+        )}
+      </section>
 
-          return (
-            <div key={g.id} style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: '#fff' }}>
-              {g.image_url && <img src={g.image_url} alt={g.name} style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '4px' }} />}
-              <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{g.name}</div>
-              <div style={{ fontSize: '12px', color: '#666' }}>First Used: {g.created || 'N/A'}</div>
-              
-              {/* Distance Progress Bar */}
-              <div>
-                <div style={{ fontSize: '12px', marginBottom: '4px' }}>{usedMiles} / {limitMiles} miles ({pct}%)</div>
-                <div style={{ width: '100%', backgroundColor: '#e0e0e0', height: '10px', borderRadius: '5px' }}>
-                  <div style={{ width: `${pct}%`, backgroundColor: pct > 90 ? '#dc3545' : '#007bff', height: '100%', borderRadius: '5px' }} />
-                </div>
-              </div>
+      {/* 3. Not a Shoe Section */}
+      <section className="gear-section">
+        <h3 className="gear-section-title">Not a Shoe</h3>
+        {notAShoeCategory.length === 0 ? (
+          <p className="no-gear-msg">No items in this category.</p>
+        ) : (
+          <div className="gear-grid">
+            {notAShoeCategory.map((item) => renderGearCard(item, false))}
+          </div>
+        )}
+      </section>
 
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '8px', marginTop: 'auto', paddingTop: '8px' }}>
-                {/* Updated Retire Button: White background, border, and enlarged clock icon */}
-                <button 
-                  onClick={() => handleRetire(g.id)}
-                  style={{ 
-                    width: '36px', 
-                    height: '36px', 
-                    backgroundColor: '#ffffff', 
-                    color: '#333333', 
-                    border: '1px solid #ccc', 
-                    borderRadius: '4px', 
-                    cursor: 'pointer',
-                    fontSize: '20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                  }}
-                  title="Retire Gear"
-                >
-                  🕒
-                </button>
-                <button 
-                  onClick={() => handleDelete(g.id)}
-                  style={{ 
-                    width: '36px', 
-                    height: '36px', 
-                    backgroundColor: '#dc3545', 
-                    color: '#fff', 
-                    border: 'none', 
-                    borderRadius: '4px', 
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Delete Gear"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* 4. Other Non-Shoe Equipment Section */}
+      <section className="gear-section">
+        <h3 className="gear-section-title">Other Equipment</h3>
+        {otherGear.length === 0 ? (
+          <p className="no-gear-msg">No other equipment listed.</p>
+        ) : (
+          <div className="gear-grid">
+            {otherGear.map((item) => renderGearCard(item, false))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
