@@ -145,11 +145,20 @@
     margin-top: 8px;
   }
   
-  .progress-bar-fill {
+/* Progress Bar Colors */
+.progress-bar-fill {
     height: 100%;
-    background-color: #2563eb;
+    background-color: #2563eb; /* Default Blue (0 - 75%) */
     border-radius: 4px;
-    transition: width 0.3s ease;
+    transition: width 0.3s ease, background-color 0.3s ease;
+  }
+  
+  .progress-bar-fill.progress-warning {
+    background-color: #eab308; /* Yellow (> 75%) */
+  }
+  
+  .progress-bar-fill.progress-danger {
+    background-color: #dc2626; /* Red (> 90%) */
   }
   
   .progress-bar-fill.exceeded {

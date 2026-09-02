@@ -43,7 +43,6 @@ const isUnassignedActivity = (gear) => {
  */
 const hasRetiredDate = (gear) => {
   if (!gear.retired || gear.retired === false) return false;
-  // Check if string/date presence is non-null
   return true;
 };
 
@@ -60,7 +59,6 @@ const formatRetiredDate = (dateVal) => {
 export default function GearView({ gearList: initialGearList }) {
   const [gearData, setGearData] = useState(initialGearList || []);
   const [loading, setLoading] = useState(!initialGearList || initialGearList.length === 0);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (initialGearList && initialGearList.length > 0) {
@@ -86,7 +84,6 @@ export default function GearView({ gearList: initialGearList }) {
       .catch((err) => {
         console.error("Error fetching gear:", err);
         if (isMounted) {
-          setError(err.message);
           setLoading(false);
         }
       });
@@ -122,8 +119,17 @@ export default function GearView({ gearList: initialGearList }) {
   const renderGearCard = (item, isShoe = true) => {
     const distanceMiles = getDistanceInMiles(item);
     const maxMiles = item.max_distance_miles || DEFAULT_MAX_SHOE_MILES;
-    const progressPercent = Math.min(100, (distanceMiles / maxMiles) * 100);
+    const rawProgress = (distanceMiles / maxMiles) * 100;
+    const progressPercent = Math.min(100, rawProgress);
     const isRetired = hasRetiredDate(item);
+
+    // Dynamic color class calculation
+    let progressColorClass = '';
+    if (rawProgress > 90) {
+      progressColorClass = 'progress-danger'; // Red (>90%)
+    } else if (rawProgress > 75) {
+      progressColorClass = 'progress-warning'; // Yellow (>75%)
+    }
 
     return (
       <div key={item.id || item.name} className={`gear-card ${isRetired ? 'retired-card' : ''}`}>
@@ -156,7 +162,7 @@ export default function GearView({ gearList: initialGearList }) {
         {isShoe && (
           <div className="progress-bar-container">
             <div
-              className={`progress-bar-fill ${progressPercent >= 100 ? 'exceeded' : ''}`}
+              className={`progress-bar-fill ${progressColorClass}`}
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -169,11 +175,6 @@ export default function GearView({ gearList: initialGearList }) {
 
   return (
     <div className="gear-view-container">
-      {/* Debug Line displaying total API items retrieved */}
-      <div className="gear-debug-bar">
-        [DEBUG] Total Gear Items via API: <strong>{gearData.length}</strong> {error && <span style={{ color: 'red' }}>(Error: {error})</span>}
-      </div>
-
       <h2>Gear Tracker</h2>
 
       {/* 1. Active Shoes Section */}
