@@ -13,12 +13,32 @@ const safeStringLower = (val) => {
 };
 
 /**
- * Converts speed in meters per second (m/s) to pace in seconds per mile.
- * Returns null if speed is invalid or 0.
+ * Converts speed in meters per second (m/s) directly into pace in total SECONDS per mile.
+ * e.g., 2.1347609 m/s -> 753.87 seconds
  */
 const speedToPaceSeconds = (speedMps) => {
-  if (typeof speedMps !== 'number' || speedMps <= 0) return null;
-  return 1609.34 / speedMps;
+  if (typeof speedMps !== 'number' || speedMps <= 0 || isNaN(speedMps)) return null;
+  // 1 mile = 1609.344 meters
+  return 1609.344 / speedMps;
+};
+
+/**
+ * Formats speed (m/s) into a human-readable pace string (MM:SS per mile).
+ * e.g., 2.1347609 m/s -> "12:34"
+ */
+const formatPaceFromSpeed = (speedMps) => {
+  const totalSeconds = speedToPaceSeconds(speedMps);
+  if (!totalSeconds) return '--:--';
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.round(totalSeconds % 60);
+
+  // Handle rounding edge case (e.g., 59.7s rounding up to 60s)
+  if (seconds === 60) {
+    return `${minutes + 1}:00`;
+  }
+
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
 
 const getThresholdPaceForSport = (sportType, sportSettings) => {
@@ -91,13 +111,15 @@ const flattenSteps = (stepsList) => {
 const getStepsFromWorkout = (workout) => {
   if (!workout) return [];
 
-  // 1. If activity has intervals array (Historical Feed)
   if (Array.isArray(workout.intervals) && workout.intervals.length > 0) {
     return workout.intervals.map((interval) => {
-      const speed = interval.average_speed ?? null;
+      // Ensure average_speed is parsed as a number
+      const rawSpeed = parseFloat(interval.average_speed ?? interval.speed);
+      const speed = !isNaN(rawSpeed) && rawSpeed > 0 ? rawSpeed : null;
+
       return {
         duration: interval.elapsed_time || 0,
-        pace: speedToPaceSeconds(speed), // Calculate pace strictly from m/s speed
+        pace: speedToPaceSeconds(speed), // Yields ~753.87 seconds for 2.1347609 m/s
         watts: interval.weighted_average_watts || interval.average_watts || null,
         speed: speed,
         type: interval.type || workout.type || 'Interval',
