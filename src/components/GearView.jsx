@@ -112,6 +112,11 @@ export default function GearView({ gearList = [] }) {
 
   return (
     <div className="gear-view-container">
+      {/* Simple Debug Line */}
+      <div className="gear-debug-bar">
+        [DEBUG] Total Gear Items via API: <strong>{gearList.length}</strong>
+      </div>
+
       <h2>Gear Tracker</h2>
 
       {/* 1. Active Shoes Section */}
