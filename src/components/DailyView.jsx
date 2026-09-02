@@ -41,15 +41,37 @@ const formatPaceFromSpeed = (speedMps) => {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
 
-const getThresholdPaceForSport = (sportType, sportSettings) => {
+const getThresholdPaceForSport = (workout, sportSettings) => {
+  if (!workout) return null;
+
+  // 1. Check if the historical activity object has threshold_pace embedded directly
+  if (typeof workout.threshold_pace === 'number' && workout.threshold_pace > 0) {
+    return workout.threshold_pace;
+  }
+  if (typeof workout.icu_threshold_pace === 'number' && workout.icu_threshold_pace > 0) {
+    return workout.icu_threshold_pace;
+  }
+  if (workout.sportSettings?.threshold_pace) {
+    return workout.sportSettings.threshold_pace;
+  }
+
+  // 2. Fall back to matching sportSettings array by sport type
+  const sportType = safeStringLower(workout.type || workout.sport);
   if (!sportType || !Array.isArray(sportSettings)) return null;
-  const normalizedSport = safeStringLower(sportType);
+
   const match = sportSettings.find((s) => {
     if (!s) return false;
     const settingType = safeStringLower(s.type || s.id || s.sport);
     let typesList = Array.isArray(s.types) ? s.types.map((t) => safeStringLower(t)) : [];
-    return settingType === normalizedSport || typesList.includes(normalizedSport);
+    
+    // Check exact type, embedded list, or partial string match (e.g., "trailrun" includes "run")
+    return (
+      settingType === sportType ||
+      typesList.includes(sportType) ||
+      typesList.some((t) => sportType.includes(t) || t.includes(sportType))
+    );
   });
+
   return match?.threshold_pace || match?.pace_threshold || null;
 };
 
@@ -371,8 +393,8 @@ export default function DailyView() {
 
   const renderWorkoutCard = (workout, index) => {
     const rawSteps = getStepsFromWorkout(workout);
-    const thresholdPaceMps = getThresholdPaceForSport(workout.type, sportSettings);
-
+    const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings);
+    
     // Extract pace in seconds/mile strictly from step speed (m/s)
     const paceValues = rawSteps
       .map((s) => speedToPaceSeconds(s.speed))
