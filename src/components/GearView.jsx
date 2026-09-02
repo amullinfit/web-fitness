@@ -32,7 +32,6 @@ const getThresholdFromReminders = (gear) => {
   });
 
   if (match && typeof match.distance === 'number' && match.distance > 0) {
-    // If distance value in API is in meters (> 5000), convert to miles
     return match.distance > 5000 ? match.distance / 1609.34 : match.distance;
   }
 
@@ -82,6 +81,21 @@ const formatRetiredDate = (dateVal) => {
 export default function GearView({ gearList: initialGearList }) {
   const [gearData, setGearData] = useState(initialGearList || []);
   const [loading, setLoading] = useState(!initialGearList || initialGearList.length === 0);
+
+  // Section collapse states (Active Shoes starts open, others collapsed)
+  const [openSections, setOpenSections] = useState({
+    activeShoes: true,
+    unassigned: false,
+    retiredShoes: false,
+    otherGear: false,
+  });
+
+  const toggleSection = (sectionKey) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }));
+  };
 
   useEffect(() => {
     if (initialGearList && initialGearList.length > 0) {
@@ -141,8 +155,6 @@ export default function GearView({ gearList: initialGearList }) {
 
   const renderGearCard = (item, isShoe = true) => {
     const distanceMiles = getDistanceInMiles(item);
-    
-    // Check reminders for threshold; fallback to property or default 400
     const reminderThreshold = getThresholdFromReminders(item);
     const maxMiles = reminderThreshold || item.max_distance_miles || DEFAULT_MAX_SHOE_MILES;
 
@@ -150,12 +162,11 @@ export default function GearView({ gearList: initialGearList }) {
     const progressPercent = Math.min(100, rawProgress);
     const isRetired = hasRetiredDate(item);
 
-    // Dynamic color class calculation
     let progressColorClass = '';
     if (rawProgress > 90) {
-      progressColorClass = 'progress-danger'; // Red (>90%)
+      progressColorClass = 'progress-danger';
     } else if (rawProgress > 75) {
-      progressColorClass = 'progress-warning'; // Yellow (>75%)
+      progressColorClass = 'progress-warning';
     }
 
     return (
@@ -206,49 +217,85 @@ export default function GearView({ gearList: initialGearList }) {
 
       {/* 1. Active Shoes Section */}
       <section className="gear-section">
-        <h3 className="gear-section-title">Active Shoes</h3>
-        {activeShoes.length === 0 ? (
-          <p className="no-gear-msg">No active shoes found.</p>
-        ) : (
-          <div className="gear-grid">
-            {activeShoes.map((shoe) => renderGearCard(shoe, true))}
-          </div>
+        <button
+          className="gear-section-title-btn"
+          onClick={() => toggleSection('activeShoes')}
+        >
+          <span>Active Shoes ({activeShoes.length})</span>
+          <span className="toggle-icon">{openSections.activeShoes ? '▲' : '▼'}</span>
+        </button>
+
+        {openSections.activeShoes && (
+          activeShoes.length === 0 ? (
+            <p className="no-gear-msg">No active shoes found.</p>
+          ) : (
+            <div className="gear-grid">
+              {activeShoes.map((shoe) => renderGearCard(shoe, true))}
+            </div>
+          )
         )}
       </section>
 
       {/* 2. Unassigned Activities Section */}
       <section className="gear-section">
-        <h3 className="gear-section-title">Unassigned Activities</h3>
-        {unassignedActivities.length === 0 ? (
-          <p className="no-gear-msg">No unassigned activities found.</p>
-        ) : (
-          <div className="gear-grid">
-            {unassignedActivities.map((item) => renderGearCard(item, false))}
-          </div>
+        <button
+          className="gear-section-title-btn"
+          onClick={() => toggleSection('unassigned')}
+        >
+          <span>Unassigned Activities ({unassignedActivities.length})</span>
+          <span className="toggle-icon">{openSections.unassigned ? '▲' : '▼'}</span>
+        </button>
+
+        {openSections.unassigned && (
+          unassignedActivities.length === 0 ? (
+            <p className="no-gear-msg">No unassigned activities found.</p>
+          ) : (
+            <div className="gear-grid">
+              {unassignedActivities.map((item) => renderGearCard(item, false))}
+            </div>
+          )
         )}
       </section>
 
       {/* 3. Retired Shoes Section */}
       <section className="gear-section">
-        <h3 className="gear-section-title">Retired Shoes</h3>
-        {retiredShoes.length === 0 ? (
-          <p className="no-gear-msg">No retired shoes.</p>
-        ) : (
-          <div className="gear-grid">
-            {retiredShoes.map((shoe) => renderGearCard(shoe, true))}
-          </div>
+        <button
+          className="gear-section-title-btn"
+          onClick={() => toggleSection('retiredShoes')}
+        >
+          <span>Retired Shoes ({retiredShoes.length})</span>
+          <span className="toggle-icon">{openSections.retiredShoes ? '▲' : '▼'}</span>
+        </button>
+
+        {openSections.retiredShoes && (
+          retiredShoes.length === 0 ? (
+            <p className="no-gear-msg">No retired shoes.</p>
+          ) : (
+            <div className="gear-grid">
+              {retiredShoes.map((shoe) => renderGearCard(shoe, true))}
+            </div>
+          )
         )}
       </section>
 
       {/* 4. Other Equipment Section */}
       <section className="gear-section">
-        <h3 className="gear-section-title">Other Equipment</h3>
-        {otherGear.length === 0 ? (
-          <p className="no-gear-msg">No other equipment listed.</p>
-        ) : (
-          <div className="gear-grid">
-            {otherGear.map((item) => renderGearCard(item, false))}
-          </div>
+        <button
+          className="gear-section-title-btn"
+          onClick={() => toggleSection('otherGear')}
+        >
+          <span>Other Equipment ({otherGear.length})</span>
+          <span className="toggle-icon">{openSections.otherGear ? '▲' : '▼'}</span>
+        </button>
+
+        {openSections.otherGear && (
+          otherGear.length === 0 ? (
+            <p className="no-gear-msg">No other equipment listed.</p>
+          ) : (
+            <div className="gear-grid">
+              {otherGear.map((item) => renderGearCard(item, false))}
+            </div>
+          )
         )}
       </section>
     </div>
