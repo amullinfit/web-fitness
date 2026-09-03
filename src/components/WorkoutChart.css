@@ -75,29 +75,38 @@
 }
 
 /* Bars Area */
+/* Container for the bars in a track */
 .workout-chart-bars {
   display: flex;
+  flex-direction: row;
   align-items: flex-end;
-  gap: 2px;
-  padding-bottom: 4px;
-  border-bottom: 2px solid #dee2e6;
-  border-left: 1px solid #dee2e6;
+  width: 100%;
+  height: 100%;
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
+  gap: 0 !important;          /* Force zero gap between flex children */
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
+/* Individual bar styling */
 .workout-chart-bar {
-  border-radius: 3px 3px 0 0;
   box-sizing: border-box;
-  transition: transform 0.15s ease, filter 0.15s ease, background-color 0.15s ease;
-  cursor: pointer;
-  min-width: 4px;
+  margin: 0 !important;       /* Remove default or inherited margins */
+  padding: 0 !important;
+  border-left: none !important;
+  border-right: none !important;
+  flex-shrink: 0;             /* Prevent flex items from distorting percentages */
 }
+
 
 /* Planned Bars */
+.workout-chart-bar-planned {
+  opacity: 0.85;
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
+}
+
 .workout-chart-bar-planned:hover {
   filter: brightness(0.85);
   transform: scaleY(1.02);

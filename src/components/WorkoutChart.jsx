@@ -1,20 +1,15 @@
 import React from 'react';
 import './WorkoutChart.css';
 
-const SLOW_BUFFER_MINUTES = 2; // Buffer added below the slowest pace (bottom of chart)
-const FAST_BUFFER_MINUTES = 1; // Buffer subtracted above the fastest pace (top of chart)
-const DEFAULT_FALLBACK_THRESHOLD_SEC = 480; // Fallback threshold pace (8:00/mi) if none supplied
+const SLOW_BUFFER_MINUTES = 2;
+const FAST_BUFFER_MINUTES = 1;
+const DEFAULT_FALLBACK_THRESHOLD_SEC = 480; // 8:00/mi fallback if thresholdPace is null
 
-/**
- * Formats raw seconds per mile into clean "MM:SS /mi".
- */
 const formatSecPerMileToStr = (secPerMile) => {
   if (!secPerMile || secPerMile <= 0 || isNaN(secPerMile)) return "N/A";
-
   const totalSecs = Math.round(secPerMile);
   const mins = Math.floor(totalSecs / 60);
   const secs = totalSecs % 60;
-
   return `${mins}:${String(secs).padStart(2, '0')} /mi`;
 };
 
@@ -24,18 +19,11 @@ const formatIntensityTitleCase = (val) => {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
 
-/**
- * Converts speed in m/s directly into pace in SECONDS per mile.
- */
 const speedToPaceSeconds = (speedMps) => {
   if (typeof speedMps !== 'number' || speedMps <= 0 || isNaN(speedMps)) return null;
   return 1609.344 / speedMps;
 };
 
-/**
- * Recursive helper to flatten nested repeat steps (reps blocks)
- * Removes parent wrapper duration/distance so child steps retain their true step duration.
- */
 const flattenSteps = (stepsList) => {
   if (!Array.isArray(stepsList)) return [];
 
@@ -45,7 +33,6 @@ const flattenSteps = (stepsList) => {
       const innerFlattened = flattenSteps(step.steps);
 
       for (let i = 0; i < reps; i++) {
-        // Strip parent 'steps', 'reps', 'duration', 'distance' from repeated child clones
         acc.push(...innerFlattened.map((s) => {
           const { steps, reps, duration, distance, ...cleanStep } = s;
           return {
@@ -61,20 +48,15 @@ const flattenSteps = (stepsList) => {
   }, []);
 };
 
-/**
- * Extracts raw target value (percentage of threshold speed/pace) from a step object
- */
 const extractTargetPct = (step) => {
   if (!step) return 100;
 
-  // 1. Intervals.icu pace object: { start: 101, end: 115, units: "%pace" }
   if (step.pace && typeof step.pace === 'object') {
     const start = step.pace.start ?? step.pace.value ?? 0;
     const end = step.pace.end ?? start;
     if (start > 0 || end > 0) return (start + end) / 2;
   }
 
-  // 2. Direct numeric target or intensityPct
   const val = step.target ?? step.intensityPct ?? step.intensity;
   if (typeof val === 'number' && val > 0) return val;
   if (typeof val === 'object' && val !== null) {
@@ -86,40 +68,30 @@ const extractTargetPct = (step) => {
   return 100;
 };
 
-/**
- * Extracts step pace in seconds per mile from direct values or threshold percentages
- */
 const extractStepPaceInSeconds = (step, thresholdSecPerMile) => {
   if (!step) return null;
 
-  // Direct speed in m/s (from executed intervals)
   const rawSpeed = parseFloat(step.average_speed ?? step.speed);
   if (!isNaN(rawSpeed) && rawSpeed > 0) {
     return speedToPaceSeconds(rawSpeed);
   }
 
-  // Direct pace in sec/mi or m/s
   if (typeof step.pace === 'number' && step.pace > 0) {
     return step.pace < 15 ? speedToPaceSeconds(step.pace) : step.pace;
   }
 
-  // Percentage of threshold speed (%pace)
   const targetPct = extractTargetPct(step);
   const refThresholdSec = (thresholdSecPerMile && thresholdSecPerMile > 0)
     ? thresholdSecPerMile
     : DEFAULT_FALLBACK_THRESHOLD_SEC;
 
   if (targetPct > 0) {
-    // Speed % is inverted for pace: higher % = faster speed = fewer seconds per mile
     return refThresholdSec / (targetPct / 100);
   }
 
   return null;
 };
 
-/**
- * Extracts and normalizes planned steps from workout_doc
- */
 const extractPlannedSteps = (workout) => {
   if (!workout?.workout_doc) return [];
   try {
@@ -127,22 +99,17 @@ const extractPlannedSteps = (workout) => {
     const rawSteps = doc?.steps || [];
     const flattened = flattenSteps(rawSteps);
 
-    return flattened.map((step) => {
-      return {
-        ...step,
-        duration: step.duration || step.elapsed_time || 60,
-        type: step.type || step.text || (step.warmup ? 'Warmup' : step.cooldown ? 'Cooldown' : 'Active')
-      };
-    });
+    return flattened.map((step) => ({
+      ...step,
+      duration: step.duration || step.elapsed_time || 60,
+      type: step.type || step.text || (step.warmup ? 'Warmup' : step.cooldown ? 'Cooldown' : 'Active')
+    }));
   } catch (e) {
     console.error('Error parsing workout_doc:', e);
     return [];
   }
 };
 
-/**
- * Extracts and normalizes executed intervals
- */
 const extractExecutedSteps = (workout) => {
   if (!workout || !Array.isArray(workout.intervals) || workout.intervals.length === 0) return [];
 
@@ -186,7 +153,6 @@ export default function WorkoutChart({
   const totalExecutedSec = executedList.reduce((sum, s) => sum + (s.duration || 0), 0);
   const totalDurationSec = Math.max(totalPlannedSec, totalExecutedSec, 1);
 
-  // Normalize threshold speed to seconds per mile
   const thresholdSecPerMile = thresholdPace && thresholdPace > 0
     ? (thresholdPace < 15 ? speedToPaceSeconds(thresholdPace) : thresholdPace)
     : null;
@@ -262,7 +228,6 @@ export default function WorkoutChart({
 
     let heightPct = 50;
     if (stepPaceSec && ySlowestSec > yFastestSec) {
-      // Faster pace (smaller seconds) = taller bar
       heightPct = ((ySlowestSec - stepPaceSec) / (ySlowestSec - yFastestSec)) * 100;
     }
 
@@ -275,7 +240,6 @@ export default function WorkoutChart({
 
   return (
     <div className="workout-chart-container">
-      {/* LEGEND */}
       <div className="workout-chart-legend">
         {plannedList.length > 0 && (
           <div className="workout-chart-legend-item">
@@ -292,7 +256,6 @@ export default function WorkoutChart({
       </div>
 
       <div className="workout-chart-wrapper">
-        {/* Y-AXIS LABELS */}
         <div className="workout-chart-yaxis" style={{ height: chartHeight }}>
           {yTicks.map((tick, idx) => (
             <span 
@@ -305,12 +268,11 @@ export default function WorkoutChart({
           ))}
         </div>
 
-        {/* CHART TRACKS */}
         <div className="workout-chart-main">
           <div className="workout-chart-tracks" style={{ height: chartHeight }}>
             {/* PLANNED BARS */}
             {plannedList.length > 0 && (
-              <div className="workout-chart-bars track-planned">
+              <div className="workout-chart-bars track-planned" style={{ gap: 0 }}>
                 {plannedList.map((step, idx) => {
                   const durationMins = Math.round((step.duration || 60) / 60);
                   const widthPct = ((step.duration || 60) / totalDurationSec) * 100;
@@ -330,7 +292,9 @@ export default function WorkoutChart({
                       style={{
                         width: `${widthPct}%`,
                         height: `${heightPct}%`,
-                        backgroundColor: zoneDetails.color
+                        backgroundColor: zoneDetails.color,
+                        margin: 0,
+                        padding: 0
                       }}
                     />
                   );
@@ -340,7 +304,7 @@ export default function WorkoutChart({
 
             {/* EXECUTED BARS */}
             {executedList.length > 0 && (
-              <div className="workout-chart-bars track-executed">
+              <div className="workout-chart-bars track-executed" style={{ gap: 0 }}>
                 {executedList.map((step, idx) => {
                   const durationMins = Math.round((step.duration || 60) / 60);
                   const widthPct = ((step.duration || 60) / totalDurationSec) * 100;
@@ -359,6 +323,8 @@ export default function WorkoutChart({
                       style={{
                         width: `${widthPct}%`,
                         height: `${heightPct}%`,
+                        margin: 0,
+                        padding: 0
                       }}
                     />
                   );
@@ -367,7 +333,6 @@ export default function WorkoutChart({
             )}
           </div>
 
-          {/* X-AXIS LABELS */}
           <div className="workout-chart-xaxis">
             <span>0m</span>
             {timeTicks.map((t, i) => (
