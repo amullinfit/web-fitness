@@ -3,7 +3,7 @@ import './WorkoutChart.css';
 
 const SLOW_BUFFER_MINUTES = 2;
 const FAST_BUFFER_MINUTES = 1;
-const DEFAULT_FALLBACK_THRESHOLD_SEC = 480; // 8:00/mi fallback if thresholdPace is null
+const DEFAULT_FALLBACK_THRESHOLD_SEC = 480;
 
 const formatSecPerMileToStr = (secPerMile) => {
   if (!secPerMile || secPerMile <= 0 || isNaN(secPerMile)) return "N/A";
@@ -242,11 +242,6 @@ export default function WorkoutChart({
     return Math.round(accumulatedSec / 60);
   });
 
-  /**
-   * Corrected Height Calculation:
-   * Fastest Pace (lowest seconds) = 100% height (top)
-   * Slowest Pace (highest seconds) = 0% height (bottom)
-   */
   const computePaceToHeightPct = (paceSec) => {
     if (!paceSec || ySlowestSec <= yFastestSec) return 50;
     const pct = ((ySlowestSec - paceSec) / (ySlowestSec - yFastestSec)) * 100;
@@ -259,13 +254,7 @@ export default function WorkoutChart({
         {plannedList.length > 0 && (
           <div className="workout-chart-legend-item">
             <span className="workout-chart-legend-color planned" />
-            <span>Planned Midpoint</span>
-          </div>
-        )}
-        {plannedList.length > 0 && (
-          <div className="workout-chart-legend-item">
-            <span className="workout-chart-legend-color planned-range" />
-            <span>Planned Target Range</span>
+            <span>Planned Pace Range</span>
           </div>
         )}
         {executedList.length > 0 && (
@@ -291,7 +280,7 @@ export default function WorkoutChart({
 
         <div className="workout-chart-main">
           <div className="workout-chart-tracks" style={{ height: chartHeight }}>
-            {/* PLANNED BARS & RANGE OVERLAYS */}
+            {/* PLANNED BARS (BASE BAR = SLOW PACE, EXTENSION = FAST PACE AT 80% OPACITY) */}
             {plannedList.length > 0 && (
               <div className="workout-chart-bars track-planned">
                 {plannedList.map((step, idx) => {
@@ -303,39 +292,45 @@ export default function WorkoutChart({
                   const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
                   const zoneDetails = getZoneDetails(range.rangePct.mid, rawIntensity);
 
-                  // Vertical percentages grounded from bottom (0%) to top (100%)
-                  const maxHeightPct = computePaceToHeightPct(range.fastSec); // Upper boundary (Top)
-                  const minHeightPct = computePaceToHeightPct(range.slowSec); // Lower boundary (Bottom)
-                  const midHeightPct = computePaceToHeightPct(range.midSec);  // Midpoint target height
-
-                  const bandHeightPct = Math.max(maxHeightPct - minHeightPct, 2);
+                  const fastHeightPct = computePaceToHeightPct(range.fastSec);
+                  const slowHeightPct = computePaceToHeightPct(range.slowSec);
 
                   const fastPaceStr = formatSecPerMileToStr(range.fastSec);
                   const slowPaceStr = formatSecPerMileToStr(range.slowSec);
-                  const tooltipText = `Planned Step ${idx + 1}: ${intensityFormatted} | Range: ${fastPaceStr} - ${slowPaceStr} | Duration: ${durationMins}m`;
+                  const tooltipText = `Planned Step ${idx + 1}: ${intensityFormatted} | Target Range: ${fastPaceStr} - ${slowPaceStr} | Duration: ${durationMins}m`;
 
                   return (
                     <div
                       key={`plan-${idx}`}
                       title={tooltipText}
-                      className="workout-chart-bar workout-chart-bar-planned"
+                      className="workout-chart-bar-container"
                       style={{
                         width: `${widthPct}%`,
-                        height: `${midHeightPct}%`,
-                        backgroundColor: zoneDetails.color
+                        height: '100%',
+                        position: 'relative'
                       }}
                     >
-                      {/* RANGE BAND OVERLAY */}
-                      {bandHeightPct > 0 && (
+                      {/* FAST PACE UPPER EXTENSION (80% OPAQUE) */}
+                      {fastHeightPct > slowHeightPct && (
                         <div
-                          className="workout-chart-bar-planned-range"
+                          className="workout-chart-bar workout-chart-bar-planned-fast"
                           style={{
-                            bottom: `${minHeightPct}%`,
-                            height: `${bandHeightPct}%`,
+                            bottom: 0,
+                            height: `${fastHeightPct}%`,
                             backgroundColor: zoneDetails.color
                           }}
                         />
                       )}
+
+                      {/* SLOW PACE BASE BAR (REGULAR COLOR) */}
+                      <div
+                        className="workout-chart-bar workout-chart-bar-planned-slow"
+                        style={{
+                          bottom: 0,
+                          height: `${slowHeightPct}%`,
+                          backgroundColor: zoneDetails.color
+                        }}
+                      />
                     </div>
                   );
                 })}

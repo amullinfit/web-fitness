@@ -34,11 +34,6 @@
   background-color: #007bff;
 }
 
-.workout-chart-legend-color.planned-range {
-  background-color: rgba(0, 123, 255, 0.25);
-  border: 1px dashed #007bff;
-}
-
 .workout-chart-legend-color.executed {
   background-color: transparent;
   border: 2px solid #007bff;
@@ -83,7 +78,7 @@
 .workout-chart-bars {
   display: flex;
   flex-direction: row;
-  align-items: flex-end;     /* Force flex children to ground at bottom */
+  align-items: flex-end;
   width: 100%;
   height: 100%;
   position: absolute;
@@ -96,38 +91,34 @@
 
 /* Individual bar styling */
 .workout-chart-bar {
-  position: relative;         
+  position: absolute;
+  left: 0;
+  width: 100%;
   box-sizing: border-box;
   margin: 0 !important;       
   padding: 0 !important;
   border-left: none !important;
   border-right: none !important;
   flex-shrink: 0;             
-  transform-origin: bottom;   /* Keep bar grounded on bottom axis during hover scale */
+  transform-origin: bottom;
 }
 
-/* Planned Bars */
-.workout-chart-bar-planned {
-  opacity: 0.85;
+/* Base Bar: Slow Pace Target (Solid Zone Color) */
+.workout-chart-bar-planned-slow {
+  z-index: 2;
   border-top: 1px solid rgba(255, 255, 255, 0.4);
-  transition: transform 0.15s ease, filter 0.15s ease;
 }
 
-.workout-chart-bar-planned:hover {
-  filter: brightness(0.85);
-  transform: scaleY(1.02);
-}
-
-/* Target Range Band Overlay (Positioned absolutely relative to track container) */
-.workout-chart-bar-planned-range {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  opacity: 0.35;
-  border-top: 1px dashed rgba(255, 255, 255, 0.8);
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.8);
-  pointer-events: none;
+/* Upper Range Extension: Faster Pace Target (80% Opaque Zone Color) */
+.workout-chart-bar-planned-fast {
+  opacity: 0.8;
   z-index: 1;
+  border-top: 1px dashed rgba(255, 255, 255, 0.8);
+}
+
+.workout-chart-bar-container:hover .workout-chart-bar-planned-slow,
+.workout-chart-bar-container:hover .workout-chart-bar-planned-fast {
+  filter: brightness(0.85);
 }
 
 /* Executed Bars: Empty with Blue Border */
