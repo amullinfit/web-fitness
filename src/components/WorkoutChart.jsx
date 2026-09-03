@@ -98,7 +98,6 @@ const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
     ? thresholdSecPerMile
     : DEFAULT_FALLBACK_THRESHOLD_SEC;
 
-  // Higher target % speed = Faster speed = Fewer seconds per mile (TOP of chart)
   const fastSec = rangePct.end > 0 ? refThresholdSec / (rangePct.end / 100) : refThresholdSec;
   const slowSec = rangePct.start > 0 ? refThresholdSec / (rangePct.start / 100) : refThresholdSec;
   const midSec = rangePct.mid > 0 ? refThresholdSec / (rangePct.mid / 100) : refThresholdSec;
@@ -280,7 +279,7 @@ export default function WorkoutChart({
 
         <div className="workout-chart-main">
           <div className="workout-chart-tracks" style={{ height: chartHeight }}>
-            {/* PLANNED BARS (BASE BAR = SLOW PACE, EXTENSION = FAST PACE AT 80% OPACITY) */}
+            {/* PLANNED BARS LAYER */}
             {plannedList.length > 0 && (
               <div className="workout-chart-bars track-planned">
                 {plannedList.map((step, idx) => {
@@ -304,13 +303,9 @@ export default function WorkoutChart({
                       key={`plan-${idx}`}
                       title={tooltipText}
                       className="workout-chart-bar-container"
-                      style={{
-                        width: `${widthPct}%`,
-                        height: '100%',
-                        position: 'relative'
-                      }}
+                      style={{ width: `${widthPct}%` }}
                     >
-                      {/* FAST PACE UPPER EXTENSION (80% OPAQUE) */}
+                      {/* FAST PACE UPPER EXTENSION (70% OPAQUE) */}
                       {fastHeightPct > slowHeightPct && (
                         <div
                           className="workout-chart-bar workout-chart-bar-planned-fast"
@@ -337,7 +332,7 @@ export default function WorkoutChart({
               </div>
             )}
 
-            {/* EXECUTED BARS */}
+            {/* EXECUTED BARS LAYER */}
             {executedList.length > 0 && (
               <div className="workout-chart-bars track-executed">
                 {executedList.map((step, idx) => {
@@ -356,12 +351,17 @@ export default function WorkoutChart({
                     <div
                       key={`exec-${idx}`}
                       title={tooltipText}
-                      className="workout-chart-bar workout-chart-bar-executed"
-                      style={{
-                        width: `${widthPct}%`,
-                        height: `${heightPct}%`
-                      }}
-                    />
+                      className="workout-chart-bar-container"
+                      style={{ width: `${widthPct}%` }}
+                    >
+                      <div
+                        className="workout-chart-bar workout-chart-bar-executed"
+                        style={{
+                          bottom: 0,
+                          height: `${heightPct}%`
+                        }}
+                      />
+                    </div>
                   );
                 })}
               </div>
