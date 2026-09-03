@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import './WorkoutChart.css';
 
 const SLOW_BUFFER_MINUTES = 2;
@@ -152,11 +152,37 @@ const getZoneDetails = (targetPct, stepType = '') => {
   return { name: 'Anaerobic / VO2 Max (Z5+)', color: '#dc3545' };
 };
 
+/**
+ * Helper to generate a wavy SVG path for the executed interval.
+ * Uses cubic Bezier curves to oscillate across the top edge and vertical sides.
+ */
+const generateWavyBarPath = (idx) => {
+  // Deterministic seed variance based on interval index
+  const waveAmp = 4 + (idx % 3) * 2; // Amplitude variation between 4px and 8px
+  const alt = idx % 2 === 0 ? 1 : -1;
+
+  // viewBox is fixed to 100 x 100 for percentage scale
+  // Top edge curve: (0, 0) -> (50, waveAmp * alt) -> (100, 0)
+  const topMidY = waveAmp * alt;
+
+  // Left & Right Wavy Side Edges
+  return `
+    M 0 100
+    L 0 ${topMidY + 3}
+    C 3 ${topMidY}, 8 ${-topMidY}, 0 0
+    Q 50 ${topMidY * 2}, 100 0
+    C 92 ${-topMidY}, 97 ${topMidY}, 100 ${topMidY + 3}
+    L 100 100
+    Z
+  `;
+};
+
 export default function WorkoutChart({ 
   workout, 
   thresholdPace, 
   chartHeight = '140px' 
 }) {
+  const clipId = useId();
   const plannedList = extractPlannedSteps(workout);
   const executedList = extractExecutedSteps(workout);
 
@@ -305,7 +331,7 @@ export default function WorkoutChart({
                       className="workout-chart-bar-container"
                       style={{ width: `${widthPct}%` }}
                     >
-                      {/* FAST PACE UPPER EXTENSION (OPAQUE) */}
+                      {/* FAST PACE UPPER EXTENSION */}
                       {fastHeightPct > slowHeightPct && (
                         <div
                           className="workout-chart-bar workout-chart-bar-planned-fast"
@@ -317,7 +343,7 @@ export default function WorkoutChart({
                         />
                       )}
 
-                      {/* SLOW PACE BASE BAR (REGULAR COLOR) */}
+                      {/* SLOW PACE BASE BAR */}
                       <div
                         className="workout-chart-bar workout-chart-bar-planned-slow"
                         style={{
@@ -332,7 +358,7 @@ export default function WorkoutChart({
               </div>
             )}
 
-            {/* EXECUTED BARS LAYER */}
+            {/* EXECUTED BARS LAYER (WAVY SVG SVG BARS) */}
             {executedList.length > 0 && (
               <div className="workout-chart-bars track-executed">
                 {executedList.map((step, idx) => {
@@ -346,21 +372,37 @@ export default function WorkoutChart({
 
                   const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
                   const tooltipText = `Executed Interval ${idx + 1}: ${intensityFormatted} | Avg Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
+                  
+                  const uniqueClipPathId = `executed-wavy-clip-${clipId.replace(/:/g, '')}-${idx}`;
+                  const pathData = generateWavyBarPath(idx);
 
                   return (
                     <div
                       key={`exec-${idx}`}
                       title={tooltipText}
-                      className="workout-chart-bar-container"
+                      className="workout-chart-bar-container executed-wavy-container"
                       style={{ width: `${widthPct}%` }}
                     >
-                      <div
-                        className="workout-chart-bar workout-chart-bar-executed"
+                      <svg
+                        className="workout-chart-bar-executed-svg"
                         style={{
                           bottom: 0,
                           height: `${heightPct}%`
                         }}
-                      />
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="none"
+                      >
+                        <defs>
+                          <clipPath id={uniqueClipPathId} clipPathUnits="objectBoundingBox">
+                            <path d="M 0,0 C 0.25,0.05 0.75,-0.05 1,0 L 1,1 C 0.75,0.95 0.25,1.05 0,1 Z" />
+                          </clipPath>
+                        </defs>
+                        <path
+                          d={pathData}
+                          className="executed-wavy-path"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      </svg>
                     </div>
                   );
                 })}

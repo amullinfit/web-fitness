@@ -141,3 +141,29 @@
   font-size: 10px;
   color: #6c757d;
 }
+
+.executed-wavy-container {
+  position: relative;
+  overflow: visible;
+}
+
+.workout-chart-bar-executed-svg {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  overflow: visible;
+  pointer-events: auto;
+}
+
+.executed-wavy-path {
+  fill: rgba(0, 123, 255, 0.65);
+  stroke: rgba(0, 86, 179, 0.9);
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+  transition: fill 0.2s ease, stroke-width 0.2s ease;
+}
+
+.executed-wavy-container:hover .executed-wavy-path {
+  fill: rgba(0, 123, 255, 0.85);
+  stroke-width: 2px;
+}
