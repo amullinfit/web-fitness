@@ -107,13 +107,38 @@ export default function DailyView() {
           ? historicalJson.sportSettings
           : [];
 
-        // Build a Set of all paired_event_id values present in historical activities
-        const pairedEventIds = new Set(
-          historicalList
-            .map((item) => item.paired_event_id)
-            .filter((id) => id !== null && id !== undefined)
-            .map(String)
-        );
+        // Build a Map of planned workouts indexed by String(id) for quick name lookups
+        const plannedWorkoutsById = new Map();
+        valList.forEach((workout) => {
+          if (workout && workout.id !== undefined && workout.id !== null) {
+            plannedWorkoutsById.set(String(workout.id), workout);
+          }
+        });
+
+        // Set of all paired_event_id values present in historical activities
+        const pairedEventIds = new Set();
+
+        // Process historical items: if paired to a planned workout, preserve the historical item
+        // but inherit the name/title from the planned workout dataset
+        const updatedHistoricalList = historicalList.map((item) => {
+          if (item && item.paired_event_id !== null && item.paired_event_id !== undefined) {
+            const pairedIdStr = String(item.paired_event_id);
+            pairedEventIds.add(pairedIdStr);
+
+            const plannedMatch = plannedWorkoutsById.get(pairedIdStr);
+            if (plannedMatch) {
+              const plannedName = plannedMatch.name || plannedMatch.title;
+              if (plannedName) {
+                return {
+                  ...item,
+                  name: plannedName,
+                  title: plannedName
+                };
+              }
+            }
+          }
+          return item;
+        });
 
         // Deduplicate planned workouts: drop any planned workout whose ID matches a historical paired_event_id
         const filteredValList = valList.filter((workout) => {
@@ -121,8 +146,8 @@ export default function DailyView() {
           return !pairedEventIds.has(String(workout.id));
         });
 
-        // Merge historical items and remaining unpaired planned workouts
-        const rawMerged = [...historicalList, ...filteredValList];
+        // Merge updated historical items and remaining unpaired planned workouts
+        const rawMerged = [...updatedHistoricalList, ...filteredValList];
         const seenIds = new Set();
         const mergedList = [];
 
