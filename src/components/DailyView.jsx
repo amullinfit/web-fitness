@@ -33,7 +33,6 @@ const formatPaceFromSpeed = (speedMps) => {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = Math.round(totalSeconds % 60);
 
-  // Handle rounding edge case (e.g., 59.7s rounding up to 60s)
   if (seconds === 60) {
     return `${minutes + 1}:00`;
   }
@@ -64,7 +63,6 @@ const getThresholdPaceForSport = (workout, sportSettings) => {
     const settingType = safeStringLower(s.type || s.id || s.sport);
     let typesList = Array.isArray(s.types) ? s.types.map((t) => safeStringLower(t)) : [];
     
-    // Check exact type, embedded list, or partial string match (e.g., "trailrun" includes "run")
     return (
       settingType === sportType ||
       typesList.includes(sportType) ||
@@ -98,7 +96,6 @@ const isWorkoutCompleted = (workout) => {
     return true;
   }
 
-  // If from WORKOUTS feed, check if paired_event or compliance are not null
   const hasPairedEvent = workout.paired_event !== null && workout.paired_event !== undefined;
   const hasCompliance = workout.compliance !== null && workout.compliance !== undefined;
 
@@ -128,20 +125,18 @@ const flattenSteps = (stepsList) => {
 
 /**
  * Extracts and flattens workout steps for both historical and planned workouts.
- * Derives pace values strictly from speed (in m/s), ignoring average_pace.
  */
 const getStepsFromWorkout = (workout) => {
   if (!workout) return [];
 
   if (Array.isArray(workout.intervals) && workout.intervals.length > 0) {
     return workout.intervals.map((interval) => {
-      // Ensure average_speed is parsed as a number
       const rawSpeed = parseFloat(interval.average_speed ?? interval.speed);
       const speed = !isNaN(rawSpeed) && rawSpeed > 0 ? rawSpeed : null;
 
       return {
         duration: interval.elapsed_time || 0,
-        pace: speedToPaceSeconds(speed), // Yields ~753.87 seconds for 2.1347609 m/s
+        pace: speedToPaceSeconds(speed),
         watts: interval.weighted_average_watts || interval.average_watts || null,
         speed: speed,
         type: interval.type || workout.type || 'Interval',
@@ -151,7 +146,6 @@ const getStepsFromWorkout = (workout) => {
     });
   }
 
-  // 2. Fall back to structured doc steps (Planned Workouts)
   if (workout.workout_doc) {
     try {
       const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
@@ -162,7 +156,7 @@ const getStepsFromWorkout = (workout) => {
         const speed = step.speed ?? (step.pace ? (typeof step.pace === 'number' ? step.pace : null) : null);
         return {
           ...step,
-          pace: speedToPaceSeconds(speed) ?? step.pace // Fallback if planned step uses a direct pace value
+          pace: speedToPaceSeconds(speed) ?? step.pace
         };
       });
     } catch (e) {
@@ -175,8 +169,7 @@ const getStepsFromWorkout = (workout) => {
 };
 
 /**
- * Calculates Y-axis pace bounds and 4-6 tick marks (in seconds per mile/km).
- * Clamps maximum range to 6-8 minutes (360-480s) and steps by 60s (1:00), 90s (1:30), or 120s (2:00).
+ * Calculates Y-axis pace bounds and tick marks in seconds per mile/km.
  */
 export const calculatePaceTicks = (paceValuesInSeconds) => {
   const validPaces = paceValuesInSeconds.filter((p) => p && !isNaN(p) && p > 0);
@@ -187,14 +180,12 @@ export const calculatePaceTicks = (paceValuesInSeconds) => {
   let rawMin = Math.min(...validPaces);
   let rawMax = Math.max(...validPaces);
 
-  // Enforce minimum display window of 3 minutes (180s)
   if (rawMax - rawMin < 180) {
     const mid = (rawMin + rawMax) / 2;
     rawMin = Math.max(120, mid - 90);
     rawMax = rawMin + 180;
   }
 
-  // Clamp maximum range to 7 minutes (420s) - within the 6-8 minute window
   const MAX_SPAN = 420;
   if (rawMax - rawMin > MAX_SPAN) {
     const mid = (rawMin + rawMax) / 2;
@@ -202,7 +193,6 @@ export const calculatePaceTicks = (paceValuesInSeconds) => {
     rawMax = rawMin + MAX_SPAN;
   }
 
-  // Choose step increment: 60s (1:00), 90s (1:30), or 120s (2:00)
   const span = rawMax - rawMin;
   let step = 60;
   if (span > 300) {
@@ -219,7 +209,6 @@ export const calculatePaceTicks = (paceValuesInSeconds) => {
     ticks.push(t);
   }
 
-  // Ensure tick count stays between 4 and 6
   if (ticks.length > 6) {
     const doubleStep = step * 2;
     const doubleTicks = [];
@@ -265,7 +254,6 @@ export default function DailyView() {
       .then(([valJson, historicalJson]) => {
         if (!isMounted) return;
 
-        // Extract and tag feedSource
         const valList = (valJson?.planned || valJson?.workouts || (Array.isArray(valJson) ? valJson : []))
           .map((item) => ({ ...item, feedSource: 'WORKOUTS' }));
 
@@ -278,7 +266,6 @@ export default function DailyView() {
           ? historicalJson.sportSettings
           : [];
 
-        // Merge & deduplicate by ID / composite key
         const rawMerged = [...valList, ...historicalList];
         const seenIds = new Set();
         const mergedList = [];
@@ -311,7 +298,6 @@ export default function DailyView() {
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
   const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
 
-  // Compute oldest & newest dates across the merged list
   const workoutDateBounds = useMemo(() => {
     if (!Array.isArray(workouts) || workouts.length === 0) {
       return { oldest: 'N/A', newest: 'N/A', historicalCount: 0, workoutCount: 0 };
@@ -345,7 +331,6 @@ export default function DailyView() {
 
   const nextDateStr = useMemo(() => getLocalDateString(nextDateObj), [nextDateObj]);
 
-  // Group workouts by date
   const selectedDayWorkouts = useMemo(() => {
     if (!Array.isArray(workouts)) return [];
     return workouts.filter((w) => {
@@ -395,7 +380,6 @@ export default function DailyView() {
     const rawSteps = getStepsFromWorkout(workout);
     const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings);
     
-    // Extract pace in seconds/mile strictly from step speed (m/s)
     const paceValues = rawSteps
       .map((s) => speedToPaceSeconds(s.speed))
       .filter((p) => p !== null && !isNaN(p));
@@ -426,11 +410,14 @@ export default function DailyView() {
           </div>
         </div>
 
-        {rawSteps.length > 0 && (
+        {/* Updated WorkoutChart Invocation */}
+        {(rawSteps.length > 0 || workout.workout_doc || workout.intervals) && (
           <WorkoutChart
+            workout={workout}
             steps={rawSteps}
             thresholdPace={thresholdPaceMps}
             paceConfig={paceConfig}
+            sportSettings={sportSettings}
           />
         )}
 
@@ -466,12 +453,10 @@ export default function DailyView() {
 
   return (
     <div className="daily-view-container">
-      {/* Debug Line displaying merged range and feed breakdown */}
       <div className="daily-debug-bar">
         [DEBUG] Merged Range: Oldest = <strong>{workoutDateBounds.oldest}</strong> | Newest = <strong>{workoutDateBounds.newest}</strong> (Total: {workouts.length} [HISTORICAL: {workoutDateBounds.historicalCount}, WORKOUTS: {workoutDateBounds.workoutCount}])
       </div>
 
-      {/* Date Navigation Bar */}
       <div className="daily-nav-bar">
         <div className="daily-nav-buttons">
           <button onClick={handlePrevDay} className="nav-btn">
@@ -489,7 +474,6 @@ export default function DailyView() {
         </div>
       </div>
 
-      {/* Two Days Grid */}
       <div className="daily-two-day-grid">
         {renderDaySection(selectedDate, selectedDateStr, selectedDayWorkouts)}
         {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts)}

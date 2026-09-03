@@ -26,12 +26,36 @@ const formatIntensityTitleCase = (val) => {
 };
 
 /**
+ * Helper to normalize raw interval / event step objects into uniform structures.
+ */
+const normalizeStep = (step) => {
+  if (!step) return null;
+
+  const duration = step.duration || step.elapsed_time || 60;
+  let pace = step.pace || null;
+
+  // Handle intervals average speed (m/s) if pace isn't pre-calculated
+  if (!pace && typeof step.average_speed === 'number' && step.average_speed > 0) {
+    pace = 1609.344 / step.average_speed;
+  } else if (!pace && typeof step.speed === 'number' && step.speed > 0) {
+    pace = 1609.344 / step.speed;
+  }
+
+  return {
+    ...step,
+    duration,
+    pace,
+    type: step.type || step.intensity || 'active',
+  };
+};
+
+/**
  * Helper to get pace in seconds per mile from a step object.
  */
 const extractStepPaceInSeconds = (step, thresholdPaceSec) => {
   if (!step) return null;
 
-  // 1. Direct step pace in seconds per mile (e.g., calculated via speedToPaceSeconds)
+  // 1. Direct step pace in seconds per mile
   if (typeof step.pace === 'number' && step.pace > 0) {
     return step.pace < 15 ? 1609.344 / step.pace : step.pace;
   }
@@ -83,18 +107,34 @@ const getZoneDetails = (targetPct, stepType = '') => {
   return { name: 'Anaerobic / VO2 Max (Z5+)', color: '#dc3545' };
 };
 
-export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = '140px' }) {
-  if (!Array.isArray(steps) || steps.length === 0) return null;
+export default function WorkoutChart({ 
+  plannedSteps = [], 
+  executedSteps = [], 
+  steps = [], 
+  thresholdPace, 
+  chartHeight = '140px' 
+}) {
+  // Support backwards compatibility with legacy `steps` prop
+  const rawPlanned = Array.isArray(plannedSteps) && plannedSteps.length > 0 ? plannedSteps : steps;
+  const rawExecuted = Array.isArray(executedSteps) ? executedSteps : [];
 
-  const totalDurationSec = steps.reduce((sum, s) => sum + (s.duration || 0), 0) || 1;
+  const plannedList = rawPlanned.map(normalizeStep).filter(Boolean);
+  const executedList = rawExecuted.map(normalizeStep).filter(Boolean);
+
+  if (!plannedList.length && !executedList.length) return null;
+
+  const totalPlannedSec = plannedList.reduce((sum, s) => sum + (s.duration || 0), 0);
+  const totalExecutedSec = executedList.reduce((sum, s) => sum + (s.duration || 0), 0);
+  const totalDurationSec = Math.max(totalPlannedSec, totalExecutedSec, 1);
 
   // Convert thresholdPace (m/s or sec/mi) strictly into seconds per mile
   const thresholdSecPerMile = thresholdPace && thresholdPace > 0
     ? (thresholdPace < 15 ? 1609.344 / thresholdPace : thresholdPace)
     : null;
 
-  // Collect step paces in seconds per mile
-  const stepPacesSec = steps
+  // Collect step paces across BOTH planned and executed datasets for accurate scale alignment
+  const allStepsCombined = [...plannedList, ...executedList];
+  const stepPacesSec = allStepsCombined
     .map((s) => extractStepPaceInSeconds(s, thresholdSecPerMile))
     .filter((p) => p !== null && !isNaN(p) && p > 0);
 
@@ -152,7 +192,7 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
     }
 
   } else {
-    const targetPcts = steps.map((s) => extractTargetValue(s));
+    const targetPcts = allStepsCombined.map((s) => extractTargetValue(s));
     const dataMinPct = Math.min(...targetPcts);
     const dataMaxPct = Math.max(...targetPcts);
 
@@ -171,14 +211,61 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
     });
   }
 
+  // Calculate cumulative X-axis timestamps (based on planned list or fallback)
+  const primaryList = plannedList.length > 0 ? plannedList : executedList;
   let accumulatedSec = 0;
-  const timeTicks = steps.map((step) => {
+  const timeTicks = primaryList.map((step) => {
     accumulatedSec += step.duration || 0;
     return Math.round(accumulatedSec / 60);
   });
 
+  /**
+   * Helper to compute height % based on step metrics and chart limits
+   */
+  const computeBarHeightPct = (step) => {
+    const stepPaceSec = extractStepPaceInSeconds(step, thresholdSecPerMile);
+    let effectiveTargetPct = extractTargetValue(step);
+    if (thresholdSecPerMile && stepPaceSec) {
+      effectiveTargetPct = (thresholdSecPerMile / stepPaceSec) * 100;
+    }
+
+    let heightPct = 50;
+    if (stepPaceSec && ySlowestSec > yFastestSec) {
+      heightPct = ((ySlowestSec - stepPaceSec) / (ySlowestSec - yFastestSec)) * 100;
+    } else {
+      const targetPcts = allStepsCombined.map((s) => extractTargetValue(s));
+      const dataMinPct = Math.min(...targetPcts);
+      const dataMaxPct = Math.max(...targetPcts);
+      const yMinPct = Math.max(0, dataMinPct - SLOW_BUFFER_MINUTES * 10);
+      const yMaxPct = dataMaxPct + FAST_BUFFER_MINUTES * 10;
+      heightPct = ((effectiveTargetPct - yMinPct) / (yMaxPct - yMinPct || 1)) * 100;
+    }
+
+    return {
+      heightPct: Math.min(Math.max(heightPct, 4), 100),
+      effectiveTargetPct,
+      stepPaceSec
+    };
+  };
+
   return (
     <div className="workout-chart-container">
+      {/* CHART LEGEND */}
+      <div className="workout-chart-legend">
+        {plannedList.length > 0 && (
+          <div className="workout-chart-legend-item">
+            <span className="workout-chart-legend-color planned" />
+            <span>Planned</span>
+          </div>
+        )}
+        {executedList.length > 0 && (
+          <div className="workout-chart-legend-item">
+            <span className="workout-chart-legend-color executed" />
+            <span>Executed</span>
+          </div>
+        )}
+      </div>
+
       <div className="workout-chart-wrapper">
         {/* Y-AXIS LABELS */}
         <div className="workout-chart-yaxis" style={{ height: chartHeight }}>
@@ -195,58 +282,64 @@ export default function WorkoutChart({ steps = [], thresholdPace, chartHeight = 
 
         {/* CHART & X-AXIS */}
         <div className="workout-chart-main">
-          <div className="workout-chart-bars" style={{ height: chartHeight }}>
-            {steps.map((step, idx) => {
-              const duration = step.duration || 60;
-              const durationMins = Math.round(duration / 60);
-              const widthPct = (duration / totalDurationSec) * 100;
+          <div className="workout-chart-tracks" style={{ height: chartHeight }}>
+            {/* PLANNED WORKOUT TRACK */}
+            {plannedList.length > 0 && (
+              <div className="workout-chart-bars track-planned">
+                {plannedList.map((step, idx) => {
+                  const durationMins = Math.round((step.duration || 60) / 60);
+                  const widthPct = ((step.duration || 60) / totalDurationSec) * 100;
+                  const rawIntensity = step.type || 'active';
+                  const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
-              const rawIntensity = step.intensity || (step.warmup ? 'warmup' : step.cooldown ? 'cooldown' : step.type || 'active');
-              const intensityFormatted = formatIntensityTitleCase(rawIntensity);
+                  const { heightPct, effectiveTargetPct, stepPaceSec } = computeBarHeightPct(step);
+                  const zoneDetails = getZoneDetails(effectiveTargetPct, rawIntensity);
+                  const paceRangeFormatted = stepPaceSec ? formatSecPerMileToStr(stepPaceSec) : `${Math.round(effectiveTargetPct)}%`;
+                  const tooltipText = `Planned Step ${idx + 1}: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
 
-              const stepPaceSec = extractStepPaceInSeconds(step, thresholdSecPerMile);
-              
-              // Calculate real target % relative to threshold pace
-              let effectiveTargetPct = extractTargetValue(step);
-              if (thresholdSecPerMile && stepPaceSec) {
-                effectiveTargetPct = (thresholdSecPerMile / stepPaceSec) * 100;
-              }
+                  return (
+                    <div
+                      key={`plan-${idx}`}
+                      title={tooltipText}
+                      className="workout-chart-bar workout-chart-bar-planned"
+                      style={{
+                        width: `${widthPct}%`,
+                        height: `${heightPct}%`,
+                        backgroundColor: zoneDetails.color
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
 
-              const zoneDetails = getZoneDetails(effectiveTargetPct, rawIntensity);
-              const barColor = zoneDetails.color;
+            {/* EXECUTED WORKOUT TRACK */}
+            {executedList.length > 0 && (
+              <div className="workout-chart-bars track-executed">
+                {executedList.map((step, idx) => {
+                  const durationMins = Math.round((step.duration || 60) / 60);
+                  const widthPct = ((step.duration || 60) / totalDurationSec) * 100;
+                  const rawIntensity = step.type || 'active';
+                  const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
-              const paceRangeFormatted = stepPaceSec ? formatSecPerMileToStr(stepPaceSec) : `${Math.round(effectiveTargetPct)}%`;
-              
-              // Calculate relative bar height
-              let heightPct = 50;
-              if (stepPaceSec && ySlowestSec > yFastestSec) {
-                heightPct = ((ySlowestSec - stepPaceSec) / (ySlowestSec - yFastestSec)) * 100;
-              } else {
-                const targetPcts = steps.map((s) => extractTargetValue(s));
-                const dataMinPct = Math.min(...targetPcts);
-                const dataMaxPct = Math.max(...targetPcts);
-                const yMinPct = Math.max(0, dataMinPct - SLOW_BUFFER_MINUTES * 10);
-                const yMaxPct = dataMaxPct + FAST_BUFFER_MINUTES * 10;
-                heightPct = ((effectiveTargetPct - yMinPct) / (yMaxPct - yMinPct || 1)) * 100;
-              }
+                  const { heightPct, effectiveTargetPct, stepPaceSec } = computeBarHeightPct(step);
+                  const paceRangeFormatted = stepPaceSec ? formatSecPerMileToStr(stepPaceSec) : `${Math.round(effectiveTargetPct)}%`;
+                  const tooltipText = `Executed Interval ${idx + 1}: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
 
-              heightPct = Math.min(Math.max(heightPct, 4), 100);
-
-              const tooltipText = `Step ${idx + 1}: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
-
-              return (
-                <div
-                  key={idx}
-                  title={tooltipText}
-                  className="workout-chart-bar"
-                  style={{
-                    width: `${widthPct}%`,
-                    height: `${heightPct}%`,
-                    backgroundColor: barColor
-                  }}
-                />
-              );
-            })}
+                  return (
+                    <div
+                      key={`exec-${idx}`}
+                      title={tooltipText}
+                      className="workout-chart-bar workout-chart-bar-executed"
+                      style={{
+                        width: `${widthPct}%`,
+                        height: `${heightPct}%`,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* X-AXIS LABELS */}
