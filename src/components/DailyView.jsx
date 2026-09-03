@@ -66,7 +66,7 @@ const isWorkoutCompleted = (workout) => {
     return true;
   }
 
-  const hasPairedEvent = workout.paired_event !== null && workout.paired_event !== undefined;
+  const hasPairedEvent = workout.paired_event_id !== null && workout.paired_event_id !== undefined;
   const hasCompliance = workout.compliance !== null && workout.compliance !== undefined;
 
   return hasPairedEvent || hasCompliance;
@@ -107,7 +107,22 @@ export default function DailyView() {
           ? historicalJson.sportSettings
           : [];
 
-        const rawMerged = [...valList, ...historicalList];
+        // Build a Set of all paired_event_id values present in historical activities
+        const pairedEventIds = new Set(
+          historicalList
+            .map((item) => item.paired_event_id)
+            .filter((id) => id !== null && id !== undefined)
+            .map(String)
+        );
+
+        // Deduplicate planned workouts: drop any planned workout whose ID matches a historical paired_event_id
+        const filteredValList = valList.filter((workout) => {
+          if (!workout || workout.id === undefined || workout.id === null) return true;
+          return !pairedEventIds.has(String(workout.id));
+        });
+
+        // Merge historical items and remaining unpaired planned workouts
+        const rawMerged = [...historicalList, ...filteredValList];
         const seenIds = new Set();
         const mergedList = [];
 
