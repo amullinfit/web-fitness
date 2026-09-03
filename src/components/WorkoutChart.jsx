@@ -305,7 +305,7 @@ export default function WorkoutChart({
                       className="workout-chart-bar-container"
                       style={{ width: `${widthPct}%` }}
                     >
-                      {/* FAST PACE UPPER EXTENSION (70% OPAQUE) */}
+                      {/* FAST PACE UPPER EXTENSION (50% OPAQUE) */}
                       {fastHeightPct > slowHeightPct && (
                         <div
                           className="workout-chart-bar workout-chart-bar-planned-fast"
