@@ -1,9 +1,9 @@
 import React from 'react';
 import './WorkoutChart.css';
 
-// Adjustable buffer parameters (in minutes)
-const SLOW_BUFFER_MINUTES = 2; // Buffer added below the slowest interval (slower pace)
-const FAST_BUFFER_MINUTES = 1; // Buffer subtracted above the fastest interval (faster pace)
+const SLOW_BUFFER_MINUTES = 2; // Buffer added below the slowest pace (bottom of chart)
+const FAST_BUFFER_MINUTES = 1; // Buffer subtracted above the fastest pace (top of chart)
+const DEFAULT_FALLBACK_THRESHOLD_SEC = 480; // Fallback threshold pace (8:00/mi) if none supplied
 
 /**
  * Formats raw seconds per mile into clean "MM:SS /mi".
@@ -34,6 +34,7 @@ const speedToPaceSeconds = (speedMps) => {
 
 /**
  * Recursive helper to flatten nested repeat steps (reps blocks)
+ * Removes parent wrapper duration/distance so child steps retain their true step duration.
  */
 const flattenSteps = (stepsList) => {
   if (!Array.isArray(stepsList)) return [];
@@ -44,13 +45,76 @@ const flattenSteps = (stepsList) => {
       const innerFlattened = flattenSteps(step.steps);
 
       for (let i = 0; i < reps; i++) {
-        acc.push(...innerFlattened.map((s) => ({ ...s })));
+        // Strip parent 'steps', 'reps', 'duration', 'distance' from repeated child clones
+        acc.push(...innerFlattened.map((s) => {
+          const { steps, reps, duration, distance, ...cleanStep } = s;
+          return {
+            ...cleanStep,
+            duration: s.duration || 60
+          };
+        }));
       }
     } else {
       acc.push(step);
     }
     return acc;
   }, []);
+};
+
+/**
+ * Extracts raw target value (percentage of threshold speed/pace) from a step object
+ */
+const extractTargetPct = (step) => {
+  if (!step) return 100;
+
+  // 1. Intervals.icu pace object: { start: 101, end: 115, units: "%pace" }
+  if (step.pace && typeof step.pace === 'object') {
+    const start = step.pace.start ?? step.pace.value ?? 0;
+    const end = step.pace.end ?? start;
+    if (start > 0 || end > 0) return (start + end) / 2;
+  }
+
+  // 2. Direct numeric target or intensityPct
+  const val = step.target ?? step.intensityPct ?? step.intensity;
+  if (typeof val === 'number' && val > 0) return val;
+  if (typeof val === 'object' && val !== null) {
+    const start = val.start ?? val.value ?? 0;
+    const end = val.end ?? start;
+    if (start > 0 || end > 0) return (start + end) / 2;
+  }
+
+  return 100;
+};
+
+/**
+ * Extracts step pace in seconds per mile from direct values or threshold percentages
+ */
+const extractStepPaceInSeconds = (step, thresholdSecPerMile) => {
+  if (!step) return null;
+
+  // Direct speed in m/s (from executed intervals)
+  const rawSpeed = parseFloat(step.average_speed ?? step.speed);
+  if (!isNaN(rawSpeed) && rawSpeed > 0) {
+    return speedToPaceSeconds(rawSpeed);
+  }
+
+  // Direct pace in sec/mi or m/s
+  if (typeof step.pace === 'number' && step.pace > 0) {
+    return step.pace < 15 ? speedToPaceSeconds(step.pace) : step.pace;
+  }
+
+  // Percentage of threshold speed (%pace)
+  const targetPct = extractTargetPct(step);
+  const refThresholdSec = (thresholdSecPerMile && thresholdSecPerMile > 0)
+    ? thresholdSecPerMile
+    : DEFAULT_FALLBACK_THRESHOLD_SEC;
+
+  if (targetPct > 0) {
+    // Speed % is inverted for pace: higher % = faster speed = fewer seconds per mile
+    return refThresholdSec / (targetPct / 100);
+  }
+
+  return null;
 };
 
 /**
@@ -64,13 +128,10 @@ const extractPlannedSteps = (workout) => {
     const flattened = flattenSteps(rawSteps);
 
     return flattened.map((step) => {
-      const speed = step.speed ?? (typeof step.pace === 'number' ? step.pace : null);
-      const computedPace = speedToPaceSeconds(speed) ?? (typeof step.pace === 'number' && step.pace > 15 ? step.pace : null);
       return {
         ...step,
         duration: step.duration || step.elapsed_time || 60,
-        pace: computedPace,
-        type: step.type || step.intensity || 'active'
+        type: step.type || step.text || (step.warmup ? 'Warmup' : step.cooldown ? 'Cooldown' : 'Active')
       };
     });
   } catch (e) {
@@ -80,7 +141,7 @@ const extractPlannedSteps = (workout) => {
 };
 
 /**
- * Extracts and normalizes executed intervals from historical activity or paired event data
+ * Extracts and normalizes executed intervals
  */
 const extractExecutedSteps = (workout) => {
   if (!workout || !Array.isArray(workout.intervals) || workout.intervals.length === 0) return [];
@@ -99,55 +160,16 @@ const extractExecutedSteps = (workout) => {
   });
 };
 
-const extractTargetValue = (step) => {
-  if (!step) return 100;
-
-  if (step.pace && typeof step.pace === 'object') {
-    const start = step.pace.start || 0;
-    const end = step.pace.end || start;
-    return (start + end) / 2;
-  }
-
-  const val = step.target || step.intensityPct;
-  if (typeof val === 'number' && val > 0) return val;
-  if (typeof val === 'object' && val !== null) {
-    const start = val.start || 0;
-    const end = val.end || start;
-    return (start + end) / 2;
-  }
-
-  return 100;
-};
-
 const getZoneDetails = (targetPct, stepType = '') => {
   const typeLower = String(stepType).toLowerCase();
 
-  if (typeLower.includes('warm') || typeLower.includes('cool') || typeLower.includes('rest') || targetPct < 75) {
+  if (typeLower.includes('warm') || typeLower.includes('cool') || typeLower.includes('recovery') || targetPct < 75) {
     return { name: 'Warmup / Recovery (Z1)', color: '#6c757d' };
   }
   if (targetPct < 88) return { name: 'Endurance (Z2)', color: '#28a745' };
   if (targetPct < 96) return { name: 'Tempo (Z3)', color: '#ffc107' };
   if (targetPct <= 105) return { name: 'Threshold (Z4)', color: '#fd7e14' };
   return { name: 'Anaerobic / VO2 Max (Z5+)', color: '#dc3545' };
-};
-
-const extractStepPaceInSeconds = (step, thresholdSecPerMile) => {
-  if (!step) return null;
-
-  if (typeof step.pace === 'number' && step.pace > 0) {
-    return step.pace < 15 ? 1609.344 / step.pace : step.pace;
-  }
-
-  if (typeof step.speed === 'number' && step.speed > 0) {
-    return 1609.344 / step.speed;
-  }
-
-  const targetPct = extractTargetValue(step);
-  if (thresholdSecPerMile && thresholdSecPerMile > 0 && targetPct > 0) {
-    return thresholdSecPerMile / (targetPct / 100);
-  }
-
-  return null;
 };
 
 export default function WorkoutChart({ 
@@ -164,30 +186,27 @@ export default function WorkoutChart({
   const totalExecutedSec = executedList.reduce((sum, s) => sum + (s.duration || 0), 0);
   const totalDurationSec = Math.max(totalPlannedSec, totalExecutedSec, 1);
 
-  // Convert thresholdPace (m/s or sec/mi) strictly into seconds per mile
+  // Normalize threshold speed to seconds per mile
   const thresholdSecPerMile = thresholdPace && thresholdPace > 0
-    ? (thresholdPace < 15 ? 1609.344 / thresholdPace : thresholdPace)
+    ? (thresholdPace < 15 ? speedToPaceSeconds(thresholdPace) : thresholdPace)
     : null;
 
-  // Collect step paces across ALL steps present in planned and executed datasets
   const allStepsCombined = [...plannedList, ...executedList];
   const stepPacesSec = allStepsCombined
     .map((s) => extractStepPaceInSeconds(s, thresholdSecPerMile))
     .filter((p) => p !== null && !isNaN(p) && p > 0);
 
   let yTicks = [];
-  let yFastestSec = 0; // Top of chart (faster pace = smaller second count)
-  let ySlowestSec = 0; // Bottom of chart (slower pace = larger second count)
+  let yFastestSec = 0;
+  let ySlowestSec = 0;
 
   if (stepPacesSec.length > 0) {
     const fastestStepSec = Math.min(...stepPacesSec);
     const slowestStepSec = Math.max(...stepPacesSec);
 
-    // Apply minute buffers in sec/mi space
     const rawFastSec = Math.max(30, fastestStepSec - (FAST_BUFFER_MINUTES * 60));
     const rawSlowSec = slowestStepSec + (SLOW_BUFFER_MINUTES * 60);
 
-    // Allowed tick intervals: 1:00 (60s), 1:30 (90s), or 2:00 (120s)
     const allowedStepSecs = [60, 90, 120];
 
     let chosenStepSec = 60;
@@ -200,7 +219,6 @@ export default function WorkoutChart({
       const roundedSlow = Math.ceil(rawSlowSec / stepSec) * stepSec;
       const count = Math.round((roundedSlow - roundedFast) / stepSec) + 1;
 
-      // Prioritize 4 to 6 tick marks
       if (count >= 4 && count <= 6) {
         if (count >= bestTickCount) {
           bestTickCount = count;
@@ -229,26 +247,8 @@ export default function WorkoutChart({
         topPct: topPct
       });
     }
-  } else {
-    // Fallback scaling if no explicit speed/pace values exist
-    const targetPcts = allStepsCombined.map((s) => extractTargetValue(s));
-    const dataMinPct = Math.min(...targetPcts);
-    const dataMaxPct = Math.max(...targetPcts);
-
-    const yMinPct = Math.max(0, dataMinPct - SLOW_BUFFER_MINUTES * 10);
-    const yMaxPct = dataMaxPct + FAST_BUFFER_MINUTES * 10;
-
-    const tickRatios = [0, 0.25, 0.5, 0.75, 1.0];
-    yTicks = tickRatios.map((r) => {
-      const pctVal = yMaxPct - (yMaxPct - yMinPct) * r;
-      return {
-        label: `${Math.round(pctVal)}%`,
-        topPct: r * 100
-      };
-    });
   }
 
-  // Calculate X-axis ticks (elapsed minutes) using primary track
   const primaryList = plannedList.length > 0 ? plannedList : executedList;
   let accumulatedSec = 0;
   const timeTicks = primaryList.map((step) => {
@@ -258,26 +258,17 @@ export default function WorkoutChart({
 
   const computeBarHeightPct = (step) => {
     const stepPaceSec = extractStepPaceInSeconds(step, thresholdSecPerMile);
-    let effectiveTargetPct = extractTargetValue(step);
-    if (thresholdSecPerMile && stepPaceSec) {
-      effectiveTargetPct = (thresholdSecPerMile / stepPaceSec) * 100;
-    }
+    const targetPct = extractTargetPct(step);
 
     let heightPct = 50;
     if (stepPaceSec && ySlowestSec > yFastestSec) {
+      // Faster pace (smaller seconds) = taller bar
       heightPct = ((ySlowestSec - stepPaceSec) / (ySlowestSec - yFastestSec)) * 100;
-    } else {
-      const targetPcts = allStepsCombined.map((s) => extractTargetValue(s));
-      const dataMinPct = Math.min(...targetPcts);
-      const dataMaxPct = Math.max(...targetPcts);
-      const yMinPct = Math.max(0, dataMinPct - SLOW_BUFFER_MINUTES * 10);
-      const yMaxPct = dataMaxPct + FAST_BUFFER_MINUTES * 10;
-      heightPct = ((effectiveTargetPct - yMinPct) / (yMaxPct - yMinPct || 1)) * 100;
     }
 
     return {
-      heightPct: Math.min(Math.max(heightPct, 4), 100),
-      effectiveTargetPct,
+      heightPct: Math.min(Math.max(heightPct, 8), 100),
+      effectiveTargetPct: targetPct,
       stepPaceSec
     };
   };
@@ -314,10 +305,10 @@ export default function WorkoutChart({
           ))}
         </div>
 
-        {/* CHART TRACKS & X-AXIS */}
+        {/* CHART TRACKS */}
         <div className="workout-chart-main">
           <div className="workout-chart-tracks" style={{ height: chartHeight }}>
-            {/* PLANNED BARS (Colored according to prescribed target ranges) */}
+            {/* PLANNED BARS */}
             {plannedList.length > 0 && (
               <div className="workout-chart-bars track-planned">
                 {plannedList.map((step, idx) => {
@@ -329,7 +320,7 @@ export default function WorkoutChart({
                   const { heightPct, effectiveTargetPct, stepPaceSec } = computeBarHeightPct(step);
                   const zoneDetails = getZoneDetails(effectiveTargetPct, rawIntensity);
                   const paceRangeFormatted = stepPaceSec ? formatSecPerMileToStr(stepPaceSec) : `${Math.round(effectiveTargetPct)}%`;
-                  const tooltipText = `Planned Step ${idx + 1}: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
+                  const tooltipText = `Planned Step ${idx + 1}: ${intensityFormatted} | Target Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
 
                   return (
                     <div
@@ -347,7 +338,7 @@ export default function WorkoutChart({
               </div>
             )}
 
-            {/* EXECUTED BARS (Blue outline bars) */}
+            {/* EXECUTED BARS */}
             {executedList.length > 0 && (
               <div className="workout-chart-bars track-executed">
                 {executedList.map((step, idx) => {
@@ -358,7 +349,7 @@ export default function WorkoutChart({
 
                   const { heightPct, effectiveTargetPct, stepPaceSec } = computeBarHeightPct(step);
                   const paceRangeFormatted = stepPaceSec ? formatSecPerMileToStr(stepPaceSec) : `${Math.round(effectiveTargetPct)}%`;
-                  const tooltipText = `Executed Interval ${idx + 1}: ${intensityFormatted} | Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
+                  const tooltipText = `Executed Interval ${idx + 1}: ${intensityFormatted} | Avg Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
 
                   return (
                     <div
