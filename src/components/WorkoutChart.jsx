@@ -3,7 +3,7 @@ import './WorkoutChart.css';
 
 const SLOW_BUFFER_MINUTES = 2;
 const FAST_BUFFER_MINUTES = 1;
-const DEFAULT_FALLBACK_THRESHOLD_SEC = 480; // 8:00/mi default if no threshold supplied
+const DEFAULT_FALLBACK_THRESHOLD_SEC = 480; // 8:00/mi fallback if thresholdPace is null
 
 const formatSecPerMileToStr = (secPerMile) => {
   if (!secPerMile || secPerMile <= 0 || isNaN(secPerMile)) return "N/A";
@@ -48,9 +48,6 @@ const flattenSteps = (stepsList) => {
   }, []);
 };
 
-/**
- * Parses start, end, and midpoint percentages for step pace targets
- */
 const extractPaceRangePct = (step) => {
   if (!step) return { start: 100, end: 100, mid: 100 };
 
@@ -82,21 +79,18 @@ const extractPaceRangePct = (step) => {
   return { start: 100, end: 100, mid: 100 };
 };
 
-/**
- * Resolves pace target in seconds per mile for low, high, and mid ranges
- */
 const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
   if (!step) return null;
 
   const rawSpeed = parseFloat(step.average_speed ?? step.speed);
   if (!isNaN(rawSpeed) && rawSpeed > 0) {
     const sec = speedToPaceSeconds(rawSpeed);
-    return { fastSec: sec, slowSec: sec, midSec: sec };
+    return { fastSec: sec, slowSec: sec, midSec: sec, rangePct: { start: 100, end: 100, mid: 100 } };
   }
 
   if (typeof step.pace === 'number' && step.pace > 0) {
     const sec = step.pace < 15 ? speedToPaceSeconds(step.pace) : step.pace;
-    return { fastSec: sec, slowSec: sec, midSec: sec };
+    return { fastSec: sec, slowSec: sec, midSec: sec, rangePct: { start: 100, end: 100, mid: 100 } };
   }
 
   const rangePct = extractPaceRangePct(step);
@@ -104,7 +98,7 @@ const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
     ? thresholdSecPerMile
     : DEFAULT_FALLBACK_THRESHOLD_SEC;
 
-  // Higher % = Faster speed = Fewer seconds per mile (top of chart)
+  // Higher target % speed = Faster speed = Fewer seconds per mile (TOP of chart)
   const fastSec = rangePct.end > 0 ? refThresholdSec / (rangePct.end / 100) : refThresholdSec;
   const slowSec = rangePct.start > 0 ? refThresholdSec / (rangePct.start / 100) : refThresholdSec;
   const midSec = rangePct.mid > 0 ? refThresholdSec / (rangePct.mid / 100) : refThresholdSec;
@@ -248,30 +242,29 @@ export default function WorkoutChart({
     return Math.round(accumulatedSec / 60);
   });
 
-  const computeRangeBarMetrics = (step) => {
-    const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
-    const ySpan = ySlowestSec - yFastestSec || 1;
-
-    // Convert seconds to vertical percentage (0% = bottom, 100% = top)
-    const maxHeightPct = Math.min(Math.max(((ySlowestSec - range.fastSec) / ySpan) * 100, 4), 100);
-    const minHeightPct = Math.min(Math.max(((ySlowestSec - range.slowSec) / ySpan) * 100, 2), 100);
-    const midHeightPct = Math.min(Math.max(((ySlowestSec - range.midSec) / ySpan) * 100, 3), 100);
-
-    return {
-      maxHeightPct, // Upper boundary height (fastest pace)
-      minHeightPct, // Lower boundary height (slowest pace)
-      midHeightPct, // Target midpoint height
-      range
-    };
+  /**
+   * Corrected Height Calculation:
+   * Fastest Pace (lowest seconds) = 100% height (top)
+   * Slowest Pace (highest seconds) = 0% height (bottom)
+   */
+  const computePaceToHeightPct = (paceSec) => {
+    if (!paceSec || ySlowestSec <= yFastestSec) return 50;
+    const pct = ((ySlowestSec - paceSec) / (ySlowestSec - yFastestSec)) * 100;
+    return Math.min(Math.max(pct, 0), 100);
   };
 
   return (
     <div className="workout-chart-container">
-      {/* LEGEND */}
       <div className="workout-chart-legend">
         {plannedList.length > 0 && (
           <div className="workout-chart-legend-item">
             <span className="workout-chart-legend-color planned" />
+            <span>Planned Midpoint</span>
+          </div>
+        )}
+        {plannedList.length > 0 && (
+          <div className="workout-chart-legend-item">
+            <span className="workout-chart-legend-color planned-range" />
             <span>Planned Target Range</span>
           </div>
         )}
@@ -284,7 +277,6 @@ export default function WorkoutChart({
       </div>
 
       <div className="workout-chart-wrapper">
-        {/* Y-AXIS LABELS */}
         <div className="workout-chart-yaxis" style={{ height: chartHeight }}>
           {yTicks.map((tick, idx) => (
             <span 
@@ -297,58 +289,53 @@ export default function WorkoutChart({
           ))}
         </div>
 
-        {/* CHART TRACKS */}
         <div className="workout-chart-main">
           <div className="workout-chart-tracks" style={{ height: chartHeight }}>
-            {/* PLANNED BARS (WITH UPPER/LOWER RANGE BANDS) */}
+            {/* PLANNED BARS & RANGE OVERLAYS */}
             {plannedList.length > 0 && (
-              <div className="workout-chart-bars track-planned" style={{ gap: 0 }}>
+              <div className="workout-chart-bars track-planned">
                 {plannedList.map((step, idx) => {
                   const durationMins = Math.round((step.duration || 60) / 60);
                   const widthPct = ((step.duration || 60) / totalDurationSec) * 100;
                   const rawIntensity = step.type || 'active';
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
-                  const { maxHeightPct, minHeightPct, midHeightPct, range } = computeRangeBarMetrics(step);
+                  const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
                   const zoneDetails = getZoneDetails(range.rangePct.mid, rawIntensity);
+
+                  // Vertical percentages grounded from bottom (0%) to top (100%)
+                  const maxHeightPct = computePaceToHeightPct(range.fastSec); // Upper boundary (Top)
+                  const minHeightPct = computePaceToHeightPct(range.slowSec); // Lower boundary (Bottom)
+                  const midHeightPct = computePaceToHeightPct(range.midSec);  // Midpoint target height
+
+                  const bandHeightPct = Math.max(maxHeightPct - minHeightPct, 2);
 
                   const fastPaceStr = formatSecPerMileToStr(range.fastSec);
                   const slowPaceStr = formatSecPerMileToStr(range.slowSec);
-                  const tooltipText = `Planned Step ${idx + 1}: ${intensityFormatted} | Target Range: ${fastPaceStr} - ${slowPaceStr} | Duration: ${durationMins}m`;
-
-                  // Band range height calculation
-                  const bandHeightPct = Math.max(maxHeightPct - minHeightPct, 2);
+                  const tooltipText = `Planned Step ${idx + 1}: ${intensityFormatted} | Range: ${fastPaceStr} - ${slowPaceStr} | Duration: ${durationMins}m`;
 
                   return (
                     <div
                       key={`plan-${idx}`}
                       title={tooltipText}
-                      className="workout-chart-bar-container"
+                      className="workout-chart-bar workout-chart-bar-planned"
                       style={{
                         width: `${widthPct}%`,
-                        height: '100%',
-                        position: 'relative'
+                        height: `${midHeightPct}%`,
+                        backgroundColor: zoneDetails.color
                       }}
                     >
-                      {/* SLIGHTLY OPAQUE TARGET RANGE BAND */}
-                      <div
-                        className="workout-chart-range-band"
-                        style={{
-                          bottom: `${minHeightPct}%`,
-                          height: `${bandHeightPct}%`,
-                          backgroundColor: zoneDetails.color
-                        }}
-                      />
-
-                      {/* SOLID MIDPOINT TARGET LINE/BAR */}
-                      <div
-                        className="workout-chart-bar workout-chart-bar-planned"
-                        style={{
-                          bottom: 0,
-                          height: `${midHeightPct}%`,
-                          backgroundColor: zoneDetails.color
-                        }}
-                      />
+                      {/* RANGE BAND OVERLAY */}
+                      {bandHeightPct > 0 && (
+                        <div
+                          className="workout-chart-bar-planned-range"
+                          style={{
+                            bottom: `${minHeightPct}%`,
+                            height: `${bandHeightPct}%`,
+                            backgroundColor: zoneDetails.color
+                          }}
+                        />
+                      )}
                     </div>
                   );
                 })}
@@ -357,14 +344,16 @@ export default function WorkoutChart({
 
             {/* EXECUTED BARS */}
             {executedList.length > 0 && (
-              <div className="workout-chart-bars track-executed" style={{ gap: 0 }}>
+              <div className="workout-chart-bars track-executed">
                 {executedList.map((step, idx) => {
                   const durationMins = Math.round((step.duration || 60) / 60);
                   const widthPct = ((step.duration || 60) / totalDurationSec) * 100;
                   const rawIntensity = step.type || 'active';
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
-                  const { midHeightPct, range } = computeRangeBarMetrics(step);
+                  const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
+                  const heightPct = computePaceToHeightPct(range.midSec);
+
                   const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
                   const tooltipText = `Executed Interval ${idx + 1}: ${intensityFormatted} | Avg Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
 
@@ -375,9 +364,7 @@ export default function WorkoutChart({
                       className="workout-chart-bar workout-chart-bar-executed"
                       style={{
                         width: `${widthPct}%`,
-                        height: `${midHeightPct}%`,
-                        margin: 0,
-                        padding: 0
+                        height: `${heightPct}%`
                       }}
                     />
                   );
@@ -386,7 +373,6 @@ export default function WorkoutChart({
             )}
           </div>
 
-          {/* X-AXIS LABELS */}
           <div className="workout-chart-xaxis">
             <span>0m</span>
             {timeTicks.map((t, i) => (

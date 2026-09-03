@@ -80,24 +80,23 @@
 }
 
 /* Bars Area */
-/* Container for the bars in a track */
 .workout-chart-bars {
   display: flex;
   flex-direction: row;
-  align-items: flex-end;     /* Ensures flex items align to the bottom */
+  align-items: flex-end;     /* Force flex children to ground at bottom */
   width: 100%;
   height: 100%;
   position: absolute;
   top: 0;
   left: 0;
-  gap: 0 !important;          /* Force zero gap between flex children */
+  gap: 0 !important;          
   margin: 0 !important;
   padding: 0 !important;
 }
 
 /* Individual bar styling */
 .workout-chart-bar {
-  position: relative;         /* Anchor point for absolute children */
+  position: relative;         
   box-sizing: border-box;
   margin: 0 !important;       
   padding: 0 !important;
@@ -119,29 +118,16 @@
   transform: scaleY(1.02);
 }
 
-/* Planned Target Ranges (Range Bands / Target Zones) */
+/* Target Range Band Overlay (Positioned absolutely relative to track container) */
 .workout-chart-bar-planned-range {
   position: absolute;
   left: 0;
-  bottom: 0;                  /* Anchors range overlay from bottom upwards */
   width: 100%;
-  background-color: rgba(0, 123, 255, 0.2);
-  border-top: 1px dashed rgba(0, 123, 255, 0.6);
-  border-bottom: 1px dashed rgba(0, 123, 255, 0.6);
+  opacity: 0.35;
+  border-top: 1px dashed rgba(255, 255, 255, 0.8);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.8);
   pointer-events: none;
   z-index: 1;
-}
-
-/* Solid single target line when target min === max */
-.workout-chart-bar-planned-target-line {
-  position: absolute;
-  left: 0;
-  bottom: 0;                  /* Anchors target line height from bottom baseline */
-  width: 100%;
-  height: 2px;
-  background-color: #0056b3;
-  pointer-events: none;
-  z-index: 2;
 }
 
 /* Executed Bars: Empty with Blue Border */
