@@ -34,6 +34,11 @@
   background-color: #007bff;
 }
 
+.workout-chart-legend-color.planned-range {
+  background-color: rgba(0, 123, 255, 0.25);
+  border: 1px dashed #007bff;
+}
+
 .workout-chart-legend-color.executed {
   background-color: transparent;
   border: 2px solid #007bff;
@@ -92,6 +97,7 @@
 
 /* Individual bar styling */
 .workout-chart-bar {
+  position: relative;         /* Needed for absolute positioning of range overlays */
   box-sizing: border-box;
   margin: 0 !important;       /* Remove default or inherited margins */
   padding: 0 !important;
@@ -100,11 +106,11 @@
   flex-shrink: 0;             /* Prevent flex items from distorting percentages */
 }
 
-
 /* Planned Bars */
 .workout-chart-bar-planned {
   opacity: 0.85;
   border-top: 1px solid rgba(255, 255, 255, 0.4);
+  transition: transform 0.15s ease, filter 0.15s ease;
 }
 
 .workout-chart-bar-planned:hover {
@@ -112,11 +118,36 @@
   transform: scaleY(1.02);
 }
 
+/* Planned Target Ranges (Range Bands / Target Zones) */
+.workout-chart-bar-planned-range {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background-color: rgba(0, 123, 255, 0.2);
+  border-top: 1px dashed rgba(0, 123, 255, 0.6);
+  border-bottom: 1px dashed rgba(0, 123, 255, 0.6);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Solid single target line when target min === max */
+.workout-chart-bar-planned-target-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #0056b3;
+  pointer-events: none;
+  z-index: 2;
+}
+
 /* Executed Bars: Empty with Blue Border */
 .workout-chart-bar-executed {
   background-color: transparent !important;
   border: 2px solid #007bff;
   box-shadow: inset 0 0 0 1px rgba(0, 123, 255, 0.1);
+  z-index: 3;                 /* Ensures executed line renders clearly over planned background */
+  transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
 .workout-chart-bar-executed:hover {
