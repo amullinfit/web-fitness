@@ -12,38 +12,9 @@ const safeStringLower = (val) => {
   return String(val.id || val.type || val.name || val).toLowerCase();
 };
 
-/**
- * Converts speed in meters per second (m/s) directly into pace in total SECONDS per mile.
- * e.g., 2.1347609 m/s -> 753.87 seconds
- */
-const speedToPaceSeconds = (speedMps) => {
-  if (typeof speedMps !== 'number' || speedMps <= 0 || isNaN(speedMps)) return null;
-  // 1 mile = 1609.344 meters
-  return 1609.344 / speedMps;
-};
-
-/**
- * Formats speed (m/s) into a human-readable pace string (MM:SS per mile).
- * e.g., 2.1347609 m/s -> "12:34"
- */
-const formatPaceFromSpeed = (speedMps) => {
-  const totalSeconds = speedToPaceSeconds(speedMps);
-  if (!totalSeconds) return '--:--';
-
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = Math.round(totalSeconds % 60);
-
-  if (seconds === 60) {
-    return `${minutes + 1}:00`;
-  }
-
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-};
-
 const getThresholdPaceForSport = (workout, sportSettings) => {
   if (!workout) return null;
 
-  // 1. Check if the historical activity object has threshold_pace embedded directly
   if (typeof workout.threshold_pace === 'number' && workout.threshold_pace > 0) {
     return workout.threshold_pace;
   }
@@ -54,7 +25,6 @@ const getThresholdPaceForSport = (workout, sportSettings) => {
     return workout.sportSettings.threshold_pace;
   }
 
-  // 2. Fall back to matching sportSettings array by sport type
   const sportType = safeStringLower(workout.type || workout.sport);
   if (!sportType || !Array.isArray(sportSettings)) return null;
 
@@ -100,135 +70,6 @@ const isWorkoutCompleted = (workout) => {
   const hasCompliance = workout.compliance !== null && workout.compliance !== undefined;
 
   return hasPairedEvent || hasCompliance;
-};
-
-/**
- * Recursive helper to flatten nested repeat steps (reps blocks)
- */
-const flattenSteps = (stepsList) => {
-  if (!Array.isArray(stepsList)) return [];
-
-  return stepsList.reduce((acc, step) => {
-    if (Array.isArray(step.steps) && step.steps.length > 0) {
-      const reps = step.reps && Number.isInteger(step.reps) && step.reps > 0 ? step.reps : 1;
-      const innerFlattened = flattenSteps(step.steps);
-
-      for (let i = 0; i < reps; i++) {
-        acc.push(...innerFlattened.map((s) => ({ ...s })));
-      }
-    } else {
-      acc.push(step);
-    }
-    return acc;
-  }, []);
-};
-
-/**
- * Extracts and flattens workout steps for both historical and planned workouts.
- */
-const getStepsFromWorkout = (workout) => {
-  if (!workout) return [];
-
-  if (Array.isArray(workout.intervals) && workout.intervals.length > 0) {
-    return workout.intervals.map((interval) => {
-      const rawSpeed = parseFloat(interval.average_speed ?? interval.speed);
-      const speed = !isNaN(rawSpeed) && rawSpeed > 0 ? rawSpeed : null;
-
-      return {
-        duration: interval.elapsed_time || 0,
-        pace: speedToPaceSeconds(speed),
-        watts: interval.weighted_average_watts || interval.average_watts || null,
-        speed: speed,
-        type: interval.type || workout.type || 'Interval',
-        distance: interval.distance || 0,
-        name: interval.name || 'Interval'
-      };
-    });
-  }
-
-  if (workout.workout_doc) {
-    try {
-      const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
-      const rawSteps = doc?.steps || [];
-      const flattened = flattenSteps(rawSteps);
-
-      return flattened.map((step) => {
-        const speed = step.speed ?? (step.pace ? (typeof step.pace === 'number' ? step.pace : null) : null);
-        return {
-          ...step,
-          pace: speedToPaceSeconds(speed) ?? step.pace
-        };
-      });
-    } catch (e) {
-      console.error('Error parsing workout_doc:', e);
-      return [];
-    }
-  }
-
-  return [];
-};
-
-/**
- * Calculates Y-axis pace bounds and tick marks in seconds per mile/km.
- */
-export const calculatePaceTicks = (paceValuesInSeconds) => {
-  const validPaces = paceValuesInSeconds.filter((p) => p && !isNaN(p) && p > 0);
-  if (validPaces.length === 0) {
-    return { minPace: 300, maxPace: 600, ticks: [300, 360, 420, 480, 540, 600] };
-  }
-
-  let rawMin = Math.min(...validPaces);
-  let rawMax = Math.max(...validPaces);
-
-  if (rawMax - rawMin < 180) {
-    const mid = (rawMin + rawMax) / 2;
-    rawMin = Math.max(120, mid - 90);
-    rawMax = rawMin + 180;
-  }
-
-  const MAX_SPAN = 420;
-  if (rawMax - rawMin > MAX_SPAN) {
-    const mid = (rawMin + rawMax) / 2;
-    rawMin = Math.max(120, mid - MAX_SPAN / 2);
-    rawMax = rawMin + MAX_SPAN;
-  }
-
-  const span = rawMax - rawMin;
-  let step = 60;
-  if (span > 300) {
-    step = 120;
-  } else if (span > 180) {
-    step = 90;
-  }
-
-  const startTick = Math.floor(rawMin / step) * step;
-  const endTick = Math.ceil(rawMax / step) * step;
-
-  const ticks = [];
-  for (let t = startTick; t <= endTick; t += step) {
-    ticks.push(t);
-  }
-
-  if (ticks.length > 6) {
-    const doubleStep = step * 2;
-    const doubleTicks = [];
-    const newStart = Math.floor(rawMin / doubleStep) * doubleStep;
-    const newEnd = Math.ceil(rawMax / doubleStep) * doubleStep;
-    for (let t = newStart; t <= newEnd; t += doubleStep) {
-      doubleTicks.push(t);
-    }
-    return {
-      minPace: doubleTicks[0],
-      maxPace: doubleTicks[doubleTicks.length - 1],
-      ticks: doubleTicks
-    };
-  }
-
-  return {
-    minPace: ticks[0],
-    maxPace: ticks[ticks.length - 1],
-    ticks
-  };
 };
 
 export default function DailyView() {
@@ -298,31 +139,6 @@ export default function DailyView() {
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
   const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
 
-  const workoutDateBounds = useMemo(() => {
-    if (!Array.isArray(workouts) || workouts.length === 0) {
-      return { oldest: 'N/A', newest: 'N/A', historicalCount: 0, workoutCount: 0 };
-    }
-
-    const validDates = workouts
-      .map((w) => getLocalDateString(w.start_date_local || w.icu_start_date || w.start_date || w.date))
-      .filter(Boolean)
-      .sort();
-
-    const historicalCount = workouts.filter((w) => w.feedSource === 'HISTORICAL').length;
-    const workoutCount = workouts.filter((w) => w.feedSource === 'WORKOUTS').length;
-
-    if (validDates.length === 0) {
-      return { oldest: 'N/A', newest: 'N/A', historicalCount, workoutCount };
-    }
-
-    return {
-      oldest: validDates[0],
-      newest: validDates[validDates.length - 1],
-      historicalCount,
-      workoutCount
-    };
-  }, [workouts]);
-
   const nextDateObj = useMemo(() => {
     const next = new Date(selectedDate);
     next.setDate(next.getDate() + 1);
@@ -377,15 +193,7 @@ export default function DailyView() {
   };
 
   const renderWorkoutCard = (workout, index) => {
-    const rawSteps = getStepsFromWorkout(workout);
     const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings);
-    
-    const paceValues = rawSteps
-      .map((s) => speedToPaceSeconds(s.speed))
-      .filter((p) => p !== null && !isNaN(p));
-
-    const paceConfig = calculatePaceTicks(paceValues);
-
     const workoutDateStr = getLocalDateString(
       workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date
     );
@@ -410,14 +218,12 @@ export default function DailyView() {
           </div>
         </div>
 
-        {/* Updated WorkoutChart Invocation */}
-        {(rawSteps.length > 0 || workout.workout_doc || workout.intervals) && (
+        {/* Clean Invocation: Calculations fully encapsulated within WorkoutChart */}
+        {(workout.workout_doc || workout.intervals) && (
           <WorkoutChart
             workout={workout}
-            steps={rawSteps}
             thresholdPace={thresholdPaceMps}
-            paceConfig={paceConfig}
-            sportSettings={sportSettings}
+            chartHeight="140px"
           />
         )}
 
