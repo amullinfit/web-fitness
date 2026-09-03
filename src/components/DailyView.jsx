@@ -1,17 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import WorkoutChart from './WorkoutChart';
 import WorkoutTextSection from './WorkoutTextSection';
+import './DailyView.css';
 
-const VAL_DAILY_URL = "/api/val-daily";
-
-const formatDuration = (totalSeconds) => {
-  if (!totalSeconds) return "0:00:00";
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = Math.floor(totalSeconds % 60);
-  const pad = (num) => String(num).padStart(2, '0');
-  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
-};
+const VAL_WORKOUTS_URL = "/api/val-workouts";
+const HISTORICAL_URL = "/api/val-historical";
 
 const safeStringLower = (val) => {
   if (!val) return "";
@@ -19,23 +12,99 @@ const safeStringLower = (val) => {
   return String(val.id || val.type || val.name || val).toLowerCase();
 };
 
+/**
+ * Converts speed in meters per second (m/s) directly into pace in total SECONDS per mile.
+ * e.g., 2.1347609 m/s -> 753.87 seconds
+ */
 const speedToPaceSeconds = (speedMps) => {
   if (typeof speedMps !== 'number' || speedMps <= 0 || isNaN(speedMps)) return null;
+  // 1 mile = 1609.344 meters
   return 1609.344 / speedMps;
 };
 
-const getThresholdPaceForSport = (sportType, sportSettings) => {
+/**
+ * Formats speed (m/s) into a human-readable pace string (MM:SS per mile).
+ * e.g., 2.1347609 m/s -> "12:34"
+ */
+const formatPaceFromSpeed = (speedMps) => {
+  const totalSeconds = speedToPaceSeconds(speedMps);
+  if (!totalSeconds) return '--:--';
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.round(totalSeconds % 60);
+
+  if (seconds === 60) {
+    return `${minutes + 1}:00`;
+  }
+
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+
+const getThresholdPaceForSport = (workout, sportSettings) => {
+  if (!workout) return null;
+
+  // 1. Check if the historical activity object has threshold_pace embedded directly
+  if (typeof workout.threshold_pace === 'number' && workout.threshold_pace > 0) {
+    return workout.threshold_pace;
+  }
+  if (typeof workout.icu_threshold_pace === 'number' && workout.icu_threshold_pace > 0) {
+    return workout.icu_threshold_pace;
+  }
+  if (workout.sportSettings?.threshold_pace) {
+    return workout.sportSettings.threshold_pace;
+  }
+
+  // 2. Fall back to matching sportSettings array by sport type
+  const sportType = safeStringLower(workout.type || workout.sport);
   if (!sportType || !Array.isArray(sportSettings)) return null;
-  const normalizedSport = safeStringLower(sportType);
+
   const match = sportSettings.find((s) => {
     if (!s) return false;
     const settingType = safeStringLower(s.type || s.id || s.sport);
     let typesList = Array.isArray(s.types) ? s.types.map((t) => safeStringLower(t)) : [];
-    return settingType === normalizedSport || typesList.includes(normalizedSport);
+    
+    return (
+      settingType === sportType ||
+      typesList.includes(sportType) ||
+      typesList.some((t) => sportType.includes(t) || t.includes(sportType))
+    );
   });
+
   return match?.threshold_pace || match?.pace_threshold || null;
 };
 
+const getLocalDateString = (dateInput) => {
+  if (!dateInput) return '';
+
+  if (typeof dateInput === 'string') {
+    if (dateInput.includes('T')) return dateInput.split('T')[0];
+    if (dateInput.length >= 10) return dateInput.slice(0, 10);
+  }
+
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const isWorkoutCompleted = (workout) => {
+  if (workout.feedSource === 'HISTORICAL') {
+    return true;
+  }
+
+  const hasPairedEvent = workout.paired_event !== null && workout.paired_event !== undefined;
+  const hasCompliance = workout.compliance !== null && workout.compliance !== undefined;
+
+  return hasPairedEvent || hasCompliance;
+};
+
+/**
+ * Recursive helper to flatten nested repeat steps (reps blocks)
+ */
 const flattenSteps = (stepsList) => {
   if (!Array.isArray(stepsList)) return [];
 
@@ -54,46 +123,55 @@ const flattenSteps = (stepsList) => {
   }, []);
 };
 
-// Extracts planned workout steps from workout_doc
-const getPlannedSteps = (workout) => {
-  if (!workout?.workout_doc) return [];
-  try {
-    const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
-    const rawSteps = doc?.steps || [];
-    const flattened = flattenSteps(rawSteps);
+/**
+ * Extracts and flattens workout steps for both historical and planned workouts.
+ */
+const getStepsFromWorkout = (workout) => {
+  if (!workout) return [];
 
-    return flattened.map((step) => {
-      const speed = step.speed ?? (step.pace ? (typeof step.pace === 'number' ? step.pace : null) : null);
+  if (Array.isArray(workout.intervals) && workout.intervals.length > 0) {
+    return workout.intervals.map((interval) => {
+      const rawSpeed = parseFloat(interval.average_speed ?? interval.speed);
+      const speed = !isNaN(rawSpeed) && rawSpeed > 0 ? rawSpeed : null;
+
       return {
-        ...step,
-        pace: speedToPaceSeconds(speed) ?? step.pace
+        duration: interval.elapsed_time || 0,
+        pace: speedToPaceSeconds(speed),
+        watts: interval.weighted_average_watts || interval.average_watts || null,
+        speed: speed,
+        type: interval.type || workout.type || 'Interval',
+        distance: interval.distance || 0,
+        name: interval.name || 'Interval'
       };
     });
-  } catch (e) {
-    return [];
   }
+
+  if (workout.workout_doc) {
+    try {
+      const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
+      const rawSteps = doc?.steps || [];
+      const flattened = flattenSteps(rawSteps);
+
+      return flattened.map((step) => {
+        const speed = step.speed ?? (step.pace ? (typeof step.pace === 'number' ? step.pace : null) : null);
+        return {
+          ...step,
+          pace: speedToPaceSeconds(speed) ?? step.pace
+        };
+      });
+    } catch (e) {
+      console.error('Error parsing workout_doc:', e);
+      return [];
+    }
+  }
+
+  return [];
 };
 
-// Extracts actual performed intervals
-const getActualIntervals = (workout) => {
-  if (!Array.isArray(workout?.intervals) || workout.intervals.length === 0) return [];
-  return workout.intervals.map((interval) => {
-    const rawSpeed = parseFloat(interval.average_speed ?? interval.speed);
-    const speed = !isNaN(rawSpeed) && rawSpeed > 0 ? rawSpeed : null;
-
-    return {
-      duration: interval.elapsed_time || 0,
-      pace: speedToPaceSeconds(speed),
-      watts: interval.weighted_average_watts || interval.average_watts || null,
-      speed: speed,
-      type: interval.type || workout.type || 'Interval',
-      distance: interval.distance || 0,
-      name: interval.name || 'Interval'
-    };
-  });
-};
-
-const calculatePaceTicks = (paceValuesInSeconds) => {
+/**
+ * Calculates Y-axis pace bounds and tick marks in seconds per mile/km.
+ */
+export const calculatePaceTicks = (paceValuesInSeconds) => {
   const validPaces = paceValuesInSeconds.filter((p) => p && !isNaN(p) && p > 0);
   if (validPaces.length === 0) {
     return { minPace: 300, maxPace: 600, ticks: [300, 360, 420, 480, 540, 600] };
@@ -154,83 +232,248 @@ const calculatePaceTicks = (paceValuesInSeconds) => {
 };
 
 export default function DailyView() {
-  const [dailyData, setDailyData] = useState(null);
+  const [workouts, setWorkouts] = useState([]);
   const [sportSettings, setSportSettings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
 
   useEffect(() => {
-    fetch(VAL_DAILY_URL)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json) {
-          setDailyData(json);
-          setSportSettings(Array.isArray(json.sportSettings) ? json.sportSettings : []);
+    let isMounted = true;
+    setLoading(true);
+
+    Promise.all([
+      fetch(VAL_WORKOUTS_URL).then((res) => res.json()).catch((err) => {
+        console.error("Error fetching val-workouts:", err);
+        return null;
+      }),
+      fetch(HISTORICAL_URL).then((res) => res.json()).catch((err) => {
+        console.error("Error fetching historical activities:", err);
+        return null;
+      })
+    ])
+      .then(([valJson, historicalJson]) => {
+        if (!isMounted) return;
+
+        const valList = (valJson?.planned || valJson?.workouts || (Array.isArray(valJson) ? valJson : []))
+          .map((item) => ({ ...item, feedSource: 'WORKOUTS' }));
+
+        const historicalList = (historicalJson?.activities || historicalJson?.workouts || (Array.isArray(historicalJson) ? historicalJson : []))
+          .map((item) => ({ ...item, feedSource: 'HISTORICAL' }));
+
+        const settings = Array.isArray(valJson?.sportSettings)
+          ? valJson.sportSettings
+          : Array.isArray(historicalJson?.sportSettings)
+          ? historicalJson.sportSettings
+          : [];
+
+        const rawMerged = [...valList, ...historicalList];
+        const seenIds = new Set();
+        const mergedList = [];
+
+        for (const item of rawMerged) {
+          if (!item) continue;
+          const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
+          const uniqueKey = item.id ? String(item.id) : `${item.name || item.type}-${itemDate}-${item.feedSource}`;
+
+          if (!seenIds.has(uniqueKey)) {
+            seenIds.add(uniqueKey);
+            mergedList.push(item);
+          }
         }
+
+        setWorkouts(mergedList);
+        setSportSettings(settings);
         setLoading(false);
       })
       .catch((err) => {
-        setLoading(false);
+        console.error("Error loading workout data:", err);
+        if (isMounted) setLoading(false);
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  if (loading) return <div style={{ padding: '20px', color: '#6c757d' }}>Loading Daily View...</div>;
-  if (!dailyData) return <div style={{ padding: '20px' }}>No workout data available for today.</div>;
+  const todayStr = useMemo(() => getLocalDateString(new Date()), []);
+  const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
 
-  const workouts = Array.isArray(dailyData.workouts) ? dailyData.workouts : (dailyData.workout ? [dailyData.workout] : []);
+  const workoutDateBounds = useMemo(() => {
+    if (!Array.isArray(workouts) || workouts.length === 0) {
+      return { oldest: 'N/A', newest: 'N/A', historicalCount: 0, workoutCount: 0 };
+    }
+
+    const validDates = workouts
+      .map((w) => getLocalDateString(w.start_date_local || w.icu_start_date || w.start_date || w.date))
+      .filter(Boolean)
+      .sort();
+
+    const historicalCount = workouts.filter((w) => w.feedSource === 'HISTORICAL').length;
+    const workoutCount = workouts.filter((w) => w.feedSource === 'WORKOUTS').length;
+
+    if (validDates.length === 0) {
+      return { oldest: 'N/A', newest: 'N/A', historicalCount, workoutCount };
+    }
+
+    return {
+      oldest: validDates[0],
+      newest: validDates[validDates.length - 1],
+      historicalCount,
+      workoutCount
+    };
+  }, [workouts]);
+
+  const nextDateObj = useMemo(() => {
+    const next = new Date(selectedDate);
+    next.setDate(next.getDate() + 1);
+    return next;
+  }, [selectedDate]);
+
+  const nextDateStr = useMemo(() => getLocalDateString(nextDateObj), [nextDateObj]);
+
+  const selectedDayWorkouts = useMemo(() => {
+    if (!Array.isArray(workouts)) return [];
+    return workouts.filter((w) => {
+      const rawDate = w.start_date_local || w.icu_start_date || w.start_date || w.date;
+      return getLocalDateString(rawDate) === selectedDateStr;
+    });
+  }, [workouts, selectedDateStr]);
+
+  const nextDayWorkouts = useMemo(() => {
+    if (!Array.isArray(workouts)) return [];
+    return workouts.filter((w) => {
+      const rawDate = w.start_date_local || w.icu_start_date || w.start_date || w.date;
+      return getLocalDateString(rawDate) === nextDateStr;
+    });
+  }, [workouts, nextDateStr]);
+
+  const handlePrevDay = () => {
+    setSelectedDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() - 1);
+      return next;
+    });
+  };
+
+  const handleNextDay = () => {
+    setSelectedDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() + 1);
+      return next;
+    });
+  };
+
+  const handleToday = () => setSelectedDate(new Date());
+
+  if (loading) return <div className="daily-view-loading">Loading Daily Workouts & Activities...</div>;
+
+  const formatHeaderDate = (dateObj) => {
+    return dateObj.toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const renderWorkoutCard = (workout, index) => {
+    const rawSteps = getStepsFromWorkout(workout);
+    const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings);
+    
+    const paceValues = rawSteps
+      .map((s) => speedToPaceSeconds(s.speed))
+      .filter((p) => p !== null && !isNaN(p));
+
+    const paceConfig = calculatePaceTicks(paceValues);
+
+    const workoutDateStr = getLocalDateString(
+      workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date
+    );
+
+    const completed = isWorkoutCompleted(workout);
+    const isPast = workoutDateStr < todayStr;
+    const isMissed = isPast && !completed;
+
+    return (
+      <div key={workout.id || index} className="daily-workout-card">
+        <div className="daily-workout-card-header">
+          <h3 className="daily-workout-title">
+            {workout.name || workout.title || `${workout.type || 'Workout'}`}
+          </h3>
+
+          <div className="daily-workout-header-right">
+            {completed && <span className="status-badge badge-completed">COMPLETED</span>}
+            {isMissed && <span className="status-badge badge-missed">MISSED</span>}
+            <span className="daily-workout-type">
+              {workout.type || 'Activity'}
+            </span>
+          </div>
+        </div>
+
+        {/* Updated WorkoutChart Invocation */}
+        {(rawSteps.length > 0 || workout.workout_doc || workout.intervals) && (
+          <WorkoutChart
+            workout={workout}
+            steps={rawSteps}
+            thresholdPace={thresholdPaceMps}
+            paceConfig={paceConfig}
+            sportSettings={sportSettings}
+          />
+        )}
+
+        <WorkoutTextSection workout={workout} sportSettings={sportSettings} />
+      </div>
+    );
+  };
+
+  const renderDaySection = (dateObj, dateStr, dayWorkouts) => {
+    const isToday = dateStr === todayStr;
+
+    return (
+      <div className="daily-day-column">
+        <div className="daily-day-section-header">
+          <h3 className="daily-day-section-title">
+            {formatHeaderDate(dateObj)}
+          </h3>
+          {isToday && <span className="daily-today-indicator">TODAY</span>}
+        </div>
+
+        {dayWorkouts.length === 0 ? (
+          <div className="daily-empty-card">
+            No workouts or activities scheduled for {isToday ? 'today' : dateStr}.
+          </div>
+        ) : (
+          <div className="daily-workouts-list">
+            {dayWorkouts.map((workout, idx) => renderWorkoutCard(workout, idx))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '10px' }}>
-      <h2>Today's Workouts</h2>
-      {workouts.map((w, index) => {
-        const rawDate = w.start_date_local || w.icu_start_date || w.start_date;
-        const workoutDate = rawDate ? new Date(rawDate).toLocaleDateString() : 'Today';
-        const durationStr = formatDuration(w.moving_time || w.elapsed_time);
-        const distanceMi = w.distance ? (w.distance * 0.000621371).toFixed(1) : null;
+    <div className="daily-view-container">
+      <div className="daily-nav-bar">
+        <div className="daily-nav-buttons">
+          <button onClick={handlePrevDay} className="nav-btn">
+            ← Prev Day
+          </button>
+          <button
+            onClick={handleToday}
+            className={`nav-btn ${selectedDateStr === todayStr ? 'nav-btn-today-active' : 'nav-btn-today'}`}
+          >
+            Today
+          </button>
+          <button onClick={handleNextDay} className="nav-btn">
+            Next Day →
+          </button>
+        </div>
+      </div>
 
-        const plannedSteps = getPlannedSteps(w);
-        const actualIntervals = getActualIntervals(w);
-
-        // Combine both planned and actual paces to properly calculate pace scaling
-        const allSteps = [...plannedSteps, ...actualIntervals];
-        const thresholdPaceMps = getThresholdPaceForSport(w.type, sportSettings);
-
-        const paceValues = allSteps
-          .map((s) => speedToPaceSeconds(s.speed))
-          .filter((p) => p !== null && !isNaN(p));
-
-        const paceConfig = calculatePaceTicks(paceValues);
-        const workoutId = w.id || `daily-${index}`;
-
-        return (
-          <div key={workoutId} style={{ border: '1px solid #ced4da', borderRadius: '8px', padding: '16px', backgroundColor: '#fff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px' }}>
-              <span>{w.name || "Workout"} ({w.type || 'Run'})</span>
-              <span>{workoutDate}</span>
-            </div>
-
-            <div style={{ fontSize: '14px', color: '#555', margin: '6px 0 12px 0' }}>
-              Duration: {durationStr} {distanceMi && `| Distance: ${distanceMi} mi`}
-            </div>
-
-            {(allSteps.length > 0 || w.workout_doc || w.intervals) && (
-              <WorkoutChart 
-                workout={w}
-                steps={plannedSteps.length > 0 ? plannedSteps : actualIntervals} 
-                plannedSteps={plannedSteps}
-                actualIntervals={actualIntervals}
-                thresholdPace={thresholdPaceMps}
-                paceConfig={paceConfig}
-                sportSettings={sportSettings}
-              />
-            )}
-
-            <WorkoutTextSection 
-              workout={w} 
-              sportSettings={sportSettings} 
-            />
-          </div>
-        );
-      })}
+      <div className="daily-two-day-grid">
+        {renderDaySection(selectedDate, selectedDateStr, selectedDayWorkouts)}
+        {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts)}
+      </div>
     </div>
   );
 }
