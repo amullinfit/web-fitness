@@ -218,21 +218,31 @@ export default function DailyView() {
   }, []);
 
   const handleRemoveGear = async (workoutId, gearId) => {
-    if (!workoutId || !gearId) return;
+    if (!workoutId || !gearId) {
+      console.warn("Cannot remove gear: missing workoutId or gearId", { workoutId, gearId });
+      return;
+    }
 
     setRemovingGearId(workoutId);
 
     try {
+      // Map keys directly to what api_gear_remove expects: activity_id and gear_id
       const response = await fetch(GEAR_REMOVE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activityId: workoutId, gearId })
+        body: JSON.stringify({ 
+          activity_id: workoutId, 
+          gear_id: gearId 
+        })
       });
 
+      const resData = await response.json();
+
       if (!response.ok) {
-        throw new Error(`Failed to remove gear: ${response.statusText}`);
+        throw new Error(resData.error || `Failed to remove gear: ${response.statusText}`);
       }
 
+      // Update state to remove gear fields from state locally
       setWorkouts((prev) =>
         prev.map((w) => {
           if (String(w.id) === String(workoutId)) {
@@ -241,7 +251,7 @@ export default function DailyView() {
               shoe_name: null,
               gear_name: null,
               gear_id: null,
-              gear: null
+              gear: Array.isArray(resData.gear) ? resData.gear : null
             };
           }
           return w;
@@ -320,8 +330,13 @@ export default function DailyView() {
     const isPast = workoutDateStr < todayStr;
     const isMissed = isPast && !completed;
 
-    const shoeName = workout.shoe_name || workout.gear_name || (typeof workout.gear === 'object' ? workout.gear?.name : null);
-    const gearId = workout.gear_id || (typeof workout.gear === 'object' ? workout.gear?.id : null) || shoeName;
+    const shoeName = workout.shoe_name || workout.gear_name || (typeof workout.gear === 'object' && !Array.isArray(workout.gear) ? workout.gear?.name : null);
+    
+    // Extract actual gear ID without falling back to string shoeName
+    const gearId = workout.gear_id || 
+      (typeof workout.gear === 'object' && !Array.isArray(workout.gear) ? workout.gear?.id : null) || 
+      (Array.isArray(workout.gear) && workout.gear.length > 0 ? workout.gear[0] : null);
+
     const activityId = workout.id;
     const isRemoving = removingGearId === activityId;
 
