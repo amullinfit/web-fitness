@@ -53,59 +53,6 @@ const flattenSteps = (stepsList) => {
   }, []);
 };
 
-/**
- * Recursive text formatting helper that structures steps into multi-line metadata objects
- */
-const formatStepsToText = (stepsList, thresholdSecPerMile) => {
-  if (!Array.isArray(stepsList) || stepsList.length === 0) return [];
-
-  return stepsList.map((step) => {
-    // Handle nested repeat blocks
-    if (Array.isArray(step.steps) && step.steps.length > 0) {
-      const reps = step.reps && Number.isInteger(step.reps) && step.reps > 0 ? step.reps : 1;
-      const innerFormatted = formatStepsToText(step.steps, thresholdSecPerMile);
-      
-      const innerText = innerFormatted.map((s) => {
-        const line1 = `${s.intensity} (${s.duration})`;
-        const line2 = s.pace ? ` ${s.pace}` : '';
-        return `${line1}${line2}`;
-      }).join(', ');
-
-      return {
-        isRepeat: true,
-        reps,
-        intensity: `${reps}x Repeat`,
-        duration: '',
-        pace: '',
-        note: innerText
-      };
-    }
-
-    // Handle individual steps
-    const durationMins = Math.round((step.duration || step.elapsed_time || 60) / 60);
-    const rawType = step.type || step.text || (step.warmup ? 'Warmup' : step.cooldown ? 'Cooldown' : 'Active');
-    const intensity = formatIntensityTitleCase(rawType);
-    
-    const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
-    let paceStr = '';
-    if (range) {
-      const fastStr = formatSecPerMileToStr(range.fastSec);
-      const slowStr = formatSecPerMileToStr(range.slowSec);
-      if (fastStr !== 'N/A' && slowStr !== 'N/A') {
-        paceStr = fastStr === slowStr ? `@ ${fastStr}` : `@ ${fastStr} - ${slowStr}`;
-      }
-    }
-
-    return {
-      isRepeat: false,
-      intensity,
-      duration: `${durationMins}m`,
-      pace: paceStr,
-      note: step.notes || step.description || ''
-    };
-  });
-};
-
 const extractPaceRangePct = (step) => {
   if (!step) return { start: 100, end: 100, mid: 100 };
 
@@ -163,21 +110,11 @@ const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
   return { fastSec, slowSec, midSec, rangePct };
 };
 
-const extractUnflattenedPlannedSteps = (workout) => {
-  if (!workout?.workout_doc) return [];
-  try {
-    const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
-    return doc?.steps || [];
-  } catch (e) {
-    console.error('Error parsing workout_doc:', e);
-    return [];
-  }
-};
-
 const extractPlannedSteps = (workout) => {
   if (!workout?.workout_doc) return [];
   try {
-    const rawSteps = extractUnflattenedPlannedSteps(workout);
+    const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
+    const rawSteps = doc?.steps || [];
     const flattened = flattenSteps(rawSteps);
 
     return flattened.map((step) => ({
@@ -222,6 +159,9 @@ const getZoneDetails = (targetPct, stepType = '') => {
 
 /**
  * Generates an SVG path with wavy top and side borders, leaving the bottom border open/flat.
+ * @param {number} topCycles - Number of wave cycles across the top edge.
+ * @param {number} amplitude - Wave amplitude in viewBox units.
+ * @param {number} verticalCycles - Number of wave cycles along the left and right sides.
  */
 const generateWavyBarPath = (topCycles = 6, amplitude = WAVE_AMPLITUDE, verticalCycles = VERTICAL_WAVE_CYCLES) => {
   const amp = amplitude;
@@ -276,18 +216,15 @@ export default function WorkoutChart({
   const plannedList = extractPlannedSteps(workout);
   const executedList = extractExecutedSteps(workout);
 
-  const thresholdSecPerMile = thresholdPace && thresholdPace > 0
-    ? (thresholdPace < 15 ? speedToPaceSeconds(thresholdPace) : thresholdPace)
-    : null;
-
-  const rawUnflattenedSteps = extractUnflattenedPlannedSteps(workout);
-  const formattedTextSteps = formatStepsToText(rawUnflattenedSteps, thresholdSecPerMile);
-
   if (!plannedList.length && !executedList.length) return null;
 
   const totalPlannedSec = plannedList.reduce((sum, s) => sum + (s.duration || 0), 0);
   const totalExecutedSec = executedList.reduce((sum, s) => sum + (s.duration || 0), 0);
   const totalDurationSec = Math.max(totalPlannedSec, totalExecutedSec, 1);
+
+  const thresholdSecPerMile = thresholdPace && thresholdPace > 0
+    ? (thresholdPace < 15 ? speedToPaceSeconds(thresholdPace) : thresholdPace)
+    : null;
 
   const allStepsCombined = [...plannedList, ...executedList];
   const stepPacesSec = [];
@@ -506,40 +443,6 @@ export default function WorkoutChart({
           </div>
         </div>
       </div>
-
-      {/* WORKOUT TEXT / DETAILS SECTION */}
-      {formattedTextSteps.length > 0 && (
-        <div className="workout-text-steps">
-          <ol className="workout-text-list">
-            {formattedTextSteps.map((item, idx) => (
-              <li 
-                key={`text-step-${idx}`} 
-                className={`workout-text-step-item ${item.isRepeat ? "repeat-step" : "single-step"}`}
-              >
-                {/* Line 1: Intensity | Duration */}
-                <div className="step-line-header">
-                  <span className="step-intensity">{item.intensity}</span>
-                  {item.duration && <span className="step-duration"> | {item.duration}</span>}
-                </div>
-
-                {/* Line 2: Target Pace */}
-                {item.pace && (
-                  <div className="step-line-pace">
-                    {item.pace}
-                  </div>
-                )}
-
-                {/* Line 3: Text (small) */}
-                {item.note && (
-                  <div className="step-line-note">
-                    {item.note}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
     </div>
   );
 }
