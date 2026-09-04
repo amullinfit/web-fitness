@@ -54,7 +54,7 @@ const flattenSteps = (stepsList) => {
 };
 
 /**
- * Recursive text formatting helper that preserves repeat blocks (e.g., 4x (...))
+ * Recursive text formatting helper that structures steps into multi-line metadata objects
  */
 const formatStepsToText = (stepsList, thresholdSecPerMile) => {
   if (!Array.isArray(stepsList) || stepsList.length === 0) return [];
@@ -65,11 +65,19 @@ const formatStepsToText = (stepsList, thresholdSecPerMile) => {
       const reps = step.reps && Number.isInteger(step.reps) && step.reps > 0 ? step.reps : 1;
       const innerFormatted = formatStepsToText(step.steps, thresholdSecPerMile);
       
-      const innerText = innerFormatted.map((s) => s.text).join(', ');
+      const innerText = innerFormatted.map((s) => {
+        const line1 = `${s.intensity} (${s.duration})`;
+        const line2 = s.pace ? ` ${s.pace}` : '';
+        return `${line1}${line2}`;
+      }).join(', ');
+
       return {
         isRepeat: true,
         reps,
-        text: `${reps}x (${innerText})`
+        intensity: `${reps}x Repeat`,
+        duration: '',
+        pace: '',
+        note: innerText
       };
     }
 
@@ -90,7 +98,10 @@ const formatStepsToText = (stepsList, thresholdSecPerMile) => {
 
     return {
       isRepeat: false,
-      text: `${durationMins}m ${intensity} ${paceStr}`.trim()
+      intensity,
+      duration: `${durationMins}m`,
+      pace: paceStr,
+      note: step.notes || step.description || ''
     };
   });
 };
@@ -503,9 +514,27 @@ export default function WorkoutChart({
             {formattedTextSteps.map((item, idx) => (
               <li 
                 key={`text-step-${idx}`} 
-                className={item.isRepeat ? "repeat-step" : "single-step"}
+                className={`workout-text-step-item ${item.isRepeat ? "repeat-step" : "single-step"}`}
               >
-                {item.text}
+                {/* Line 1: Intensity | Duration */}
+                <div className="step-line-header">
+                  <span className="step-intensity">{item.intensity}</span>
+                  {item.duration && <span className="step-duration"> | {item.duration}</span>}
+                </div>
+
+                {/* Line 2: Target Pace */}
+                {item.pace && (
+                  <div className="step-line-pace">
+                    {item.pace}
+                  </div>
+                )}
+
+                {/* Line 3: Text (small) */}
+                {item.note && (
+                  <div className="step-line-note">
+                    {item.note}
+                  </div>
+                )}
               </li>
             ))}
           </ol>
