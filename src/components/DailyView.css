@@ -1,188 +1,193 @@
 .daily-view-container {
-  max-width: 1000px;
+  position: relative;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 12px;
-  font-family: inherit;
+  padding: 16px;
   box-sizing: border-box;
-  width: 100%;
-  overflow-x: hidden; /* Prevents outer page side-scrolling */
 }
 
 .daily-view-loading {
-  padding: 20px;
-  color: #6c757d;
-  font-weight: 500;
-  text-align: center;
-}
-
-/* Debug Range Bar */
-.daily-debug-bar {
-  font-family: monospace;
-  font-size: 11px;
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-  color: #6c757d;
-  padding: 4px 8px;
-  border-radius: 4px;
-  margin-bottom: 12px;
-  word-break: break-all;
-}
-
-/* Header & Controls */
-.daily-nav-bar {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #dee2e6;
+  min-height: 250px;
+  font-size: 1.1rem;
+  color: #666;
 }
 
-.daily-header-title {
-  margin: 0;
-  font-size: 20px;
-  color: #212529;
+/* Toast Error Banner */
+.daily-toast-error {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background-color: #fee2e2;
+  border: 1px solid #f87171;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: 0.9rem;
+  max-width: 420px;
+  animation: slideIn 0.2s ease-out;
+}
+
+.daily-toast-message {
+  word-break: break-word;
+}
+
+.daily-toast-close {
+  background: none;
+  border: none;
+  color: #991b1b;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.daily-toast-close:hover {
+  opacity: 0.7;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Navigation Bar */
+.daily-nav-bar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
 }
 
 .daily-nav-buttons {
   display: flex;
   gap: 8px;
-  width: 100%;
-  max-width: 400px;
 }
 
 .nav-btn {
-  flex: 1;
-  min-height: 44px;
-  padding: 8px 12px;
-  font-size: 14px;
-  border: 1px solid #ced4da;
+  padding: 8px 16px;
+  border: 1px solid #ccc;
   border-radius: 6px;
   background-color: #ffffff;
-  color: #212529;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
+  font-weight: 500;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .nav-btn:hover {
-  background-color: #f8f9fa;
-  border-color: #adb5bd;
+  background-color: #f3f4f6;
+  border-color: #bbb;
 }
 
 .nav-btn-today {
-  border-color: #0d6efd;
-  color: #0d6efd;
-  font-weight: 600;
+  background-color: #ffffff;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.nav-btn-today:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
 }
 
 .nav-btn-today-active {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
+  background-color: #2563eb;
   color: #ffffff;
-  font-weight: 600;
+  border-color: #2563eb;
 }
 
-/* Two-Day Section Layout: Stacked for both Mobile & Desktop */
+.nav-btn-today-active:hover {
+  background-color: #1d4ed8;
+}
+
+/* 2-Day Layout Grid */
 .daily-two-day-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
 }
 
+@media (max-width: 768px) {
+  .daily-two-day-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Day Section Column */
 .daily-day-column {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 100%;
 }
 
 .daily-day-section-header {
   display: flex;
   align-items: center;
   gap: 8px;
+  border-bottom: 2px solid #e5e7eb;
   padding-bottom: 6px;
-  border-bottom: 2px solid #e9ecef;
 }
 
 .daily-day-section-title {
   margin: 0;
-  font-size: 16px;
-  color: #343a40;
-  font-weight: 700;
-  line-height: 1.2;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #111827;
 }
 
 .daily-today-indicator {
-  font-size: 11px;
-  font-weight: 700;
+  background-color: #2563eb;
   color: #ffffff;
-  background-color: #0d6efd;
+  font-size: 0.7rem;
+  font-weight: 700;
   padding: 2px 6px;
-  border-radius: 3px;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
+  border-radius: 4px;
 }
 
+/* Empty Workout State */
 .daily-empty-card {
-  padding: 20px 16px;
-  text-align: center;
-  background-color: #f8f9fa;
+  padding: 24px;
+  background-color: #f9fafb;
+  border: 1px dashed #d1d5db;
   border-radius: 8px;
-  border: 1px dashed #dee2e6;
-  color: #6c757d;
-  font-size: 14px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.95rem;
 }
 
+/* Workouts List & Cards */
 .daily-workouts-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  width: 100%;
 }
 
-/* Workout Cards & Mobile Chart Safety Rules */
 .daily-workout-card {
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  padding: 14px;
   background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-  overflow: hidden; /* Constrains chart overflow inside card boundaries */
-}
-
-/* Forces Highcharts / SVG / Canvas inside WorkoutChart to compress on small screens */
-.daily-workout-card svg,
-.daily-workout-card canvas,
-.daily-workout-card .highcharts-container {
-  max-width: 100% !important;
-  width: 100% !important;
-  box-sizing: border-box;
 }
 
 .daily-workout-card-header {
   display: flex;
-  flex-wrap: wrap;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-  gap: 8px;
-}
-
-.daily-workout-title {
-  margin: 0;
-  font-size: 16px;
-  color: #212529;
-  word-break: break-word;
-  flex: 1 1 60%;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
 .daily-workout-header-left {
@@ -191,110 +196,59 @@
   gap: 8px;
 }
 
-.daily-workout-header-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-
 .daily-workout-type {
-  font-size: 11px;
   font-weight: 600;
+  font-size: 0.85rem;
   text-transform: uppercase;
-  background-color: #e9ecef;
-  padding: 3px 6px;
-  border-radius: 4px;
-  color: #495057;
-  white-space: nowrap;
+  color: #4b5563;
 }
 
+/* Status Badges */
 .status-badge {
-  font-size: 10px;
-  font-weight: 800;
-  padding: 3px 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
   border-radius: 4px;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
 }
 
 .badge-completed {
-  background-color: #28a745;
-  color: #ffffff;
+  background-color: #dcfce7;
+  color: #15803d;
 }
 
 .badge-missed {
-  background-color: #f8d7da;
-  color: #842029;
-  border: 1px solid #f5c2c7;
+  background-color: #fee2e2;
+  color: #b91c1c;
 }
 
-/* Desktop Styles (768px and up) */
-@media (min-width: 768px) {
-  .daily-view-container {
-    padding: 20px;
-  }
-
-  .daily-nav-bar {
-    justify-content: flex-end;
-  }
-
-  .daily-nav-buttons {
-    width: 320px;
-    gap: 12px;
-  }
-
-  .nav-btn {
-    min-height: initial;
-    padding: 8px 16px;
-    font-size: 14px;
-  }
-
-  /* Remains vertically stacked on Desktop */
-  .daily-two-day-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-  }
-
-  .daily-workout-card {
-    padding: 16px;
-  }
-
-  .daily-workout-title {
-    font-size: 18px;
-  }
+/* Shoe / Gear Tag & Tooltip */
+.daily-workout-header-right {
+  position: relative;
 }
 
-/* Container for shoe badge and clear button */
 .daily-shoe-type {
-  display: inline-flex;
+  position: relative;
+  display: flex;
   align-items: center;
   gap: 6px;
-  padding-right: 6px;
-  position: relative; /* Position context for hover tooltip */
+  background-color: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  text-transform: none;
 }
 
-/* Red X Button Styling */
 .remove-gear-btn {
-  background: transparent;
+  background: none;
   border: none;
   color: #ef4444;
   font-weight: bold;
-  font-size: 0.85rem;
-  line-height: 1;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  padding: 0 2px;
+  line-height: 1;
 }
 
-.remove-gear-btn:hover:not(:disabled) {
-  background-color: rgba(239, 68, 68, 0.15);
+.remove-gear-btn:hover {
   color: #dc2626;
 }
 
@@ -303,57 +257,66 @@
   cursor: not-allowed;
 }
 
-/* Tooltip popup showing Activity ID and Gear ID on hover */
-.gear-id-tooltip {
-  display: none;
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 6px;
-  background-color: #1e293b;
-  color: #f8fafc;
-  font-size: 0.72rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  padding: 6px 10px;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  white-space: nowrap;
-  z-index: 20;
-  pointer-events: none;
-  border: 1px solid #334155;
-}
-
-/* Arrow indicator on the tooltip */
-.gear-id-tooltip::before {
-  content: '';
-  position: absolute;
-  bottom: 100%;
-  right: 10px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: transparent transparent #1e293b transparent;
-}
-
-/* Show tooltip when hovering over the remove button */
-.remove-gear-btn:hover + .gear-id-tooltip {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* Small inline spinner while API call is in flight */
 .gear-spinner {
   display: inline-block;
   width: 10px;
   height: 10px;
-  border: 2px solid rgba(239, 68, 68, 0.3);
+  border: 2px solid #ef4444;
+  border-top-color: transparent;
   border-radius: 50%;
-  border-top-color: #ef4444;
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.6s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
+}
+
+.gear-id-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background-color: #1f2937;
+  color: #ffffff;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+  z-index: 10;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.gear-id-tooltip::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  right: 12px;
+  border-width: 4px;
+  border-style: solid;
+  border-color: transparent transparent #1f2937 transparent;
+}
+
+.daily-shoe-type:hover .gear-id-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Workout Title */
+.daily-workout-title {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  color: #111827;
+}
+
+/* Focus & Accessibility States */
+.nav-btn:focus-visible,
+.remove-gear-btn:focus-visible,
+.daily-toast-close:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }

@@ -95,8 +95,16 @@ export default function DailyView() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [removingGearId, setRemovingGearId] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   const isMobile = useIsMobile(768);
+
+  const showErrorMessage = (msg) => {
+    setErrorMessage(msg);
+    setTimeout(() => {
+      setErrorMessage(null);
+    }, 6000);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -220,13 +228,35 @@ export default function DailyView() {
   const handleRemoveGear = async (workoutId, gearId) => {
     if (!workoutId || !gearId) {
       console.warn("Cannot remove gear: missing workoutId or gearId", { workoutId, gearId });
+      showErrorMessage("Cannot remove gear: Missing Workout ID or Gear ID.");
       return;
     }
 
     setRemovingGearId(workoutId);
+    setErrorMessage(null);
+
+    // 1. Snapshot previous state for rollback
+    const previousWorkouts = [...workouts];
+
+    // 2. Optimistic Update: Immediately hide gear locally
+    setWorkouts((prev) =>
+      prev.map((w) => {
+        const matchesId = String(w.id) === String(workoutId) || 
+                          String(w.icu_activity_id) === String(workoutId);
+        if (matchesId) {
+          return {
+            ...w,
+            shoe_name: null,
+            gear_name: null,
+            gear_id: null,
+            gear: null
+          };
+        }
+        return w;
+      })
+    );
 
     try {
-      // Map keys directly to what api_gear_remove expects: activity_id and gear_id
       const response = await fetch(GEAR_REMOVE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -239,26 +269,26 @@ export default function DailyView() {
       const resData = await response.json();
 
       if (!response.ok) {
-        throw new Error(resData.error || `Failed to remove gear: ${response.statusText}`);
+        const errorDetail = resData.details ? `: ${resData.details}` : '';
+        const msg = resData.error || `Failed to remove gear (${response.status} ${response.statusText})${errorDetail}`;
+        throw new Error(msg);
       }
 
-      // Update state to remove gear fields from state locally
-      setWorkouts((prev) =>
-        prev.map((w) => {
-          if (String(w.id) === String(workoutId)) {
-            return {
-              ...w,
-              shoe_name: null,
-              gear_name: null,
-              gear_id: null,
-              gear: Array.isArray(resData.gear) ? resData.gear : null
-            };
-          }
-          return w;
-        })
-      );
+      // 3. Sync confirmed gear array from backend response if available
+      if (Array.isArray(resData.gear)) {
+        setWorkouts((prev) =>
+          prev.map((w) => {
+            const matchesId = String(w.id) === String(workoutId) || 
+                              String(w.icu_activity_id) === String(workoutId);
+            return matchesId ? { ...w, gear: resData.gear } : w;
+          })
+        );
+      }
     } catch (err) {
-      console.error("Error executing api_gear_remove:", err);
+      console.error("Error executing api_gear_remove, rolling back state:", err);
+      // 4. Rollback to original state snapshot on failure
+      setWorkouts(previousWorkouts);
+      showErrorMessage(err.message || "Failed to remove gear. Restored original state.");
     } finally {
       setRemovingGearId(null);
     }
@@ -330,15 +360,16 @@ export default function DailyView() {
     const isPast = workoutDateStr < todayStr;
     const isMissed = isPast && !completed;
 
-    const shoeName = workout.shoe_name || workout.gear_name || (typeof workout.gear === 'object' && !Array.isArray(workout.gear) ? workout.gear?.name : null);
+    const shoeName = workout.shoe_name || workout.gear_name || 
+      (typeof workout.gear === 'object' && !Array.isArray(workout.gear) ? workout.gear?.name : null);
     
-    // Extracts exact gear ID string across single objects, array of IDs, or root gear_id
+    // Resolution for exact gear ID string across diverse input schemas
     const gearId = workout.gear_id || 
       (Array.isArray(workout.gear) && workout.gear.length > 0 
         ? (typeof workout.gear[0] === 'object' ? workout.gear[0].id : workout.gear[0])
         : typeof workout.gear === 'object' ? workout.gear?.id : null);
 
-    // Prefer historical/icu_activity_id over paired event IDs when attempting to update actual activities
+    // Prefer historical/activity id over paired planned event ID
     const activityId = workout.icu_activity_id || workout.activity_id || workout.id;
     const isRemoving = removingGearId === activityId;
 
@@ -354,6 +385,7 @@ export default function DailyView() {
             {isMissed && <span className="status-badge badge-missed">MISSED</span>}
           </div>
 
+          {/* Top Right: Shoe Tag with Red X and Hover Tooltip */}
           {shoeName && (
             <div className="daily-workout-header-right">
               <span className="daily-workout-type daily-shoe-type">
@@ -376,6 +408,7 @@ export default function DailyView() {
           )}
         </div>
 
+        {/* Workout Title */}
         <h3 className="daily-workout-title">
           {workout.name || workout.title || `${workout.type || 'Workout'}`}
         </h3>
@@ -392,7 +425,7 @@ export default function DailyView() {
       </div>
     );
   };
-  
+
   const renderDaySection = (dateObj, dateStr, dayWorkouts) => {
     const isToday = dateStr === todayStr;
 
@@ -420,6 +453,20 @@ export default function DailyView() {
 
   return (
     <div className="daily-view-container">
+      {/* Toast Error Banner */}
+      {errorMessage && (
+        <div className="daily-toast-error">
+          <span className="daily-toast-message">⚠️ {errorMessage}</span>
+          <button 
+            type="button" 
+            className="daily-toast-close" 
+            onClick={() => setErrorMessage(null)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div className="daily-nav-bar">
         <div className="daily-nav-buttons">
           <button onClick={handlePrevDay} className="nav-btn">
