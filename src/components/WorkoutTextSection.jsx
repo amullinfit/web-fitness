@@ -114,8 +114,8 @@ const RenderStepCard = ({ step }) => {
               "{step.text}"
             </span>
           )}
-          <span className="workout-repeat-total-time">
-            Total Time: <strong>{formatDuration(step.durationSec)}</strong>
+          <span className="workout-section-badge">
+            Repeat Time: {formatDuration(step.durationSec)}
           </span>
         </div>
 
