@@ -167,8 +167,10 @@ export default function WorkoutTextSection({ workout, sportSettings = [] }) {
   }
 
   const thresholdPaceMps = getThresholdPaceForSport(workout.type, sportSettings);
-  const thresholdPaceStr = thresholdPaceMps ? metersPerSecondToPaceStr(thresholdPaceMps) : "Not Set";
   const debugSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps);
+
+  // Calculate Total Overall Workout Duration
+  const totalWorkoutDurationSec = debugSteps.reduce((sum, step) => sum + step.durationSec, 0);
 
   return (
     <div className="workout-section-container">
@@ -181,7 +183,7 @@ export default function WorkoutTextSection({ workout, sportSettings = [] }) {
             {isOpen ? '▼' : '►'} Workout Details ({debugSteps.length} block{debugSteps.length === 1 ? '' : 's'})
           </span>
           <span className="workout-section-badge">
-            Threshold Pace ({workout.type || 'Sport'}): {thresholdPaceStr}
+            Total Time: {formatDuration(totalWorkoutDurationSec)}
           </span>
         </div>
 

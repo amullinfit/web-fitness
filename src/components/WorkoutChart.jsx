@@ -157,16 +157,9 @@ const getZoneDetails = (targetPct, stepType = '') => {
   return { name: 'Anaerobic / VO2 Max (Z5+)', color: '#dc3545' };
 };
 
-/**
- * Generates an SVG path with wavy top and side borders, leaving the bottom border open/flat.
- * @param {number} topCycles - Number of wave cycles across the top edge.
- * @param {number} amplitude - Wave amplitude in viewBox units.
- * @param {number} verticalCycles - Number of wave cycles along the left and right sides.
- */
 const generateWavyBarPath = (topCycles = 6, amplitude = WAVE_AMPLITUDE, verticalCycles = VERTICAL_WAVE_CYCLES) => {
   const amp = amplitude;
 
-  // 1. TOP EDGE (Left to Right along Y ~ 0)
   const topStep = 100 / topCycles;
   let d = `M 0 ${amp}`;
   for (let i = 0; i < topCycles; i++) {
@@ -179,7 +172,6 @@ const generateWavyBarPath = (topCycles = 6, amplitude = WAVE_AMPLITUDE, vertical
     d += ` C ${startX + topStep * 0.25} ${cp1Y}, ${startX + topStep * 0.75} ${cp2Y}, ${endX} ${endY}`;
   }
 
-  // 2. RIGHT EDGE (Top to Bottom along X ~ 100)
   const sideStep = (100 - amp) / verticalCycles;
   for (let i = 0; i < verticalCycles; i++) {
     const startY = amp + (i * sideStep);
@@ -190,10 +182,8 @@ const generateWavyBarPath = (topCycles = 6, amplitude = WAVE_AMPLITUDE, vertical
     d += ` C ${cp1X} ${startY + sideStep * 0.25}, ${cp2X} ${startY + sideStep * 0.75}, 100 ${endY}`;
   }
 
-  // 3. BOTTOM EDGE (Right to Left along Y = 100) - Straight Line (No Wavy Border)
   d += ` L 0 100`;
 
-  // 4. LEFT EDGE (Bottom to Top along X ~ 0)
   for (let i = verticalCycles - 1; i >= 0; i--) {
     const startY = amp + ((i + 1) * sideStep);
     const endY = amp + (i * sideStep);
@@ -225,6 +215,8 @@ export default function WorkoutChart({
   const thresholdSecPerMile = thresholdPace && thresholdPace > 0
     ? (thresholdPace < 15 ? speedToPaceSeconds(thresholdPace) : thresholdPace)
     : null;
+
+  const thresholdDisplayStr = thresholdSecPerMile ? formatSecPerMileToStr(thresholdSecPerMile) : "Not Set";
 
   const allStepsCombined = [...plannedList, ...executedList];
   const stepPacesSec = [];
@@ -305,19 +297,26 @@ export default function WorkoutChart({
 
   return (
     <div className="workout-chart-container">
-      <div className="workout-chart-legend">
-        {plannedList.length > 0 && (
-          <div className="workout-chart-legend-item">
-            <span className="workout-chart-legend-color planned" />
-            <span>Planned Pace Range</span>
-          </div>
-        )}
-        {executedList.length > 0 && (
-          <div className="workout-chart-legend-item">
-            <span className="workout-chart-legend-color executed" />
-            <span>Executed</span>
-          </div>
-        )}
+      {/* Top Header Row with Legend on Left & Threshold Badge Right-Justified */}
+      <div className="workout-chart-top-bar">
+        <div className="workout-chart-legend">
+          {plannedList.length > 0 && (
+            <div className="workout-chart-legend-item">
+              <span className="workout-chart-legend-color planned" />
+              <span>Planned Pace Range</span>
+            </div>
+          )}
+          {executedList.length > 0 && (
+            <div className="workout-chart-legend-item">
+              <span className="workout-chart-legend-color executed" />
+              <span>Executed</span>
+            </div>
+          )}
+        </div>
+
+        <span className="workout-section-badge">
+          Threshold Pace ({workout?.type || 'Sport'}): {thresholdDisplayStr}
+        </span>
       </div>
 
       <div className="workout-chart-wrapper">
