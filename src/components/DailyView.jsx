@@ -5,8 +5,8 @@ import './DailyView.css';
 
 const VAL_WORKOUTS_URL = "/api/val-workouts";
 const HISTORICAL_URL = "/api/val-historical";
+const GEAR_REMOVE_URL = "/api/api_gear_remove";
 
-// Custom hook to detect mobile viewport width
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < breakpoint
@@ -94,7 +94,8 @@ export default function DailyView() {
   const [sportSettings, setSportSettings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
-  
+  const [removingGearId, setRemovingGearId] = useState(null);
+
   const isMobile = useIsMobile(768);
 
   useEffect(() => {
@@ -216,6 +217,44 @@ export default function DailyView() {
     };
   }, []);
 
+  const handleRemoveGear = async (workoutId, gearId) => {
+    if (!workoutId || !gearId) return;
+
+    setRemovingGearId(workoutId);
+
+    try {
+      const response = await fetch(GEAR_REMOVE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activityId: workoutId, gearId })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to remove gear: ${response.statusText}`);
+      }
+
+      // Optimistically update local state to remove the shoe from UI
+      setWorkouts((prev) =>
+        prev.map((w) => {
+          if (String(w.id) === String(workoutId)) {
+            return {
+              ...w,
+              shoe_name: null,
+              gear_name: null,
+              gear_id: null,
+              gear: null
+            };
+          }
+          return w;
+        })
+      );
+    } catch (err) {
+      console.error("Error executing api_gear_remove:", err);
+    } finally {
+      setRemovingGearId(null);
+    }
+  };
+
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
   const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
 
@@ -283,6 +322,8 @@ export default function DailyView() {
     const isMissed = isPast && !completed;
 
     const shoeName = workout.shoe_name || workout.gear_name || (typeof workout.gear === 'object' ? workout.gear?.name : null);
+    const gearId = workout.gear_id || (typeof workout.gear === 'object' ? workout.gear?.id : null) || shoeName;
+    const isRemoving = removingGearId === workout.id;
 
     return (
       <div key={workout.id || index} className="daily-workout-card">
@@ -297,11 +338,20 @@ export default function DailyView() {
             {isMissed && <span className="status-badge badge-missed">MISSED</span>}
           </div>
 
-          {/* Top Right: Shoe Tag */}
+          {/* Top Right: Shoe Tag with Red X Remove Button */}
           {shoeName && (
             <div className="daily-workout-header-right">
               <span className="daily-workout-type daily-shoe-type">
-                👟 {shoeName}
+                <span>👟 {shoeName}</span>
+                <button
+                  type="button"
+                  className="remove-gear-btn"
+                  title="Remove shoe from activity"
+                  disabled={isRemoving}
+                  onClick={() => handleRemoveGear(workout.id, gearId)}
+                >
+                  {isRemoving ? <span className="gear-spinner" /> : '✕'}
+                </button>
               </span>
             </div>
           )}

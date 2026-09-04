@@ -267,3 +267,54 @@
   }
 }
 
+/* Container for shoe badge and clear button */
+.daily-shoe-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 6px;
+}
+
+/* Red X Button Styling */
+.remove-gear-btn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  font-weight: bold;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.remove-gear-btn:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+}
+
+.remove-gear-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Small inline spinner while API call is in flight */
+.gear-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  border-radius: 50%;
+  border-top-color: #ef4444;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
