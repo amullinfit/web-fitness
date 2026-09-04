@@ -225,7 +225,7 @@ export default function GeneralOverview({ overviewData }) {
   const currentWeekGrid = buildGridWeek(currentMon, currentSun);
   const priorWeekGrid = buildGridWeek(priorMon, priorSun);
 
-  // 3. CONSISTENCY GRID DATA (Mobile: 20 weeks, Desktop: 60 weeks)
+  // 3. CONSISTENCY GRID DATA
   const historyWeeksCount = isMobile ? 20 : 60;
   const consistencyWeeks = [];
   for (let w = historyWeeksCount; w >= 0; w--) {
@@ -426,24 +426,26 @@ export default function GeneralOverview({ overviewData }) {
             </div>
 
             {/* Desktop Only Annual Table */}
-            <table className="annual-table desktop-only">
-              <thead>
-                <tr>
-                  <th className="col-year"><span>Year</span></th>
-                  <th className="col-act"><span>Act</span></th>
-                  <th className="col-total"><span>Total</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {b.annualTable.map((row, rIdx) => (
-                  <tr key={rIdx}>
-                    <td className="col-year"><span>{row.year}</span></td>
-                    <td className="col-act"><span>{row.activitiesCount}</span></td>
-                    <td className="col-total"><span>{row.total}</span></td>
+            {!isMobile && (
+              <table className="annual-table">
+                <thead>
+                  <tr>
+                    <th className="col-year"><span>Year</span></th>
+                    <th className="col-act"><span>Act</span></th>
+                    <th className="col-total"><span>Total</span></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {b.annualTable.map((row, rIdx) => (
+                    <tr key={rIdx}>
+                      <td className="col-year"><span>{row.year}</span></td>
+                      <td className="col-act"><span>{row.activitiesCount}</span></td>
+                      <td className="col-total"><span>{row.total}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         ))}
       </div>
@@ -521,10 +523,39 @@ export default function GeneralOverview({ overviewData }) {
           POP AND SUGAR - {popStreakCount} DAYS
         </h3>
 
-        {/* Mobile View: 2 Rows of 30 */}
-        <div className="popsugar-two-rows mobile-only">
-          <div className="popsugar-grid-row cols-30">
-            {topRow.map((day, idx) => {
+        {isMobile ? (
+          /* Mobile View: 2 Rows of 30 */
+          <div className="popsugar-two-rows">
+            <div className="popsugar-grid-row cols-30">
+              {topRow.map((day, idx) => {
+                const countClass = day.value !== 0 ? 'count-1' : 'count-0';
+                return (
+                  <div
+                    key={idx}
+                    title={`${day.dateStr}: ${day.value}`}
+                    className={`popsugar-cell ${countClass}`}
+                  />
+                );
+              })}
+            </div>
+
+            <div className="popsugar-grid-row cols-30">
+              {bottomRow.map((day, idx) => {
+                const countClass = day.value !== 0 ? 'count-1' : 'count-0';
+                return (
+                  <div
+                    key={idx}
+                    title={`${day.dateStr}: ${day.value}`}
+                    className={`popsugar-cell ${countClass}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          /* Desktop View: 1 Row of 60 */
+          <div className="popsugar-grid-row cols-60">
+            {popSugarDaysRaw.map((day, idx) => {
               const countClass = day.value !== 0 ? 'count-1' : 'count-0';
               return (
                 <div
@@ -535,34 +566,7 @@ export default function GeneralOverview({ overviewData }) {
               );
             })}
           </div>
-
-          <div className="popsugar-grid-row cols-30">
-            {bottomRow.map((day, idx) => {
-              const countClass = day.value !== 0 ? 'count-1' : 'count-0';
-              return (
-                <div
-                  key={idx}
-                  title={`${day.dateStr}: ${day.value}`}
-                  className={`popsugar-cell ${countClass}`}
-                />
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Desktop View: 1 Row of 60 */}
-        <div className="popsugar-grid-row cols-60 desktop-only">
-          {popSugarDaysRaw.map((day, idx) => {
-            const countClass = day.value !== 0 ? 'count-1' : 'count-0';
-            return (
-              <div
-                key={idx}
-                title={`${day.dateStr}: ${day.value}`}
-                className={`popsugar-cell ${countClass}`}
-              />
-            );
-          })}
-        </div>
+        )}
       </div>
 
     </div>
