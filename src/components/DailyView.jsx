@@ -332,19 +332,20 @@ export default function DailyView() {
 
     const shoeName = workout.shoe_name || workout.gear_name || (typeof workout.gear === 'object' && !Array.isArray(workout.gear) ? workout.gear?.name : null);
     
-    // Extract actual gear ID without falling back to string shoeName
+    // Extracts exact gear ID string across single objects, array of IDs, or root gear_id
     const gearId = workout.gear_id || 
-      (typeof workout.gear === 'object' && !Array.isArray(workout.gear) ? workout.gear?.id : null) || 
-      (Array.isArray(workout.gear) && workout.gear.length > 0 ? workout.gear[0] : null);
+      (Array.isArray(workout.gear) && workout.gear.length > 0 
+        ? (typeof workout.gear[0] === 'object' ? workout.gear[0].id : workout.gear[0])
+        : typeof workout.gear === 'object' ? workout.gear?.id : null);
 
-    const activityId = workout.id;
+    // Prefer historical/icu_activity_id over paired event IDs when attempting to update actual activities
+    const activityId = workout.icu_activity_id || workout.activity_id || workout.id;
     const isRemoving = removingGearId === activityId;
 
     return (
       <div key={activityId || index} className="daily-workout-card">
         {/* Header Bar */}
         <div className="daily-workout-card-header">
-          {/* Top Left: Sport, then Status */}
           <div className="daily-workout-header-left">
             <span className="daily-workout-type">
               {workout.type || workout.sport || 'Activity'}
@@ -353,7 +354,6 @@ export default function DailyView() {
             {isMissed && <span className="status-badge badge-missed">MISSED</span>}
           </div>
 
-          {/* Top Right: Shoe Tag with Red X and Hover Tooltip */}
           {shoeName && (
             <div className="daily-workout-header-right">
               <span className="daily-workout-type daily-shoe-type">
@@ -376,7 +376,6 @@ export default function DailyView() {
           )}
         </div>
 
-        {/* Workout Title */}
         <h3 className="daily-workout-title">
           {workout.name || workout.title || `${workout.type || 'Workout'}`}
         </h3>
@@ -393,7 +392,7 @@ export default function DailyView() {
       </div>
     );
   };
-
+  
   const renderDaySection = (dateObj, dateStr, dayWorkouts) => {
     const isToday = dateStr === todayStr;
 
