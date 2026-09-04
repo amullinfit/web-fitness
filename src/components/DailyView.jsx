@@ -6,6 +6,23 @@ import './DailyView.css';
 const VAL_WORKOUTS_URL = "/api/val-workouts";
 const HISTORICAL_URL = "/api/val-historical";
 
+// Custom hook to detect mobile viewport width
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < breakpoint
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handleChange = (e) => setIsMobile(e.matches);
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
 const safeStringLower = (val) => {
   if (!val) return "";
   if (typeof val === 'string') return val.toLowerCase();
@@ -77,6 +94,8 @@ export default function DailyView() {
   const [sportSettings, setSportSettings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+  
+  const isMobile = useIsMobile(768);
 
   useEffect(() => {
     let isMounted = true;
@@ -107,7 +126,6 @@ export default function DailyView() {
           ? historicalJson.sportSettings
           : [];
 
-        // Build a Map of planned workouts indexed by String(id) for quick name lookups
         const plannedWorkoutsById = new Map();
         valList.forEach((workout) => {
           if (workout && workout.id !== undefined && workout.id !== null) {
@@ -115,11 +133,8 @@ export default function DailyView() {
           }
         });
 
-        // Set of all paired_event_id values present in historical activities
         const pairedEventIds = new Set();
 
-        // Process historical items: if paired to a planned workout, preserve the historical item
-        // but inherit the name/title from the planned workout dataset
         const updatedHistoricalList = historicalList.map((item) => {
           if (item && item.paired_event_id !== null && item.paired_event_id !== undefined) {
             const pairedIdStr = String(item.paired_event_id);
@@ -140,13 +155,11 @@ export default function DailyView() {
           return item;
         });
 
-        // Deduplicate planned workouts: drop any planned workout whose ID matches a historical paired_event_id
         const filteredValList = valList.filter((workout) => {
           if (!workout || workout.id === undefined || workout.id === null) return true;
           return !pairedEventIds.has(String(workout.id));
         });
 
-        // Merge updated historical items and remaining unpaired planned workouts
         const rawMerged = [...updatedHistoricalList, ...filteredValList];
         const seenIds = new Set();
         const mergedList = [];
@@ -258,12 +271,11 @@ export default function DailyView() {
           </div>
         </div>
 
-        {/* Clean Invocation: Calculations fully encapsulated within WorkoutChart */}
         {(workout.workout_doc || workout.intervals) && (
           <WorkoutChart
             workout={workout}
             thresholdPace={thresholdPaceMps}
-            chartHeight="140px"
+            chartHeight={isMobile ? "110px" : "140px"}
           />
         )}
 
@@ -286,7 +298,7 @@ export default function DailyView() {
 
         {dayWorkouts.length === 0 ? (
           <div className="daily-empty-card">
-            No workouts or activities scheduled for {isToday ? 'today' : dateStr}.
+            No workouts scheduled for {isToday ? 'today' : dateStr}.
           </div>
         ) : (
           <div className="daily-workouts-list">
@@ -302,7 +314,7 @@ export default function DailyView() {
       <div className="daily-nav-bar">
         <div className="daily-nav-buttons">
           <button onClick={handlePrevDay} className="nav-btn">
-            ← Prev Day
+            ← Prev
           </button>
           <button
             onClick={handleToday}
@@ -311,7 +323,7 @@ export default function DailyView() {
             Today
           </button>
           <button onClick={handleNextDay} className="nav-btn">
-            Next Day →
+            Next →
           </button>
         </div>
       </div>

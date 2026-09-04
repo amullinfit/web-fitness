@@ -1,14 +1,16 @@
 .daily-view-container {
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 12px;
   font-family: inherit;
+  box-sizing: border-box;
 }
 
 .daily-view-loading {
   padding: 20px;
   color: #6c757d;
   font-weight: 500;
+  text-align: center;
 }
 
 /* Debug Range Bar */
@@ -21,14 +23,15 @@
   padding: 4px 8px;
   border-radius: 4px;
   margin-bottom: 12px;
+  word-break: break-all;
 }
 
 /* Header & Controls */
 .daily-nav-bar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid #dee2e6;
 }
@@ -42,17 +45,24 @@
 .daily-nav-buttons {
   display: flex;
   gap: 8px;
+  width: 100%;
+  max-width: 400px;
 }
 
 .nav-btn {
-  padding: 6px 12px;
-  font-size: 13px;
+  flex: 1;
+  min-height: 44px; /* Minimum recommended touch target size */
+  padding: 8px 12px;
+  font-size: 14px;
   border: 1px solid #ced4da;
-  border-radius: 4px;
+  border-radius: 6px;
   background-color: #ffffff;
   color: #212529;
   cursor: pointer;
   transition: all 0.15s ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .nav-btn:hover {
@@ -73,17 +83,18 @@
   font-weight: 600;
 }
 
-/* Two-Day Section Layout */
+/* Two-Day Section Layout: Default Stacked (Mobile) */
 .daily-two-day-grid {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 24px;
 }
 
 .daily-day-column {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
 }
 
 .daily-day-section-header {
@@ -99,11 +110,11 @@
   font-size: 16px;
   color: #343a40;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.2;
 }
 
 .daily-today-indicator {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: #ffffff;
   background-color: #0d6efd;
@@ -115,7 +126,7 @@
 }
 
 .daily-empty-card {
-  padding: 24px;
+  padding: 20px 16px;
   text-align: center;
   background-color: #f8f9fa;
   border-radius: 8px;
@@ -134,39 +145,44 @@
 .daily-workout-card {
   border: 1px solid #e9ecef;
   border-radius: 8px;
-  padding: 16px;
+  padding: 14px;
   background-color: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
 }
 
 .daily-workout-card-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 12px;
-  gap: 12px;
+  gap: 8px;
 }
 
 .daily-workout-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   color: #212529;
+  word-break: break-word;
+  flex: 1 1 60%;
 }
 
 /* Right-aligned group holding status badge & type badge */
 .daily-workout-header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .daily-workout-type {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   background-color: #e9ecef;
-  padding: 3px 8px;
+  padding: 3px 6px;
   border-radius: 4px;
   color: #495057;
   white-space: nowrap;
@@ -174,9 +190,9 @@
 
 /* Status Badges */
 .status-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
-  padding: 3px 8px;
+  padding: 3px 6px;
   border-radius: 4px;
   letter-spacing: 0.5px;
   white-space: nowrap;
@@ -191,4 +207,39 @@
   background-color: #f8d7da;
   color: #842029;
   border: 1px solid #f5c2c7;
+}
+
+/* Desktop Styles (768px and up) */
+@media (min-width: 768px) {
+  .daily-view-container {
+    padding: 20px;
+  }
+
+  .daily-nav-bar {
+    justify-content: flex-end;
+  }
+
+  .daily-nav-buttons {
+    width: auto;
+  }
+
+  .nav-btn {
+    min-height: initial;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .daily-two-day-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .daily-workout-card {
+    padding: 16px;
+  }
+
+  .daily-workout-title {
+    font-size: 18px;
+  }
 }
