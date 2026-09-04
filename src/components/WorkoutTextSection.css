@@ -1,0 +1,92 @@
+.workout-section-container {
+    margin-top: 12px;
+  }
+  
+  .workout-section-header-box {
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+  }
+  
+  .workout-section-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  
+  .workout-section-title {
+    font-weight: bold;
+    font-size: 12px;
+    color: #495057;
+    text-transform: uppercase;
+  }
+  
+  .workout-section-badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: #0d6efd;
+    background-color: #e7f1ff;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  
+  .workout-section-content {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e9ecef;
+  }
+  
+  .workout-section-empty {
+    font-size: 12px;
+    color: #6c757d;
+  }
+  
+  .workout-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .workout-step-card {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  
+  .workout-step-row {
+    font-size: 13px;
+    color: #212529;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .workout-step-row:last-child {
+    margin-bottom: 0;
+  }
+  
+  .workout-step-label {
+    font-weight: 600;
+    color: #495057;
+    min-width: 120px;
+  }
+  
+  .workout-step-value {
+    font-family: monospace;
+    background-color: #f1f3f5;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  
+  .workout-step-text {
+    font-size: 12px;
+    color: #495057;
+    font-style: italic;
+    background-color: transparent;
+    padding: 0;
+  }
