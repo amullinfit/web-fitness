@@ -273,6 +273,7 @@
   align-items: center;
   gap: 6px;
   padding-right: 6px;
+  position: relative; /* Position context for hover tooltip */
 }
 
 /* Red X Button Styling */
@@ -300,6 +301,44 @@
 .remove-gear-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Tooltip popup showing Activity ID and Gear ID on hover */
+.gear-id-tooltip {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  background-color: #1e293b;
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  padding: 6px 10px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+  z-index: 20;
+  pointer-events: none;
+  border: 1px solid #334155;
+}
+
+/* Arrow indicator on the tooltip */
+.gear-id-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  right: 10px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent #1e293b transparent;
+}
+
+/* Show tooltip when hovering over the remove button */
+.remove-gear-btn:hover + .gear-id-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 /* Small inline spinner while API call is in flight */

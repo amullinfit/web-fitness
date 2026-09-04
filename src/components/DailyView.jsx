@@ -233,7 +233,6 @@ export default function DailyView() {
         throw new Error(`Failed to remove gear: ${response.statusText}`);
       }
 
-      // Optimistically update local state to remove the shoe from UI
       setWorkouts((prev) =>
         prev.map((w) => {
           if (String(w.id) === String(workoutId)) {
@@ -323,10 +322,11 @@ export default function DailyView() {
 
     const shoeName = workout.shoe_name || workout.gear_name || (typeof workout.gear === 'object' ? workout.gear?.name : null);
     const gearId = workout.gear_id || (typeof workout.gear === 'object' ? workout.gear?.id : null) || shoeName;
-    const isRemoving = removingGearId === workout.id;
+    const activityId = workout.id;
+    const isRemoving = removingGearId === activityId;
 
     return (
-      <div key={workout.id || index} className="daily-workout-card">
+      <div key={activityId || index} className="daily-workout-card">
         {/* Header Bar */}
         <div className="daily-workout-card-header">
           {/* Top Left: Sport, then Status */}
@@ -338,7 +338,7 @@ export default function DailyView() {
             {isMissed && <span className="status-badge badge-missed">MISSED</span>}
           </div>
 
-          {/* Top Right: Shoe Tag with Red X Remove Button */}
+          {/* Top Right: Shoe Tag with Red X and Hover Tooltip */}
           {shoeName && (
             <div className="daily-workout-header-right">
               <span className="daily-workout-type daily-shoe-type">
@@ -346,12 +346,16 @@ export default function DailyView() {
                 <button
                   type="button"
                   className="remove-gear-btn"
-                  title="Remove shoe from activity"
+                  title={`Activity ID: ${activityId} | Gear ID: ${gearId}`}
                   disabled={isRemoving}
-                  onClick={() => handleRemoveGear(workout.id, gearId)}
+                  onClick={() => handleRemoveGear(activityId, gearId)}
                 >
                   {isRemoving ? <span className="gear-spinner" /> : '✕'}
                 </button>
+                <div className="gear-id-tooltip">
+                  <span><strong>Activity ID:</strong> {activityId || 'N/A'}</span>
+                  <span><strong>Gear ID:</strong> {gearId || 'N/A'}</span>
+                </div>
               </span>
             </div>
           )}
