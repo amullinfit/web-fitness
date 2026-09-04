@@ -6,7 +6,7 @@ const WAVES_PER_MINUTE = 3; // Number of wave cycles per minute across the top
 const WAVE_AMPLITUDE = 1.5;   // Amplitude in SVG viewBox units (0-100 scale)
 const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left & right sides
 
-const SLOW_BUFFER_MINUTES = 2;
+const SLOW_BUFFER_MINUTES = 1;
 const FAST_BUFFER_MINUTES = 1;
 const DEFAULT_FALLBACK_THRESHOLD_SEC = 480;
 
@@ -237,41 +237,21 @@ export default function WorkoutChart({
     const fastestStepSec = Math.min(...stepPacesSec);
     const slowestStepSec = Math.max(...stepPacesSec);
 
-    const rawFastSec = Math.max(30, fastestStepSec - (FAST_BUFFER_MINUTES * 60));
-    const rawSlowSec = slowestStepSec + (SLOW_BUFFER_MINUTES * 60);
+    // Fast End: Roll up to next fastest whole minute, then subtract buffer minutes
+    const fastestMinuteRounded = Math.floor(fastestStepSec / 60) * 60;
+    const chosenStartSec = Math.max(0, fastestMinuteRounded - (FAST_BUFFER_MINUTES * 60));
 
-    const allowedStepSecs = [60, 90, 120];
-
-    let chosenStepSec = 60;
-    let bestTickCount = -1;
-    let chosenStartSec = rawFastSec;
-    let chosenEndSec = rawSlowSec;
-
-    for (const stepSec of allowedStepSecs) {
-      const roundedFast = Math.floor(rawFastSec / stepSec) * stepSec;
-      const roundedSlow = Math.ceil(rawSlowSec / stepSec) * stepSec;
-      const count = Math.round((roundedSlow - roundedFast) / stepSec) + 1;
-
-      if (count >= 4 && count <= 6) {
-        if (count >= bestTickCount) {
-          bestTickCount = count;
-          chosenStepSec = stepSec;
-          chosenStartSec = roundedFast;
-          chosenEndSec = roundedSlow;
-        }
-      }
-    }
-
-    if (bestTickCount === -1) {
-      chosenStepSec = 60;
-      chosenStartSec = Math.floor(rawFastSec / 60) * 60;
-      chosenEndSec = Math.ceil(rawSlowSec / 60) * 60;
-    }
+    // Slow End: Roll down to next slowest whole minute, then add buffer minutes
+    const slowestMinuteRounded = Math.ceil(slowestStepSec / 60) * 60;
+    const chosenEndSec = slowestMinuteRounded + (SLOW_BUFFER_MINUTES * 60);
 
     yFastestSec = chosenStartSec;
     ySlowestSec = chosenEndSec;
 
+    // Use 60-second intervals for clear minute-based y-ticks
+    const chosenStepSec = 60;
     const totalTicks = Math.round((chosenEndSec - chosenStartSec) / chosenStepSec) + 1;
+    
     for (let i = 0; i < totalTicks; i++) {
       const currentSec = chosenStartSec + i * chosenStepSec;
       const topPct = totalTicks > 1 ? (i / (totalTicks - 1)) * 100 : 0;
