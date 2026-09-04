@@ -40,9 +40,12 @@ const formatGridDistance = (sport, distanceMiles, rawMeters) => {
   return `${distanceMiles.toFixed(1)} mi`;
 };
 
-const formatSportName = (rawType) => {
+const formatSportName = (rawType, isMobile) => {
   if (!rawType) return '';
-  return rawType.replace(/virtual/i, 'V-');
+  if (isMobile) {
+    return rawType.replace(/virtual/i, 'V-');
+  }
+  return rawType;
 };
 
 // --- DATE HELPER UTILITIES ---
@@ -66,8 +69,10 @@ const formatMMMD = (d) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const formatMMMYYYY = (d) => {
-  return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+const formatMmmYYYYParts = (d) => {
+  const month = d.toLocaleDateString('en-US', { month: 'short' });
+  const year = d.getFullYear().toString();
+  return { month, year };
 };
 
 const RenderIndicator = ({ current, previous }) => {
@@ -80,6 +85,13 @@ export default function GeneralOverview({ overviewData }) {
   const [workouts, setWorkouts] = useState([]);
   const [wellness, setWellness] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     fetch(VAL_OVERVIEW_URL)
@@ -147,12 +159,28 @@ export default function GeneralOverview({ overviewData }) {
     const prevWeekVal = prevWeekWorkouts.reduce((acc, w) => acc + w.distanceMiles, 0);
     const prevWeekMeters = prevWeekWorkouts.reduce((acc, w) => acc + w.rawMeters, 0);
 
+    const currentYear = now.getFullYear();
+    const priorYear = currentYear - 1;
+
+    const annualData = [currentYear, priorYear].map((yr) => {
+      const yrWorkouts = sportWorkouts.filter(w => w.dateObj.getFullYear() === yr);
+      const yrDistMiles = yrWorkouts.reduce((acc, w) => acc + w.distanceMiles, 0);
+      const yrMeters = yrWorkouts.reduce((acc, w) => acc + w.rawMeters, 0);
+
+      return {
+        year: String(yr),
+        activitiesCount: yrWorkouts.length,
+        total: formatSportTotal(sport, yrDistMiles, yrMeters)
+      };
+    });
+
     return {
       type: sport,
       currentWeekDist: formatSportTotal(sport, curWeekVal, curWeekMeters),
       currentWeekVal: curWeekVal,
       prevWeekDist: formatSportTotal(sport, prevWeekVal, prevWeekMeters),
-      prevWeekVal: prevWeekVal
+      prevWeekVal: prevWeekVal,
+      annualTable: annualData
     };
   });
 
@@ -176,7 +204,7 @@ export default function GeneralOverview({ overviewData }) {
         items: dayWorkouts.map(w => {
           const isWeight = w.rawType.toLowerCase() === 'weighttraining';
           const rawLabel = isWeight ? (w.name || w.rawType) : w.rawType;
-          const displayLabel = formatSportName(rawLabel);
+          const displayLabel = formatSportName(rawLabel, isMobile);
 
           return {
             category: w.category,
@@ -197,9 +225,10 @@ export default function GeneralOverview({ overviewData }) {
   const currentWeekGrid = buildGridWeek(currentMon, currentSun);
   const priorWeekGrid = buildGridWeek(priorMon, priorSun);
 
-  // 3. CONSISTENCY GRID DATA (30 WEEKS + CURRENT WEEK)
+  // 3. CONSISTENCY GRID DATA (Mobile: 20 weeks, Desktop: 60 weeks)
+  const historyWeeksCount = isMobile ? 20 : 60;
   const consistencyWeeks = [];
-  for (let w = 30; w >= 0; w--) {
+  for (let w = historyWeeksCount; w >= 0; w--) {
     const weekMon = addDays(currentMon, -w * 7);
     const weekDays = [];
 
@@ -238,10 +267,13 @@ export default function GeneralOverview({ overviewData }) {
       const roundedDist = Math.floor(totalDist);
       if (roundedDist > maxDist) maxDist = roundedDist;
 
+      const dateParts = formatMmmYYYYParts(targetMonth);
+
       monthlyTotals.push({
-        month: formatMMMYYYY(targetMonth),
+        monthObj: dateParts,
         rawDistance: roundedDist,
-        distanceStr: `${roundedDist} mi`
+        numStr: `${roundedDist}`,
+        unitStr: 'mi'
       });
     }
 
@@ -251,9 +283,8 @@ export default function GeneralOverview({ overviewData }) {
   const { monthlyTotals: monthlyRunTotals, maxDist: maxRunDist } = buildMonthlyTotals('Run');
   const { monthlyTotals: monthlyBikeTotals, maxDist: maxBikeDist } = buildMonthlyTotals('Bike');
 
-  // 6. POP AND SUGAR GRID DATA (2 ROWS OF 30 CELLS, RIGHT TO LEFT)
+  // 6. POP AND SUGAR GRID DATA
   const totalDaysPop = 60;
-  
   const wellnessMap = new Map();
   wellness.forEach((item) => {
     const dStr = item.date || item.id || item.day;
@@ -280,7 +311,6 @@ export default function GeneralOverview({ overviewData }) {
     });
   }
 
-  // Top row: newest 30 days (index 0..29), bottom row: next 30 days (index 30..59)
   const topRow = popSugarDaysRaw.slice(0, 30);
   const bottomRow = popSugarDaysRaw.slice(30, 60);
 
@@ -355,15 +385,21 @@ export default function GeneralOverview({ overviewData }) {
           const heightPercent = maxVal > 0 ? (item.rawDistance / maxVal) * 100 : 0;
           return (
             <div key={mIdx} className="monthly-bar-column">
-              <div className="monthly-bar-val">{item.distanceStr}</div>
+              <div className="monthly-bar-val">
+                <span className="num-part">{item.numStr}</span>
+                <span className="unit-part">{item.unitStr}</span>
+              </div>
               <div className="monthly-bar-track">
                 <div 
                   className="monthly-bar-fill" 
                   style={{ height: `${heightPercent}%` }}
-                  title={`${item.month}: ${item.distanceStr}`}
+                  title={`${item.monthObj.month} ${item.monthObj.year}: ${item.numStr} ${item.unitStr}`}
                 />
               </div>
-              <div className="monthly-bar-label">{item.month}</div>
+              <div className="monthly-bar-label">
+                <div>{item.monthObj.month}</div>
+                <div>{item.monthObj.year}</div>
+              </div>
             </div>
           );
         })}
@@ -388,6 +424,26 @@ export default function GeneralOverview({ overviewData }) {
                 <RenderIndicator current={b.currentWeekVal} previous={b.prevWeekVal} />
               </span>
             </div>
+
+            {/* Desktop Only Annual Table */}
+            <table className="annual-table desktop-only">
+              <thead>
+                <tr>
+                  <th className="col-year"><span>Year</span></th>
+                  <th className="col-act"><span>Act</span></th>
+                  <th className="col-total"><span>Total</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {b.annualTable.map((row, rIdx) => (
+                  <tr key={rIdx}>
+                    <td className="col-year"><span>{row.year}</span></td>
+                    <td className="col-act"><span>{row.activitiesCount}</span></td>
+                    <td className="col-total"><span>{row.total}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ))}
       </div>
@@ -399,7 +455,7 @@ export default function GeneralOverview({ overviewData }) {
         {renderWeekGrid(priorWeekGrid, "Prior Week")}
       </div>
 
-      {/* SECTION 3: CONSISTENCY GRID (30 WEEKS + CURRENT WEEK) */}
+      {/* SECTION 3: CONSISTENCY GRID */}
       <div className="consistency-card">
         <h3 className="section-subtitle-center">
           --- CONSISTENCY GRID ---
@@ -415,8 +471,8 @@ export default function GeneralOverview({ overviewData }) {
           </div>
 
           {consistencyWeeks.map((week, wIdx) => {
-            const isCurrentWeek = wIdx === 30;
-            const hasFourWeekDivider = (30 - wIdx) % 4 === 0 && wIdx !== 30;
+            const isCurrentWeek = wIdx === historyWeeksCount;
+            const hasFourWeekDivider = (historyWeeksCount - wIdx) % 4 === 0 && wIdx !== historyWeeksCount;
 
             return (
               <React.Fragment key={wIdx}>
@@ -459,14 +515,15 @@ export default function GeneralOverview({ overviewData }) {
       {/* SECTION 5: MONTHLY BIKE TOTALS */}
       {renderBarChart("MONTHLY BIKE TOTALS", monthlyBikeTotals, maxBikeDist)}
 
-      {/* SECTION 6: POP AND SUGAR GRID (2 ROWS) */}
+      {/* SECTION 6: POP AND SUGAR GRID */}
       <div className="popsugar-card">
         <h3 className="section-subtitle-center">
           POP AND SUGAR - {popStreakCount} DAYS
         </h3>
 
-        <div className="popsugar-two-rows">
-          <div className="popsugar-grid-row">
+        {/* Mobile View: 2 Rows of 30 */}
+        <div className="popsugar-two-rows mobile-only">
+          <div className="popsugar-grid-row cols-30">
             {topRow.map((day, idx) => {
               const countClass = day.value !== 0 ? 'count-1' : 'count-0';
               return (
@@ -479,7 +536,7 @@ export default function GeneralOverview({ overviewData }) {
             })}
           </div>
 
-          <div className="popsugar-grid-row">
+          <div className="popsugar-grid-row cols-30">
             {bottomRow.map((day, idx) => {
               const countClass = day.value !== 0 ? 'count-1' : 'count-0';
               return (
@@ -491,6 +548,20 @@ export default function GeneralOverview({ overviewData }) {
               );
             })}
           </div>
+        </div>
+
+        {/* Desktop View: 1 Row of 60 */}
+        <div className="popsugar-grid-row cols-60 desktop-only">
+          {popSugarDaysRaw.map((day, idx) => {
+            const countClass = day.value !== 0 ? 'count-1' : 'count-0';
+            return (
+              <div
+                key={idx}
+                title={`${day.dateStr}: ${day.value}`}
+                className={`popsugar-cell ${countClass}`}
+              />
+            );
+          })}
         </div>
       </div>
 

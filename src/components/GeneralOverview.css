@@ -11,12 +11,30 @@
   color: #6c757d;
 }
 
+/* RESPONSIVE DISPLAY UTILITIES */
+.desktop-only {
+  display: block;
+}
+
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: flex !important;
+  }
+}
+
 /* SECTION 1: Sport Buckets */
 .sport-buckets-container {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  gap: 8px; /* Shrunk gap */
+  gap: 8px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -70,6 +88,63 @@
 .indicator-down { color: #dc3545; }
 .indicator-same { color: #6c757d; }
 
+/* Desktop Annual Table in Buckets */
+.annual-table {
+  width: auto;
+  margin: 12px auto 0 auto;
+  border-collapse: separate;
+  border-spacing: 10px 0;
+  color: #6c757d;
+  font-size: 11px;
+}
+
+.annual-table th {
+  padding: 0 0 4px 0;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.annual-table th span {
+  display: inline-block;
+  border-bottom: 1px solid #ced4da;
+  padding-bottom: 2px;
+  width: 100%;
+}
+
+.annual-table th.col-year { text-align: left; }
+.annual-table th.col-act { text-align: center; }
+.annual-table th.col-total { text-align: right; }
+
+.annual-table td {
+  padding: 3px 0;
+  white-space: nowrap;
+}
+
+.annual-table td.col-year { text-align: left; }
+.annual-table td.col-act { text-align: center; }
+.annual-table td.col-total { text-align: right; }
+
+/* Mobile Bucket Customizations */
+@media (max-width: 767px) {
+  .sport-bucket-card {
+    padding: 6px 4px;
+  }
+  .sport-bucket-title {
+    font-size: 13px;
+  }
+  .sport-bucket-dist {
+    font-size: 18px;
+    margin: 4px 0;
+  }
+  .sport-bucket-prev {
+    font-size: 10px;
+  }
+  .prev-label {
+    font-size: 9px;
+  }
+}
+
 /* SECTION 2: Weekly Activity Grids */
 .section-title {
   font-size: 16px;
@@ -112,7 +187,7 @@
 .weekly-grid-headers-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 3px; /* Shrunk gap */
+  gap: 3px;
   margin-bottom: 6px;
 }
 
@@ -132,7 +207,7 @@
 .weekly-grid-items-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 3px; /* Shrunk gap */
+  gap: 3px;
 }
 
 .weekly-day-column {
@@ -151,6 +226,7 @@
 
 .activity-sport {
   font-weight: 600;
+  word-break: break-word;
 }
 
 .activity-dist {
@@ -235,9 +311,9 @@
 .monthly-barchart-container {
   display: flex;
   align-items: flex-end;
-  gap: 6px;
+  gap: 4px;
   height: 150px;
-  padding-bottom: 24px; /* Space for angled labels */
+  padding-bottom: 28px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -257,7 +333,21 @@
   font-weight: 600;
   color: #333;
   margin-bottom: 4px;
-  white-space: nowrap;
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Mobile: # and mi on separate lines */
+@media (max-width: 767px) {
+  .monthly-bar-val {
+    flex-direction: column;
+    gap: 0;
+    font-size: 9px;
+    line-height: 1;
+  }
 }
 
 .monthly-bar-track {
@@ -280,18 +370,18 @@
   transition: height 0.3s ease;
 }
 
+/* Month labels as Mmm YYYY on separate lines */
 .monthly-bar-label {
   position: absolute;
-  bottom: -22px;
+  bottom: -28px;
   font-size: 9px;
   color: #6c757d;
-  white-space: nowrap;
   text-align: center;
-  transform: rotate(-30deg);
-  transform-origin: center top;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
-/* SECTION 6: Pop & Sugar Grid (2 Rows x 30 Cols) */
+/* SECTION 6: Pop & Sugar Grid */
 .popsugar-card {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
@@ -310,11 +400,19 @@
 
 .popsugar-grid-row {
   display: grid;
-  grid-template-columns: repeat(30, minmax(0, 1fr));
-  direction: rtl; /* Right to left ordering */
+  direction: rtl; /* Right to left */
   gap: 3px;
   width: 100%;
   box-sizing: border-box;
+}
+
+.popsugar-grid-row.cols-30 {
+  grid-template-columns: repeat(30, minmax(0, 1fr));
+}
+
+.popsugar-grid-row.cols-60 {
+  grid-template-columns: repeat(60, minmax(0, 1fr));
+  gap: 2px;
 }
 
 .popsugar-cell {
