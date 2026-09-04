@@ -42,31 +42,22 @@ const getThresholdFromReminders = (gear) => {
  * Checks if item is a shoe based on type/category/name attributes.
  */
 const isShoeGear = (gear) => {
-  const name = (gear.name || '').toLowerCase();
-  const type = (gear.type || gear.category || '').toLowerCase();
-
-  if (type.includes('shoe') || type.includes('footwear') || type.includes('run')) return true;
-  if (name.includes('shoe') || name.includes('runner') || name.includes('vaporfly') || name.includes('clifton')) return true;
-
-  return !type.includes('bike') && !type.includes('component') && !type.includes('apparel');
+  const type = (gear.type || '').toLowerCase();
+  return type.includes('shoe');
 };
 
 /**
- * Checks if item represents unassigned activities ("NOT ASSIGNED TO A SHOE")
+ * Checks if item represents unassigned activities ("NOT ASSIGNED A SHOE" or "NOT TRACKED")
  */
 const isUnassignedActivity = (gear) => {
   const name = (gear.name || '').toUpperCase();
-  const type = (gear.type || gear.category || '').toUpperCase();
-  return name.includes('NOT ASSIGNED TO A SHOE') || type.includes('NOT ASSIGNED TO A SHOE');
+  return name.includes('NOT ASSIGNED A SHOE') || name.includes('NOT TRACKED');
 };
 
 /**
  * Checks whether retired contains a valid date value or string
  */
-const hasRetiredDate = (gear) => {
-  if (!gear.retired || gear.retired === false) return false;
-  return true;
-};
+const hasRetiredDate = (gear) => Boolean(gear.retired);
 
 /**
  * Helper to format date strings cleanly
