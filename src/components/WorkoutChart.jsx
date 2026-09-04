@@ -315,7 +315,7 @@ export default function WorkoutChart({
         </div>
 
         <span className="workout-section-badge">
-          Threshold Pace ({workout?.type || 'Sport'}): {thresholdDisplayStr}
+          Threshold ({workout?.type || 'Sport'}): {thresholdDisplayStr}
         </span>
       </div>
 

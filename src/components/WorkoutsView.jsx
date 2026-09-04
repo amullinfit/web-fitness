@@ -14,6 +14,16 @@ const formatDuration = (totalSeconds) => {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
 };
 
+const formatWorkoutDate = (rawDate) => {
+  if (!rawDate) return 'TBD';
+  const dateObj = new Date(typeof rawDate === 'string' && !rawDate.includes('T') ? rawDate.replace(/-/g, '/') : rawDate);
+  if (isNaN(dateObj.getTime())) return 'TBD';
+
+  const dayAbbrev = dateObj.toLocaleDateString(undefined, { weekday: 'short' });
+  const dateStr = dateObj.toLocaleDateString();
+  return `${dayAbbrev} - ${dateStr}`;
+};
+
 const safeStringLower = (val) => {
   if (!val) return "";
   if (typeof val === 'string') return val.toLowerCase();
@@ -186,7 +196,7 @@ export default function WorkoutsView() {
       <h2>Upcoming Workouts</h2>
       {workouts.map((w, index) => {
         const rawDate = w.start_date_local || w.icu_start_date || w.start_date;
-        const workoutDate = rawDate ? new Date(rawDate).toLocaleDateString() : 'TBD';
+        const workoutDate = formatWorkoutDate(rawDate);
         const durationStr = formatDuration(w.moving_time || w.elapsed_time);
         const distanceMi = w.distance ? (w.distance * 0.000621371).toFixed(1) : null;
         
