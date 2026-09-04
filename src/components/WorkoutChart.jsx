@@ -2,8 +2,9 @@ import React, { useId } from 'react';
 import './WorkoutChart.css';
 
 // --- CHART CONFIGURATION CONSTANTS ---
-const WAVES_PER_MINUTE = 5.0; // Number of wave cycles per minute of duration
-const WAVE_AMPLITUDE = 0.5;   // Wave amplitude in SVG viewBox height units (0-100 scale)
+const WAVES_PER_MINUTE = 3; // Number of wave cycles per minute across the top
+const WAVE_AMPLITUDE = 1.5;   // Amplitude in SVG viewBox units (0-100 scale)
+const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left & right sides
 
 const SLOW_BUFFER_MINUTES = 2;
 const FAST_BUFFER_MINUTES = 1;
@@ -157,30 +158,53 @@ const getZoneDetails = (targetPct, stepType = '') => {
 };
 
 /**
- * Generates an SVG path with an adjustable wave frequency and amplitude.
- * @param {number} cycles - Number of wave cycles across the top edge.
- * @param {number} amplitude - Wave amplitude height in viewBox percentage units.
+ * Generates an SVG path with wavy top and side borders, leaving the bottom border open/flat.
+ * @param {number} topCycles - Number of wave cycles across the top edge.
+ * @param {number} amplitude - Wave amplitude in viewBox units.
+ * @param {number} verticalCycles - Number of wave cycles along the left and right sides.
  */
-const generateWavyBarPath = (cycles = 6, amplitude = WAVE_AMPLITUDE) => {
+const generateWavyBarPath = (topCycles = 6, amplitude = WAVE_AMPLITUDE, verticalCycles = VERTICAL_WAVE_CYCLES) => {
   const amp = amplitude;
-  const step = 100 / cycles;
 
-  let topPath = `M 0 ${amp}`;
-  for (let i = 0; i < cycles; i++) {
-    const startX = i * step;
-    const endX = startX + step;
+  // 1. TOP EDGE (Left to Right along Y ~ 0)
+  const topStep = 100 / topCycles;
+  let d = `M 0 ${amp}`;
+  for (let i = 0; i < topCycles; i++) {
+    const startX = i * topStep;
+    const endX = startX + topStep;
     const cp1Y = i % 2 === 0 ? -amp : amp * 2;
     const cp2Y = i % 2 === 0 ? amp * 2 : -amp;
+    const endY = i % 2 === 0 ? amp : 0;
 
-    topPath += ` C ${startX + step * 0.25} ${cp1Y}, ${startX + step * 0.75} ${cp2Y}, ${endX} ${i % 2 === 0 ? amp : 0}`;
+    d += ` C ${startX + topStep * 0.25} ${cp1Y}, ${startX + topStep * 0.75} ${cp2Y}, ${endX} ${endY}`;
   }
 
-  return `
-    ${topPath}
-    L 100 100
-    L 0 100
-    Z
-  `;
+  // 2. RIGHT EDGE (Top to Bottom along X ~ 100)
+  const sideStep = (100 - amp) / verticalCycles;
+  for (let i = 0; i < verticalCycles; i++) {
+    const startY = amp + (i * sideStep);
+    const endY = startY + sideStep;
+    const cp1X = i % 2 === 0 ? 100 + amp : 100 - amp;
+    const cp2X = i % 2 === 0 ? 100 - amp : 100 + amp;
+
+    d += ` C ${cp1X} ${startY + sideStep * 0.25}, ${cp2X} ${startY + sideStep * 0.75}, 100 ${endY}`;
+  }
+
+  // 3. BOTTOM EDGE (Right to Left along Y = 100) - Straight Line (No Wavy Border)
+  d += ` L 0 100`;
+
+  // 4. LEFT EDGE (Bottom to Top along X ~ 0)
+  for (let i = verticalCycles - 1; i >= 0; i--) {
+    const startY = amp + ((i + 1) * sideStep);
+    const endY = amp + (i * sideStep);
+    const cp1X = i % 2 === 0 ? -amp : amp;
+    const cp2X = i % 2 === 0 ? amp : -amp;
+
+    d += ` C ${cp1X} ${startY - sideStep * 0.25}, ${cp2X} ${startY - sideStep * 0.75}, 0 ${endY}`;
+  }
+
+  d += ` Z`;
+  return d;
 };
 
 export default function WorkoutChart({ 
@@ -378,10 +402,9 @@ export default function WorkoutChart({
                   const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
                   const tooltipText = `Executed Interval ${idx + 1}: ${intensityFormatted} | Avg Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
                   
-                  // Calculate wave cycles based on minutes elapsed
                   const durationMinutes = durationSec / 60;
                   const waveCycles = Math.max(2, Math.round(durationMinutes * WAVES_PER_MINUTE));
-                  const pathData = generateWavyBarPath(waveCycles, WAVE_AMPLITUDE);
+                  const pathData = generateWavyBarPath(waveCycles, WAVE_AMPLITUDE, VERTICAL_WAVE_CYCLES);
 
                   return (
                     <div
