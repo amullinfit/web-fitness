@@ -357,3 +357,27 @@
     transform: rotate(360deg);
   }
 }
+
+.nav-btn-today:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+/* Enhanced Focus & Accessibility States */
+.nav-btn:focus-visible,
+.remove-gear-btn:focus-visible,
+.daily-toast-close:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Tooltip Arrow Pointer */
+.gear-id-tooltip::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  right: 12px;
+  border-width: 4px;
+  border-style: solid;
+  border-color: transparent transparent #1f2937 transparent;
+}
