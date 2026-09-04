@@ -1,6 +1,10 @@
 import React, { useId } from 'react';
 import './WorkoutChart.css';
 
+// --- CHART CONFIGURATION CONSTANTS ---
+const WAVES_PER_MINUTE = 3; // Number of wave cycles per minute of duration
+const WAVE_AMPLITUDE = 1.5;   // Wave amplitude in SVG viewBox height units (0-100 scale)
+
 const SLOW_BUFFER_MINUTES = 2;
 const FAST_BUFFER_MINUTES = 1;
 const DEFAULT_FALLBACK_THRESHOLD_SEC = 480;
@@ -153,11 +157,12 @@ const getZoneDetails = (targetPct, stepType = '') => {
 };
 
 /**
- * Generates an SVG path with an adjustable wave frequency (cycles).
- * Higher `cycles` = smaller wavelength / more waves across the top edge.
+ * Generates an SVG path with an adjustable wave frequency and amplitude.
+ * @param {number} cycles - Number of wave cycles across the top edge.
+ * @param {number} amplitude - Wave amplitude height in viewBox percentage units.
  */
-const generateWavyBarPath = (idx, cycles = 6) => {
-  const amp = 3 + (idx % 2);
+const generateWavyBarPath = (cycles = 6, amplitude = WAVE_AMPLITUDE) => {
+  const amp = amplitude;
   const step = 100 / cycles;
 
   let topPath = `M 0 ${amp}`;
@@ -373,9 +378,10 @@ export default function WorkoutChart({
                   const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
                   const tooltipText = `Executed Interval ${idx + 1}: ${intensityFormatted} | Avg Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
                   
-                  // Scale wave cycles based on bar width / duration (approx 2 waves per minute)
-                  const waveCycles = Math.max(4, Math.round(durationSec / 30));
-                  const pathData = generateWavyBarPath(idx, waveCycles);
+                  // Calculate wave cycles based on minutes elapsed
+                  const durationMinutes = durationSec / 60;
+                  const waveCycles = Math.max(2, Math.round(durationMinutes * WAVES_PER_MINUTE));
+                  const pathData = generateWavyBarPath(waveCycles, WAVE_AMPLITUDE);
 
                   return (
                     <div
