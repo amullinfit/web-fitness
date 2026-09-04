@@ -109,17 +109,15 @@ const RenderStepCard = ({ step }) => {
           <span className="workout-repeat-title">
             Repeat {step.reps}x
           </span>
+          {step.text && (
+            <span className="workout-repeat-note-inline">
+              "{step.text}"
+            </span>
+          )}
           <span className="workout-repeat-total-time">
-            Total Combined Time: <strong>{formatDuration(step.durationSec)}</strong>
+            Total Time: <strong>{formatDuration(step.durationSec)}</strong>
           </span>
         </div>
-
-        {step.text && (
-          <div className="workout-step-row workout-repeat-note">
-            <span className="workout-step-label">Repeat Note:</span>
-            <span className="workout-step-text">"{step.text}"</span>
-          </div>
-        )}
 
         <div className="workout-repeat-inner-list">
           {step.innerSteps.map((innerStep, iIdx) => (
@@ -132,16 +130,19 @@ const RenderStepCard = ({ step }) => {
 
   return (
     <div className="workout-step-card">
+      {/* Line 1: Details */}
       <div className="workout-step-row">
-        <span className="workout-step-label">Intensity & Duration:</span>
-        <span className="workout-step-value">{step.intensity}</span>
-        <span>for</span>
-        <span className="workout-step-value">{formatDuration(step.durationSec)}</span>
+        <span className="workout-step-label">Details:</span>
+        <span className="workout-step-details-inline">
+          <span className="workout-step-value">{step.intensity}</span>
+          <span className="workout-step-connector">for</span>
+          <span className="workout-step-value">{formatDuration(step.durationSec)}</span>
+          <span className="workout-step-connector">at</span>
+          <span className="workout-step-value">{step.paceStr}</span>
+        </span>
       </div>
-      <div className="workout-step-row">
-        <span className="workout-step-label">Target Pace:</span>
-        <span className="workout-step-value">{step.paceStr}</span>
-      </div>
+
+      {/* Line 2: Text */}
       <div className="workout-step-row">
         <span className="workout-step-label">Text:</span>
         <span className="workout-step-text">"{step.text}"</span>
