@@ -40,6 +40,11 @@ const formatGridDistance = (sport, distanceMiles, rawMeters) => {
   return `${distanceMiles.toFixed(1)} mi`;
 };
 
+const formatSportName = (rawType) => {
+  if (!rawType) return '';
+  return rawType.replace(/virtual/i, 'V-');
+};
+
 // --- DATE HELPER UTILITIES ---
 
 const getMonday = (d) => {
@@ -62,7 +67,7 @@ const formatMMMD = (d) => {
 };
 
 const formatMMMYYYY = (d) => {
-  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
 };
 
 const RenderIndicator = ({ current, previous }) => {
@@ -129,7 +134,7 @@ export default function GeneralOverview({ overviewData }) {
     };
   });
 
-  // 1. WEEKLY BUCKETS & ANNUAL TABLES DATA
+  // 1. WEEKLY BUCKETS DATA
   const sportCategories = ['Swim', 'Bike', 'Run'];
   const buckets = sportCategories.map((sport) => {
     const sportWorkouts = parsedWorkouts.filter(w => w.category === sport);
@@ -142,28 +147,12 @@ export default function GeneralOverview({ overviewData }) {
     const prevWeekVal = prevWeekWorkouts.reduce((acc, w) => acc + w.distanceMiles, 0);
     const prevWeekMeters = prevWeekWorkouts.reduce((acc, w) => acc + w.rawMeters, 0);
 
-    const currentYear = now.getFullYear();
-    const priorYear = currentYear - 1;
-
-    const annualData = [currentYear, priorYear].map((yr) => {
-      const yrWorkouts = sportWorkouts.filter(w => w.dateObj.getFullYear() === yr);
-      const yrDistMiles = yrWorkouts.reduce((acc, w) => acc + w.distanceMiles, 0);
-      const yrMeters = yrWorkouts.reduce((acc, w) => acc + w.rawMeters, 0);
-
-      return {
-        year: String(yr),
-        activitiesCount: yrWorkouts.length,
-        total: formatSportTotal(sport, yrDistMiles, yrMeters)
-      };
-    });
-
     return {
       type: sport,
       currentWeekDist: formatSportTotal(sport, curWeekVal, curWeekMeters),
       currentWeekVal: curWeekVal,
       prevWeekDist: formatSportTotal(sport, prevWeekVal, prevWeekMeters),
-      prevWeekVal: prevWeekVal,
-      annualTable: annualData
+      prevWeekVal: prevWeekVal
     };
   });
 
@@ -186,7 +175,8 @@ export default function GeneralOverview({ overviewData }) {
         count: dayWorkouts.length,
         items: dayWorkouts.map(w => {
           const isWeight = w.rawType.toLowerCase() === 'weighttraining';
-          const displayLabel = isWeight ? (w.name || w.rawType) : w.rawType;
+          const rawLabel = isWeight ? (w.name || w.rawType) : w.rawType;
+          const displayLabel = formatSportName(rawLabel);
 
           return {
             category: w.category,
@@ -207,9 +197,9 @@ export default function GeneralOverview({ overviewData }) {
   const currentWeekGrid = buildGridWeek(currentMon, currentSun);
   const priorWeekGrid = buildGridWeek(priorMon, priorSun);
 
-  // 3. CONSISTENCY GRID DATA
+  // 3. CONSISTENCY GRID DATA (30 WEEKS + CURRENT WEEK)
   const consistencyWeeks = [];
-  for (let w = 60; w >= 0; w--) {
+  for (let w = 30; w >= 0; w--) {
     const weekMon = addDays(currentMon, -w * 7);
     const weekDays = [];
 
@@ -229,7 +219,6 @@ export default function GeneralOverview({ overviewData }) {
     consistencyWeeks.push(weekDays);
   }
 
-  // Day Label Column Array
   const dayLabelsList = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
   // 4 & 5. MONTHLY TOTALS
@@ -237,7 +226,7 @@ export default function GeneralOverview({ overviewData }) {
     const monthlyTotals = [];
     let maxDist = 0;
 
-    for (let m = 12; m >= 0; m--) {
+    for (let m = 11; m >= 0; m--) {
       const targetMonth = new Date(now.getFullYear(), now.getMonth() - m, 1);
       const monthStart = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
       const monthEnd = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -262,9 +251,8 @@ export default function GeneralOverview({ overviewData }) {
   const { monthlyTotals: monthlyRunTotals, maxDist: maxRunDist } = buildMonthlyTotals('Run');
   const { monthlyTotals: monthlyBikeTotals, maxDist: maxBikeDist } = buildMonthlyTotals('Bike');
 
-  // 6. POP AND SUGAR GRID DATA
+  // 6. POP AND SUGAR GRID DATA (2 ROWS OF 30 CELLS, RIGHT TO LEFT)
   const totalDaysPop = 60;
-  const popSugarDays = [];
   
   const wellnessMap = new Map();
   wellness.forEach((item) => {
@@ -275,9 +263,9 @@ export default function GeneralOverview({ overviewData }) {
     }
   });
 
-  const startDatePop = addDays(now, -(totalDaysPop - 1));
+  const popSugarDaysRaw = [];
   for (let i = 0; i < totalDaysPop; i++) {
-    const curDate = addDays(startDatePop, i);
+    const curDate = addDays(now, -i);
     const yyyy = curDate.getFullYear();
     const mm = String(curDate.getMonth() + 1).padStart(2, '0');
     const dd = String(curDate.getDate()).padStart(2, '0');
@@ -286,11 +274,15 @@ export default function GeneralOverview({ overviewData }) {
     const entry = wellnessMap.get(key);
     const popValue = entry ? (entry.PopAndSugar ?? entry.popandSugar ?? entry.popandsugar ?? 0) : 0;
 
-    popSugarDays.push({
+    popSugarDaysRaw.push({
       dateStr: key,
       value: Number(popValue)
     });
   }
+
+  // Top row: newest 30 days (index 0..29), bottom row: next 30 days (index 30..59)
+  const topRow = popSugarDaysRaw.slice(0, 30);
+  const bottomRow = popSugarDaysRaw.slice(30, 60);
 
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const todayEntry = wellnessMap.get(todayKey);
@@ -342,14 +334,12 @@ export default function GeneralOverview({ overviewData }) {
             {d.items.length === 0 ? (
               <span className="empty-day-dash">—</span>
             ) : (
-              d.items.map((item, iIdx) => {
-                const isTriSport = !!item.category;
-                return (
-                  <div key={iIdx} className="activity-item">
-                    {isTriSport ? `${item.displayLabel} ${item.distance || ''}` : item.displayLabel}
-                  </div>
-                );
-              })
+              d.items.map((item, iIdx) => (
+                <div key={iIdx} className="activity-item">
+                  <div className="activity-sport">{item.displayLabel}</div>
+                  {item.distance && <div className="activity-dist">{item.distance}</div>}
+                </div>
+              ))
             )}
           </div>
         ))}
@@ -384,37 +374,20 @@ export default function GeneralOverview({ overviewData }) {
   return (
     <div className="overview-container">
       
-      {/* SECTION 1: WEEKLY BUCKETS & ANNUAL TABLES */}
+      {/* SECTION 1: WEEKLY BUCKETS */}
       <div className="sport-buckets-container">
         {buckets.map((b, idx) => (
           <div key={idx} className="sport-bucket-card">
             <div className="sport-bucket-title">{b.type}</div>
-            
             <div className="sport-bucket-dist">{b.currentWeekDist}</div>
-
+            
             <div className="sport-bucket-prev">
-              Prev Week: {b.prevWeekDist}
-              <RenderIndicator current={b.currentWeekVal} previous={b.prevWeekVal} />
+              <span className="prev-label">Prev Week:</span>
+              <span className="prev-val">
+                {b.prevWeekDist}
+                <RenderIndicator current={b.currentWeekVal} previous={b.prevWeekVal} />
+              </span>
             </div>
-
-            <table className="annual-table">
-              <thead>
-                <tr>
-                  <th className="col-year"><span>Year</span></th>
-                  <th className="col-act"><span>Act</span></th>
-                  <th className="col-total"><span>Total</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {b.annualTable.map((row, rIdx) => (
-                  <tr key={rIdx}>
-                    <td className="col-year"><span>{row.year}</span></td>
-                    <td className="col-act"><span>{row.activitiesCount}</span></td>
-                    <td className="col-total"><span>{row.total}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         ))}
       </div>
@@ -426,14 +399,13 @@ export default function GeneralOverview({ overviewData }) {
         {renderWeekGrid(priorWeekGrid, "Prior Week")}
       </div>
 
-      {/* SECTION 3: CONSISTENCY GRID */}
+      {/* SECTION 3: CONSISTENCY GRID (30 WEEKS + CURRENT WEEK) */}
       <div className="consistency-card">
         <h3 className="section-subtitle-center">
           --- CONSISTENCY GRID ---
         </h3>
 
         <div className="consistency-weeks-container">
-          {/* Left Labels Column */}
           <div className="consistency-week-column label-column">
             {dayLabelsList.map((label, lIdx) => (
               <div key={lIdx} className="consistency-cell label-cell">
@@ -442,10 +414,9 @@ export default function GeneralOverview({ overviewData }) {
             ))}
           </div>
 
-          {/* 61 Weeks Columns */}
           {consistencyWeeks.map((week, wIdx) => {
-            const isCurrentWeek = wIdx === 60;
-            const hasFourWeekDivider = (60 - wIdx) % 4 === 0 && wIdx !== 60;
+            const isCurrentWeek = wIdx === 30;
+            const hasFourWeekDivider = (30 - wIdx) % 4 === 0 && wIdx !== 30;
 
             return (
               <React.Fragment key={wIdx}>
@@ -472,7 +443,6 @@ export default function GeneralOverview({ overviewData }) {
             );
           })}
 
-          {/* Right Labels Column */}
           <div className="consistency-week-column label-column">
             {dayLabelsList.map((label, lIdx) => (
               <div key={lIdx} className="consistency-cell label-cell">
@@ -489,23 +459,38 @@ export default function GeneralOverview({ overviewData }) {
       {/* SECTION 5: MONTHLY BIKE TOTALS */}
       {renderBarChart("MONTHLY BIKE TOTALS", monthlyBikeTotals, maxBikeDist)}
 
-      {/* SECTION 6: POP AND SUGAR GRID */}
+      {/* SECTION 6: POP AND SUGAR GRID (2 ROWS) */}
       <div className="popsugar-card">
         <h3 className="section-subtitle-center">
           POP AND SUGAR - {popStreakCount} DAYS
         </h3>
 
-        <div className="popsugar-grid-container">
-          {popSugarDays.map((day, idx) => {
-            const countClass = day.value !== 0 ? 'count-1' : 'count-0';
-            return (
-              <div
-                key={idx}
-                title={`${day.dateStr}: ${day.value}`}
-                className={`popsugar-cell ${countClass}`}
-              />
-            );
-          })}
+        <div className="popsugar-two-rows">
+          <div className="popsugar-grid-row">
+            {topRow.map((day, idx) => {
+              const countClass = day.value !== 0 ? 'count-1' : 'count-0';
+              return (
+                <div
+                  key={idx}
+                  title={`${day.dateStr}: ${day.value}`}
+                  className={`popsugar-cell ${countClass}`}
+                />
+              );
+            })}
+          </div>
+
+          <div className="popsugar-grid-row">
+            {bottomRow.map((day, idx) => {
+              const countClass = day.value !== 0 ? 'count-1' : 'count-0';
+              return (
+                <div
+                  key={idx}
+                  title={`${day.dateStr}: ${day.value}`}
+                  className={`popsugar-cell ${countClass}`}
+                />
+              );
+            })}
+          </div>
         </div>
       </div>
 

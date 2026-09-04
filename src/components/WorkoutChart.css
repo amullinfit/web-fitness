@@ -1,16 +1,22 @@
 /* Container */
 .workout-chart-container {
-  margin: 16px 0;
+  margin: 12px 0;
   border: 1px solid #e9ecef;
   border-radius: 8px;
-  padding: 16px;
+  padding: 10px;
   background-color: #fcfcfc;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden; /* Constrains internal content to parent boundary */
 }
 
 .workout-chart-top-bar {
   display: flex;
+  flex-wrap: wrap; /* Allows badge to wrap below legend on narrow viewports */
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
 }
 
@@ -18,9 +24,9 @@
 .workout-chart-legend {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  font-size: 11px;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 10px;
   font-weight: 600;
   color: #495057;
 }
@@ -28,14 +34,15 @@
 .workout-chart-legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .workout-chart-legend-color {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 2px;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .workout-chart-legend-color.planned {
@@ -47,28 +54,33 @@
   border: 2px solid #007bff;
 }
 
-.workout-chart-wrapper {
-  display: flex;
-}
-
 .workout-section-badge {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   color: #0d6efd;
   background-color: #e7f1ff;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
+  white-space: nowrap;
 }
 
-/* Y-Axis */
+/* Main Layout Wrapper */
+.workout-chart-wrapper {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Responsive Y-Axis */
 .workout-chart-yaxis {
   position: relative;
-  width: 75px;
-  margin-right: 12px;
-  font-size: 10px;
+  width: 50px; /* Reduced base width for mobile */
+  margin-right: 6px;
+  font-size: 9px;
   color: #6c757d;
   font-weight: 600;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .workout-chart-ytick {
@@ -81,6 +93,7 @@
 /* Main Content Area */
 .workout-chart-main {
   flex: 1;
+  min-width: 0; /* CRITICAL: Enables flex child to collapse below implicit width */
   display: flex;
   flex-direction: column;
 }
@@ -89,6 +102,7 @@
 .workout-chart-tracks {
   position: relative;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* Layering Track Wrappers */
@@ -101,6 +115,7 @@
   position: absolute;
   top: 0;
   left: 0;
+  box-sizing: border-box;
 }
 
 /* Individual Bar Wrapper Column */
@@ -108,6 +123,7 @@
   position: relative;
   height: 100%;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 /* Base Bar Class */
@@ -136,29 +152,7 @@
   filter: brightness(0.85);
 }
 
-/* Executed Bars: Empty with Blue Border */
-.workout-chart-bar-executed {
-  background-color: transparent !important;
-  border: 2px solid #007bff;
-  box-shadow: inset 0 0 0 1px rgba(0, 123, 255, 0.1);
-  z-index: 3;                 
-  transition: transform 0.15s ease, background-color 0.15s ease;
-}
-
-.workout-chart-bar-container:hover .workout-chart-bar-executed {
-  background-color: rgba(0, 123, 255, 0.15) !important;
-  transform: scaleY(1.02);
-}
-
-/* X-Axis */
-.workout-chart-xaxis {
-  display: flex;
-  justify-content: space-between;
-  padding-top: 4px;
-  font-size: 10px;
-  color: #6c757d;
-}
-
+/* Executed Bars: SVG Container Rules */
 .executed-wavy-container {
   position: relative;
   overflow: visible;
@@ -183,4 +177,49 @@
 .executed-wavy-container:hover .executed-wavy-path {
   fill: rgba(0, 123, 255, 0.85);
   stroke-width: 2px;
+}
+
+/* Responsive X-Axis */
+.workout-chart-xaxis {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 4px;
+  font-size: 9px;
+  color: #6c757d;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Desktop Enhancements (768px and up) */
+@media (min-width: 768px) {
+  .workout-chart-container {
+    padding: 16px;
+    margin: 16px 0;
+  }
+
+  .workout-chart-legend {
+    font-size: 11px;
+    gap: 12px;
+  }
+
+  .workout-chart-legend-color {
+    width: 12px;
+    height: 12px;
+  }
+
+  .workout-section-badge {
+    font-size: 12px;
+    padding: 2px 8px;
+  }
+
+  .workout-chart-yaxis {
+    width: 70px;
+    margin-right: 12px;
+    font-size: 10px;
+  }
+
+  .workout-chart-xaxis {
+    font-size: 10px;
+  }
 }

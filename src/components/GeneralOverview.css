@@ -2,7 +2,7 @@
 .overview-container {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   padding: 10px;
 }
 
@@ -16,7 +16,7 @@
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  gap: 16px;
+  gap: 8px; /* Shrunk gap */
   width: 100%;
   box-sizing: border-box;
 }
@@ -26,86 +26,49 @@
   min-width: 0;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  padding: 16px;
+  padding: 12px;
   background-color: #fff;
   box-sizing: border-box;
   text-align: center;
 }
 
 .sport-bucket-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: bold;
   color: #333;
 }
 
 .sport-bucket-dist {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: bold;
-  margin: 8px 0 4px 0;
+  margin: 6px 0 8px 0;
   color: #111;
 }
 
 .sport-bucket-prev {
-  font-size: 13px;
-  color: #6c757d;
-  margin-bottom: 16px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 2px;
+  font-size: 12px;
 }
 
-.indicator-up {
-  color: #28a745;
-  margin-left: 6px;
-}
-
-.indicator-down {
-  color: #dc3545;
-  margin-left: 6px;
-}
-
-.indicator-same {
-  color: #6c757d;
-  margin-left: 6px;
-}
-
-/* Auto-Fit Annual Table */
-.annual-table {
-  width: auto;
-  margin-left: auto;
-  margin-right: auto;
-  border-collapse: separate;
-  border-spacing: 12px 0;
+.prev-label {
   color: #6c757d;
   font-size: 11px;
 }
 
-.annual-table th {
-  padding: 0 0 4px 0;
+.prev-val {
   font-weight: 600;
-  white-space: nowrap;
-  vertical-align: bottom;
+  color: #212529;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.annual-table th span {
-  display: inline-block;
-  border-bottom: 1px solid #ced4da;
-  padding-bottom: 2px;
-  width: 100%;
-}
-
-.annual-table th.col-year { text-align: left; }
-.annual-table th.col-act { text-align: center; }
-.annual-table th.col-total { text-align: right; }
-
-.annual-table td {
-  padding: 4px 0;
-  white-space: nowrap;
-}
-
-.annual-table td.col-year { text-align: left; }
-.annual-table td.col-act { text-align: center; }
-.annual-table td.col-total { text-align: right; }
+.indicator-up { color: #28a745; }
+.indicator-down { color: #dc3545; }
+.indicator-same { color: #6c757d; }
 
 /* SECTION 2: Weekly Activity Grids */
 .section-title {
@@ -133,54 +96,43 @@
 }
 
 .weekly-grid-card {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  padding: 14px;
+  padding: 12px;
   background-color: #fff;
 }
 
 .weekly-grid-header {
   font-weight: bold;
   font-size: 14px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .weekly-grid-headers-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 3px; /* Shrunk gap */
+  margin-bottom: 6px;
 }
 
 .weekly-day-header {
   border: 1px solid #ced4da;
   border-radius: 4px;
-  padding: 6px;
+  padding: 4px;
   text-align: center;
   font-weight: bold;
   font-size: 12px;
 }
 
-.weekly-day-header.count-0 {
-  background-color: #ffffff;
-  color: #212529;
-}
-
-.weekly-day-header.count-1 {
-  background-color: #adb5bd;
-  color: #fff;
-}
-
-.weekly-day-header.count-2plus {
-  background-color: #212529;
-  color: #fff;
-}
+.weekly-day-header.count-0 { background-color: #ffffff; color: #212529; }
+.weekly-day-header.count-1 { background-color: #adb5bd; color: #fff; }
+.weekly-day-header.count-2plus { background-color: #212529; color: #fff; }
 
 .weekly-grid-items-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
+  gap: 3px; /* Shrunk gap */
 }
 
 .weekly-day-column {
@@ -193,7 +145,17 @@
 }
 
 .activity-item {
-  margin-bottom: 2px;
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.activity-sport {
+  font-weight: 600;
+}
+
+.activity-dist {
+  font-size: 10px;
+  color: #6c757d;
 }
 
 /* SECTION 3: Consistency Grid */
@@ -211,7 +173,6 @@
   width: 100%;
   box-sizing: border-box;
   gap: 2px;
-  /* Changed from center to stretch so child dividers take 100% height of day columns */
   align-items: stretch;
 }
 
@@ -231,7 +192,6 @@
   border-radius: 2px;
 }
 
-/* Transparent label cell inside grid */
 .consistency-cell.label-cell {
   border: none;
   background: transparent;
@@ -244,18 +204,9 @@
   line-height: 1;
 }
 
-.consistency-cell.count-0 {
-  background-color: #ffffff;
-}
-
-.consistency-cell.count-1 {
-  background-color: #adb5bd;
-}
-
-.consistency-cell.count-2plus {
-  background-color: #212529;
-}
-
+.consistency-cell.count-0 { background-color: #ffffff; }
+.consistency-cell.count-1 { background-color: #adb5bd; }
+.consistency-cell.count-2plus { background-color: #212529; }
 .consistency-cell.race-cell {
   background: linear-gradient(135deg, #0d6efd 50%, #ffffff 50%) !important;
 }
@@ -265,7 +216,6 @@
   flex-shrink: 0;
   background-color: #ced4da;
   margin: 0 1px;
-  /* Explicit min-height ensures visibility across browsers */
   min-height: 100%;
 }
 
@@ -285,9 +235,9 @@
 .monthly-barchart-container {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
-  height: 160px;
-  padding-top: 20px;
+  gap: 6px;
+  height: 150px;
+  padding-bottom: 24px; /* Space for angled labels */
   width: 100%;
   box-sizing: border-box;
 }
@@ -299,12 +249,13 @@
   height: 100%;
   flex: 1 1 0px;
   min-width: 0;
+  position: relative;
 }
 
 .monthly-bar-val {
   font-size: 10px;
   font-weight: 600;
-  color: #495057;
+  color: #333;
   margin-bottom: 4px;
   white-space: nowrap;
 }
@@ -330,14 +281,17 @@
 }
 
 .monthly-bar-label {
-  font-size: 10px;
+  position: absolute;
+  bottom: -22px;
+  font-size: 9px;
   color: #6c757d;
-  margin-top: 6px;
   white-space: nowrap;
   text-align: center;
+  transform: rotate(-30deg);
+  transform-origin: center top;
 }
 
-/* SECTION 6: Pop & Sugar Grid (60 Days Display) */
+/* SECTION 6: Pop & Sugar Grid (2 Rows x 30 Cols) */
 .popsugar-card {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
@@ -347,9 +301,17 @@
   box-sizing: border-box;
 }
 
-.popsugar-grid-container {
+.popsugar-two-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.popsugar-grid-row {
   display: grid;
-  grid-template-columns: repeat(60, minmax(0, 1fr));
+  grid-template-columns: repeat(30, minmax(0, 1fr));
+  direction: rtl; /* Right to left ordering */
   gap: 3px;
   width: 100%;
   box-sizing: border-box;
@@ -363,10 +325,5 @@
   border-radius: 2px;
 }
 
-.popsugar-cell.count-0 {
-  background-color: #ffffff;
-}
-
-.popsugar-cell.count-1 {
-  background-color: #adb5bd;
-}
+.popsugar-cell.count-0 { background-color: #ffffff; }
+.popsugar-cell.count-1 { background-color: #adb5bd; }

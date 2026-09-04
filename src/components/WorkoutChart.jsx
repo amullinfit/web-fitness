@@ -284,10 +284,15 @@ export default function WorkoutChart({
 
   const primaryList = plannedList.length > 0 ? plannedList : executedList;
   let accumulatedSec = 0;
-  const timeTicks = primaryList.map((step) => {
+  const rawTimeTicks = primaryList.map((step) => {
     accumulatedSec += step.duration || 0;
     return Math.round(accumulatedSec / 60);
   });
+
+  // Filter X-axis labels when there are too many ticks to prevent visual overcrowding
+  const maxLabels = 6;
+  const stepInterval = Math.ceil(rawTimeTicks.length / maxLabels);
+  const timeTicks = rawTimeTicks.filter((_, idx) => idx % stepInterval === 0 || idx === rawTimeTicks.length - 1);
 
   const computePaceToHeightPct = (paceSec) => {
     if (!paceSec || ySlowestSec <= yFastestSec) return 50;
@@ -303,7 +308,7 @@ export default function WorkoutChart({
           {plannedList.length > 0 && (
             <div className="workout-chart-legend-item">
               <span className="workout-chart-legend-color planned" />
-              <span>Planned Pace Range</span>
+              <span>Planned Pace</span>
             </div>
           )}
           {executedList.length > 0 && (
