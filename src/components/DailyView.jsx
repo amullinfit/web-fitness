@@ -287,21 +287,36 @@ export default function DailyView() {
     const isPast = workoutDateStr < todayStr;
     const isMissed = isPast && !completed;
 
+    // Resolve shoe name from shoe_name or gear properties
+    const shoeName = workout.shoe_name || workout.gear_name || (typeof workout.gear === 'object' ? workout.gear?.name : null);
+
     return (
       <div key={workout.id || index} className="daily-workout-card">
+        {/* Header Bar */}
         <div className="daily-workout-card-header">
-          <h3 className="daily-workout-title">
-            {workout.name || workout.title || `${workout.type || 'Workout'}`}
-          </h3>
-
-          <div className="daily-workout-header-right">
+          {/* Top Left: Sport, then Status */}
+          <div className="daily-workout-header-left">
+            <span className="daily-workout-type">
+              {workout.type || workout.sport || 'Activity'}
+            </span>
             {completed && <span className="status-badge badge-completed">COMPLETED</span>}
             {isMissed && <span className="status-badge badge-missed">MISSED</span>}
-            <span className="daily-workout-type">
-              {workout.type || 'Activity'}
-            </span>
           </div>
+
+          {/* Top Right: Shoe Tag (styled identically to sport badge) */}
+          {shoeName && (
+            <div className="daily-workout-header-right">
+              <span className="daily-workout-type daily-shoe-type">
+                👟 {shoeName}
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* Workout Title */}
+        <h3 className="daily-workout-title">
+          {workout.name || workout.title || `${workout.type || 'Workout'}`}
+        </h3>
 
         {(workout.workout_doc || workout.intervals) && (
           <WorkoutChart
