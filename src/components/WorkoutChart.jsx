@@ -153,26 +153,27 @@ const getZoneDetails = (targetPct, stepType = '') => {
 };
 
 /**
- * Helper to generate a wavy SVG path for the executed interval.
- * Uses cubic Bezier curves to oscillate across the top edge and vertical sides.
+ * Generates an SVG path with an adjustable wave frequency (cycles).
+ * Higher `cycles` = smaller wavelength / more waves across the top edge.
  */
-const generateWavyBarPath = (idx) => {
-  // Deterministic seed variance based on interval index
-  const waveAmp = 4 + (idx % 3) * 2; // Amplitude variation between 4px and 8px
-  const alt = idx % 2 === 0 ? 1 : -1;
+const generateWavyBarPath = (idx, cycles = 6) => {
+  const amp = 3 + (idx % 2);
+  const step = 100 / cycles;
 
-  // viewBox is fixed to 100 x 100 for percentage scale
-  // Top edge curve: (0, 0) -> (50, waveAmp * alt) -> (100, 0)
-  const topMidY = waveAmp * alt;
+  let topPath = `M 0 ${amp}`;
+  for (let i = 0; i < cycles; i++) {
+    const startX = i * step;
+    const endX = startX + step;
+    const cp1Y = i % 2 === 0 ? -amp : amp * 2;
+    const cp2Y = i % 2 === 0 ? amp * 2 : -amp;
 
-  // Left & Right Wavy Side Edges
+    topPath += ` C ${startX + step * 0.25} ${cp1Y}, ${startX + step * 0.75} ${cp2Y}, ${endX} ${i % 2 === 0 ? amp : 0}`;
+  }
+
   return `
-    M 0 100
-    L 0 ${topMidY + 3}
-    C 3 ${topMidY}, 8 ${-topMidY}, 0 0
-    Q 50 ${topMidY * 2}, 100 0
-    C 92 ${-topMidY}, 97 ${topMidY}, 100 ${topMidY + 3}
+    ${topPath}
     L 100 100
+    L 0 100
     Z
   `;
 };
@@ -331,7 +332,6 @@ export default function WorkoutChart({
                       className="workout-chart-bar-container"
                       style={{ width: `${widthPct}%` }}
                     >
-                      {/* FAST PACE UPPER EXTENSION */}
                       {fastHeightPct > slowHeightPct && (
                         <div
                           className="workout-chart-bar workout-chart-bar-planned-fast"
@@ -343,7 +343,6 @@ export default function WorkoutChart({
                         />
                       )}
 
-                      {/* SLOW PACE BASE BAR */}
                       <div
                         className="workout-chart-bar workout-chart-bar-planned-slow"
                         style={{
@@ -358,12 +357,13 @@ export default function WorkoutChart({
               </div>
             )}
 
-            {/* EXECUTED BARS LAYER (WAVY SVG SVG BARS) */}
+            {/* EXECUTED BARS LAYER */}
             {executedList.length > 0 && (
               <div className="workout-chart-bars track-executed">
                 {executedList.map((step, idx) => {
-                  const durationMins = Math.round((step.duration || 60) / 60);
-                  const widthPct = ((step.duration || 60) / totalDurationSec) * 100;
+                  const durationSec = step.duration || 60;
+                  const durationMins = Math.round(durationSec / 60);
+                  const widthPct = (durationSec / totalDurationSec) * 100;
                   const rawIntensity = step.type || 'active';
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
@@ -373,8 +373,9 @@ export default function WorkoutChart({
                   const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
                   const tooltipText = `Executed Interval ${idx + 1}: ${intensityFormatted} | Avg Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
                   
-                  const uniqueClipPathId = `executed-wavy-clip-${clipId.replace(/:/g, '')}-${idx}`;
-                  const pathData = generateWavyBarPath(idx);
+                  // Scale wave cycles based on bar width / duration (approx 2 waves per minute)
+                  const waveCycles = Math.max(4, Math.round(durationSec / 30));
+                  const pathData = generateWavyBarPath(idx, waveCycles);
 
                   return (
                     <div
@@ -392,11 +393,6 @@ export default function WorkoutChart({
                         viewBox="0 0 100 100"
                         preserveAspectRatio="none"
                       >
-                        <defs>
-                          <clipPath id={uniqueClipPathId} clipPathUnits="objectBoundingBox">
-                            <path d="M 0,0 C 0.25,0.05 0.75,-0.05 1,0 L 1,1 C 0.75,0.95 0.25,1.05 0,1 Z" />
-                          </clipPath>
-                        </defs>
                         <path
                           d={pathData}
                           className="executed-wavy-path"
