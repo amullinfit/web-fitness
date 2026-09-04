@@ -3,7 +3,7 @@ import './WorkoutChart.css';
 
 // --- CHART CONFIGURATION CONSTANTS ---
 const WAVES_PER_MINUTE = 5.0; // Number of wave cycles per minute of duration
-const WAVE_AMPLITUDE = 1.0;   // Wave amplitude in SVG viewBox height units (0-100 scale)
+const WAVE_AMPLITUDE = 0.5;   // Wave amplitude in SVG viewBox height units (0-100 scale)
 
 const SLOW_BUFFER_MINUTES = 2;
 const FAST_BUFFER_MINUTES = 1;
