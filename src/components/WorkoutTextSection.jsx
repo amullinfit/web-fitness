@@ -43,36 +43,111 @@ const getThresholdPaceForSport = (sportType, sportSettings) => {
   return match?.threshold_pace || match?.pace_threshold || null;
 };
 
+const formatPaceString = (s, thresholdPaceMps) => {
+  let paceRangeStr = "N/A";
+  let calcPaceMps = null;
+
+  if (s.pace) {
+    const startPct = s.pace.start || 0;
+    const endPct = s.pace.end || 0;
+    paceRangeStr = `${startPct}-${endPct}% pace`;
+
+    if (thresholdPaceMps) {
+      const avgPct = (startPct + endPct) / 2;
+      calcPaceMps = thresholdPaceMps * (avgPct / 100);
+    }
+  }
+
+  const calculatedPaceStr = calcPaceMps ? metersPerSecondToPaceStr(calcPaceMps) : null;
+  return calculatedPaceStr ? `${calculatedPaceStr} (${paceRangeStr})` : paceRangeStr;
+};
+
+const parseSingleStep = (s, idx, thresholdPaceMps) => {
+  const rawIntensity = s.intensity || (s.warmup ? "warmup" : s.cooldown ? "cooldown" : "active");
+  return {
+    id: idx,
+    isRepeat: false,
+    durationSec: s.duration || 0,
+    intensity: formatIntensityTitleCase(rawIntensity),
+    paceStr: formatPaceString(s, thresholdPaceMps),
+    text: s.text || "No step text"
+  };
+};
+
 const parseWorkoutSteps = (stepList, thresholdPaceMps) => {
   if (!Array.isArray(stepList)) return [];
 
   return stepList.map((s, idx) => {
-    let paceRangeStr = "N/A";
-    let calcPaceMps = null;
+    // Handle Repeat Blocks
+    if (Array.isArray(s.steps) && s.steps.length > 0) {
+      const reps = s.reps && Number.isInteger(s.reps) && s.reps > 0 ? s.reps : 1;
+      const innerSteps = parseWorkoutSteps(s.steps, thresholdPaceMps);
+      
+      const singleCycleDuration = innerSteps.reduce((sum, inner) => sum + inner.durationSec, 0);
+      const totalRepeatDuration = singleCycleDuration * reps;
 
-    if (s.pace) {
-      const startPct = s.pace.start || 0;
-      const endPct = s.pace.end || 0;
-      paceRangeStr = `${startPct}-${endPct}% pace`;
-
-      if (thresholdPaceMps) {
-        const avgPct = (startPct + endPct) / 2;
-        calcPaceMps = thresholdPaceMps * (avgPct / 100);
-      }
+      return {
+        id: idx,
+        isRepeat: true,
+        reps,
+        durationSec: totalRepeatDuration,
+        innerSteps,
+        text: s.text || null
+      };
     }
 
-    const calculatedPaceStr = calcPaceMps ? metersPerSecondToPaceStr(calcPaceMps) : null;
-    const finalPaceStr = calculatedPaceStr ? `${calculatedPaceStr} (${paceRangeStr})` : paceRangeStr;
-    const rawIntensity = s.intensity || (s.warmup ? "warmup" : s.cooldown ? "cooldown" : "active");
-
-    return {
-      id: idx,
-      durationSec: s.duration || 0,
-      intensity: formatIntensityTitleCase(rawIntensity),
-      paceStr: finalPaceStr,
-      text: s.text || "No step text"
-    };
+    // Handle Standard Steps
+    return parseSingleStep(s, idx, thresholdPaceMps);
   });
+};
+
+const RenderStepCard = ({ step }) => {
+  if (step.isRepeat) {
+    return (
+      <div className="workout-step-card workout-repeat-block">
+        <div className="workout-repeat-header">
+          <span className="workout-repeat-title">
+            Repeat {step.reps}x
+          </span>
+          <span className="workout-repeat-total-time">
+            Total Combined Time: <strong>{formatDuration(step.durationSec)}</strong>
+          </span>
+        </div>
+
+        {step.text && (
+          <div className="workout-step-row workout-repeat-note">
+            <span className="workout-step-label">Repeat Note:</span>
+            <span className="workout-step-text">"{step.text}"</span>
+          </div>
+        )}
+
+        <div className="workout-repeat-inner-list">
+          {step.innerSteps.map((innerStep, iIdx) => (
+            <RenderStepCard key={iIdx} step={innerStep} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="workout-step-card">
+      <div className="workout-step-row">
+        <span className="workout-step-label">Intensity & Duration:</span>
+        <span className="workout-step-value">{step.intensity}</span>
+        <span>for</span>
+        <span className="workout-step-value">{formatDuration(step.durationSec)}</span>
+      </div>
+      <div className="workout-step-row">
+        <span className="workout-step-label">Target Pace:</span>
+        <span className="workout-step-value">{step.paceStr}</span>
+      </div>
+      <div className="workout-step-row">
+        <span className="workout-step-label">Text:</span>
+        <span className="workout-step-text">"{step.text}"</span>
+      </div>
+    </div>
+  );
 };
 
 export default function WorkoutTextSection({ workout, sportSettings = [] }) {
@@ -102,7 +177,7 @@ export default function WorkoutTextSection({ workout, sportSettings = [] }) {
           className="workout-section-toggle"
         >
           <span className="workout-section-title">
-            {isOpen ? '▼' : '►'} Workout Details ({debugSteps.length} step{debugSteps.length === 1 ? '' : 's'})
+            {isOpen ? '▼' : '►'} Workout Details ({debugSteps.length} block{debugSteps.length === 1 ? '' : 's'})
           </span>
           <span className="workout-section-badge">
             Threshold Pace ({workout.type || 'Sport'}): {thresholdPaceStr}
@@ -116,22 +191,7 @@ export default function WorkoutTextSection({ workout, sportSettings = [] }) {
             ) : (
               <div className="workout-steps-list">
                 {debugSteps.map((step, sIdx) => (
-                  <div key={sIdx} className="workout-step-card">
-                    <div className="workout-step-row">
-                      <span className="workout-step-label">Intensity & Duration:</span>
-                      <span className="workout-step-value">{step.intensity}</span>
-                      <span>for</span>
-                      <span className="workout-step-value">{formatDuration(step.durationSec)}</span>
-                    </div>
-                    <div className="workout-step-row">
-                      <span className="workout-step-label">Target Pace:</span>
-                      <span className="workout-step-value">{step.paceStr}</span>
-                    </div>
-                    <div className="workout-step-row">
-                      <span className="workout-step-label">Text:</span>
-                      <span className="workout-step-text">"{step.text}"</span>
-                    </div>
-                  </div>
+                  <RenderStepCard key={sIdx} step={step} />
                 ))}
               </div>
             )}
