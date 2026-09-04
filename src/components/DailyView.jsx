@@ -126,51 +126,83 @@ export default function DailyView() {
           ? historicalJson.sportSettings
           : [];
 
+        // Maps to associate planned workouts by ID and by Date+Type
         const plannedWorkoutsById = new Map();
+        const plannedWorkoutsByDateType = new Map();
+
         valList.forEach((workout) => {
-          if (workout && workout.id !== undefined && workout.id !== null) {
+          if (!workout) return;
+
+          if (workout.id !== undefined && workout.id !== null) {
             plannedWorkoutsById.set(String(workout.id), workout);
+          }
+
+          const itemDate = getLocalDateString(workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date);
+          const itemType = safeStringLower(workout.type || workout.sport || 'workout');
+          if (itemDate) {
+            plannedWorkoutsByDateType.set(`${itemDate}-${itemType}`, workout);
           }
         });
 
         const pairedEventIds = new Set();
 
         const updatedHistoricalList = historicalList.map((item) => {
-          if (item && item.paired_event_id !== null && item.paired_event_id !== undefined) {
+          if (!item) return item;
+
+          let plannedMatch = null;
+
+          // 1. Check for exact paired event ID match
+          if (item.paired_event_id !== null && item.paired_event_id !== undefined) {
             const pairedIdStr = String(item.paired_event_id);
             pairedEventIds.add(pairedIdStr);
+            plannedMatch = plannedWorkoutsById.get(pairedIdStr);
+          }
 
-            const plannedMatch = plannedWorkoutsById.get(pairedIdStr);
-            if (plannedMatch) {
-              const plannedName = plannedMatch.name || plannedMatch.title;
-              if (plannedName) {
-                return {
-                  ...item,
-                  name: plannedName,
-                  title: plannedName
-                };
-              }
+          // 2. Fall back to matching by Date + Sport Type
+          if (!plannedMatch) {
+            const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
+            const itemType = safeStringLower(item.type || item.sport || 'workout');
+            plannedMatch = plannedWorkoutsByDateType.get(`${itemDate}-${itemType}`);
+
+            if (plannedMatch && plannedMatch.id) {
+              pairedEventIds.add(String(plannedMatch.id));
             }
           }
+
+          // Always override name with the planned workout's title/name if available
+          if (plannedMatch) {
+            const plannedName = plannedMatch.name || plannedMatch.title;
+            if (plannedName) {
+              return {
+                ...item,
+                name: plannedName,
+                title: plannedName,
+                workout_doc: item.workout_doc || plannedMatch.workout_doc
+              };
+            }
+          }
+
           return item;
         });
 
+        // Exclude planned workouts that have paired/executed counterparts
         const filteredValList = valList.filter((workout) => {
           if (!workout || workout.id === undefined || workout.id === null) return true;
           return !pairedEventIds.has(String(workout.id));
         });
 
         const rawMerged = [...updatedHistoricalList, ...filteredValList];
-        const seenIds = new Set();
+        const seenKeys = new Set();
         const mergedList = [];
 
         for (const item of rawMerged) {
           if (!item) continue;
           const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
-          const uniqueKey = item.id ? String(item.id) : `${item.name || item.type}-${itemDate}-${item.feedSource}`;
+          const itemType = safeStringLower(item.type || item.sport || 'workout');
+          const uniqueKey = item.id ? String(item.id) : `${item.name || itemType}-${itemDate}-${item.feedSource}`;
 
-          if (!seenIds.has(uniqueKey)) {
-            seenIds.add(uniqueKey);
+          if (!seenKeys.has(uniqueKey)) {
+            seenKeys.add(uniqueKey);
             mergedList.push(item);
           }
         }
