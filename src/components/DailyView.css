@@ -185,6 +185,12 @@
   flex: 1 1 60%;
 }
 
+.daily-workout-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .daily-workout-header-right {
   display: flex;
   align-items: center;
@@ -260,3 +266,4 @@
     font-size: 18px;
   }
 }
+

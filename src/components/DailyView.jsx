@@ -126,7 +126,6 @@ export default function DailyView() {
           ? historicalJson.sportSettings
           : [];
 
-        // Maps to associate planned workouts by ID and by Date+Type
         const plannedWorkoutsById = new Map();
         const plannedWorkoutsByDateType = new Map();
 
@@ -151,14 +150,12 @@ export default function DailyView() {
 
           let plannedMatch = null;
 
-          // 1. Check for exact paired event ID match
           if (item.paired_event_id !== null && item.paired_event_id !== undefined) {
             const pairedIdStr = String(item.paired_event_id);
             pairedEventIds.add(pairedIdStr);
             plannedMatch = plannedWorkoutsById.get(pairedIdStr);
           }
 
-          // 2. Fall back to matching by Date + Sport Type
           if (!plannedMatch) {
             const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
             const itemType = safeStringLower(item.type || item.sport || 'workout');
@@ -169,7 +166,6 @@ export default function DailyView() {
             }
           }
 
-          // Always override name with the planned workout's title/name if available
           if (plannedMatch) {
             const plannedName = plannedMatch.name || plannedMatch.title;
             if (plannedName) {
@@ -185,7 +181,6 @@ export default function DailyView() {
           return item;
         });
 
-        // Exclude planned workouts that have paired/executed counterparts
         const filteredValList = valList.filter((workout) => {
           if (!workout || workout.id === undefined || workout.id === null) return true;
           return !pairedEventIds.has(String(workout.id));
@@ -287,7 +282,6 @@ export default function DailyView() {
     const isPast = workoutDateStr < todayStr;
     const isMissed = isPast && !completed;
 
-    // Resolve shoe name from shoe_name or gear properties
     const shoeName = workout.shoe_name || workout.gear_name || (typeof workout.gear === 'object' ? workout.gear?.name : null);
 
     return (
@@ -303,7 +297,7 @@ export default function DailyView() {
             {isMissed && <span className="status-badge badge-missed">MISSED</span>}
           </div>
 
-          {/* Top Right: Shoe Tag (styled identically to sport badge) */}
+          {/* Top Right: Shoe Tag */}
           {shoeName && (
             <div className="daily-workout-header-right">
               <span className="daily-workout-type daily-shoe-type">
