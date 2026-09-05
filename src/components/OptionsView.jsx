@@ -1,10 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './OptionsView.css';
 
 export default function OptionsView({ 
   rightOffset, 
   setRightOffset 
 }) {
+  // State to hold the dynamic maximum slider value
+  const [maxOffset, setMaxOffset] = useState(500);
+
+  useEffect(() => {
+    // Function to check screen width and set the max buffer
+    const updateMaxOffset = () => {
+      const isMobile = window.innerWidth <= 767;
+      const newMax = isMobile ? 100 : 500;
+      
+      setMaxOffset(newMax);
+
+      // If current offset exceeds the new maximum, clamp it down
+      if (rightOffset > newMax) {
+        setRightOffset(newMax);
+      }
+    };
+
+    // Run on mount
+    updateMaxOffset();
+
+    // Listen for window resizes
+    window.addEventListener('resize', updateMaxOffset);
+    return () => window.removeEventListener('resize', updateMaxOffset);
+  }, [rightOffset, setRightOffset]);
+
   return (
     <div className="options-container">
       {/* Top Header Bar */}
@@ -18,12 +43,13 @@ export default function OptionsView({
         {/* Right Offset Control */}
         <div className="control-section">
           <label className="control-label">
-            Right-Hand Offset Buffer: {rightOffset}px
+            Right-Hand Offset Buffer: {rightOffset}px 
+            <span className="control-sublabel"> ({maxOffset === 100 ? 'Mobile View' : 'Desktop View'})</span>
           </label>
           <input 
             type="range" 
             min="0" 
-            max="500" 
+            max={maxOffset} 
             value={rightOffset} 
             onChange={(e) => setRightOffset(Number(e.target.value))} 
             className="offset-slider"
