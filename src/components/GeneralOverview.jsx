@@ -95,8 +95,7 @@ export default function GeneralOverview({ overviewData }) {
   const [wellness, setWellness] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [rightBuffer, setRightBuffer] = useState(0);
-  const [rightBuffer, setRightBuffer] = useState(65); 
+  const [rightBuffer, setRightBuffer] = useState(65);
 
   useEffect(() => {
     const handleResize = () => {
