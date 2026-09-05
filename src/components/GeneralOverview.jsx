@@ -91,7 +91,6 @@ export default function GeneralOverview({ overviewData }) {
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
-      // Read right buffer from document style variable if available, or parse layout
       const rootStyle = getComputedStyle(document.documentElement);
       const rightOffsetVal = parseInt(rootStyle.getPropertyValue('--right-offset') || '0', 10);
       setRightBuffer(isNaN(rightOffsetVal) ? 0 : rightOffsetVal);
