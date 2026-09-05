@@ -97,6 +97,8 @@ export default function GeneralOverview({ overviewData }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [rightBuffer, setRightBuffer] = useState(65);
 
+  console.log("rightbuffer:",rightBuffer);
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
