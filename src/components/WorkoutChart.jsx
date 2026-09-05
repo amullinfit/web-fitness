@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import React, { useId, useState } from 'react';
 import './WorkoutChart.css';
 
 // --- CHART CONFIGURATION CONSTANTS ---
@@ -203,6 +203,8 @@ export default function WorkoutChart({
   chartHeight = '140px' 
 }) {
   const clipId = useId();
+  const [executedOnTop, setExecutedOnTop] = useState(true);
+
   const plannedList = extractPlannedSteps(workout);
   const executedList = extractExecutedSteps(workout);
 
@@ -237,18 +239,15 @@ export default function WorkoutChart({
     const fastestStepSec = Math.min(...stepPacesSec);
     const slowestStepSec = Math.max(...stepPacesSec);
 
-    // Fast End: Roll up to next fastest whole minute, then subtract buffer minutes
     const fastestMinuteRounded = Math.floor(fastestStepSec / 60) * 60;
     const chosenStartSec = Math.max(0, fastestMinuteRounded - (FAST_BUFFER_MINUTES * 60));
 
-    // Slow End: Roll down to next slowest whole minute, then add buffer minutes
     const slowestMinuteRounded = Math.ceil(slowestStepSec / 60) * 60;
     const chosenEndSec = slowestMinuteRounded + (SLOW_BUFFER_MINUTES * 60);
 
     yFastestSec = chosenStartSec;
     ySlowestSec = chosenEndSec;
 
-    // Use 60-second intervals for clear minute-based y-ticks
     const chosenStepSec = 60;
     const totalTicks = Math.round((chosenEndSec - chosenStartSec) / chosenStepSec) + 1;
     
@@ -269,7 +268,6 @@ export default function WorkoutChart({
     return Math.round(accumulatedSec / 60);
   });
 
-  // Filter X-axis labels when there are too many ticks to prevent visual overcrowding
   const maxLabels = 6;
   const stepInterval = Math.ceil(rawTimeTicks.length / maxLabels);
   const timeTicks = rawTimeTicks.filter((_, idx) => idx % stepInterval === 0 || idx === rawTimeTicks.length - 1);
@@ -282,7 +280,7 @@ export default function WorkoutChart({
 
   return (
     <div className="workout-chart-container">
-      {/* Top Header Row with Legend on Left & Threshold Badge Right-Justified */}
+      {/* Top Header Row with Legend, Swap Layer Button, & Threshold Badge */}
       <div className="workout-chart-top-bar">
         <div className="workout-chart-legend">
           {plannedList.length > 0 && (
@@ -296,6 +294,30 @@ export default function WorkoutChart({
               <span className="workout-chart-legend-color executed" />
               <span>Executed</span>
             </div>
+          )}
+
+          {plannedList.length > 0 && executedList.length > 0 && (
+            <button
+              type="button"
+              className="workout-layer-swap-btn"
+              onClick={() => setExecutedOnTop((prev) => !prev)}
+              title={executedOnTop ? "Executed is in front. Click to bring Planned to front." : "Planned is in front. Click to bring Executed to front."}
+              style={{
+                background: 'transparent',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                padding: '2px 6px',
+                marginLeft: '8px',
+                fontSize: '13px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '2px',
+                color: 'inherit'
+              }}
+            >
+              ⇄
+            </button>
           )}
         </div>
 
@@ -321,7 +343,10 @@ export default function WorkoutChart({
           <div className="workout-chart-tracks" style={{ height: chartHeight }}>
             {/* PLANNED BARS LAYER */}
             {plannedList.length > 0 && (
-              <div className="workout-chart-bars track-planned" style={{ zIndex: 1 }}>
+              <div 
+                className="workout-chart-bars track-planned" 
+                style={{ zIndex: executedOnTop ? 1 : 2 }}
+              >
                 {plannedList.map((step, idx) => {
                   const durationMins = Math.round((step.duration || 60) / 60);
                   const widthPct = ((step.duration || 60) / totalDurationSec) * 100;
@@ -370,9 +395,12 @@ export default function WorkoutChart({
               </div>
             )}
 
-            {/* EXECUTED BARS LAYER */}
+            {/* EXECUTED BARS LAYER (Lighter Shading & Dynamic z-index) */}
             {executedList.length > 0 && (
-              <div className="workout-chart-bars track-executed" style={{ zIndex: 2, position: 'relative' }}>
+              <div 
+                className="workout-chart-bars track-executed" 
+                style={{ zIndex: executedOnTop ? 2 : 1, opacity: 0.65 }}
+              >
                 {executedList.map((step, idx) => {
                   const durationSec = step.duration || 60;
                   const durationMins = Math.round(durationSec / 60);
