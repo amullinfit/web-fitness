@@ -396,7 +396,7 @@ export default function DailyView() {
           </div>
 
           {/* Top Right: Shoe Tag with Red X and Hover Tooltip */}
-          {shoeName && (
+          {shoeName && String(gearId) !== '69215' && (
             <div className="daily-workout-header-right">
               <span className="daily-workout-type daily-shoe-type">
                 <span>👟 {shoeName}</span>
