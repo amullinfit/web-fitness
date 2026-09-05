@@ -353,7 +353,7 @@
 
 @media (min-width: 768px) {
   .monthly-barchart-container {
-    height: 136.5px; /* 30% taller on desktop */
+    height: 160px; /* 30% taller on desktop */
   }
 }
 
