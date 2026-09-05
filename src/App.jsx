@@ -55,13 +55,13 @@ export default function App() {
       <header
         style={{
           display: 'flex',
-          justify: 'space-between',
+          justifyContent: 'space-between',
           alignItems: 'center',
           padding: '12px 20px',
           borderBottom: '1px solid #ccc',
         }}
       >
-        <h1 style={{ margin: 0, fontSize: '20px' }}>{APP_TITLE}</h1>
+        <h1 style={{ margin: 0, fontSize: '20px', color: 'var(--text-h, inherit)' }}>{APP_TITLE}</h1>
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           style={{
@@ -69,6 +69,7 @@ export default function App() {
             border: 'none',
             cursor: 'pointer',
             fontSize: '24px',
+            color: 'var(--text-h, inherit)', // Explicitly inherited color to fix mobile visibility
           }}
           aria-label="Options Menu"
         >
