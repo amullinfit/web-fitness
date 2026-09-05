@@ -96,6 +96,7 @@ export default function GeneralOverview({ overviewData }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [rightBuffer, setRightBuffer] = useState(0);
+  const [rightBuffer, setRightBuffer] = useState(65); 
 
   useEffect(() => {
     const handleResize = () => {
@@ -365,7 +366,7 @@ export default function GeneralOverview({ overviewData }) {
     const isInlineHeader = !isMobile || rightBuffer <= 60;
 
     console.log({ isMobile, rightBuffer, isInlineHeader });
-    const [rightBuffer, setRightBuffer] = useState(65); // Temporarily forces stacked mode
+    // Temporarily forces stacked mode
     console.log({ isMobile, rightBuffer, isInlineHeader });
 
     return (
