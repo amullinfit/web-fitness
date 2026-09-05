@@ -78,20 +78,21 @@
   margin: 12px auto 0 auto;
   border-collapse: separate;
   border-spacing: 10px 0;
-  color: #535961; /* Slightly darkened text for better contrast */
+  color: #495057;
   font-size: 11px;
 }
 
 .annual-table th {
   padding: 0 0 4px 0;
-  font-weight: 700; /* Bolder header text */
+  font-weight: 700;
+  color: #495057; /* Softer dark gray instead of deep black */
   white-space: nowrap;
   vertical-align: bottom;
 }
 
 .annual-table th span {
   display: inline-block;
-  border-bottom: 2.5px solid #535961; /* Thicker, more prominent underline */
+  border-bottom: 2.5px solid #adb5bd; /* Medium gray thick line for a softer, balanced contrast */
   padding-bottom: 3px;
   width: 100%;
 }
