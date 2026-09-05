@@ -19,6 +19,16 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/val-gear/, '')
       },
+      '/api/val-gear-remove': {
+        target: 'https://amullinfit--7f186c3aa8b711f1b0a01607ee4eb77e.web.val.run',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/val-gear-remove/, '')
+      },
+      '/api/val-gear-add': {
+        target: 'https://amullinfit--77b77396a8b711f19a3f1607ee4eb77e.web.val.run',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/val-gear-remove/, '')
+      },
       '/api/historical': {
         target: 'https://amullinfit--60610b3ea60611f1bbff1607ee4eb77e.web.val.run',
         changeOrigin: true,

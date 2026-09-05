@@ -13,6 +13,14 @@
         "destination": "https://amullinfit--de20b782a4cf11f1832e1607ee4eb77e.web.val.run"
       },
       {
+        "source": "/api/val-gear-remove",
+        "destination": "https://amullinfit--7f186c3aa8b711f1b0a01607ee4eb77e.web.val.run"
+      },
+      {
+        "source": "/api/val-gear-add",
+        "destination": "https://amullinfit--77b77396a8b711f19a3f1607ee4eb77e.web.val.run"
+      },
+      {
         "source": "/api/val-historical",
         "destination": "https://amullinfit--60610b3ea60611f1bbff1607ee4eb77e.web.val.run"
       }
