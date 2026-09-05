@@ -360,11 +360,9 @@ export default function GeneralOverview({ overviewData }) {
     const displayTitle = isMobile ? title.replace(/week/gi, '').trim() : title;
     
     // Header layout determination:
-    // Mobile: if rightBuffer > 60 -> stacked (activity count on separate line, left justified)
-    //         else if rightBuffer < 10 -> inline
-    //         else (between 10 and 60) -> fall back to prior rules (< 10 inline, otherwise stacked)
     // Desktop: always inline
-    const isInlineHeader = !isMobile ? true : (rightBuffer < 10 ? true : (rightBuffer > 60 ? false : false));
+    // Mobile: stacked when rightBuffer > 60, otherwise inline
+    const isInlineHeader = !isMobile || rightBuffer <= 60;
 
     return (
       <div className={`weekly-grid-card ${isBufferLargeMobile ? 'compact-mobile-grid' : ''}`}>
