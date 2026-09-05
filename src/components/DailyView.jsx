@@ -265,9 +265,19 @@ export default function DailyView() {
           gear_id: gearId 
         })
       });
-
-      const resData = await response.json();
-
+      
+      // 1. Read response as raw text first
+      const rawText = await response.text();
+      let resData = {};
+      
+      try {
+        // 2. Attempt to parse as JSON safely
+        resData = rawText ? JSON.parse(rawText) : {};
+      } catch (e) {
+        // 3. Fallback if server returned HTML error text (e.g., 404 or 500 HTML page)
+        throw new Error(`Server returned non-JSON response (${response.status} ${response.statusText}): ${rawText.slice(0, 80)}...`);
+      }
+      
       if (!response.ok) {
         const errorDetail = resData.details ? `: ${resData.details}` : '';
         const msg = resData.error || `Failed to remove gear (${response.status} ${response.statusText})${errorDetail}`;
