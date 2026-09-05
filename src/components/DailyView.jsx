@@ -257,13 +257,18 @@ export default function DailyView() {
     );
 
     try {
-      const response = await fetch(GEAR_REMOVE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          activityId: workoutId, 
-          gear_id: gearId 
-        })
+
+      const params = new URLSearchParams({
+        activityId: workoutId,
+      });
+      
+      // Only append gearId if it exists, 69215 will be defaulted if not
+      if (gearId) {
+        params.append('gearId', gearId);
+      }
+      
+      const response = await fetch(`${GEAR_REMOVE_URL}?${params.toString()}`, {
+        method: 'GET', // Or 'POST', since Val Town handles query params for either
       });
       
       // 1. Read response as raw text first
