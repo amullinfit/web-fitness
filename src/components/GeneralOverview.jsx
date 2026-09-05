@@ -69,9 +69,9 @@ const formatMMMD = (d) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const formatMmmYYYYParts = (d) => {
+const formatMmmYYParts = (d) => {
   const month = d.toLocaleDateString('en-US', { month: 'short' });
-  const year = d.getFullYear().toString();
+  const year = String(d.getFullYear()).slice(-2);
   return { month, year };
 };
 
@@ -86,9 +86,18 @@ export default function GeneralOverview({ overviewData }) {
   const [wellness, setWellness] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [rightBuffer, setRightBuffer] = useState(0);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      // Read right buffer from document style variable if available, or parse layout
+      const rootStyle = getComputedStyle(document.documentElement);
+      const rightOffsetVal = parseInt(rootStyle.getPropertyValue('--right-offset') || '0', 10);
+      setRightBuffer(isNaN(rightOffsetVal) ? 0 : rightOffsetVal);
+    };
+
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -267,7 +276,7 @@ export default function GeneralOverview({ overviewData }) {
       const roundedDist = Math.floor(totalDist);
       if (roundedDist > maxDist) maxDist = roundedDist;
 
-      const dateParts = formatMmmYYYYParts(targetMonth);
+      const dateParts = formatMmmYYParts(targetMonth);
 
       monthlyTotals.push({
         monthObj: dateParts,
@@ -338,44 +347,48 @@ export default function GeneralOverview({ overviewData }) {
   const popStreakCount = popStreakDays !== undefined && popStreakDays !== null ? Number(popStreakDays) : 0;
 
   // Render Helpers
-  const renderWeekGrid = (gridData, title) => (
-    <div className="weekly-grid-card">
-      <div className="weekly-grid-header">
-        {title}: {gridData.range} ({gridData.totalActivities} activities)
-      </div>
-      
-      <div className="weekly-grid-headers-row">
-        {gridData.days.map((d, idx) => {
-          let countClass = 'count-0';
-          if (d.count === 1) countClass = 'count-1';
-          else if (d.count >= 2) countClass = 'count-2plus';
+  const renderWeekGrid = (gridData, title) => {
+    const isBufferLargeMobile = isMobile && rightBuffer > 40;
+    return (
+      <div className={`weekly-grid-card ${isBufferLargeMobile ? 'compact-mobile-grid' : ''}`}>
+        <div className="weekly-grid-header">
+          <span className="grid-title-text">{title}: {gridData.range}</span>
+          <span className="grid-activities-count">({gridData.totalActivities} activities)</span>
+        </div>
+        
+        <div className="weekly-grid-headers-row">
+          {gridData.days.map((d, idx) => {
+            let countClass = 'count-0';
+            if (d.count === 1) countClass = 'count-1';
+            else if (d.count >= 2) countClass = 'count-2plus';
 
-          return (
-            <div key={idx} className={`weekly-day-header ${countClass}`}>
-              {d.day}
+            return (
+              <div key={idx} className={`weekly-day-header ${countClass}`}>
+                {d.day}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="weekly-grid-items-row">
+          {gridData.days.map((d, idx) => (
+            <div key={idx} className="weekly-day-column">
+              {d.items.length === 0 ? (
+                <span className="empty-day-dash">—</span>
+              ) : (
+                d.items.map((item, iIdx) => (
+                  <div key={iIdx} className="activity-item">
+                    <div className="activity-sport">{item.displayLabel}</div>
+                    {item.distance && <div className="activity-dist">{item.distance}</div>}
+                  </div>
+                ))
+              )}
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
-
-      <div className="weekly-grid-items-row">
-        {gridData.days.map((d, idx) => (
-          <div key={idx} className="weekly-day-column">
-            {d.items.length === 0 ? (
-              <span className="empty-day-dash">—</span>
-            ) : (
-              d.items.map((item, iIdx) => (
-                <div key={iIdx} className="activity-item">
-                  <div className="activity-sport">{item.displayLabel}</div>
-                  {item.distance && <div className="activity-dist">{item.distance}</div>}
-                </div>
-              ))
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderBarChart = (title, dataList, maxVal) => (
     <div className="monthly-card">
@@ -393,7 +406,7 @@ export default function GeneralOverview({ overviewData }) {
                 <div 
                   className="monthly-bar-fill" 
                   style={{ height: `${heightPercent}%` }}
-                  title={`${item.monthObj.month} ${item.monthObj.year}: ${item.numStr} ${item.unitStr}`}
+                  title={`${item.monthObj.month} 20${item.monthObj.year}: ${item.numStr} ${item.unitStr}`}
                 />
               </div>
               <div className="monthly-bar-label">
@@ -451,7 +464,7 @@ export default function GeneralOverview({ overviewData }) {
       </div>
 
       {/* SECTION 2: WEEKLY ACTIVITY GRIDS */}
-      <div>
+      <div className="weekly-grids-section">
         <h3 className="section-title">Weekly Activity Grids</h3>
         {renderWeekGrid(currentWeekGrid, "Current Week")}
         {renderWeekGrid(priorWeekGrid, "Prior Week")}
