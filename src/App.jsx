@@ -5,7 +5,6 @@ import WorkoutsView from './components/WorkoutsView';
 import GearView from './components/GearView';
 import OptionsView from './components/OptionsView';
 
-
 const APP_TITLE = 'Web Fitness'; // Central title configuration
 
 export default function App() {
@@ -28,6 +27,15 @@ export default function App() {
     localStorage.setItem('wf_offset', rightOffset);
   }, [layoutVersion, themeView, rightOffset]);
 
+  // Auto-close menu after 4 seconds if left open
+  useEffect(() => {
+    if (!menuOpen) return;
+    const timer = setTimeout(() => {
+      setMenuOpen(false);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [menuOpen]);
+
   // Apply theme styling
   const getThemeStyles = () => {
     if (themeView === 'dark')
@@ -39,6 +47,11 @@ export default function App() {
         filter: 'grayscale(100%)',
       };
     return { backgroundColor: '#f9f9f9', color: '#1a1a1a' };
+  };
+
+  const handleSelectTab = (tab) => {
+    setActiveTab(tab);
+    setMenuOpen(false); // Close menu when an option is picked
   };
 
   return (
@@ -59,9 +72,12 @@ export default function App() {
           alignItems: 'center',
           padding: '12px 20px',
           borderBottom: '1px solid #ccc',
+          position: 'relative', // Allows absolute positioning of the dropdown menu
         }}
       >
-        <h1 style={{ margin: 0, fontSize: '20px', color: 'var(--text-h, inherit)' }}>{APP_TITLE}</h1>
+        <h1 style={{ margin: 0, fontSize: '20px', color: 'var(--text-h, inherit)' }}>
+          {APP_TITLE}
+        </h1>
         <button
           onClick={() => setMenuOpen(!menuOpen)}
           style={{
@@ -69,32 +85,66 @@ export default function App() {
             border: 'none',
             cursor: 'pointer',
             fontSize: '24px',
-            color: 'var(--text-h, inherit)', // Explicitly inherited color to fix mobile visibility
+            color: 'var(--text-h, inherit)',
           }}
           aria-label="Options Menu"
         >
           &#9776;
         </button>
-      </header>
 
-      {/* Slideout Navigation / View Selector */}
-      {menuOpen && (
-        <nav
-          style={{
-            padding: '10px 20px',
-            borderBottom: '1px solid #ccc',
-            display: 'flex',
-            gap: '10px',
-            flexWrap: 'wrap',
-          }}
-        >
-          <button onClick={() => setActiveTab('daily')}>Daily View</button>
-          <button onClick={() => setActiveTab('overview')}>General Overview</button>
-          <button onClick={() => setActiveTab('workouts')}>Workouts</button>
-          <button onClick={() => setActiveTab('gear')}>Gear</button>
-          <button onClick={() => setActiveTab('options')}>Options</button>
-        </nav>
-      )}
+        {/* Floating Vertical Dropdown Navigation */}
+        {menuOpen && (
+          <nav
+            style={{
+              position: 'absolute',
+              top: '100%',
+              right: '15px',
+              backgroundColor: themeView === 'dark' ? '#1e1e1e' : '#ffffff',
+              color: themeView === 'dark' ? '#ffffff' : '#000000',
+              border: '1px solid #ccc',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              padding: '10px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              zIndex: 1000,
+              minWidth: '160px',
+            }}
+          >
+            <button 
+              onClick={() => handleSelectTab('daily')}
+              style={dropdownBtnStyle(themeView)}
+            >
+              Daily View
+            </button>
+            <button 
+              onClick={() => handleSelectTab('overview')}
+              style={dropdownBtnStyle(themeView)}
+            >
+              General Overview
+            </button>
+            <button 
+              onClick={() => handleSelectTab('workouts')}
+              style={dropdownBtnStyle(themeView)}
+            >
+              Workouts
+            </button>
+            <button 
+              onClick={() => handleSelectTab('gear')}
+              style={dropdownBtnStyle(themeView)}
+            >
+              Gear
+            </button>
+            <button 
+              onClick={() => handleSelectTab('options')}
+              style={dropdownBtnStyle(themeView)}
+            >
+              Options
+            </button>
+          </nav>
+        )}
+      </header>
 
       {/* View Routing */}
       <main
@@ -122,3 +172,16 @@ export default function App() {
     </div>
   );
 }
+
+// Helper style for clean dropdown option buttons
+const dropdownBtnStyle = (themeView) => ({
+  background: 'none',
+  border: 'none',
+  textAlign: 'left',
+  padding: '8px 12px',
+  borderRadius: '4px',
+  cursor: 'pointer',
+  fontSize: '14px',
+  color: themeView === 'dark' ? '#ffffff' : '#000000',
+  width: '100%',
+});
