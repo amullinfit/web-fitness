@@ -78,7 +78,7 @@
   margin: 12px auto 0 auto;
   border-collapse: separate;
   border-spacing: 10px 0;
-  color: #464c53; /* Slightly darkened text for better contrast */
+  color: #535961; /* Slightly darkened text for better contrast */
   font-size: 11px;
 }
 
@@ -91,7 +91,7 @@
 
 .annual-table th span {
   display: inline-block;
-  border-bottom: 2.5px solid #343a40; /* Thicker, more prominent underline */
+  border-bottom: 2.5px solid #535961; /* Thicker, more prominent underline */
   padding-bottom: 3px;
   width: 100%;
 }
