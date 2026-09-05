@@ -5,7 +5,7 @@ import './DailyView.css';
 
 const VAL_WORKOUTS_URL = "/api/val-workouts";
 const HISTORICAL_URL = "/api/val-historical";
-const GEAR_REMOVE_URL = "/api/api-gear-remove";
+const GEAR_REMOVE_URL = "/api/val-gear-remove";
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(
