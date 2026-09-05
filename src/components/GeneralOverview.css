@@ -78,21 +78,21 @@
   margin: 12px auto 0 auto;
   border-collapse: separate;
   border-spacing: 10px 0;
-  color: #6c757d;
+  color: #343a40; /* Slightly darkened text for better contrast */
   font-size: 11px;
 }
 
 .annual-table th {
   padding: 0 0 4px 0;
-  font-weight: 600;
+  font-weight: 700; /* Bolder header text */
   white-space: nowrap;
   vertical-align: bottom;
 }
 
 .annual-table th span {
   display: inline-block;
-  border-bottom: 1px solid #ced4da;
-  padding-bottom: 2px;
+  border-bottom: 2.5px solid #343a40; /* Thicker, more prominent underline */
+  padding-bottom: 3px;
   width: 100%;
 }
 
@@ -103,6 +103,7 @@
 .annual-table td {
   padding: 3px 0;
   white-space: nowrap;
+  color: #495057;
 }
 
 .annual-table td.col-year { text-align: left; }
