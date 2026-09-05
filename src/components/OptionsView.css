@@ -1,138 +1,155 @@
 /* Container */
 .options-container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 10px;
-    color: #000000;
-    box-sizing: border-box;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 10px;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  box-sizing: border-box;
+}
+
+/* Header & Menu Layout */
+.options-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+  width: 100%;
+  background-color: #ffffff !important;
+}
+
+.webfitness-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #000000 !important;
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* Right-Aligned Options Menu */
+.options-menu {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.menu-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.menu-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #000000 !important;
+}
+
+.menu-select {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #000000 !important;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.menu-select:focus {
+  outline: 2px solid #000000;
+}
+
+/* Content Body */
+.options-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+.options-content h2, 
+.options-content h3 {
+  color: #000000 !important;
+  margin: 0;
+}
+
+.control-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-label {
+  font-weight: bold;
+  display: block;
+  color: #000000 !important;
+}
+
+.offset-slider {
+  width: 100%;
+  accent-color: #000000;
+}
+
+.options-divider {
+  width: 100%;
+  border: none;
+  border-top: 1px solid #e0e0e0;
+  margin: 10px 0;
+}
+
+.about-section p {
+  color: #000000 !important;
+  margin: 8px 0;
+}
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 767px) {
+  .options-container {
+    background-color: #ffffff !important;
+    color: #000000 !important;
   }
-  
-  /* Header & Menu Layout */
+
   .options-header {
-    display: flex;
+    flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px solid #e0e0e0;
-    margin-bottom: 20px;
-    width: 100%;
+    gap: 8px;
+    background-color: #ffffff !important;
   }
-  
+
   .webfitness-title {
-    font-size: 20px;
-    font-weight: bold;
-    color: #000000;
-    margin: 0;
-    white-space: nowrap;
+    font-size: 18px;
+    color: #000000 !important;
   }
-  
-  /* Right-Aligned Options Menu */
+
   .options-menu {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-left: auto;
+    gap: 8px;
   }
-  
-  .menu-group {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  
+
   .menu-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #000000;
+    font-size: 11px;
+    color: #000000 !important;
   }
-  
+
   .menu-select {
-    background-color: #ffffff;
-    color: #000000;
-    border: 1px solid #000000;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
+    font-size: 12px;
+    padding: 3px 6px;
+    color: #000000 !important;
+    background-color: #ffffff !important;
+    border: 1px solid #000000 !important;
   }
-  
-  .menu-select:focus {
-    outline: 2px solid #000000;
-  }
-  
-  /* Content Body */
-  .options-content {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    color: #000000;
-  }
-  
-  .options-content h2, 
-  .options-content h3 {
-    color: #000000;
-    margin: 0;
-  }
-  
-  .control-section {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  
-  .control-label {
-    font-weight: bold;
-    display: block;
-    color: #000000;
-  }
-  
-  .offset-slider {
-    width: 100%;
-    accent-color: #000000;
-  }
-  
-  .options-divider {
-    width: 100%;
-    border: none;
-    border-top: 1px solid #e0e0e0;
-    margin: 10px 0;
-  }
-  
+
+  .options-content,
+  .options-content h2,
+  .options-content h3,
+  .control-label,
   .about-section p {
-    color: #000000;
-    margin: 8px 0;
+    color: #000000 !important;
+    background-color: #ffffff !important;
   }
-  
-  /* Mobile Responsive Adjustments */
-  @media (max-width: 767px) {
-    .options-header {
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-  
-    .webfitness-title {
-      font-size: 18px;
-      color: #000000 !important;
-    }
-  
-    .options-menu {
-      gap: 8px;
-    }
-  
-    .menu-label {
-      font-size: 11px;
-      color: #000000 !important;
-    }
-  
-    .menu-select {
-      font-size: 12px;
-      padding: 3px 6px;
-      color: #000000 !important;
-      background-color: #ffffff !important;
-      border: 1px solid #000000 !important;
-    }
-  }
-  
+}
