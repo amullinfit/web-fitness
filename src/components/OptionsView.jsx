@@ -2,10 +2,6 @@ import React from 'react';
 import './OptionsView.css';
 
 export default function OptionsView({ 
-  layoutVersion, 
-  setLayoutVersion, 
-  themeView, 
-  setThemeView, 
   rightOffset, 
   setRightOffset 
 }) {
@@ -13,37 +9,7 @@ export default function OptionsView({
     <div className="options-container">
       {/* Top Header Bar */}
       <header className="options-header">
-        <h1 className="webfitness-title">WebFitness</h1>
-        
-        {/* Right-Aligned Options Menu */}
-        <div className="options-menu">
-          <div className="menu-group">
-            <label htmlFor="layout-select" className="menu-label">Layout:</label>
-            <select 
-              id="layout-select"
-              value={layoutVersion} 
-              onChange={(e) => setLayoutVersion(e.target.value)}
-              className="menu-select"
-            >
-              <option value="desktop">Desktop</option>
-              <option value="mobile">Mobile</option>
-            </select>
-          </div>
-
-          <div className="menu-group">
-            <label htmlFor="theme-select" className="menu-label">Theme:</label>
-            <select 
-              id="theme-select"
-              value={themeView} 
-              onChange={(e) => setThemeView(e.target.value)}
-              className="menu-select"
-            >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="bw">Black & White</option>
-            </select>
-          </div>
-        </div>
+        <h1 className="webfitness-title">WebFitness Options</h1>
       </header>
 
       <div className="options-content">
