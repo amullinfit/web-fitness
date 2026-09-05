@@ -95,23 +95,23 @@ export default function GeneralOverview({ overviewData }) {
   const [wellness, setWellness] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [rightBuffer, setRightBuffer] = useState(65);
-
+  const [rightBuffer, setRightBuffer] = useState(() => {
+    return Number(localStorage.getItem('wf_offset')) || 0;
+  });
   console.log("rightbuffer:",rightBuffer);
 
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
-      const rootStyle = getComputedStyle(document.documentElement);
-      const rightOffsetVal = parseInt(rootStyle.getPropertyValue('--right-offset') || '0', 10);
-      setRightBuffer(isNaN(rightOffsetVal) ? 0 : rightOffsetVal);
+      const offsetVal = Number(localStorage.getItem('wf_offset')) || 0;
+      setRightBuffer(offsetVal);
     };
 
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
+  
   useEffect(() => {
     fetch(VAL_OVERVIEW_URL)
       .then((res) => res.json())
