@@ -98,7 +98,6 @@ export default function GeneralOverview({ overviewData }) {
   const [rightBuffer, setRightBuffer] = useState(() => {
     return Number(localStorage.getItem('wf_offset')) || 0;
   });
-  console.log("rightbuffer:",rightBuffer);
 
   useEffect(() => {
     const handleResize = () => {
@@ -111,7 +110,7 @@ export default function GeneralOverview({ overviewData }) {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
+
   useEffect(() => {
     fetch(VAL_OVERVIEW_URL)
       .then((res) => res.json())
@@ -365,10 +364,6 @@ export default function GeneralOverview({ overviewData }) {
     // Desktop: always inline
     // Mobile: stacked when rightBuffer > 60, otherwise inline
     const isInlineHeader = !isMobile || rightBuffer <= 60;
-
-    console.log({ isMobile, rightBuffer, isInlineHeader });
-    // Temporarily forces stacked mode
-    console.log({ isMobile, rightBuffer, isInlineHeader });
 
     return (
       <div className={`weekly-grid-card ${isBufferLargeMobile ? 'compact-mobile-grid' : ''}`}>

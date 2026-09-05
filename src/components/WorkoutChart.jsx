@@ -321,7 +321,7 @@ export default function WorkoutChart({
           <div className="workout-chart-tracks" style={{ height: chartHeight }}>
             {/* PLANNED BARS LAYER */}
             {plannedList.length > 0 && (
-              <div className="workout-chart-bars track-planned">
+              <div className="workout-chart-bars track-planned" style={{ zIndex: 1 }}>
                 {plannedList.map((step, idx) => {
                   const durationMins = Math.round((step.duration || 60) / 60);
                   const widthPct = ((step.duration || 60) / totalDurationSec) * 100;
@@ -372,7 +372,7 @@ export default function WorkoutChart({
 
             {/* EXECUTED BARS LAYER */}
             {executedList.length > 0 && (
-              <div className="workout-chart-bars track-executed">
+              <div className="workout-chart-bars track-executed" style={{ zIndex: 2, position: 'relative' }}>
                 {executedList.map((step, idx) => {
                   const durationSec = step.duration || 60;
                   const durationMins = Math.round(durationSec / 60);
