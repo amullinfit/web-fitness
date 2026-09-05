@@ -251,7 +251,6 @@
     font-size: 14px;
   }
 
-  /* Remains vertically stacked on Desktop */
   .daily-two-day-grid {
     display: flex;
     flex-direction: column;
@@ -276,31 +275,63 @@
   position: relative; /* Position context for hover tooltip */
 }
 
-/* Red X Button Styling */
-.remove-gear-btn {
-  background: transparent;
-  border: none;
-  color: #ef4444;
-  font-weight: bold;
-  font-size: 0.85rem;
-  line-height: 1;
+/* Delete Button Class (.del-btn) */
+.del-btn {
+  background-color: rgba(255, 77, 77, 0.1) !important;
+  color: #ff4d4d !important;
+  border: 1px solid rgba(255, 77, 77, 0.3) !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all 0.2s ease !important;
+  line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.remove-gear-btn:hover:not(:disabled) {
-  background-color: rgba(239, 68, 68, 0.15);
-  color: #dc2626;
+.del-btn:hover:not(:disabled) {
+  background-color: #ff4d4d !important;
+  color: #ffffff !important;
+  border-color: #ff4d4d !important;
+  transform: scale(1.05);
 }
 
-.remove-gear-btn:disabled {
+.del-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Add Button Class (.add-btn) */
+.add-btn {
+  background-color: rgba(29, 185, 84, 0.1) !important;
+  color: #1db954 !important;
+  border: 1px solid rgba(29, 185, 84, 0.3) !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+  font-size: 0.75rem !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease !important;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-btn:hover {
+  background-color: #1db954 !important;
+  color: #ffffff !important;
+  border-color: #1db954 !important;
+  transform: scale(1.05);
+}
+
+.add-btn:active {
+  transform: scale(0.95);
 }
 
 /* Tooltip popup showing Activity ID and Gear ID on hover */
@@ -323,19 +354,17 @@
   border: 1px solid #334155;
 }
 
-/* Arrow indicator on the tooltip */
 .gear-id-tooltip::before {
   content: '';
   position: absolute;
   bottom: 100%;
-  right: 10px;
-  border-width: 5px;
+  right: 12px;
+  border-width: 4px;
   border-style: solid;
   border-color: transparent transparent #1e293b transparent;
 }
 
-/* Show tooltip when hovering over the remove button */
-.remove-gear-btn:hover + .gear-id-tooltip {
+.del-btn:hover + .gear-id-tooltip {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -346,9 +375,9 @@
   display: inline-block;
   width: 10px;
   height: 10px;
-  border: 2px solid rgba(239, 68, 68, 0.3);
+  border: 2px solid rgba(255, 77, 77, 0.3);
   border-radius: 50%;
-  border-top-color: #ef4444;
+  border-top-color: #ff4d4d;
   animation: spin 0.8s linear infinite;
 }
 
@@ -363,21 +392,10 @@
   border-color: #9ca3af;
 }
 
-/* Enhanced Focus & Accessibility States */
 .nav-btn:focus-visible,
-.remove-gear-btn:focus-visible,
+.del-btn:focus-visible,
+.add-btn:focus-visible,
 .daily-toast-close:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
-}
-
-/* Tooltip Arrow Pointer */
-.gear-id-tooltip::before {
-  content: "";
-  position: absolute;
-  bottom: 100%;
-  right: 12px;
-  border-width: 4px;
-  border-style: solid;
-  border-color: transparent transparent #1f2937 transparent;
 }

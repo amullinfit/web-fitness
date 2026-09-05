@@ -91,7 +91,6 @@ const isWorkoutCompleted = (workout) => {
   return hasPairedEvent || hasCompliance;
 };
 
-// Gear Filtering Helpers from GearView.jsx
 const getDistanceInMiles = (gear) => {
   if (gear.distance_miles !== undefined) return gear.distance_miles;
   if (gear.distance_m !== undefined) return gear.distance_m / 1609.34;
@@ -125,7 +124,6 @@ export default function DailyView() {
   const [removingGearId, setRemovingGearId] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // Modal State for Adding Gear
   const [modalWorkoutId, setModalWorkoutId] = useState(null);
   const [availableGear, setAvailableGear] = useState([]);
   const [loadingGear, setLoadingGear] = useState(false);
@@ -511,14 +509,14 @@ export default function DailyView() {
             {isMissed && <span className="status-badge badge-missed">MISSED</span>}
           </div>
 
-          {/* Top Right: Shoe Tag with Red X or Green + */}
+          {/* Top Right: Shoe Tag with del-btn or add-btn */}
           <div className="daily-workout-header-right">
             {hasValidShoe ? (
               <span className="daily-workout-type daily-shoe-type">
                 <span>👟 {shoeName}</span>
                 <button
                   type="button"
-                  className="remove-gear-btn"
+                  className="del-btn remove-gear-btn"
                   title={`Activity ID: ${activityId} | Gear ID: ${gearId}`}
                   disabled={isRemoving}
                   onClick={() => handleRemoveGear(activityId, gearId)}
@@ -533,8 +531,7 @@ export default function DailyView() {
             ) : (
               <button
                 type="button"
-                className="remove-gear-btn add-gear-btn"
-                style={{ backgroundColor: '#2e7d32', color: '#fff' }}
+                className="add-btn"
                 title="Add Shoe"
                 onClick={() => handleOpenAddGearModal(activityId)}
               >
@@ -589,7 +586,6 @@ export default function DailyView() {
 
   return (
     <div className="daily-view-container">
-      {/* Toast Error Banner */}
       {errorMessage && (
         <div className="daily-toast-error">
           <span className="daily-toast-message">⚠️ {errorMessage}</span>
@@ -625,7 +621,6 @@ export default function DailyView() {
         {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts)}
       </div>
 
-      {/* Add Shoe Modal / Dialog */}
       {modalWorkoutId && (
         <div className="gear-modal-overlay" style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
