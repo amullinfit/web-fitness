@@ -3,8 +3,6 @@
   max-width: 600px;
   margin: 0 auto;
   padding: 10px;
-  background-color: #ffffff !important;
-  color: #000000 !important;
   box-sizing: border-box;
 }
 
@@ -14,16 +12,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 0;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border, #e0e0e0);
   margin-bottom: 20px;
   width: 100%;
-  background-color: #ffffff !important;
 }
 
 .webfitness-title {
   font-size: 20px;
   font-weight: bold;
-  color: #000000 !important;
   margin: 0;
   white-space: nowrap;
 }
@@ -45,13 +41,12 @@
 .menu-label {
   font-size: 13px;
   font-weight: 600;
-  color: #000000 !important;
 }
 
 .menu-select {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 1px solid #000000 !important;
+  background-color: var(--code-bg, #ffffff);
+  color: inherit;
+  border: 1px solid var(--border, #cccccc);
   border-radius: 4px;
   padding: 4px 8px;
   font-size: 13px;
@@ -59,8 +54,13 @@
   cursor: pointer;
 }
 
+.menu-select option {
+  background-color: var(--bg, #ffffff);
+  color: inherit;
+}
+
 .menu-select:focus {
-  outline: 2px solid #000000;
+  outline: 2px solid var(--accent, #000000);
 }
 
 /* Content Body */
@@ -68,13 +68,10 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  color: #000000 !important;
-  background-color: #ffffff !important;
 }
 
 .options-content h2, 
 .options-content h3 {
-  color: #000000 !important;
   margin: 0;
 }
 
@@ -87,44 +84,35 @@
 .control-label {
   font-weight: bold;
   display: block;
-  color: #000000 !important;
 }
 
 .offset-slider {
   width: 100%;
-  accent-color: #000000;
+  accent-color: var(--accent, #000000);
 }
 
 .options-divider {
   width: 100%;
   border: none;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border, #e0e0e0);
   margin: 10px 0;
 }
 
 .about-section p {
-  color: #000000 !important;
   margin: 8px 0;
 }
 
 /* Mobile Responsive Adjustments */
 @media (max-width: 767px) {
-  .options-container {
-    background-color: #ffffff !important;
-    color: #000000 !important;
-  }
-
   .options-header {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    background-color: #ffffff !important;
   }
 
   .webfitness-title {
     font-size: 18px;
-    color: #000000 !important;
   }
 
   .options-menu {
@@ -133,23 +121,10 @@
 
   .menu-label {
     font-size: 11px;
-    color: #000000 !important;
   }
 
   .menu-select {
     font-size: 12px;
     padding: 3px 6px;
-    color: #000000 !important;
-    background-color: #ffffff !important;
-    border: 1px solid #000000 !important;
-  }
-
-  .options-content,
-  .options-content h2,
-  .options-content h3,
-  .control-label,
-  .about-section p {
-    color: #000000 !important;
-    background-color: #ffffff !important;
   }
 }
