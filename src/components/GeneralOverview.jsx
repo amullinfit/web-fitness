@@ -69,7 +69,7 @@ const formatMMMD = (d) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const formatMmmYYParts = (d, isMobile, rightBuffer) => {
+const formatMmmYYParts = (d, isMobile) => {
   const month = d.toLocaleDateString('en-US', { month: 'short' });
   let year;
   
@@ -77,12 +77,8 @@ const formatMmmYYParts = (d, isMobile, rightBuffer) => {
     // Desktop: always Mmm YYYY
     year = String(d.getFullYear());
   } else {
-    // Mobile: if rightBuffer < 40, Mmm YYYY, otherwise Mmm YY
-    if (rightBuffer < 40) {
-      year = String(d.getFullYear());
-    } else {
-      year = String(d.getFullYear()).slice(-2);
-    }
+    // Mobile: always Mmm YY
+    year = String(d.getFullYear()).slice(-2);
   }
 
   return { month, year };
@@ -288,7 +284,7 @@ export default function GeneralOverview({ overviewData }) {
       const roundedDist = Math.floor(totalDist);
       if (roundedDist > maxDist) maxDist = roundedDist;
 
-      const dateParts = formatMmmYYParts(targetMonth, isMobile, rightBuffer);
+      const dateParts = formatMmmYYParts(targetMonth, isMobile);
 
       monthlyTotals.push({
         monthObj: dateParts,
@@ -363,10 +359,12 @@ export default function GeneralOverview({ overviewData }) {
     const isBufferLargeMobile = isMobile && rightBuffer > 40;
     const displayTitle = isMobile ? title.replace(/week/gi, '').trim() : title;
     
-    // Header layout determination
-    // Mobile with rightBuffer < 10 OR Desktop -> inline (same line)
-    // Mobile with rightBuffer >= 10 -> stacked
-    const isInlineHeader = !isMobile || rightBuffer < 10;
+    // Header layout determination:
+    // Mobile: if rightBuffer > 60 -> stacked (activity count on separate line, left justified)
+    //         else if rightBuffer < 10 -> inline
+    //         else (between 10 and 60) -> fall back to prior rules (< 10 inline, otherwise stacked)
+    // Desktop: always inline
+    const isInlineHeader = !isMobile ? true : (rightBuffer < 10 ? true : (rightBuffer > 60 ? false : false));
 
     return (
       <div className={`weekly-grid-card ${isBufferLargeMobile ? 'compact-mobile-grid' : ''}`}>
