@@ -69,9 +69,22 @@ const formatMMMD = (d) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const formatMmmYYParts = (d) => {
+const formatMmmYYParts = (d, isMobile, rightBuffer) => {
   const month = d.toLocaleDateString('en-US', { month: 'short' });
-  const year = String(d.getFullYear()).slice(-2);
+  let year;
+  
+  if (!isMobile) {
+    // Desktop: always Mmm YYYY
+    year = String(d.getFullYear());
+  } else {
+    // Mobile: if rightBuffer < 40, Mmm YYYY, otherwise Mmm YY
+    if (rightBuffer < 40) {
+      year = String(d.getFullYear());
+    } else {
+      year = String(d.getFullYear()).slice(-2);
+    }
+  }
+
   return { month, year };
 };
 
@@ -275,7 +288,7 @@ export default function GeneralOverview({ overviewData }) {
       const roundedDist = Math.floor(totalDist);
       if (roundedDist > maxDist) maxDist = roundedDist;
 
-      const dateParts = formatMmmYYParts(targetMonth);
+      const dateParts = formatMmmYYParts(targetMonth, isMobile, rightBuffer);
 
       monthlyTotals.push({
         monthObj: dateParts,
@@ -348,10 +361,17 @@ export default function GeneralOverview({ overviewData }) {
   // Render Helpers
   const renderWeekGrid = (gridData, title) => {
     const isBufferLargeMobile = isMobile && rightBuffer > 40;
+    const displayTitle = isMobile ? title.replace(/week/gi, '').trim() : title;
+    
+    // Header layout determination
+    // Mobile with rightBuffer < 10 OR Desktop -> inline (same line)
+    // Mobile with rightBuffer >= 10 -> stacked
+    const isInlineHeader = !isMobile || rightBuffer < 10;
+
     return (
       <div className={`weekly-grid-card ${isBufferLargeMobile ? 'compact-mobile-grid' : ''}`}>
-        <div className="weekly-grid-header">
-          <span className="grid-title-text">{title}: {gridData.range}</span>
+        <div className={`weekly-grid-header ${isInlineHeader ? 'inline-header' : 'stacked-header'}`}>
+          <span className="grid-title-text">{displayTitle}: {gridData.range}</span>
           <span className="grid-activities-count">({gridData.totalActivities} activities)</span>
         </div>
         
@@ -405,7 +425,7 @@ export default function GeneralOverview({ overviewData }) {
                 <div 
                   className="monthly-bar-fill" 
                   style={{ height: `${heightPercent}%` }}
-                  title={`${item.monthObj.month} 20${item.monthObj.year}: ${item.numStr} ${item.unitStr}`}
+                  title={`${item.monthObj.month} ${item.monthObj.year}: ${item.numStr} ${item.unitStr}`}
                 />
               </div>
               <div className="monthly-bar-label">

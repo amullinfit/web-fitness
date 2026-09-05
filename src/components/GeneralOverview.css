@@ -46,7 +46,6 @@
   color: #111;
 }
 
-/* Desktop Bucket Prev Week Layout (Inline single line) */
 .sport-bucket-prev {
   display: flex;
   flex-direction: row;
@@ -73,7 +72,6 @@
 .indicator-down { color: #dc3545; }
 .indicator-same { color: #6c757d; }
 
-/* Desktop Annual Table Centered in Buckets */
 .annual-table {
   width: auto;
   margin: 12px auto 0 auto;
@@ -112,7 +110,6 @@
 .annual-table td.col-act { text-align: center; }
 .annual-table td.col-total { text-align: right; }
 
-/* Mobile Bucket Overrides */
 @media (max-width: 767px) {
   .sport-bucket-card {
     padding: 6px 4px;
@@ -175,6 +172,16 @@
   font-weight: bold;
   font-size: 14px;
   margin-bottom: 8px;
+}
+
+.weekly-grid-header.inline-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.weekly-grid-header.stacked-header {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -240,7 +247,6 @@
   white-space: nowrap;
 }
 
-/* Compact layout for mobile when right buffer > 40px */
 @media (max-width: 767px) {
   .weekly-grid-card.compact-mobile-grid {
     padding: 8px 6px;
@@ -339,10 +345,16 @@
   display: flex;
   align-items: flex-end;
   gap: 4px;
-  height: 105px; /* Reduced by 30% from 150px */
+  height: 105px; /* Mobile height */
   padding-bottom: 28px;
   width: 100%;
   box-sizing: border-box;
+}
+
+@media (min-width: 768px) {
+  .monthly-barchart-container {
+    height: 136.5px; /* 30% taller on desktop */
+  }
 }
 
 .monthly-bar-column {
@@ -367,7 +379,6 @@
   align-items: center;
 }
 
-/* Mobile: # and mi on separate lines */
 @media (max-width: 767px) {
   .monthly-bar-val {
     flex-direction: column;
@@ -426,7 +437,7 @@
 
 .popsugar-grid-row {
   display: grid;
-  direction: rtl; /* Right to left */
+  direction: rtl;
   gap: 3px;
   width: 100%;
   box-sizing: border-box;
