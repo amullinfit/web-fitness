@@ -75,7 +75,15 @@ export default function App() {
           position: 'relative', // Allows absolute positioning of the dropdown menu
         }}
       >
-        <h1 style={{ margin: 0, fontSize: '20px', color: 'var(--text-h, inherit)' }}>
+        <h1 
+          onClick={() => handleSelectTab('daily')}
+          style={{ 
+            margin: 0, 
+            fontSize: '20px', 
+            color: 'var(--text-h, inherit)',
+            cursor: 'pointer' // Indicates that the title is clickable
+          }}
+        >
           {APP_TITLE}
         </h1>
         <button
