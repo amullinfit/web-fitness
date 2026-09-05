@@ -365,6 +365,8 @@ export default function GeneralOverview({ overviewData }) {
     const isInlineHeader = !isMobile || rightBuffer <= 60;
 
     console.log({ isMobile, rightBuffer, isInlineHeader });
+    const [rightBuffer, setRightBuffer] = useState(65); // Temporarily forces stacked mode
+    console.log({ isMobile, rightBuffer, isInlineHeader });
 
     return (
       <div className={`weekly-grid-card ${isBufferLargeMobile ? 'compact-mobile-grid' : ''}`}>
