@@ -200,7 +200,8 @@ const generateWavyBarPath = (topCycles = 6, amplitude = WAVE_AMPLITUDE, vertical
 export default function WorkoutChart({ 
   workout, 
   thresholdPace, 
-  chartHeight = '140px' 
+  chartHeight = '140px',
+  showYAxis = true
 }) {
   const clipId = useId();
   const [executedOnTop, setExecutedOnTop] = useState(true);
@@ -327,17 +328,19 @@ export default function WorkoutChart({
       </div>
 
       <div className="workout-chart-wrapper">
-        <div className="workout-chart-yaxis" style={{ height: chartHeight }}>
-          {yTicks.map((tick, idx) => (
-            <span 
-              key={idx}
-              className="workout-chart-ytick"
-              style={{ top: `${tick.topPct}%` }}
-            >
-              {tick.label}
-            </span>
-          ))}
-        </div>
+        {showYAxis && (
+          <div className="workout-chart-yaxis" style={{ height: chartHeight }}>
+            {yTicks.map((tick, idx) => (
+              <span 
+                key={idx}
+                className="workout-chart-ytick"
+                style={{ top: `${tick.topPct}%` }}
+              >
+                {tick.label}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="workout-chart-main">
           <div className="workout-chart-tracks" style={{ height: chartHeight }}>
