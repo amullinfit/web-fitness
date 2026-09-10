@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DailyView from './components/DailyView';
+import MonthlyView from './components/MonthlyView';
 import GeneralOverview from './components/GeneralOverview'; 
 import WorkoutsView from './components/WorkoutsView';
 import GearView from './components/GearView';
@@ -127,6 +128,12 @@ export default function App() {
               Daily View
             </button>
             <button 
+              onClick={() => handleSelectTab('monthly')}
+              style={dropdownBtnStyle(themeView)}
+            >
+              Monthly View
+            </button>
+            <button 
               onClick={() => handleSelectTab('overview')}
               style={dropdownBtnStyle(themeView)}
             >
@@ -163,6 +170,7 @@ export default function App() {
         }}
       >
         {activeTab === 'daily' && <DailyView />}
+        {activeTab === 'monthly' && <MonthlyView />}
         {activeTab === 'overview' && <GeneralOverview />}
         {activeTab === 'workouts' && <WorkoutsView />}
         {activeTab === 'gear' && <GearView />}
