@@ -1,0 +1,172 @@
+MonthlyView Component Summary
+============================
+
+PROJECT: web-fitness (amullinfit)
+CREATED: 2026-09-10
+PURPOSE: Display workout charts in a grid layout for weekly viewing
+
+FILES CREATED:
+1. src/components/MonthlyView.jsx (13,297 bytes)
+2. src/components/MonthlyView.css (7,846 bytes)
+
+COMPONENT OVERVIEW
+==================
+
+MonthlyView is a new view component patterned after DailyView that displays workouts in a calendar-grid layout. It retrieves both planned and completed workouts and presents them in a flexible grid that adapts to desktop and mobile screen sizes.
+
+KEY FEATURES
+============
+
+Data Management:
+- Fetches planned workouts from /api/val-workouts
+- Fetches historical/completed activities from /api/val-historical
+- Merges and deduplicates workouts by date and type
+- Retrieves sport settings for threshold pace calculations
+
+Week Navigation:
+- Starts at the current week (Monday of current week)
+- Navigate backward/forward by week with Prev/Next Week buttons
+- "This Week" button returns to current week
+- Week label displays date range (Mon - Sun)
+
+Responsive Grid Layouts:
+
+DESKTOP LAYOUT:
+- 7 columns (Monday - Sunday) × 4 rows tall
+- Charts height: 80px (smaller than DailyView's 140px to fit grid)
+- Allows scrolling forward and backward through weeks
+- Full viewport height with scrollable grid area
+
+MOBILE LAYOUT:
+- 3 columns wide × 7 rows tall (one full week visible)
+- Charts height: 60px (even smaller for mobile)
+- Row 1 = Monday through Wednesday
+- Row 7 = Friday through Sunday
+- Each day cell scrolls independently for multiple workouts
+
+WORKOUT DISPLAY
+===============
+
+Each day cell shows:
+- Day name (Mon, Tue, Wed, etc.) 
+- Date (e.g., "Sep 10")
+- List of workouts for that day
+- For each workout:
+  * Sport/activity type
+  * Workout name/title
+  * WorkoutChart component (if intervals/workout_doc exists)
+  * Visual status indicators
+
+Workout Status Indicators:
+- COMPLETED: Green background (#e8f5e9) - shows both planned and executed
+- MISSED: Red/faded background (#ffebee) - past date with no completion
+- TODAY: Blue border on current week's day cells
+- Normal: Gray background for future/unstarted workouts
+
+UTILITY FUNCTIONS
+=================
+
+getMondayOfWeek(date)
+- Calculates the Monday of the week for any given date
+- Used to determine week boundaries
+
+getDatesByDay(startMonday)
+- Generates array of 7 dates starting from a Monday
+- Returns dates from Monday through Sunday
+
+Helper functions inherited from DailyView:
+- getLocalDateString(): Convert date to YYYY-MM-DD format
+- getThresholdPaceForSport(): Get pace threshold for workout type
+- isWorkoutCompleted(): Check if workout is completed
+- safeStringLower(): Safely convert values to lowercase strings
+
+STATE MANAGEMENT
+================
+
+Component State:
+- workouts: Array of all loaded workouts
+- sportSettings: Array of sport threshold pace settings
+- loading: Boolean for loading state
+- currentWeekMonday: Date object for start of current display week
+- errorMessage: String for error notifications
+
+Memoized Values:
+- weekDates: Array of 7 dates (Monday-Sunday) for current view
+- workoutsByDate: Map of dates to workout arrays for efficient lookup
+- todayStr: Today's date string in YYYY-MM-DD format
+
+STYLING FEATURES
+================
+
+Desktop Features (min-width: 769px):
+- 7-column grid with equal widths
+- Minimum 180px height per cell
+- Hover effects with subtle shadow elevation
+- Professional spacing with 12px gaps
+
+Mobile Features (max-width: 768px):
+- Switches to 3-column layout
+- Reduced padding and gaps for screen space efficiency
+- Adjusted minimum heights (140px)
+- Touch-friendly button sizes
+- Simplified navigation layout
+
+Visual Elements:
+- Clean white cards with subtle shadows
+- Color-coded status: green (completed), red (missed), blue (today)
+- Smooth transitions and hover animations
+- Custom scrollbar styling
+- Toast error messages with slide-in animation
+- Responsive typography that scales with screen size
+
+RESPONSIVE BREAKPOINTS
+======================
+
+1920px+: Desktop with largest cells (240px min-height)
+1440px:  Desktop with medium cells (160px min-height)
+1024px:  Tablet/large mobile adjustments
+768px:   Mobile layout switch to 3-column grid
+480px:   Small phone optimizations
+
+INTEGRATION POINTS
+==================
+
+Dependencies:
+- React hooks (useState, useEffect, useMemo)
+- WorkoutChart component (for rendering pace/interval charts)
+- API endpoints:
+  * /api/val-workouts
+  * /api/val-historical
+  * /api/val-gear-remove (for future gear management)
+  * /api/val-gear-add (for future gear management)
+  * /api/val-gear (for future gear management)
+
+Export:
+- Default export: MonthlyView functional component
+- Ready to import and use in app routing
+
+USAGE EXAMPLE
+=============
+
+import MonthlyView from './components/MonthlyView';
+
+function App() {
+  return (
+    <div>
+      <MonthlyView />
+    </div>
+  );
+}
+
+FUTURE ENHANCEMENTS
+===================
+
+Potential additions:
+- Gear management (add/remove shoes) similar to DailyView
+- Click on workout cells to view full details
+- Drag-to-reschedule workouts
+- Month view option (full calendar)
+- Export/print week view
+- Customizable chart heights per breakpoint
+- Week zoom controls (show 2 weeks, 4 weeks, month)
+- Performance optimizations for large workout datasets
