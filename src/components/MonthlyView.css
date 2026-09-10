@@ -1,0 +1,469 @@
+/* MonthlyView Container */
+.monthly-view-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f5f5;
+  overflow: hidden;
+}
+
+/* Loading State */
+.monthly-view-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-size: 18px;
+  color: #666;
+}
+
+/* Toast Error Message */
+.monthly-toast-error {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 999;
+  animation: slideInRight 0.3s ease-out;
+}
+
+.monthly-toast-message {
+  color: #856404;
+  font-size: 14px;
+}
+
+.monthly-toast-close {
+  background: none;
+  border: none;
+  color: #856404;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.monthly-toast-close:hover {
+  color: #533f03;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Navigation Bar */
+.monthly-nav-bar {
+  background-color: #fff;
+  border-bottom: 1px solid #ddd;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.monthly-nav-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-btn {
+  padding: 8px 16px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+  background-color: #e0e0e0;
+  border-color: #999;
+}
+
+.nav-btn-today {
+  background-color: #1976d2;
+  color: #fff;
+  border-color: #1565c0;
+}
+
+.nav-btn-today:hover {
+  background-color: #1565c0;
+  border-color: #0d47a1;
+}
+
+.monthly-week-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Grid Layouts */
+.monthly-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+}
+
+/* Desktop: 7 columns wide, 4 rows tall (scrollable) */
+.monthly-grid-desktop {
+  flex-wrap: wrap;
+  align-content: flex-start;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.monthly-grid-desktop .monthly-day-cell {
+  width: calc((100% - 72px) / 7);
+  min-width: calc((100% - 72px) / 7);
+}
+
+/* Mobile: 3 columns wide, 7 rows tall (scrollable) */
+.monthly-grid-mobile {
+  flex-wrap: wrap;
+  align-content: flex-start;
+}
+
+.monthly-grid-mobile .monthly-day-cell {
+  width: calc((100% - 24px) / 3);
+  min-width: calc((100% - 24px) / 3);
+}
+
+/* Day Cell */
+.monthly-day-cell {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  min-height: 180px;
+}
+
+.monthly-day-cell:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  border-color: #bbb;
+}
+
+.monthly-day-cell.monthly-today {
+  border: 2px solid #1976d2;
+  background-color: #f0f7ff;
+}
+
+.monthly-day-cell.monthly-today .monthly-day-header {
+  background-color: #e3f2fd;
+  border-bottom: 2px solid #1976d2;
+}
+
+/* Day Header */
+.monthly-day-header {
+  background-color: #f9f9f9;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.monthly-day-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.monthly-day-date {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+/* Day Workouts Container */
+.monthly-day-workouts {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Empty Day */
+.monthly-empty-day {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ccc;
+  font-size: 12px;
+}
+
+/* Workout Item */
+.monthly-workout-item {
+  background-color: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.monthly-workout-item:hover {
+  background-color: #f0f0f0;
+  border-color: #bbb;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.monthly-workout-item.monthly-completed {
+  background-color: #e8f5e9;
+  border-color: #a5d6a7;
+}
+
+.monthly-workout-item.monthly-completed .monthly-workout-type {
+  color: #2e7d32;
+}
+
+.monthly-workout-item.monthly-missed {
+  background-color: #ffebee;
+  border-color: #ef9a9a;
+  opacity: 0.7;
+}
+
+.monthly-workout-item.monthly-missed .monthly-workout-type {
+  color: #c62828;
+  text-decoration: line-through;
+}
+
+/* Workout Type */
+.monthly-workout-type {
+  font-weight: 600;
+  color: #1565c0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Workout Title */
+.monthly-workout-title {
+  color: #333;
+  font-weight: 500;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Desktop Responsive */
+@media (min-width: 1920px) {
+  .monthly-grid-desktop {
+    gap: 16px;
+  }
+
+  .monthly-day-cell {
+    min-height: 240px;
+  }
+}
+
+@media (max-width: 1440px) {
+  .monthly-day-cell {
+    min-height: 160px;
+  }
+}
+
+/* Tablet/Mobile Responsive */
+@media (max-width: 1024px) {
+  .monthly-nav-bar {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .monthly-week-label {
+    width: 100%;
+    text-align: center;
+  }
+
+  .monthly-grid {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .monthly-day-cell {
+    min-height: 150px;
+  }
+
+  .monthly-day-header {
+    padding: 10px;
+  }
+
+  .monthly-day-workouts {
+    padding: 6px;
+    gap: 6px;
+  }
+}
+
+/* Mobile View: 3 columns x 7 rows */
+@media (max-width: 768px) {
+  .monthly-view-container {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .monthly-nav-bar {
+    padding: 12px 16px;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .monthly-nav-buttons {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .monthly-week-label {
+    width: 100%;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  .monthly-grid {
+    padding: 12px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .monthly-grid-mobile .monthly-day-cell {
+    width: calc((100% - 20px) / 3);
+    min-height: 140px;
+  }
+
+  .monthly-day-header {
+    padding: 8px;
+  }
+
+  .monthly-day-name {
+    font-size: 12px;
+  }
+
+  .monthly-day-date {
+    font-size: 13px;
+  }
+
+  .monthly-day-workouts {
+    padding: 6px;
+    gap: 4px;
+  }
+
+  .monthly-workout-item {
+    padding: 6px;
+    font-size: 11px;
+  }
+
+  .monthly-workout-type {
+    font-size: 10px;
+  }
+
+  .monthly-workout-title {
+    font-size: 12px;
+    margin-top: 2px;
+  }
+}
+
+/* Small Mobile Phones */
+@media (max-width: 480px) {
+  .monthly-nav-bar {
+    padding: 10px 12px;
+  }
+
+  .nav-btn {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .monthly-week-label {
+    font-size: 13px;
+  }
+
+  .monthly-grid {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .monthly-grid-mobile .monthly-day-cell {
+    width: calc((100% - 16px) / 3);
+    min-height: 120px;
+  }
+
+  .monthly-day-header {
+    padding: 6px;
+  }
+
+  .monthly-day-name {
+    font-size: 11px;
+  }
+
+  .monthly-day-date {
+    font-size: 12px;
+  }
+
+  .monthly-day-workouts {
+    padding: 4px;
+    gap: 3px;
+  }
+
+  .monthly-workout-item {
+    padding: 4px;
+    font-size: 10px;
+  }
+}
+
+/* Scrollbar Styling */
+.monthly-day-workouts::-webkit-scrollbar,
+.monthly-grid::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.monthly-day-workouts::-webkit-scrollbar-track,
+.monthly-grid::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.monthly-day-workouts::-webkit-scrollbar-thumb,
+.monthly-grid::-webkit-scrollbar-thumb {
+  background: #bbb;
+  border-radius: 3px;
+}
+
+.monthly-day-workouts::-webkit-scrollbar-thumb:hover,
+.monthly-grid::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
