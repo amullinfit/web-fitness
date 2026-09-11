@@ -27,6 +27,14 @@ const safeStringLower = (val) => {
   return String(val.id || val.type || val.name || val).toLowerCase();
 };
 
+const getSportCategory = (workout) => {
+  const type = safeStringLower(workout.type || workout.sport || '');
+  if (type.includes('swim')) return 'Swim';
+  if (type.includes('ride') || type.includes('bike') || type.includes('cycling')) return 'Bike';
+  if (type.includes('run')) return 'Run';
+  return 'Other';
+};
+
 const getThresholdPaceForSport = (workout, sportSettings) => {
   if (!workout) return null;
 
@@ -110,6 +118,11 @@ export default function MonthlyView() {
   const [loading, setLoading] = useState(true);
   const [currentWeekMonday, setCurrentWeekMonday] = useState(() => getMondayOfWeek(new Date()));
   const [errorMessage, setErrorMessage] = useState(null);
+
+  // Filter states
+  const [activeFilters, setActiveFilters] = useState([]);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [tempFilters, setTempFilters] = useState([]);
 
   const isMobile = useIsMobile(768);
 
@@ -232,6 +245,16 @@ export default function MonthlyView() {
     };
   }, []);
 
+  const filteredWorkouts = useMemo(() => {
+    if (!activeFilters || activeFilters.length === 0 || activeFilters.length === 4) {
+      return workouts;
+    }
+    return workouts.filter((w) => {
+      const category = getSportCategory(w);
+      return activeFilters.includes(category);
+    });
+  }, [workouts, activeFilters]);
+
   const fourWeeksDates = useMemo(() => getFourWeeksDates(currentWeekMonday), [currentWeekMonday]);
 
   const workoutsByDate = useMemo(() => {
@@ -241,8 +264,8 @@ export default function MonthlyView() {
       map[dateStr] = [];
     });
 
-    if (Array.isArray(workouts)) {
-      workouts.forEach((w) => {
+    if (Array.isArray(filteredWorkouts)) {
+      filteredWorkouts.forEach((w) => {
         const rawDate = w.start_date_local || w.icu_start_date || w.start_date || w.date;
         const dateStr = getLocalDateString(rawDate);
         if (map.hasOwnProperty(dateStr)) {
@@ -252,7 +275,7 @@ export default function MonthlyView() {
     }
 
     return map;
-  }, [workouts, fourWeeksDates]);
+  }, [filteredWorkouts, fourWeeksDates]);
 
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
 
@@ -274,6 +297,34 @@ export default function MonthlyView() {
 
   const handleToday = () => {
     setCurrentWeekMonday(getMondayOfWeek(new Date()));
+  };
+
+  const handleOpenFilter = () => {
+    setTempFilters([...activeFilters]);
+    setIsFilterOpen(true);
+  };
+
+  const handleToggleTempFilter = (sport) => {
+    setTempFilters((prev) =>
+      prev.includes(sport) ? prev.filter((s) => s !== sport) : [...prev, sport]
+    );
+  };
+
+  const handleClearAll = () => {
+    setTempFilters([]);
+  };
+
+  const handleCancelFilter = () => {
+    setIsFilterOpen(false);
+  };
+
+  const handleAcceptFilter = () => {
+    if (tempFilters.length === 4) {
+      setActiveFilters([]);
+    } else {
+      setActiveFilters(tempFilters);
+    }
+    setIsFilterOpen(false);
   };
 
   if (loading) return <div className="monthly-view-loading">Loading Monthly Workouts & Activities...</div>;
@@ -379,16 +430,79 @@ export default function MonthlyView() {
             Next Week →
           </button>
         </div>
-        <div className="monthly-week-label">
-          {currentWeekMonday.toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          })} - {fourWeeksEndDate.toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          })}
+
+        <div className="monthly-nav-right-group">
+          <div className="monthly-filter-container">
+            <button
+              type="button"
+              className={`monthly-filter-btn ${activeFilters.length > 0 && activeFilters.length < 4 ? 'active-filters' : ''}`}
+              onClick={handleOpenFilter}
+              title="Filter Workouts"
+            >
+              <svg className="monthly-filter-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+              <span>Filter</span>
+              {activeFilters.length > 0 && activeFilters.length < 4 && (
+                <span className="monthly-filter-badge">{activeFilters.join(', ')}</span>
+              )}
+            </button>
+
+            {isFilterOpen && (
+              <div className="monthly-filter-modal">
+                <div className="monthly-filter-title">Filter Workouts</div>
+                <div className="monthly-filter-options">
+                  {['Swim', 'Bike', 'Run', 'Other'].map((sport) => (
+                    <label key={sport} className="monthly-filter-option">
+                      <input
+                        type="checkbox"
+                        checked={tempFilters.includes(sport)}
+                        onChange={() => handleToggleTempFilter(sport)}
+                      />
+                      <span>{sport}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="monthly-filter-actions-row">
+                  <button
+                    type="button"
+                    className="monthly-filter-btn-sm"
+                    onClick={handleClearAll}
+                  >
+                    Clear All
+                  </button>
+                  <div className="monthly-filter-right-actions">
+                    <button
+                      type="button"
+                      className="monthly-filter-btn-sm"
+                      onClick={handleCancelFilter}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="monthly-filter-btn-sm monthly-filter-btn-primary"
+                      onClick={handleAcceptFilter}
+                    >
+                      Accept
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="monthly-week-label">
+            {currentWeekMonday.toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            })} - {fourWeeksEndDate.toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            })}
+          </div>
         </div>
       </div>
 
