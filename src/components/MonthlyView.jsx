@@ -387,7 +387,6 @@ export default function MonthlyView() {
                       showYAxisLabels={false}
                       showLegend={false}
                       minimalXAxis={true}
-                      showHoverDetails={false}
                     />
                   )}
                 </div>
