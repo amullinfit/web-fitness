@@ -212,7 +212,8 @@ export default function WorkoutChart({
   showWorkoutName = true,
   showThresholdPace = true,
   showYAxisLabels = true,
-  showLegend = true
+  showLegend = true,
+  minimalXAxis = false
 }) {
   const clipId = useId();
   const [executedOnTop, setExecutedOnTop] = useState(true);
@@ -222,6 +223,7 @@ export default function WorkoutChart({
   const isWorkoutNameVisible = parseBoolProp(showWorkoutName, true);
   const isThresholdPaceVisible = parseBoolProp(showThresholdPace, true);
   const isLegendVisible = parseBoolProp(showLegend, true);
+  const isMinimalXAxis = parseBoolProp(minimalXAxis, false);
   
   const renderYAxis = showYAxis !== undefined 
     ? parseBoolProp(showYAxis, true) 
@@ -237,6 +239,7 @@ export default function WorkoutChart({
   const totalPlannedSec = plannedList.reduce((sum, s) => sum + (s.duration || 0), 0);
   const totalExecutedSec = executedList.reduce((sum, s) => sum + (s.duration || 0), 0);
   const totalDurationSec = Math.max(totalPlannedSec, totalExecutedSec, 1);
+  const totalDurationMins = Math.round(totalDurationSec / 60);
 
   const thresholdSecPerMile = thresholdPace && thresholdPace > 0
     ? (thresholdPace < 15 ? speedToPaceSeconds(thresholdPace) : thresholdPace)
@@ -495,10 +498,19 @@ export default function WorkoutChart({
           </div>
 
           <div className="workout-chart-xaxis">
-            <span>0m</span>
-            {timeTicks.map((t, i) => (
-              <span key={i}>{t}m</span>
-            ))}
+            {isMinimalXAxis ? (
+              <>
+                <span>0m</span>
+                <span>{totalDurationMins}m</span>
+              </>
+            ) : (
+              <>
+                <span>0m</span>
+                {timeTicks.map((t, i) => (
+                  <span key={i}>{t}m</span>
+                ))}
+              </>
+            )}
           </div>
         </div>
       </div>
