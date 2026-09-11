@@ -311,8 +311,9 @@ export default function MonthlyView() {
         className={`monthly-day-cell ${isToday ? 'monthly-today' : ''}`}
       >
         <div className="monthly-day-header">
-          <div className="monthly-day-name">{getDayName(dayIndex)}</div>
-          <div className="monthly-day-date">{formatHeaderDate(date)}</div>
+          <span className="monthly-day-name">{getDayName(dayIndex)}</span>
+          <span className="monthly-day-separator">/</span>
+          <span className="monthly-day-date">{formatHeaderDate(date)}</span>
         </div>
 
         <div className="monthly-day-workouts">
