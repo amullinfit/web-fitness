@@ -197,6 +197,13 @@ const generateWavyBarPath = (topCycles = 6, amplitude = WAVE_AMPLITUDE, vertical
   return d;
 };
 
+// Helper to strictly parse boolean values from props (handles "false", null, undefined, true, false)
+const parseBoolProp = (val, defaultValue = true) => {
+  if (val === undefined) return defaultValue;
+  if (typeof val === 'string') return val.toLowerCase() === 'true';
+  return Boolean(val);
+};
+
 export default function WorkoutChart({ 
   workout, 
   thresholdPace, 
@@ -204,14 +211,21 @@ export default function WorkoutChart({
   showYAxis,
   showWorkoutName = true,
   showThresholdPace = true,
-  showYAxisLabels = true
+  showYAxisLabels = true,
+  showLegend = true
 }) {
   const clipId = useId();
   const [executedOnTop, setExecutedOnTop] = useState(true);
   const [isChartHovered, setIsChartHovered] = useState(false);
 
-  // Handle fallback if legacy showYAxis prop is explicitly passed
-  const renderYAxis = showYAxis !== undefined ? showYAxis : showYAxisLabels;
+  // Safely parse boolean props
+  const isWorkoutNameVisible = parseBoolProp(showWorkoutName, true);
+  const isThresholdPaceVisible = parseBoolProp(showThresholdPace, true);
+  const isLegendVisible = parseBoolProp(showLegend, true);
+  
+  const renderYAxis = showYAxis !== undefined 
+    ? parseBoolProp(showYAxis, true) 
+    : parseBoolProp(showYAxisLabels, true);
 
   const workoutTitleStr = workout?.name || workout?.title || 'Workout';
 
@@ -288,7 +302,8 @@ export default function WorkoutChart({
     return Math.min(Math.max(pct, 0), 100);
   };
 
-  const hasHiddenDetails = !showWorkoutName || !showThresholdPace;
+  const hasHiddenDetails = !isWorkoutNameVisible || !isThresholdPaceVisible;
+  const showTopBar = isWorkoutNameVisible || isLegendVisible || isThresholdPaceVisible;
 
   return (
     <div 
@@ -298,59 +313,63 @@ export default function WorkoutChart({
       onMouseLeave={() => setIsChartHovered(false)}
       onTouchStart={() => setIsChartHovered(true)}
     >
-      {/* Top Header Row with Workout Name, Legend, Swap Layer Button, & Threshold Badge */}
-      <div className="workout-chart-top-bar">
-        {showWorkoutName && (
-          <span className="workout-chart-title" style={{ fontWeight: 600, fontSize: '12px' }}>
-            {workoutTitleStr}
-          </span>
-        )}
-
-        <div className="workout-chart-legend">
-          {plannedList.length > 0 && (
-            <div className="workout-chart-legend-item">
-              <span className="workout-chart-legend-color planned" />
-              <span>Planned Pace</span>
-            </div>
-          )}
-          {executedList.length > 0 && (
-            <div className="workout-chart-legend-item">
-              <span className="workout-chart-legend-color executed" />
-              <span>Executed</span>
-            </div>
+      {/* Top Header Row */}
+      {showTopBar && (
+        <div className="workout-chart-top-bar">
+          {isWorkoutNameVisible && (
+            <span className="workout-chart-title" style={{ fontWeight: 600, fontSize: '12px' }}>
+              {workoutTitleStr}
+            </span>
           )}
 
-          {plannedList.length > 0 && executedList.length > 0 && (
-            <button
-              type="button"
-              className="workout-layer-swap-btn"
-              onClick={() => setExecutedOnTop((prev) => !prev)}
-              title={executedOnTop ? "Executed is in front. Click to bring Planned to front." : "Planned is in front. Click to bring Executed to front."}
-              style={{
-                background: 'transparent',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                padding: '2px 6px',
-                marginLeft: '8px',
-                fontSize: '13px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '2px',
-                color: 'inherit'
-              }}
-            >
-              ⇄
-            </button>
+          {isLegendVisible && (
+            <div className="workout-chart-legend">
+              {plannedList.length > 0 && (
+                <div className="workout-chart-legend-item">
+                  <span className="workout-chart-legend-color planned" />
+                  <span>Planned Pace</span>
+                </div>
+              )}
+              {executedList.length > 0 && (
+                <div className="workout-chart-legend-item">
+                  <span className="workout-chart-legend-color executed" />
+                  <span>Executed</span>
+                </div>
+              )}
+
+              {plannedList.length > 0 && executedList.length > 0 && (
+                <button
+                  type="button"
+                  className="workout-layer-swap-btn"
+                  onClick={() => setExecutedOnTop((prev) => !prev)}
+                  title={executedOnTop ? "Executed is in front. Click to bring Planned to front." : "Planned is in front. Click to bring Executed to front."}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    padding: '2px 6px',
+                    marginLeft: '8px',
+                    fontSize: '13px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    color: 'inherit'
+                  }}
+                >
+                  ⇄
+                </button>
+              )}
+            </div>
+          )}
+
+          {isThresholdPaceVisible && (
+            <span className="workout-section-badge">
+              Threshold ({workout?.type || 'Sport'}): {thresholdDisplayStr}
+            </span>
           )}
         </div>
-
-        {showThresholdPace && (
-          <span className="workout-section-badge">
-            Threshold ({workout?.type || 'Sport'}): {thresholdDisplayStr}
-          </span>
-        )}
-      </div>
+      )}
 
       <div className="workout-chart-wrapper">
         {renderYAxis && (
@@ -423,7 +442,7 @@ export default function WorkoutChart({
               </div>
             )}
 
-            {/* EXECUTED BARS LAYER (Lighter Shading & Dynamic z-index) */}
+            {/* EXECUTED BARS LAYER */}
             {executedList.length > 0 && (
               <div 
                 className="workout-chart-bars track-executed" 
@@ -504,10 +523,10 @@ export default function WorkoutChart({
             whiteSpace: 'nowrap'
           }}
         >
-          {!showWorkoutName && (
+          {!isWorkoutNameVisible && (
             <div><strong>Workout Name:</strong> {workoutTitleStr}</div>
           )}
-          {!showThresholdPace && (
+          {!isThresholdPaceVisible && (
             <div><strong>Threshold Pace:</strong> {thresholdDisplayStr}</div>
           )}
         </div>

@@ -344,6 +344,7 @@ export default function MonthlyView() {
                       showWorkoutName={false}
                       showThresholdPace={false}
                       showYAxisLabels={false}
+                      showLegend={false}
                     />
                   )}
                 </div>
