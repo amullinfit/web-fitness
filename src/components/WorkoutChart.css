@@ -1,5 +1,6 @@
 /* Container */
 .workout-chart-container {
+  position: relative; /* Essential for relative positioning of hover tooltip */
   margin: 12px 0;
   border: 1px solid #e9ecef;
   border-radius: 8px;
@@ -8,7 +9,7 @@
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
-  overflow: hidden; /* Constrains internal content to parent boundary */
+  overflow: visible; /* Allows hover tooltip to display properly over boundaries */
 }
 
 .workout-chart-top-bar {
@@ -18,6 +19,28 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.workout-chart-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.workout-chart-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #212529;
+}
+
+.workout-chart-threshold {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6c757d;
+  background-color: #f1f3f5;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 /* Legend */
@@ -74,7 +97,7 @@
 /* Responsive Y-Axis */
 .workout-chart-yaxis {
   position: relative;
-  width: 50px; /* Reduced base width for mobile */
+  width: 40px; /* Reduced base width for compact view */
   margin-right: 6px;
   font-size: 9px;
   color: #6c757d;
@@ -103,6 +126,9 @@
   position: relative;
   width: 100%;
   box-sizing: border-box;
+  background-color: #f1f3f5;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 /* Layering Track Wrappers */
@@ -179,6 +205,16 @@
   stroke-width: 2px;
 }
 
+.workout-chart-empty-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 10px;
+  color: #adb5bd;
+}
+
 /* Responsive X-Axis */
 .workout-chart-xaxis {
   display: flex;
@@ -191,11 +227,48 @@
   overflow: hidden;
 }
 
+/* Hover Tooltip for Hidden Elements */
+.workout-chart-hover-tooltip {
+  position: absolute;
+  top: -8px;
+  right: 12px;
+  transform: translateY(-100%);
+  background-color: #212529;
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  z-index: 100;
+  white-space: nowrap;
+}
+
+.workout-chart-hover-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  right: 16px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #212529;
+}
+
+.workout-chart-tooltip-row {
+  line-height: 1.4;
+}
+
 /* Desktop Enhancements (768px and up) */
 @media (min-width: 768px) {
   .workout-chart-container {
     padding: 16px;
     margin: 16px 0;
+  }
+
+  .workout-chart-title {
+    font-size: 13px;
   }
 
   .workout-chart-legend {
@@ -214,7 +287,7 @@
   }
 
   .workout-chart-yaxis {
-    width: 70px;
+    width: 50px;
     margin-right: 12px;
     font-size: 10px;
   }

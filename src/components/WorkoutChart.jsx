@@ -201,10 +201,19 @@ export default function WorkoutChart({
   workout, 
   thresholdPace, 
   chartHeight = '140px',
-  showYAxis = true
+  showYAxis,
+  showWorkoutName = true,
+  showThresholdPace = true,
+  showYAxisLabels = true
 }) {
   const clipId = useId();
   const [executedOnTop, setExecutedOnTop] = useState(true);
+  const [isChartHovered, setIsChartHovered] = useState(false);
+
+  // Handle fallback if legacy showYAxis prop is explicitly passed
+  const renderYAxis = showYAxis !== undefined ? showYAxis : showYAxisLabels;
+
+  const workoutTitleStr = workout?.name || workout?.title || 'Workout';
 
   const plannedList = extractPlannedSteps(workout);
   const executedList = extractExecutedSteps(workout);
@@ -279,10 +288,24 @@ export default function WorkoutChart({
     return Math.min(Math.max(pct, 0), 100);
   };
 
+  const hasHiddenDetails = !showWorkoutName || !showThresholdPace;
+
   return (
-    <div className="workout-chart-container">
-      {/* Top Header Row with Legend, Swap Layer Button, & Threshold Badge */}
+    <div 
+      className="workout-chart-container"
+      style={{ position: 'relative' }}
+      onMouseEnter={() => setIsChartHovered(true)}
+      onMouseLeave={() => setIsChartHovered(false)}
+      onTouchStart={() => setIsChartHovered(true)}
+    >
+      {/* Top Header Row with Workout Name, Legend, Swap Layer Button, & Threshold Badge */}
       <div className="workout-chart-top-bar">
+        {showWorkoutName && (
+          <span className="workout-chart-title" style={{ fontWeight: 600, fontSize: '12px' }}>
+            {workoutTitleStr}
+          </span>
+        )}
+
         <div className="workout-chart-legend">
           {plannedList.length > 0 && (
             <div className="workout-chart-legend-item">
@@ -322,13 +345,15 @@ export default function WorkoutChart({
           )}
         </div>
 
-        <span className="workout-section-badge">
-          Threshold ({workout?.type || 'Sport'}): {thresholdDisplayStr}
-        </span>
+        {showThresholdPace && (
+          <span className="workout-section-badge">
+            Threshold ({workout?.type || 'Sport'}): {thresholdDisplayStr}
+          </span>
+        )}
       </div>
 
       <div className="workout-chart-wrapper">
-        {showYAxis && (
+        {renderYAxis && (
           <div className="workout-chart-yaxis" style={{ height: chartHeight }}>
             {yTicks.map((tick, idx) => (
               <span 
@@ -458,6 +483,35 @@ export default function WorkoutChart({
           </div>
         </div>
       </div>
+
+      {/* Hover tooltip for hidden fields */}
+      {hasHiddenDetails && isChartHovered && (
+        <div 
+          className="workout-chart-hover-tooltip"
+          style={{
+            position: 'absolute',
+            top: '-8px',
+            right: '12px',
+            transform: 'translateY(-100%)',
+            backgroundColor: 'rgba(33, 37, 41, 0.92)',
+            color: '#ffffff',
+            padding: '6px 10px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            pointerEvents: 'none',
+            zIndex: 100,
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {!showWorkoutName && (
+            <div><strong>Workout Name:</strong> {workoutTitleStr}</div>
+          )}
+          {!showThresholdPace && (
+            <div><strong>Threshold Pace:</strong> {thresholdDisplayStr}</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
