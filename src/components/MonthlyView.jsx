@@ -119,7 +119,6 @@ export default function MonthlyView() {
   const [currentWeekMonday, setCurrentWeekMonday] = useState(() => getMondayOfWeek(new Date()));
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // Filter states
   const [activeFilters, setActiveFilters] = useState([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [tempFilters, setTempFilters] = useState([]);

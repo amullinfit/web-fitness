@@ -287,15 +287,19 @@
   flex: 1;
 }
 
-/* Workout Items */
+/* Workout Items - Tightened vertical spacing */
 .monthly-workout-item {
   background: #fdfdfd;
   border: 1px solid #ebedf0;
   border-radius: 4px;
-  padding: 4px;
+  padding: 2px 4px 1px 4px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
+}
+
+.monthly-workout-item > div:last-child {
+  margin-bottom: 0;
 }
 
 .monthly-completed {
@@ -315,4 +319,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 1px;
+  line-height: 1.1;
 }
