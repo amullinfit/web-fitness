@@ -386,7 +386,7 @@ export default function MonthlyView() {
                       showThresholdPace={false}
                       showYAxisLabels={false}
                       showLegend={false}
-                      minimalXAxis={false}
+                      minimalXAxis={true}
                       showHoverDetails={false}
                     />
                   )}
