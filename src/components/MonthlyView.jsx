@@ -341,6 +341,9 @@ export default function MonthlyView() {
                       workout={workout}
                       thresholdPace={thresholdPaceMps}
                       chartHeight={isMobile ? "60px" : "80px"}
+                      showWorkoutName={false}
+                      showThresholdPace={false}
+                      showYAxisLabels={false}
                     />
                   )}
                 </div>
