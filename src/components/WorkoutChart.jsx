@@ -213,7 +213,8 @@ export default function WorkoutChart({
   showThresholdPace = true,
   showYAxisLabels = true,
   showLegend = true,
-  minimalXAxis = false
+  minimalXAxis = false,
+  showHoverDetails = true
 }) {
   const clipId = useId();
   const [executedOnTop, setExecutedOnTop] = useState(true);
@@ -224,6 +225,7 @@ export default function WorkoutChart({
   const isThresholdPaceVisible = parseBoolProp(showThresholdPace, true);
   const isLegendVisible = parseBoolProp(showLegend, true);
   const isMinimalXAxis = parseBoolProp(minimalXAxis, false);
+  const isHoverDetailsEnabled = parseBoolProp(showHoverDetails, true);
   
   const renderYAxis = showYAxis !== undefined 
     ? parseBoolProp(showYAxis, true) 
@@ -516,7 +518,7 @@ export default function WorkoutChart({
       </div>
 
       {/* Hover tooltip for hidden fields */}
-      {hasHiddenDetails && isChartHovered && (
+      {isHoverDetailsEnabled && hasHiddenDetails && isChartHovered && (
         <div 
           className="workout-chart-hover-tooltip"
           style={{

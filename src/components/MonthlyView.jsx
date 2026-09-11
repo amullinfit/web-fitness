@@ -380,13 +380,14 @@ export default function MonthlyView() {
                   {(workout.workout_doc || workout.intervals) && (
                     <WorkoutChart
                       workout={workout}
-                      thresholdPace={thresholdPaceMps}
-                      chartHeight={isMobile ? "35px" : "55px"}
+                      thresholdPace={thresholdPace}
+                      chartHeight="80px"
                       showWorkoutName={false}
                       showThresholdPace={false}
                       showYAxisLabels={false}
                       showLegend={false}
                       minimalXAxis={true}
+                      showHoverDetails={false}
                     />
                   )}
                 </div>
