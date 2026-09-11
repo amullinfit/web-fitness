@@ -69,7 +69,7 @@
 .monthly-nav-bar {
   background-color: #fff;
   border-bottom: 1px solid #ddd;
-  padding: 10px 16px;
+  padding: 8px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -118,11 +118,11 @@
 .monthly-grid {
   flex: 1;
   overflow-y: auto;
-  padding: 6px;
+  padding: 4px;
   box-sizing: border-box;
 }
 
-/* Desktop: Tight 7-column grid layout */
+/* Desktop: 4 Weeks x 7 Days Grid */
 .monthly-grid-desktop {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -135,7 +135,7 @@
   min-width: 0;
 }
 
-/* Mobile: 3-column layout */
+/* Mobile: Responsive Grid */
 .monthly-grid-mobile {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -158,7 +158,7 @@
   flex-direction: column;
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  min-height: 180px;
+  min-height: 110px;
   box-sizing: border-box;
 }
 
@@ -177,10 +177,10 @@
   border-bottom: 1px solid #1976d2;
 }
 
-/* Day Header - Single Row Format (DAY / DATE) */
+/* Day Header */
 .monthly-day-header {
   background-color: #f9f9f9;
-  padding: 4px 6px;
+  padding: 3px 4px;
   border-bottom: 1px solid #eee;
   display: flex;
   flex-direction: row;
@@ -191,31 +191,31 @@
 
 .monthly-day-name {
   font-weight: 700;
-  font-size: 11px;
+  font-size: 10px;
   color: #333;
   text-transform: uppercase;
 }
 
 .monthly-day-separator {
-  font-size: 11px;
+  font-size: 10px;
   color: #999;
   font-weight: 400;
 }
 
 .monthly-day-date {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: #666;
 }
 
-/* Day Workouts Container - Reduced Side Padding */
+/* Day Workouts Container */
 .monthly-day-workouts {
   flex: 1;
   overflow-y: auto;
-  padding: 3px 2px;
+  padding: 2px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 /* Empty Day */
@@ -225,16 +225,16 @@
   align-items: center;
   justify-content: center;
   color: #ccc;
-  font-size: 12px;
+  font-size: 11px;
 }
 
-/* Workout Item - Maximum Width for Charts */
+/* Workout Item */
 .monthly-workout-item {
   background-color: #fafafa;
   border: 1px solid #e0e0e0;
   border-radius: 3px;
-  padding: 3px 2px;
-  font-size: 11px;
+  padding: 2px;
+  font-size: 10px;
   transition: all 0.2s ease;
   cursor: pointer;
   width: 100%;
@@ -271,31 +271,26 @@
 .monthly-workout-type {
   font-weight: 600;
   color: #1565c0;
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.2px;
   padding-left: 2px;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
-/* Desktop Responsive */
+/* Media Queries */
 @media (min-width: 1920px) {
-  .monthly-grid-desktop {
-    gap: 6px;
-  }
-
   .monthly-day-cell {
-    min-height: 220px;
+    min-height: 140px;
   }
 }
 
 @media (max-width: 1440px) {
   .monthly-day-cell {
-    min-height: 150px;
+    min-height: 110px;
   }
 }
 
-/* Tablet Responsive */
 @media (max-width: 1024px) {
   .monthly-nav-bar {
     flex-direction: column;
@@ -308,20 +303,11 @@
     text-align: center;
   }
 
-  .monthly-grid {
-    padding: 4px;
-  }
-
-  .monthly-grid-desktop {
-    gap: 4px;
-  }
-
   .monthly-day-cell {
-    min-height: 140px;
+    min-height: 100px;
   }
 }
 
-/* Mobile View: 3 columns */
 @media (max-width: 768px) {
   .monthly-view-container {
     height: auto;
@@ -346,33 +332,8 @@
     font-size: 12px;
   }
 
-  .monthly-grid {
-    padding: 4px;
-  }
-
-  .monthly-grid-mobile {
-    gap: 4px;
-  }
-
   .monthly-grid-mobile .monthly-day-cell {
-    min-height: 130px;
-  }
-}
-
-/* Small Mobile Phones */
-@media (max-width: 480px) {
-  .monthly-grid-mobile {
-    gap: 3px;
-  }
-
-  .monthly-day-header {
-    padding: 3px 4px;
-  }
-
-  .monthly-day-name,
-  .monthly-day-date,
-  .monthly-day-separator {
-    font-size: 10px;
+    min-height: 100px;
   }
 }
 
@@ -392,9 +353,4 @@
 .monthly-grid::-webkit-scrollbar-thumb {
   background: #bbb;
   border-radius: 2px;
-}
-
-.monthly-day-workouts::-webkit-scrollbar-thumb:hover,
-.monthly-grid::-webkit-scrollbar-thumb:hover {
-  background: #999;
 }

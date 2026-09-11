@@ -4,9 +4,6 @@ import './MonthlyView.css';
 
 const VAL_WORKOUTS_URL = "/api/val-workouts";
 const HISTORICAL_URL = "/api/val-historical";
-const GEAR_REMOVE_URL = "/api/val-gear-remove";
-const GEAR_ADD_URL = "/api/val-gear-add";
-const GEAR_URL = "/api/val-gear";
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(
@@ -97,9 +94,10 @@ const getMondayOfWeek = (date) => {
   return new Date(d.setDate(diff));
 };
 
-const getDatesByDay = (startMonday) => {
+// Generates 28 total days (4 full weeks) starting from startMonday
+const getFourWeeksDates = (startMonday) => {
   const dates = [];
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 28; i++) {
     const date = new Date(startMonday);
     date.setDate(date.getDate() + i);
     dates.push(date);
@@ -115,13 +113,6 @@ export default function MonthlyView() {
   const [errorMessage, setErrorMessage] = useState(null);
 
   const isMobile = useIsMobile(768);
-
-  const showErrorMessage = (msg) => {
-    setErrorMessage(msg);
-    setTimeout(() => {
-      setErrorMessage(null);
-    }, 6000);
-  };
 
   useEffect(() => {
     let isMounted = true;
@@ -242,11 +233,12 @@ export default function MonthlyView() {
     };
   }, []);
 
-  const weekDates = useMemo(() => getDatesByDay(currentWeekMonday), [currentWeekMonday]);
+  // Compute 4 full weeks of dates starting from currentWeekMonday
+  const fourWeeksDates = useMemo(() => getFourWeeksDates(currentWeekMonday), [currentWeekMonday]);
 
   const workoutsByDate = useMemo(() => {
     const map = {};
-    weekDates.forEach((date) => {
+    fourWeeksDates.forEach((date) => {
       const dateStr = getLocalDateString(date);
       map[dateStr] = [];
     });
@@ -262,10 +254,11 @@ export default function MonthlyView() {
     }
 
     return map;
-  }, [workouts, weekDates]);
+  }, [workouts, fourWeeksDates]);
 
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
 
+  // Moves range 1 week backward
   const handlePrevWeek = () => {
     setCurrentWeekMonday((prev) => {
       const newMonday = new Date(prev);
@@ -274,6 +267,7 @@ export default function MonthlyView() {
     });
   };
 
+  // Moves range 1 week forward
   const handleNextWeek = () => {
     setCurrentWeekMonday((prev) => {
       const newMonday = new Date(prev);
@@ -338,7 +332,7 @@ export default function MonthlyView() {
                     <WorkoutChart
                       workout={workout}
                       thresholdPace={thresholdPaceMps}
-                      chartHeight={isMobile ? "40px" : "80px"}
+                      chartHeight={isMobile ? "35px" : "55px"}
                       showWorkoutName={false}
                       showThresholdPace={false}
                       showYAxisLabels={false}
@@ -353,6 +347,8 @@ export default function MonthlyView() {
       </div>
     );
   };
+
+  const fourWeeksEndDate = new Date(currentWeekMonday.getTime() + 27 * 24 * 60 * 60 * 1000);
 
   return (
     <div className="monthly-view-container">
@@ -386,18 +382,19 @@ export default function MonthlyView() {
         </div>
         <div className="monthly-week-label">
           {currentWeekMonday.toLocaleDateString(undefined, {
-            month: 'long',
+            month: 'short',
             day: 'numeric',
             year: 'numeric'
-          })} - {new Date(currentWeekMonday.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString(undefined, {
-            month: 'long',
-            day: 'numeric'
+          })} - {fourWeeksEndDate.toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
           })}
         </div>
       </div>
 
       <div className={`monthly-grid ${isMobile ? 'monthly-grid-mobile' : 'monthly-grid-desktop'}`}>
-        {weekDates.map((date) => {
+        {fourWeeksDates.map((date) => {
           const dateStr = getLocalDateString(date);
           return renderDayCell(date, workoutsByDate[dateStr] || []);
         })}
