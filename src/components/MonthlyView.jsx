@@ -333,9 +333,6 @@ export default function MonthlyView() {
                   <div className="monthly-workout-type">
                     {workout.type || workout.sport || 'Activity'}
                   </div>
-                  <div className="monthly-workout-title">
-                    {workout.name || workout.title || 'Workout'}
-                  </div>
                   {(workout.workout_doc || workout.intervals) && (
                     <WorkoutChart
                       workout={workout}
