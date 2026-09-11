@@ -94,7 +94,6 @@ const getMondayOfWeek = (date) => {
   return new Date(d.setDate(diff));
 };
 
-// Generates 28 total days (4 full weeks) starting from startMonday
 const getFourWeeksDates = (startMonday) => {
   const dates = [];
   for (let i = 0; i < 28; i++) {
@@ -233,7 +232,6 @@ export default function MonthlyView() {
     };
   }, []);
 
-  // Compute 4 full weeks of dates starting from currentWeekMonday
   const fourWeeksDates = useMemo(() => getFourWeeksDates(currentWeekMonday), [currentWeekMonday]);
 
   const workoutsByDate = useMemo(() => {
@@ -258,7 +256,6 @@ export default function MonthlyView() {
 
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
 
-  // Moves range 1 week backward
   const handlePrevWeek = () => {
     setCurrentWeekMonday((prev) => {
       const newMonday = new Date(prev);
@@ -267,7 +264,6 @@ export default function MonthlyView() {
     });
   };
 
-  // Moves range 1 week forward
   const handleNextWeek = () => {
     setCurrentWeekMonday((prev) => {
       const newMonday = new Date(prev);
@@ -310,7 +306,10 @@ export default function MonthlyView() {
           <span className="monthly-day-date">{formatHeaderDate(date)}</span>
         </div>
 
-        <div className="monthly-day-workouts">
+        <div 
+          className="monthly-day-workouts"
+          style={{ overflowY: workoutList.length > 1 ? 'auto' : 'hidden' }}
+        >
           {workoutList.length === 0 ? (
             <div className="monthly-empty-day"></div>
           ) : (
