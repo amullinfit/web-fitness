@@ -450,46 +450,75 @@ export default function MonthlyView() {
             </button>
 
             {isFilterOpen && (
-              <div className="monthly-filter-modal">
-                <div className="monthly-filter-title">Filter Workouts</div>
-                <div className="monthly-filter-options">
-                  {['Swim', 'Bike', 'Run', 'Other'].map((sport) => (
-                    <label key={sport} className="monthly-filter-option">
-                      <input
-                        type="checkbox"
-                        checked={tempFilters.includes(sport)}
-                        onChange={() => handleToggleTempFilter(sport)}
-                      />
-                      <span>{sport}</span>
-                    </label>
-                  ))}
-                </div>
-                <div className="monthly-filter-actions-row">
-                  <button
-                    type="button"
-                    className="monthly-filter-btn-sm"
-                    onClick={handleClearAll}
-                  >
-                    Clear All
-                  </button>
-                  <div className="monthly-filter-right-actions">
+              <>
+                {isMobile && (
+                  <div 
+                    className="monthly-filter-overlay"
+                    onClick={handleCancelFilter}
+                    style={{
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                      zIndex: 999
+                    }}
+                  />
+                )}
+                <div 
+                  className="monthly-filter-modal"
+                  style={isMobile ? {
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 1000,
+                    width: '85%',
+                    maxWidth: '320px',
+                    boxSizing: 'border-box'
+                  } : {}}
+                >
+                  <div className="monthly-filter-title">Filter Workouts</div>
+                  <div className="monthly-filter-options">
+                    {['Swim', 'Bike', 'Run', 'Other'].map((sport) => (
+                      <label key={sport} className="monthly-filter-option">
+                        <input
+                          type="checkbox"
+                          checked={tempFilters.includes(sport)}
+                          onChange={() => handleToggleTempFilter(sport)}
+                        />
+                        <span>{sport}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="monthly-filter-actions-row">
                     <button
                       type="button"
                       className="monthly-filter-btn-sm"
-                      onClick={handleCancelFilter}
+                      onClick={handleClearAll}
                     >
-                      Cancel
+                      Clear All
                     </button>
-                    <button
-                      type="button"
-                      className="monthly-filter-btn-sm monthly-filter-btn-primary"
-                      onClick={handleAcceptFilter}
-                    >
-                      Accept
-                    </button>
+                    <div className="monthly-filter-right-actions">
+                      <button
+                        type="button"
+                        className="monthly-filter-btn-sm"
+                        onClick={handleCancelFilter}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="monthly-filter-btn-sm monthly-filter-btn-primary"
+                        onClick={handleAcceptFilter}
+                      >
+                        Accept
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
 
