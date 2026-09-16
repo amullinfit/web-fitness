@@ -16,7 +16,8 @@ const parseMMSS = (str) => {
   return mins * 60 + secs;
 };
 
-const formatDistance = (miles) => (miles || 0).toFixed(1) + ' mi';
+// Formats distance in 0.00 mi
+const formatDistance = (miles) => (miles || 0).toFixed(2) + ' mi';
 
 // Helper factory to initialize defaults by type
 const createStep = (type) => {
@@ -134,7 +135,6 @@ export default function WorkoutBuilder() {
 
     const { step: itemToMove, parentId: sourceParentId } = draggedItem;
 
-    // Helper to extract item from source
     const removeFromTree = (list, parentId, stepId) => {
       if (!parentId) return list.filter((s) => s.id !== stepId);
       return list.map((s) => {
@@ -148,7 +148,6 @@ export default function WorkoutBuilder() {
       });
     };
 
-    // Helper to insert item into target
     const insertIntoTree = (list, parentId, index, item) => {
       if (!parentId) {
         const copy = [...list];
@@ -199,7 +198,7 @@ export default function WorkoutBuilder() {
             🔍 Zoom Chart
           </button>
         </div>
-        <RenderWorkoutChart steps={steps} height={120} />
+        <RenderWorkoutChart steps={steps} height={140} />
       </div>
 
       {/* Add Step Action Controls */}
@@ -281,7 +280,6 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
           </button>
         </div>
 
-        {/* Inner nested drop zone */}
         <div
           className="repeat-inner-drop"
           onDragOver={(e) => e.preventDefault()}
@@ -315,7 +313,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
   }
 
   // Standard step row (Warmup, Run, Recovery, Cooldown)
-  const dist = (step.durationSec / (step.targetPaceSec || 1)).toFixed(1);
+  const distMiles = (step.durationSec / (step.targetPaceSec || 1));
 
   return (
     <div
@@ -349,7 +347,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
       </label>
 
       <span className="dist-display">
-        Dist: <strong>{dist} mi</strong>
+        Dist: <strong>{formatDistance(distMiles)}</strong>
       </span>
 
       <button className="btn-remove" onClick={() => onRemove(step.id)} title="Remove Step">
@@ -359,7 +357,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
   );
 }
 
-// Visual workout bar chart component
+// Visual workout profile chart component
 function RenderWorkoutChart({ steps, height }) {
   const flattenSteps = (list) => {
     let result = [];
@@ -377,6 +375,11 @@ function RenderWorkoutChart({ steps, height }) {
 
   const flatSteps = flattenSteps(steps);
   const totalDuration = flatSteps.reduce((acc, curr) => acc + curr.durationSec, 0) || 1;
+
+  // Speeds in mph / relative intensity (Velocity = 1 / targetPaceSec)
+  const velocities = flatSteps.map((s) => (s.targetPaceSec > 0 ? 1 / s.targetPaceSec : 0));
+  const maxVel = Math.max(...velocities, 0.0001);
+  const minVel = Math.min(...velocities, maxVel);
 
   const getTypeColor = (type) => {
     switch (type) {
@@ -403,7 +406,17 @@ function RenderWorkoutChart({ steps, height }) {
     >
       {flatSteps.map((step, idx) => {
         const widthPct = (step.durationSec / totalDuration) * 100;
-        const barHeightPct = Math.min(100, Math.max(25, 1000 - (step.targetPaceSec / 60) * 75));
+
+        // Convert pace to relative height (% of max velocity in current workout)
+        const currentVel = step.targetPaceSec > 0 ? 1 / step.targetPaceSec : 0;
+        
+        let barHeightPct = 20; // Default floor height
+        if (maxVel === minVel) {
+          barHeightPct = 60; // Default baseline if all paces are identical
+        } else {
+          // Normalize height between 25% and 95% relative to min and max workout velocities
+          barHeightPct = 25 + ((currentVel - minVel) / (maxVel - minVel)) * 70;
+        }
 
         return (
           <div
@@ -413,7 +426,7 @@ function RenderWorkoutChart({ steps, height }) {
               height: `${barHeightPct}%`,
               backgroundColor: getTypeColor(step.type),
               borderRight: '1px solid rgba(255,255,255,0.4)',
-              transition: 'all 0.2s ease',
+              transition: 'height 0.2s ease, width 0.2s ease',
             }}
             title={`${step.type.toUpperCase()}: ${formatMMSS(step.durationSec)} @ ${formatMMSS(step.targetPaceSec)}/mi`}
           />
