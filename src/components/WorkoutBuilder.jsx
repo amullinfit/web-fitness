@@ -1,7 +1,19 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import './WorkoutBuilder.css';
 
-// Helper utilities for MM:SS parsing and formatting
+// Helper utilities for MM:SS and H:MM:SS parsing and formatting
+const formatTime = (totalSeconds) => {
+  const sec = totalSeconds || 0;
+  const hrs = Math.floor(sec / 3600);
+  const mins = Math.floor((sec % 3600) / 60);
+  const secs = sec % 60;
+
+  if (hrs > 0) {
+    return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+
 const formatMMSS = (totalSeconds) => {
   const mins = Math.floor((totalSeconds || 0) / 60);
   const secs = (totalSeconds || 0) % 60;
@@ -12,9 +24,15 @@ const parseMMSS = (str) => {
   if (!str) return 0;
   const cleanStr = String(str).trim();
 
-  // Handle explicit MM:SS format (e.g., "8:30" or "08:30")
+  // Handle explicit H:MM:SS or MM:SS format
   if (cleanStr.includes(':')) {
     const parts = cleanStr.split(':');
+    if (parts.length === 3) {
+      const hrs = parseInt(parts[0], 10) || 0;
+      const mins = parseInt(parts[1], 10) || 0;
+      const secs = parseInt(parts[2], 10) || 0;
+      return hrs * 3600 + mins * 60 + secs;
+    }
     const mins = parseInt(parts[0], 10) || 0;
     const secs = parseInt(parts[1], 10) || 0;
     return mins * 60 + secs;
@@ -25,10 +43,8 @@ const parseMMSS = (str) => {
   if (isNaN(num)) return 0;
 
   if (num < 100) {
-    // Single or double digits treated directly as minutes (e.g., "8" -> 8:00)
     return num * 60;
   } else {
-    // 3 or 4 digits treated as MMSS (e.g., "730" -> 7:30, "1030" -> 10:30)
     const mins = Math.floor(num / 100);
     const secs = num % 100;
     return mins * 60 + Math.min(secs, 59);
@@ -221,7 +237,7 @@ export default function WorkoutBuilder() {
           className="builder-title-input"
         />
         <div className="builder-totals">
-          Total Time: <span className="total-time-val">{formatMMSS(totals.totalSec)}</span> | 
+          Total Time: <span className="total-time-val">{formatTime(totals.totalSec)}</span> | 
           Total Dist: <span className="total-dist-val">{formatDistance(totals.totalMiles)}</span>
         </div>
       </div>
@@ -285,14 +301,14 @@ export default function WorkoutBuilder() {
   );
 }
 
-// Editable Time/Pace Input component that allows natural MM:SS typing
+// Editable Time/Pace Input component
 function MMSSInput({ valueSec, onChange }) {
-  const [text, setText] = useState(formatMMSS(valueSec));
+  const [text, setText] = useState(formatTime(valueSec));
   const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
     if (!isFocused) {
-      setText(formatMMSS(valueSec));
+      setText(formatTime(valueSec));
     }
   }, [valueSec, isFocused]);
 
@@ -313,7 +329,7 @@ function MMSSInput({ valueSec, onChange }) {
   const handleBlur = () => {
     setIsFocused(false);
     const parsedSec = parseMMSS(text);
-    setText(formatMMSS(parsedSec));
+    setText(formatTime(parsedSec));
     onChange(parsedSec);
   };
 
@@ -494,7 +510,7 @@ function RenderWorkoutChart({ steps, height }) {
               borderRight: '1px solid rgba(255,255,255,0.4)',
               transition: 'height 0.2s ease, width 0.2s ease, background-color 0.2s ease',
             }}
-            title={`${step.type.toUpperCase()}: ${formatMMSS(step.durationSec)} @ ${formatMMSS(step.targetPaceSec)}/mi`}
+            title={`${step.type.toUpperCase()}: ${formatTime(step.durationSec)} @ ${formatMMSS(step.targetPaceSec)}/mi`}
           />
         );
       })}
