@@ -1,7 +1,44 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import './WorkoutBuilder.css';
 
-// Helper utilities for MM:SS and H:MM:SS parsing and formatting
+// --- Val Town API Integration Helpers ---
+const VAL_TOWN_BASE_URL = 'https://your-username-valname.express.val.run'; // Replace with your Val Town endpoint
+
+async function fetchFoldersApi() {
+  const res = await fetch(VAL_TOWN_BASE_URL, { method: 'GET' });
+  if (!res.ok) throw new Error('Failed to fetch folders');
+  return await res.json();
+}
+
+async function createFolderApi(folderName) {
+  const res = await fetch(VAL_TOWN_BASE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'create_folder',
+      folderData: { name: folderName, type: 'FOLDER' },
+    }),
+  });
+  if (!res.ok) throw new Error('Failed to create folder');
+  return await res.json();
+}
+
+async function saveWorkoutApi(action, workoutId, workoutData) {
+  const method = action === 'update_workout' ? 'PUT' : 'POST';
+  const res = await fetch(VAL_TOWN_BASE_URL, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action,
+      workoutId,
+      workoutData,
+    }),
+  });
+  if (!res.ok) throw new Error(`Failed to ${action === 'update_workout' ? 'update' : 'create'} workout`);
+  return await res.json();
+}
+
+// --- Helper utilities for MM:SS and H:MM:SS parsing and formatting ---
 const formatTime = (totalSeconds) => {
   const sec = totalSeconds || 0;
   const hrs = Math.floor(sec / 3600);
@@ -24,7 +61,6 @@ const parseMMSS = (str) => {
   if (!str) return 0;
   const cleanStr = String(str).trim();
 
-  // Handle explicit H:MM:SS or MM:SS format
   if (cleanStr.includes(':')) {
     const parts = cleanStr.split(':');
     if (parts.length === 3) {
@@ -38,7 +74,6 @@ const parseMMSS = (str) => {
     return mins * 60 + secs;
   }
 
-  // Handle direct number input (e.g., "830" -> 8m 30s, "8" -> 8m 00s, "1030" -> 10m 30s)
   const num = parseInt(cleanStr, 10);
   if (isNaN(num)) return 0;
 
@@ -51,27 +86,17 @@ const parseMMSS = (str) => {
   }
 };
 
-// Formats distance in 0.00 mi
 const formatDistance = (miles) => (miles || 0).toFixed(2) + ' mi';
 
-// Zone Pace Thresholds & Color Helper
 const getZoneColor = (paceSec) => {
-  if (!paceSec || paceSec <= 0) return '#6c757d'; // Default fallback
-
-  if (paceSec > 570) {
-    return '#6c757d'; // Z1 (Warmup/Recovery) - Grey
-  } else if (paceSec > 510) {
-    return '#28a745'; // Z2 (Endurance) - Green
-  } else if (paceSec > 465) {
-    return '#ffc107'; // Z3 (Tempo) - Yellow
-  } else if (paceSec > 420) {
-    return '#fd7e14'; // Z4 (Threshold) - Orange
-  } else {
-    return '#dc3545'; // Z5 (Anaerobic / Speed) - Red
-  }
+  if (!paceSec || paceSec <= 0) return '#6c757d';
+  if (paceSec > 570) return '#6c757d';
+  if (paceSec > 510) return '#28a745';
+  if (paceSec > 465) return '#ffc107';
+  if (paceSec > 420) return '#fd7e14';
+  return '#dc3545';
 };
 
-// Map pace to standard Zone IDs (Z1 to Z5)
 const getZoneId = (paceSec) => {
   if (!paceSec || paceSec <= 0) return 'Z1';
   if (paceSec > 570) return 'Z1';
@@ -81,18 +106,17 @@ const getZoneId = (paceSec) => {
   return 'Z5';
 };
 
-// Helper factory to initialize defaults by type
 const createStep = (type) => {
   const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
   switch (type) {
     case 'warmup':
-      return { id, type: 'warmup', durationSec: 600, targetPaceSec: 540 }; // 10:00 @ 9:00/mi
+      return { id, type: 'warmup', durationSec: 600, targetPaceSec: 540 };
     case 'run':
-      return { id, type: 'run', durationSec: 600, targetPaceSec: 480 }; // 10:00 @ 8:00/mi
+      return { id, type: 'run', durationSec: 600, targetPaceSec: 480 };
     case 'recovery':
-      return { id, type: 'recovery', durationSec: 120, targetPaceSec: 660 }; // 02:00 @ 11:00/mi
+      return { id, type: 'recovery', durationSec: 120, targetPaceSec: 660 };
     case 'cooldown':
-      return { id, type: 'cooldown', durationSec: 600, targetPaceSec: 540 }; // 10:00 @ 9:00/mi
+      return { id, type: 'cooldown', durationSec: 600, targetPaceSec: 540 };
     case 'repeat':
       return {
         id,
@@ -105,7 +129,9 @@ const createStep = (type) => {
   }
 };
 
-export default function WorkoutBuilder() {
+export default function WorkoutBuilder({ existingWorkoutId = null }) {
+  // Workout State
+  const [workoutId, setWorkoutId] = useState(existingWorkoutId);
   const [workoutTitle, setWorkoutTitle] = useState('New Workout');
   const [docNotes, setDocNotes] = useState('NOTES ONLY');
   const [steps, setSteps] = useState([
@@ -113,10 +139,53 @@ export default function WorkoutBuilder() {
     createStep('repeat'),
     createStep('cooldown'),
   ]);
+
+  // Folder & API UI State
+  const [folders, setFolders] = useState([]);
+  const [selectedFolderId, setSelectedFolderId] = useState('');
+  const [newFolderName, setNewFolderName] = useState('');
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [apiLoading, setApiLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
 
-  // Total time and total distance calculations
+  // Load Folders on Mount
+  useEffect(() => {
+    async function loadFolders() {
+      try {
+        const folderList = await fetchFoldersApi();
+        setFolders(folderList);
+        if (folderList.length > 0 && !selectedFolderId) {
+          setSelectedFolderId(folderList[0].id);
+        }
+      } catch (err) {
+        setStatusMessage(`Error fetching folders: ${err.message}`);
+      }
+    }
+    loadFolders();
+  }, []);
+
+  // Handle Folder Creation
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+    setApiLoading(true);
+    try {
+      const createdFolder = await createFolderApi(newFolderName);
+      setFolders((prev) => [...prev, createdFolder]);
+      setSelectedFolderId(createdFolder.id);
+      setNewFolderName('');
+      setIsCreatingFolder(false);
+      setStatusMessage('Folder created successfully!');
+    } catch (err) {
+      setStatusMessage(`Failed to create folder: ${err.message}`);
+    } finally {
+      setApiLoading(false);
+    }
+  };
+
+  // Calculations
   const calculateTotals = (stepList) => {
     let totalSec = 0;
     let totalMiles = 0;
@@ -139,8 +208,8 @@ export default function WorkoutBuilder() {
 
   const totals = useMemo(() => calculateTotals(steps), [steps]);
 
-  // Generators for Intervals.icu JSON payload
-  const buildIntervalsIcuJson = useMemo(() => {
+  // Payload Construction Object
+  const workoutPayloadObject = useMemo(() => {
     const METERS_PER_MILE = 1609.344;
 
     const buildIcuStep = (step) => {
@@ -168,7 +237,6 @@ export default function WorkoutBuilder() {
         };
       }
 
-      const stepMeters = ((step.durationSec || 0) / (step.targetPaceSec || 1)) * METERS_PER_MILE;
       const baseStep = {
         duration: step.durationSec,
         pace: {
@@ -192,7 +260,6 @@ export default function WorkoutBuilder() {
 
     const icuSteps = steps.map(buildIcuStep);
 
-    // Calculate time spent in zone boundaries
     const zoneTimesMap = { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0, Z6: 0, Z7: 0 };
     const accumulateZones = (stepList) => {
       stepList.forEach((step) => {
@@ -216,7 +283,6 @@ export default function WorkoutBuilder() {
 
     const totalMeters = totals.totalMiles * METERS_PER_MILE;
 
-    // Generate text representation of workout structure for primary description
     const generatePrimaryDescription = (stepList, depth = 0) => {
       const indent = '  '.repeat(depth);
       return stepList
@@ -230,56 +296,72 @@ export default function WorkoutBuilder() {
         .join('\n');
     };
 
-    const primaryDescription = generatePrimaryDescription(steps);
-
-    const payload = [
-      {
-        athlete_id: '34596098',
-        id: 1,
-        icu_training_load: Math.round(totals.totalSec / 60),
-        name: workoutTitle,
-        description: primaryDescription,
-        type: 'Run',
-        indoor: false,
-        color: null,
-        moving_time: totals.totalSec,
-        updated: new Date().toISOString(),
-        joules: 0,
-        joules_above_ftp: 0,
-        workout_doc: {
-          steps: icuSteps,
-          locales: [],
-          options: {},
-          distance: totalMeters,
-          duration: totals.totalSec,
-          zoneTimes: zoneTimes,
-          description: docNotes,
-          strain_score: null,
-          average_watts: 0,
-          normalized_power: 0,
-          variability_index: null,
-          polarization_index: 0,
-        },
-        folder_id: 17296,
-        day: null,
-        days: null,
-        plan_applied: null,
-        hide_from_athlete: false,
-        target: null,
-        targets: ['PACE'],
-        carbs_per_hour: null,
-        tags: null,
-        attachments: null,
-        time: null,
-        sub_type: null,
-        for_week: false,
-        distance: Number(totalMeters.toFixed(3)),
-        icu_intensity: 80.0,
+    return {
+      icu_training_load: Math.round(totals.totalSec / 60),
+      name: workoutTitle,
+      description: generatePrimaryDescription(steps),
+      type: 'Run',
+      indoor: false,
+      color: null,
+      moving_time: totals.totalSec,
+      updated: new Date().toISOString(),
+      joules: 0,
+      joules_above_ftp: 0,
+      workout_doc: {
+        steps: icuSteps,
+        locales: [],
+        options: {},
+        distance: totalMeters,
+        duration: totals.totalSec,
+        zoneTimes: zoneTimes,
+        description: docNotes,
+        strain_score: null,
+        average_watts: 0,
+        normalized_power: 0,
+        variability_index: null,
+        polarization_index: 0,
       },
-    ];
+      folder_id: selectedFolderId ? Number(selectedFolderId) : null,
+      day: null,
+      days: null,
+      plan_applied: null,
+      hide_from_athlete: false,
+      target: null,
+      targets: ['PACE'],
+      carbs_per_hour: null,
+      tags: null,
+      attachments: null,
+      time: null,
+      sub_type: null,
+      for_week: false,
+      distance: Number(totalMeters.toFixed(3)),
+      icu_intensity: 80.0,
+    };
+  }, [steps, workoutTitle, docNotes, totals, selectedFolderId]);
 
-    return JSON.stringify(payload, null, 2);
-  }, [steps, workoutTitle, docNotes, totals]);
+  const buildIntervalsIcuJson = useMemo(() => {
+    return JSON.stringify([workoutPayloadObject], null, 2);
+  }, [workoutPayloadObject]);
+
+  // Handle Save to Intervals.icu
+  const handleSaveToIntervals = async () => {
+    setApiLoading(true);
+    setStatusMessage('Syncing workout with Intervals.icu...');
+
+    try {
+      const action = workoutId ? 'update_workout' : 'create_workout';
+      const result = await saveWorkoutApi(action, workoutId, workoutPayloadObject);
+
+      if (result.id && !workoutId) {
+        setWorkoutId(result.id);
+      }
+      setStatusMessage(`Successfully ${workoutId ? 'updated' : 'created'} workout on Intervals.icu!`);
+    } catch (err) {
+      setStatusMessage(`Error saving workout: ${err.message}`);
+    } finally {
+      setApiLoading(false);
+    }
+  };
 
   // Step Modification Handlers
   const addStep = (type, parentRepeatId = null) => {
@@ -327,7 +409,7 @@ export default function WorkoutBuilder() {
     setSteps(updateRecursive(steps));
   };
 
-  // Native HTML5 Drag and Drop handlers
+  // Drag and Drop
   const handleDragStart = (e, step, parentId) => {
     e.stopPropagation();
     setDraggedItem({ step, parentId });
@@ -395,6 +477,76 @@ export default function WorkoutBuilder() {
           Total Dist: <span className="total-dist-val">{formatDistance(totals.totalMiles)}</span>
         </div>
       </div>
+
+      {/* Status Banner */}
+      {statusMessage && (
+        <div style={{ padding: '8px 12px', marginBottom: '12px', backgroundColor: '#e2e3e5', color: '#383d41', borderRadius: '4px', fontSize: '13px' }}>
+          {statusMessage}
+        </div>
+      )}
+
+      {/* Folder Selection & API Controls */}
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '16px' }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontWeight: 'bold', fontSize: '12px', color: '#495057', marginBottom: '4px' }}>
+            Target Folder:
+          </label>
+          <select
+            value={selectedFolderId}
+            onChange={(e) => setSelectedFolderId(e.target.value)}
+            style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #ced4da' }}
+          >
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsCreatingFolder(!isCreatingFolder)}
+          style={{ marginTop: '18px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer' }}
+        >
+          {isCreatingFolder ? 'Cancel' : '+ New Folder'}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSaveToIntervals}
+          disabled={apiLoading}
+          style={{
+            marginTop: '18px',
+            padding: '6px 16px',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            backgroundColor: '#007bff',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+          }}
+        >
+          {apiLoading ? 'Saving...' : workoutId ? 'Update Workout' : 'Upload to Intervals'}
+        </button>
+      </div>
+
+      {/* Inline Folder Creation Form */}
+      {isCreatingFolder && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', padding: '8px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+          <input
+            type="text"
+            placeholder="Folder Name"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            style={{ flex: 1, padding: '4px 8px', fontSize: '13px' }}
+          />
+          <button onClick={handleCreateFolder} disabled={apiLoading} style={{ padding: '4px 12px', fontSize: '12px' }}>
+            Save Folder
+          </button>
+        </div>
+      )}
 
       {/* workout_doc.description Control */}
       <div style={{ marginBottom: '16px' }}>
@@ -625,7 +777,6 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
     );
   }
 
-  // Standard step row (Warmup, Run, Recovery, Cooldown)
   const distMiles = step.durationSec / (step.targetPaceSec || 1);
 
   return (
@@ -685,7 +836,6 @@ function RenderWorkoutChart({ steps, height }) {
   const flatSteps = flattenSteps(steps);
   const totalDuration = flatSteps.reduce((acc, curr) => acc + curr.durationSec, 0) || 1;
 
-  // Speeds in relative velocity (Velocity = 1 / targetPaceSec)
   const velocities = flatSteps.map((s) => (s.targetPaceSec > 0 ? 1 / s.targetPaceSec : 0));
   const maxVel = Math.max(...velocities, 0.0001);
   const minVel = Math.min(...velocities, maxVel);
