@@ -112,6 +112,23 @@ const getFourWeeksDates = (startMonday) => {
   return dates;
 };
 
+// Helper to format moving time (seconds -> hh:mm or mm:ss)
+const formatDuration = (totalSeconds) => {
+  if (!totalSeconds || totalSeconds <= 0) return '0m';
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  if (hrs > 0) {
+    return `${hrs}h ${mins}m`;
+  }
+  return `${mins}m`;
+};
+
+// Helper to convert meters to miles
+const metersToMiles = (meters) => {
+  if (!meters) return 0;
+  return (meters * 0.000621371).toFixed(1);
+};
+
 export default function MonthlyView() {
   const [workouts, setWorkouts] = useState([]);
   const [sportSettings, setSportSettings] = useState([]);
@@ -122,6 +139,9 @@ export default function MonthlyView() {
   const [activeFilters, setActiveFilters] = useState([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [tempFilters, setTempFilters] = useState([]);
+
+  // State for Zoomed Workout Modal
+  const [selectedWorkout, setSelectedWorkout] = useState(null);
 
   const isMobile = useIsMobile(768);
 
@@ -201,7 +221,8 @@ export default function MonthlyView() {
                 ...item,
                 name: plannedName,
                 title: plannedName,
-                workout_doc: item.workout_doc || plannedMatch.workout_doc
+                workout_doc: item.workout_doc || plannedMatch.workout_doc,
+                description: item.description || plannedMatch.description
               };
             }
           }
@@ -244,6 +265,17 @@ export default function MonthlyView() {
     };
   }, []);
 
+  // Keyboard shortcut listener to close zoom modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedWorkout(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const filteredWorkouts = useMemo(() => {
     if (!activeFilters || activeFilters.length === 0 || activeFilters.length === 4) {
       return workouts;
@@ -275,6 +307,40 @@ export default function MonthlyView() {
 
     return map;
   }, [filteredWorkouts, fourWeeksDates]);
+
+  // Aggregate weekly metrics per 7-day row
+  const weeklySummaries = useMemo(() => {
+    const summaries = [];
+    for (let i = 0; i < 4; i++) {
+      const weekDates = fourWeeksDates.slice(i * 7, (i + 1) * 7);
+      let totalDistanceMeters = 0;
+      let totalDurationSeconds = 0;
+      let totalLoad = 0;
+      let workoutCount = 0;
+
+      weekDates.forEach((date) => {
+        const dateStr = getLocalDateString(date);
+        const dayWorkouts = workoutsByDate[dateStr] || [];
+        dayWorkouts.forEach((w) => {
+          workoutCount++;
+          totalDistanceMeters += w.distance || w.icu_distance || 0;
+          totalDurationSeconds += w.moving_time || w.elapsed_time || w.icu_moving_time || w.duration || 0;
+          totalLoad += w.icu_training_load || w.load || w.tss || 0;
+        });
+      });
+
+      summaries.push({
+        weekIndex: i,
+        startDate: weekDates[0],
+        endDate: weekDates[6],
+        distanceMiles: metersToMiles(totalDistanceMeters),
+        durationFormatted: formatDuration(totalDurationSeconds),
+        totalLoad: Math.round(totalLoad),
+        workoutCount
+      });
+    }
+    return summaries;
+  }, [fourWeeksDates, workoutsByDate]);
 
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
 
@@ -372,10 +438,11 @@ export default function MonthlyView() {
               return (
                 <div 
                   key={workout.id || idx} 
-                  className={`monthly-workout-item ${completed ? 'monthly-completed' : ''} ${isMissed ? 'monthly-missed' : ''}`}
+                  className={`monthly-workout-item monthly-clickable ${completed ? 'monthly-completed' : ''} ${isMissed ? 'monthly-missed' : ''}`}
+                  onClick={() => setSelectedWorkout(workout)}
                 >
                   <div className="monthly-workout-type">
-                    {workout.type || workout.sport || 'Activity'}
+                    {workout.name || workout.type || workout.sport || 'Activity'}
                   </div>
                   {(workout.workout_doc || workout.intervals) && (
                     <WorkoutChart
@@ -536,12 +603,109 @@ export default function MonthlyView() {
         </div>
       </div>
 
-      <div className={`monthly-grid ${isMobile ? 'monthly-grid-mobile' : 'monthly-grid-desktop'}`}>
-        {fourWeeksDates.map((date) => {
-          const dateStr = getLocalDateString(date);
-          return renderDayCell(date, workoutsByDate[dateStr] || []);
+      {/* Render 4 weekly row frames */}
+      <div className={`monthly-weeks-container ${isMobile ? 'monthly-grid-mobile' : 'monthly-grid-desktop'}`}>
+        {[0, 1, 2, 3].map((weekIdx) => {
+          const weekDates = fourWeeksDates.slice(weekIdx * 7, (weekIdx + 1) * 7);
+          const summary = weeklySummaries[weekIdx];
+
+          return (
+            <div key={weekIdx} className="monthly-week-row">
+              <div className="monthly-week-days">
+                {weekDates.map((date) => {
+                  const dateStr = getLocalDateString(date);
+                  return renderDayCell(date, workoutsByDate[dateStr] || []);
+                })}
+              </div>
+
+              {/* Weekly summary frame column */}
+              <div className="monthly-week-summary-sidebar">
+                <div className="monthly-summary-title">Week {weekIdx + 1}</div>
+                <div className="monthly-summary-metrics">
+                  <div className="monthly-metric-item">
+                    <span className="monthly-metric-label">Workouts</span>
+                    <span className="monthly-metric-val">{summary.workoutCount}</span>
+                  </div>
+                  <div className="monthly-metric-item">
+                    <span className="monthly-metric-label">Distance</span>
+                    <span className="monthly-metric-val">{summary.distanceMiles} mi</span>
+                  </div>
+                  <div className="monthly-metric-item">
+                    <span className="monthly-metric-label">Time</span>
+                    <span className="monthly-metric-val">{summary.durationFormatted}</span>
+                  </div>
+                  <div className="monthly-metric-item">
+                    <span className="monthly-metric-label">Load</span>
+                    <span className="monthly-metric-val">{summary.totalLoad}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
         })}
       </div>
+
+      {/* FULL-WIDTH WORKOUT ZOOM MODAL */}
+      {selectedWorkout && (
+        <div className="monthly-zoom-overlay" onClick={() => setSelectedWorkout(null)}>
+          <div className="monthly-zoom-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="monthly-zoom-header">
+              <div className="monthly-zoom-title-group">
+                <span className="monthly-zoom-sport-tag">{selectedWorkout.type || selectedWorkout.sport || 'Workout'}</span>
+                <h2>{selectedWorkout.name || selectedWorkout.title || 'Workout Details'}</h2>
+              </div>
+              <button className="monthly-zoom-close" onClick={() => setSelectedWorkout(null)}>✕</button>
+            </div>
+
+            <div className="monthly-zoom-body">
+              {/* Expanded Full-Width Workout Chart */}
+              <div className="monthly-zoom-chart-container">
+                <WorkoutChart
+                  workout={selectedWorkout}
+                  thresholdPace={getThresholdPaceForSport(selectedWorkout, sportSettings)}
+                  chartHeight="220px"
+                  showWorkoutName={true}
+                  showThresholdPace={true}
+                  showYAxisLabels={true}
+                  showLegend={true}
+                  minimalXAxis={false}
+                  showHoverDetails={true}
+                />
+              </div>
+
+              {/* Text Description & Notes */}
+              <div className="monthly-zoom-description-section">
+                <h3>Workout Description</h3>
+                <div className="monthly-zoom-text-content">
+                  {selectedWorkout.description || selectedWorkout.notes ? (
+                    <p className="monthly-zoom-notes">{selectedWorkout.description || selectedWorkout.notes}</p>
+                  ) : (
+                    <p className="monthly-zoom-empty">No detailed text description available for this workout.</p>
+                  )}
+                </div>
+
+                {/* Structured Steps Breakdown */}
+                {selectedWorkout.workout_doc?.steps && (
+                  <div className="monthly-zoom-steps-block">
+                    <h4>Structured Intervals</h4>
+                    <ul className="monthly-zoom-steps-list">
+                      {selectedWorkout.workout_doc.steps.map((step, idx) => (
+                        <li key={idx} className="monthly-zoom-step-item">
+                          <span className="step-type">{step.type || 'Step'}:</span>
+                          <span className="step-detail">
+                            {step.duration ? `${Math.round(step.duration / 60)} min` : `${step.distance}m`}
+                            {step.pace?.start ? ` @ ${step.pace.start}% Pace` : step.intensity ? ` @ ${step.intensity}%` : ''}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
