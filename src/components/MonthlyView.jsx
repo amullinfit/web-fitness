@@ -112,7 +112,6 @@ const getFourWeeksDates = (startMonday) => {
   return dates;
 };
 
-// Helper to format moving time (seconds -> hh:mm or mm:ss)
 const formatDuration = (totalSeconds) => {
   if (!totalSeconds || totalSeconds <= 0) return '0m';
   const hrs = Math.floor(totalSeconds / 3600);
@@ -123,10 +122,209 @@ const formatDuration = (totalSeconds) => {
   return `${mins}m`;
 };
 
-// Helper to convert meters to miles
-const metersToMiles = (meters) => {
+const metersToMilesNum = (meters) => {
   if (!meters) return 0;
-  return (meters * 0.000621371).toFixed(1);
+  return parseFloat((meters * 0.000621371).toFixed(2));
+};
+
+/**
+ * Determine daily color based on intensity zone breakdown.
+ * Red: Z5+ | Blue: Z4 | Yellow: Z3 | Grey: Z1/Z2 (Default)
+ * Border: Dark Black if total miles > 8.0
+ */
+const getDayZoneStyle = (workoutsList) => {
+  if (!workoutsList || workoutsList.length === 0) {
+    return { color: '#E5E7EB', borderColor: 'transparent', miles: 0, zoneLabel: 'Rest / None' };
+  }
+
+  let totalMeters = 0;
+  let z5Time = 0;
+  let z4Time = 0;
+  let z3Time = 0;
+
+  workoutsList.forEach((w) => {
+    totalMeters += w.distance || w.icu_distance || 0;
+
+    if (w.icu_zone_times && Array.isArray(w.icu_zone_times)) {
+      z3Time += w.icu_zone_times[2] || 0;
+      z4Time += w.icu_zone_times[3] || 0;
+      z5Time += (w.icu_zone_times[4] || 0) + (w.icu_zone_times[5] || 0);
+    } else if (w.workout_doc?.steps) {
+      w.workout_doc.steps.forEach((step) => {
+        const intensity = step.intensity || step.pace?.start || 0;
+        const duration = step.duration || 0;
+        if (intensity >= 105) z5Time += duration;
+        else if (intensity >= 95) z4Time += duration;
+        else if (intensity >= 85) z3Time += duration;
+      });
+    }
+  });
+
+  const miles = metersToMilesNum(totalMeters);
+
+  let color = '#9CA3AF'; // Grey (Easy / Z1-Z2)
+  let zoneLabel = 'Z1 / Z2 (Easy)';
+
+  if (z5Time > 60) {
+    color = '#EF4444'; // Red (Z5+)
+    zoneLabel = 'Z5+ (Sprint / Max)';
+  } else if (z4Time > 120) {
+    color = '#3B82F6'; // Blue (Z4)
+    zoneLabel = 'Z4 (Threshold)';
+  } else if (z3Time > 180) {
+    color = '#EAB308'; // Yellow (Z3)
+    zoneLabel = 'Z3 (Tempo)';
+  }
+
+  // Dark black border if > 8 miles
+  const borderColor = miles > 8.0 ? '#000000' : 'transparent';
+
+  return { color, borderColor, miles, zoneLabel };
+};
+
+/**
+ * SVG Bar Chart with Enclosing Weekly Frame and Hover Tooltips
+ */
+const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType }) => {
+  const [hoveredDayIndex, setHoveredDayIndex] = useState(null);
+
+  const daysData = useMemo(() => {
+    return weekDates.map((dateObj, idx) => {
+      const dateStr = getLocalDateString(dateObj);
+      const allWorkouts = workoutsByDate[dateStr] || [];
+      const sportWorkouts = allWorkouts.filter((w) => getSportCategory(w) === sportType);
+
+      const style = getDayZoneStyle(sportWorkouts);
+      const dayName = dateObj.toLocaleDateString(undefined, { weekday: 'narrow' });
+      const fullDateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+      return {
+        dayIndex: idx,
+        dayName,
+        fullDateStr,
+        miles: style.miles,
+        color: style.color,
+        borderColor: style.borderColor,
+        zoneLabel: style.zoneLabel,
+        count: sportWorkouts.length
+      };
+    });
+  }, [weekDates, workoutsByDate, sportType]);
+
+  const totalWeeklyMiles = useMemo(() => {
+    return daysData.reduce((sum, d) => sum + d.miles, 0).toFixed(1);
+  }, [daysData]);
+
+  const maxMiles = useMemo(() => {
+    const max = Math.max(...daysData.map((d) => d.miles), 1);
+    return Math.ceil(max);
+  }, [daysData]);
+
+  const chartHeight = 70;
+  const barWidth = 14;
+  const gap = 18;
+  const startX = 16;
+  const totalWidth = startX + 7 * (barWidth + gap);
+
+  return (
+    <div className="monthly-chart-frame-box">
+      <div className="monthly-chart-frame-header">
+        <span className={`monthly-chart-sport-badge badge-${sportType.toLowerCase()}`}>
+          {sportType}
+        </span>
+        <span className="monthly-chart-weekly-total">{totalWeeklyMiles} mi total</span>
+      </div>
+
+      <div className="monthly-chart-svg-wrapper">
+        <svg viewBox={`0 0 ${totalWidth} ${chartHeight + 25}`} className="monthly-chart-svg">
+          {/* Enclosing Outer Frame (Weekly Border) */}
+          <rect
+            x={startX - 6}
+            y={2}
+            width={7 * (barWidth + gap) - gap + 12}
+            height={chartHeight + 4}
+            rx={6}
+            className="monthly-weekly-enclosing-frame"
+          />
+
+          {/* Daily Bars */}
+          {daysData.map((d, i) => {
+            const barH = d.miles > 0 ? Math.max((d.miles / maxMiles) * chartHeight, 4) : 0;
+            const x = startX + i * (barWidth + gap);
+            const y = chartHeight - barH + 2;
+            const isHovered = hoveredDayIndex === i;
+
+            return (
+              <g
+                key={i}
+                onMouseEnter={() => setHoveredDayIndex(i)}
+                onMouseLeave={() => setHoveredDayIndex(null)}
+                className="monthly-chart-bar-group"
+              >
+                {/* Hit target background line */}
+                <rect
+                  x={x - 2}
+                  y={2}
+                  width={barWidth + 4}
+                  height={chartHeight}
+                  fill="transparent"
+                />
+
+                {barH > 0 && (
+                  <rect
+                    x={x}
+                    y={y}
+                    width={barWidth}
+                    height={barH}
+                    rx={2}
+                    fill={d.color}
+                    stroke={d.borderColor}
+                    strokeWidth={d.borderColor !== 'transparent' ? 2 : 0}
+                    className={`monthly-chart-bar ${isHovered ? 'bar-hovered' : ''}`}
+                  />
+                )}
+
+                {/* Day Letter Label */}
+                <text
+                  x={x + barWidth / 2}
+                  y={chartHeight + 18}
+                  textAnchor="middle"
+                  className={`monthly-chart-day-text ${isHovered ? 'text-hovered' : ''}`}
+                >
+                  {d.dayName}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Hover Tooltip Popup */}
+        {hoveredDayIndex !== null && (
+          <div
+            className="monthly-chart-tooltip"
+            style={{
+              left: `${((hoveredDayIndex + 0.5) / 7) * 100}%`
+            }}
+          >
+            <div className="tooltip-date">{daysData[hoveredDayIndex].fullDateStr}</div>
+            <div className="tooltip-miles">
+              <strong>{daysData[hoveredDayIndex].miles.toFixed(1)}</strong> mi
+            </div>
+            {daysData[hoveredDayIndex].miles > 0 ? (
+              <>
+                <div className="tooltip-zone">{daysData[hoveredDayIndex].zoneLabel}</div>
+                {daysData[hoveredDayIndex].miles > 8.0 && (
+                  <div className="tooltip-long-run">★ Long Run (&gt;8 mi)</div>
+                )}
+              </>
+            ) : (
+              <div className="tooltip-zone tooltip-rest">No activity</div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default function MonthlyView() {
@@ -308,39 +506,13 @@ export default function MonthlyView() {
     return map;
   }, [filteredWorkouts, fourWeeksDates]);
 
-  // Aggregate weekly metrics per 7-day row
-  const weeklySummaries = useMemo(() => {
-    const summaries = [];
-    for (let i = 0; i < 4; i++) {
-      const weekDates = fourWeeksDates.slice(i * 7, (i + 1) * 7);
-      let totalDistanceMeters = 0;
-      let totalDurationSeconds = 0;
-      let totalLoad = 0;
-      let workoutCount = 0;
-
-      weekDates.forEach((date) => {
-        const dateStr = getLocalDateString(date);
-        const dayWorkouts = workoutsByDate[dateStr] || [];
-        dayWorkouts.forEach((w) => {
-          workoutCount++;
-          totalDistanceMeters += w.distance || w.icu_distance || 0;
-          totalDurationSeconds += w.moving_time || w.elapsed_time || w.icu_moving_time || w.duration || 0;
-          totalLoad += w.icu_training_load || w.load || w.tss || 0;
-        });
-      });
-
-      summaries.push({
-        weekIndex: i,
-        startDate: weekDates[0],
-        endDate: weekDates[6],
-        distanceMiles: metersToMiles(totalDistanceMeters),
-        durationFormatted: formatDuration(totalDurationSeconds),
-        totalLoad: Math.round(totalLoad),
-        workoutCount
-      });
+  // Determine active sports for weekly bar charts
+  const selectedChartSports = useMemo(() => {
+    if (!activeFilters || activeFilters.length === 0 || activeFilters.length === 4) {
+      return ['Run', 'Bike'];
     }
-    return summaries;
-  }, [fourWeeksDates, workoutsByDate]);
+    return activeFilters.filter((f) => f === 'Run' || f === 'Bike');
+  }, [activeFilters]);
 
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
 
@@ -483,6 +655,7 @@ export default function MonthlyView() {
         </div>
       )}
 
+      {/* Navigation & Controls */}
       <div className="monthly-nav-bar">
         <div className="monthly-nav-buttons">
           <button onClick={handlePrevWeek} className="nav-btn">
@@ -603,42 +776,54 @@ export default function MonthlyView() {
         </div>
       </div>
 
-      {/* Render 4 weekly row frames */}
-      <div className={`monthly-weeks-container ${isMobile ? 'monthly-grid-mobile' : 'monthly-grid-desktop'}`}>
+      {/* DESKTOP TOP SUMMARY CHARTS ROW */}
+      {!isMobile && selectedChartSports.length > 0 && (
+        <div className="monthly-desktop-top-charts">
+          {[0, 1, 2, 3].map((weekIdx) => {
+            const weekDates = fourWeeksDates.slice(weekIdx * 7, (weekIdx + 1) * 7);
+            return (
+              <div key={weekIdx} className="monthly-desktop-chart-column">
+                {selectedChartSports.map((sport) => (
+                  <WeeklyFrameChart
+                    key={sport}
+                    weekDates={weekDates}
+                    workoutsByDate={workoutsByDate}
+                    sportType={sport}
+                  />
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* MAIN 4-WEEK CALENDAR GRID */}
+      <div className="monthly-weeks-container">
         {[0, 1, 2, 3].map((weekIdx) => {
           const weekDates = fourWeeksDates.slice(weekIdx * 7, (weekIdx + 1) * 7);
-          const summary = weeklySummaries[weekIdx];
 
           return (
-            <div key={weekIdx} className="monthly-week-row">
-              <div className="monthly-week-days">
+            <div key={weekIdx} className="monthly-week-row-wrapper">
+              {/* MOBILE INLINE CHARTS (Appears directly above each 7-day week row) */}
+              {isMobile && selectedChartSports.length > 0 && (
+                <div className="monthly-mobile-charts-block">
+                  {selectedChartSports.map((sport) => (
+                    <WeeklyFrameChart
+                      key={sport}
+                      weekDates={weekDates}
+                      workoutsByDate={workoutsByDate}
+                      sportType={sport}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* 7-Day Grid Row */}
+              <div className={`monthly-grid ${isMobile ? 'monthly-grid-mobile' : 'monthly-grid-desktop'}`}>
                 {weekDates.map((date) => {
                   const dateStr = getLocalDateString(date);
                   return renderDayCell(date, workoutsByDate[dateStr] || []);
                 })}
-              </div>
-
-              {/* Weekly summary frame column */}
-              <div className="monthly-week-summary-sidebar">
-                <div className="monthly-summary-title">Week {weekIdx + 1}</div>
-                <div className="monthly-summary-metrics">
-                  <div className="monthly-metric-item">
-                    <span className="monthly-metric-label">Workouts</span>
-                    <span className="monthly-metric-val">{summary.workoutCount}</span>
-                  </div>
-                  <div className="monthly-metric-item">
-                    <span className="monthly-metric-label">Distance</span>
-                    <span className="monthly-metric-val">{summary.distanceMiles} mi</span>
-                  </div>
-                  <div className="monthly-metric-item">
-                    <span className="monthly-metric-label">Time</span>
-                    <span className="monthly-metric-val">{summary.durationFormatted}</span>
-                  </div>
-                  <div className="monthly-metric-item">
-                    <span className="monthly-metric-label">Load</span>
-                    <span className="monthly-metric-val">{summary.totalLoad}</span>
-                  </div>
-                </div>
               </div>
             </div>
           );

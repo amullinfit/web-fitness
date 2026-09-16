@@ -504,3 +504,170 @@
 .monthly-zoom-step-item .step-detail {
   color: #606266;
 }
+
+/* Desktop Top Chart Grid Layout */
+.monthly-desktop-top-charts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.monthly-desktop-chart-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.monthly-week-row-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* Mobile Inline Chart Block */
+.monthly-mobile-charts-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+/* Chart Container Box */
+.monthly-chart-frame-box {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.monthly-chart-frame-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.monthly-chart-sport-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.badge-run {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.badge-bike {
+  background-color: #f0fdf4;
+  color: #16a34a;
+}
+
+.monthly-chart-weekly-total {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+/* SVG Chart Elements */
+.monthly-chart-svg-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.monthly-chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Enclosing Outer Frame Border around Week */
+.monthly-weekly-enclosing-frame {
+  fill: transparent;
+  stroke: #cbd5e1;
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 3;
+}
+
+/* Dynamic Daily Bars */
+.monthly-chart-bar {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+
+.monthly-chart-bar.bar-hovered {
+  opacity: 0.85;
+  filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.monthly-chart-day-text {
+  font-size: 9px;
+  fill: #9ca3af;
+  font-weight: 600;
+}
+
+.monthly-chart-day-text.text-hovered {
+  fill: #111827;
+  font-weight: 700;
+}
+
+/* Hover Tooltip Popup */
+.monthly-chart-tooltip {
+  position: absolute;
+  top: -6px;
+  transform: translate(-50%, -100%);
+  background-color: #1e293b;
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.monthly-chart-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px;
+  border-style: solid;
+  border-color: #1e293b transparent transparent transparent;
+}
+
+.tooltip-date {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.tooltip-miles {
+  font-size: 13px;
+  margin: 1px 0;
+}
+
+.tooltip-zone {
+  font-size: 10px;
+  color: #cbd5e1;
+}
+
+.tooltip-rest {
+  color: #64748b;
+  font-style: italic;
+}
+
+.tooltip-long-run {
+  font-size: 9px;
+  font-weight: 700;
+  color: #facc15;
+  margin-top: 2px;
+}
