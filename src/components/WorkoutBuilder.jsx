@@ -9,8 +9,13 @@ const formatMMSS = (totalSeconds) => {
 };
 
 const parseMMSS = (str) => {
+  if (!str) return 0;
+  // Handle typing numbers directly or formatted string
+  if (!str.includes(':')) {
+    const num = parseInt(str, 10);
+    return isNaN(num) ? 0 : num * 60; // Default plain numbers to minutes
+  }
   const parts = str.split(':');
-  if (parts.length !== 2) return 0;
   const mins = parseInt(parts[0], 10) || 0;
   const secs = parseInt(parts[1], 10) || 0;
   return mins * 60 + secs;
@@ -19,24 +24,23 @@ const parseMMSS = (str) => {
 // Formats distance in 0.00 mi
 const formatDistance = (miles) => (miles || 0).toFixed(2) + ' mi';
 
-// Define pace boundaries (in seconds per mile) and zone colors
-// Z1: > 9:30/mi (570s), Z2: 8:30-9:30/mi (510-570s), Z3: 7:45-8:30/mi (465-510s), Z4: 7:00-7:45/mi (420-465s), Z5: < 7:00/mi (< 420s)
+// Zone Pace Thresholds & Color Helper
 const getZoneColor = (paceSec) => {
-    if (!paceSec || paceSec <= 0) return '#6c757d'; // Default fallback
-  
-    if (paceSec > 570) {
-      return '#6c757d'; // Z1 (Warmup/Recovery) - Grey
-    } else if (paceSec > 510) {
-      return '#28a745'; // Z2 (Endurance) - Green
-    } else if (paceSec > 465) {
-      return '#ffc107'; // Z3 (Tempo) - Yellow
-    } else if (paceSec > 420) {
-      return '#fd7e14'; // Z4 (Threshold) - Orange
-    } else {
-      return '#dc3545'; // Z5 (Anaerobic / Speed) - Red
-    }
-  };
-  
+  if (!paceSec || paceSec <= 0) return '#6c757d'; // Default fallback
+
+  if (paceSec > 570) {
+    return '#6c757d'; // Z1 (Warmup/Recovery) - Grey
+  } else if (paceSec > 510) {
+    return '#28a745'; // Z2 (Endurance) - Green
+  } else if (paceSec > 465) {
+    return '#ffc107'; // Z3 (Tempo) - Yellow
+  } else if (paceSec > 420) {
+    return '#fd7e14'; // Z4 (Threshold) - Orange
+  } else {
+    return '#dc3545'; // Z5 (Anaerobic / Speed) - Red
+  }
+};
+
 // Helper factory to initialize defaults by type
 const createStep = (type) => {
   const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
@@ -267,6 +271,43 @@ export default function WorkoutBuilder() {
   );
 }
 
+// Editable Time/Pace Input component that allows easy text typing
+function MMSSInput({ valueSec, onChange }) {
+  const [text, setText] = useState(formatMMSS(valueSec));
+
+  // Sync state if external value change occurs
+  React.useEffect(() => {
+    setText(formatMMSS(valueSec));
+  }, [valueSec]);
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setText(val);
+    const parsed = parseMMSS(val);
+    if (parsed >= 0) {
+      onChange(parsed);
+    }
+  };
+
+  const handleBlur = () => {
+    // Format on focus loss
+    const parsed = parseMMSS(text);
+    setText(formatMMSS(parsed));
+    onChange(parsed);
+  };
+
+  return (
+    <input
+      type="text"
+      value={text}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      className="time-pace-input"
+      placeholder="00:00"
+    />
+  );
+}
+
 // Sub-component to render step items and nestable repeat blocks
 function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, onDragStart, onDrop }) {
   if (step.type === 'repeat') {
@@ -331,7 +372,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
   }
 
   // Standard step row (Warmup, Run, Recovery, Cooldown)
-  const distMiles = (step.durationSec / (step.targetPaceSec || 1));
+  const distMiles = step.durationSec / (step.targetPaceSec || 1);
 
   return (
     <div
@@ -346,21 +387,17 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
 
       <label className="input-label">
         Time:
-        <input
-          type="text"
-          value={formatMMSS(step.durationSec)}
-          onChange={(e) => onUpdate(step.id, 'durationSec', parseMMSS(e.target.value))}
-          className="time-pace-input"
+        <MMSSInput
+          valueSec={step.durationSec}
+          onChange={(newSec) => onUpdate(step.id, 'durationSec', newSec)}
         />
       </label>
 
       <label className="input-label">
         Pace:
-        <input
-          type="text"
-          value={formatMMSS(step.targetPaceSec)}
-          onChange={(e) => onUpdate(step.id, 'targetPaceSec', parseMMSS(e.target.value))}
-          className="time-pace-input"
+        <MMSSInput
+          valueSec={step.targetPaceSec}
+          onChange={(newSec) => onUpdate(step.id, 'targetPaceSec', newSec)}
         />
       </label>
 
@@ -375,74 +412,70 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
   );
 }
 
-// Visual workout profile chart component with dynamic pace zone colors
+// Visual workout profile chart component
 function RenderWorkoutChart({ steps, height }) {
-    const flattenSteps = (list) => {
-      let result = [];
-      list.forEach((s) => {
-        if (s.type === 'repeat') {
-          for (let i = 0; i < s.iterations; i++) {
-            result = result.concat(flattenSteps(s.steps));
-          }
-        } else {
-          result.push(s);
+  const flattenSteps = (list) => {
+    let result = [];
+    list.forEach((s) => {
+      if (s.type === 'repeat') {
+        for (let i = 0; i < s.iterations; i++) {
+          result = result.concat(flattenSteps(s.steps));
         }
-      });
-      return result;
-    };
-  
-    const flatSteps = flattenSteps(steps);
-    const totalDuration = flatSteps.reduce((acc, curr) => acc + curr.durationSec, 0) || 1;
-  
-    // Speeds in relative velocity (Velocity = 1 / targetPaceSec)
-    const velocities = flatSteps.map((s) => (s.targetPaceSec > 0 ? 1 / s.targetPaceSec : 0));
-    const maxVel = Math.max(...velocities, 0.0001);
-    const minVel = Math.min(...velocities, maxVel);
-  
-    return (
-      <div
-        style={{
-          width: '100%',
-          height: `${height}px`,
-          display: 'flex',
-          alignItems: 'flex-end',
-          backgroundColor: '#f8f9fa',
-          border: '1px solid #e9ecef',
-          borderRadius: '4px',
-          overflow: 'hidden',
-        }}
-      >
-        {flatSteps.map((step, idx) => {
-          const widthPct = (step.durationSec / totalDuration) * 100;
-  
-          // Convert pace to relative height (% of max velocity in current workout)
-          const currentVel = step.targetPaceSec > 0 ? 1 / step.targetPaceSec : 0;
-          
-          let barHeightPct = 20; // Default floor height
-          if (maxVel === minVel) {
-            barHeightPct = 60; // Default baseline if all paces are identical
-          } else {
-            // Normalize height between 25% and 95% relative to min and max workout velocities
-            barHeightPct = 25 + ((currentVel - minVel) / (maxVel - minVel)) * 70;
-          }
-  
-          // Dynamic zone color based on target pace
-          const barColor = getZoneColor(step.targetPaceSec);
-  
-          return (
-            <div
-              key={idx}
-              style={{
-                width: `${widthPct}%`,
-                height: `${barHeightPct}%`,
-                backgroundColor: barColor,
-                borderRight: '1px solid rgba(255,255,255,0.4)',
-                transition: 'height 0.2s ease, width 0.2s ease, background-color 0.2s ease',
-              }}
-              title={`${step.type.toUpperCase()}: ${formatMMSS(step.durationSec)} @ ${formatMMSS(step.targetPaceSec)}/mi`}
-            />
-          );
-        })}
-      </div>
-    );
-  }
+      } else {
+        result.push(s);
+      }
+    });
+    return result;
+  };
+
+  const flatSteps = flattenSteps(steps);
+  const totalDuration = flatSteps.reduce((acc, curr) => acc + curr.durationSec, 0) || 1;
+
+  // Speeds in relative velocity (Velocity = 1 / targetPaceSec)
+  const velocities = flatSteps.map((s) => (s.targetPaceSec > 0 ? 1 / s.targetPaceSec : 0));
+  const maxVel = Math.max(...velocities, 0.0001);
+  const minVel = Math.min(...velocities, maxVel);
+
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: `${height}px`,
+        display: 'flex',
+        alignItems: 'flex-end',
+        backgroundColor: '#f8f9fa',
+        border: '1px solid #e9ecef',
+        borderRadius: '4px',
+        overflow: 'hidden',
+      }}
+    >
+      {flatSteps.map((step, idx) => {
+        const widthPct = (step.durationSec / totalDuration) * 100;
+        const currentVel = step.targetPaceSec > 0 ? 1 / step.targetPaceSec : 0;
+
+        let barHeightPct = 20;
+        if (maxVel === minVel) {
+          barHeightPct = 60;
+        } else {
+          barHeightPct = 25 + ((currentVel - minVel) / (maxVel - minVel)) * 70;
+        }
+
+        const barColor = getZoneColor(step.targetPaceSec);
+
+        return (
+          <div
+            key={idx}
+            style={{
+              width: `${widthPct}%`,
+              height: `${barHeightPct}%`,
+              backgroundColor: barColor,
+              borderRight: '1px solid rgba(255,255,255,0.4)',
+              transition: 'height 0.2s ease, width 0.2s ease, background-color 0.2s ease',
+            }}
+            title={`${step.type.toUpperCase()}: ${formatMMSS(step.durationSec)} @ ${formatMMSS(step.targetPaceSec)}/mi`}
+          />
+        );
+      })}
+    </div>
+  );
+}
