@@ -71,6 +71,16 @@ const getZoneColor = (paceSec) => {
   }
 };
 
+// Map pace to standard Zone IDs (Z1 to Z5)
+const getZoneId = (paceSec) => {
+  if (!paceSec || paceSec <= 0) return 'Z1';
+  if (paceSec > 570) return 'Z1';
+  if (paceSec > 510) return 'Z2';
+  if (paceSec > 465) return 'Z3';
+  if (paceSec > 420) return 'Z4';
+  return 'Z5';
+};
+
 // Helper factory to initialize defaults by type
 const createStep = (type) => {
   const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
@@ -127,6 +137,148 @@ export default function WorkoutBuilder() {
   };
 
   const totals = useMemo(() => calculateTotals(steps), [steps]);
+
+  // Generators for Intervals.icu JSON payload
+  const buildIntervalsIcuJson = useMemo(() => {
+    const METERS_PER_MILE = 1609.344;
+
+    const buildIcuStep = (step) => {
+      if (step.type === 'repeat') {
+        const childIcuSteps = step.steps.map(buildIcuStep);
+        let repeatSecs = 0;
+        let repeatMiles = 0;
+
+        step.steps.forEach((child) => {
+          const s = child.durationSec || 0;
+          const p = child.targetPaceSec || 1;
+          repeatSecs += s;
+          repeatMiles += s / p;
+        });
+
+        const totalRepeatSecs = repeatSecs * step.iterations;
+        const totalRepeatMeters = repeatMiles * step.iterations * METERS_PER_MILE;
+
+        return {
+          reps: step.iterations,
+          text: `Repeats ${step.iterations}x`,
+          steps: childIcuSteps,
+          distance: totalRepeatMeters,
+          duration: totalRepeatSecs,
+        };
+      }
+
+      const stepMeters = ((step.durationSec || 0) / (step.targetPaceSec || 1)) * METERS_PER_MILE;
+      const baseStep = {
+        duration: step.durationSec,
+        pace: {
+          units: 'secs',
+          value: step.targetPaceSec,
+        },
+      };
+
+      if (step.type === 'warmup') {
+        baseStep.warmup = true;
+        baseStep.intensity = 'warmup';
+      } else if (step.type === 'cooldown') {
+        baseStep.cooldown = true;
+        baseStep.intensity = 'cooldown';
+      } else if (step.type === 'recovery') {
+        baseStep.intensity = 'rest';
+      }
+
+      return baseStep;
+    };
+
+    const icuSteps = steps.map(buildIcuStep);
+
+    // Calculate time spent in zone boundaries
+    const zoneTimesMap = { Z1: 0, Z2: 0, Z3: 0, Z4: 0, Z5: 0, Z6: 0, Z7: 0 };
+    const accumulateZones = (stepList) => {
+      stepList.forEach((step) => {
+        if (step.type === 'repeat') {
+          for (let i = 0; i < step.iterations; i++) {
+            accumulateZones(step.steps);
+          }
+        } else {
+          const zoneId = getZoneId(step.targetPaceSec);
+          zoneTimesMap[zoneId] = (zoneTimesMap[zoneId] || 0) + (step.durationSec || 0);
+        }
+      });
+    };
+
+    accumulateZones(steps);
+
+    const zoneTimes = Object.keys(zoneTimesMap).map((zoneKey) => ({
+      id: zoneKey,
+      secs: zoneTimesMap[zoneKey],
+    }));
+
+    const totalMeters = totals.totalMiles * METERS_PER_MILE;
+
+    // Build plain text description breakdown
+    const generateDescription = (stepList, depth = 0) => {
+      const indent = '  '.repeat(depth);
+      return stepList
+        .map((s) => {
+          if (s.type === 'repeat') {
+            const innerText = generateDescription(s.steps, depth + 1);
+            return `${indent}Repeats ${s.iterations}x\n${innerText}`;
+          }
+          return `${indent}- ${formatTime(s.durationSec)} @ ${formatMMSS(s.targetPaceSec)} Pace (${s.type})`;
+        })
+        .join('\n');
+    };
+
+    const descriptionText = generateDescription(steps);
+
+    const payload = [
+      {
+        athlete_id: '34596098',
+        id: 1,
+        icu_training_load: Math.round(totals.totalSec / 60),
+        name: workoutTitle,
+        description: descriptionText,
+        type: 'Run',
+        indoor: false,
+        color: null,
+        moving_time: totals.totalSec,
+        updated: new Date().toISOString(),
+        joules: 0,
+        joules_above_ftp: 0,
+        workout_doc: {
+          steps: icuSteps,
+          locales: [],
+          options: {},
+          distance: totalMeters,
+          duration: totals.totalSec,
+          zoneTimes: zoneTimes,
+          description: descriptionText,
+          strain_score: null,
+          average_watts: 0,
+          normalized_power: 0,
+          variability_index: null,
+          polarization_index: 0,
+        },
+        folder_id: 17296,
+        day: null,
+        days: null,
+        plan_applied: null,
+        hide_from_athlete: false,
+        target: null,
+        targets: ['PACE'],
+        carbs_per_hour: null,
+        tags: null,
+        attachments: null,
+        time: null,
+        sub_type: null,
+        for_week: false,
+        distance: Number(totalMeters.toFixed(3)),
+        icu_intensity: 80.0,
+      },
+    ];
+
+    return JSON.stringify(payload, null, 2);
+  }, [steps, workoutTitle, totals]);
 
   // Step Modification Handlers
   const addStep = (type, parentRepeatId = null) => {
@@ -281,6 +433,45 @@ export default function WorkoutBuilder() {
             onDrop={handleDrop}
           />
         ))}
+      </div>
+
+      {/* Intervals.icu JSON Payload Display Area */}
+      <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '2px solid #e9ecef' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <label style={{ fontWeight: 'bold', color: '#495057', fontSize: '14px' }}>
+            Intervals.icu Workout JSON Payload (Read-Only)
+          </label>
+          <button
+            onClick={() => navigator.clipboard.writeText(buildIntervalsIcuJson)}
+            style={{
+              fontSize: '12px',
+              padding: '4px 8px',
+              cursor: 'pointer',
+              backgroundColor: '#e9ecef',
+              border: '1px solid #ced4da',
+              borderRadius: '4px',
+            }}
+          >
+            📋 Copy JSON
+          </button>
+        </div>
+        <textarea
+          readOnly
+          value={buildIntervalsIcuJson}
+          rows={16}
+          style={{
+            width: '100%',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            backgroundColor: '#1e1e1e',
+            color: '#d4d4d4',
+            padding: '12px',
+            borderRadius: '6px',
+            border: '1px solid #333',
+            resize: 'vertical',
+            boxSizing: 'border-box',
+          }}
+        />
       </div>
 
       {/* Modal Zoom View */}
