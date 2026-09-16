@@ -107,6 +107,7 @@ const createStep = (type) => {
 
 export default function WorkoutBuilder() {
   const [workoutTitle, setWorkoutTitle] = useState('New Workout');
+  const [docNotes, setDocNotes] = useState('NOTES ONLY');
   const [steps, setSteps] = useState([
     createStep('warmup'),
     createStep('repeat'),
@@ -215,13 +216,13 @@ export default function WorkoutBuilder() {
 
     const totalMeters = totals.totalMiles * METERS_PER_MILE;
 
-    // Build plain text description breakdown
-    const generateDescription = (stepList, depth = 0) => {
+    // Generate text representation of workout structure for primary description
+    const generatePrimaryDescription = (stepList, depth = 0) => {
       const indent = '  '.repeat(depth);
       return stepList
         .map((s) => {
           if (s.type === 'repeat') {
-            const innerText = generateDescription(s.steps, depth + 1);
+            const innerText = generatePrimaryDescription(s.steps, depth + 1);
             return `${indent}Repeats ${s.iterations}x\n${innerText}`;
           }
           return `${indent}- ${formatTime(s.durationSec)} @ ${formatMMSS(s.targetPaceSec)} Pace (${s.type})`;
@@ -229,7 +230,7 @@ export default function WorkoutBuilder() {
         .join('\n');
     };
 
-    const descriptionText = generateDescription(steps);
+    const primaryDescription = generatePrimaryDescription(steps);
 
     const payload = [
       {
@@ -237,7 +238,7 @@ export default function WorkoutBuilder() {
         id: 1,
         icu_training_load: Math.round(totals.totalSec / 60),
         name: workoutTitle,
-        description: descriptionText,
+        description: primaryDescription,
         type: 'Run',
         indoor: false,
         color: null,
@@ -252,7 +253,7 @@ export default function WorkoutBuilder() {
           distance: totalMeters,
           duration: totals.totalSec,
           zoneTimes: zoneTimes,
-          description: descriptionText,
+          description: docNotes,
           strain_score: null,
           average_watts: 0,
           normalized_power: 0,
@@ -278,7 +279,7 @@ export default function WorkoutBuilder() {
     ];
 
     return JSON.stringify(payload, null, 2);
-  }, [steps, workoutTitle, totals]);
+  }, [steps, workoutTitle, docNotes, totals]);
 
   // Step Modification Handlers
   const addStep = (type, parentRepeatId = null) => {
@@ -387,11 +388,35 @@ export default function WorkoutBuilder() {
           value={workoutTitle}
           onChange={(e) => setWorkoutTitle(e.target.value)}
           className="builder-title-input"
+          placeholder="Workout Title"
         />
         <div className="builder-totals">
           Total Time: <span className="total-time-val">{formatTime(totals.totalSec)}</span> | 
           Total Dist: <span className="total-dist-val">{formatDistance(totals.totalMiles)}</span>
         </div>
+      </div>
+
+      {/* workout_doc.description Control */}
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{ display: 'block', fontWeight: 'bold', fontSize: '12px', color: '#495057', marginBottom: '4px' }}>
+          Workout Doc Description (Notes):
+        </label>
+        <textarea
+          value={docNotes}
+          onChange={(e) => setDocNotes(e.target.value)}
+          placeholder="Enter notes for workout_doc.description (e.g. NOTES ONLY)..."
+          rows={2}
+          style={{
+            width: '100%',
+            padding: '8px',
+            fontSize: '13px',
+            borderRadius: '4px',
+            border: '1px solid #ced4da',
+            boxSizing: 'border-box',
+            fontFamily: 'inherit',
+            resize: 'vertical',
+          }}
+        />
       </div>
 
       {/* Embedded Chart Preview */}
