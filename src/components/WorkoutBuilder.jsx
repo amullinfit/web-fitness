@@ -19,6 +19,24 @@ const parseMMSS = (str) => {
 // Formats distance in 0.00 mi
 const formatDistance = (miles) => (miles || 0).toFixed(2) + ' mi';
 
+// Define pace boundaries (in seconds per mile) and zone colors
+// Z1: > 9:30/mi (570s), Z2: 8:30-9:30/mi (510-570s), Z3: 7:45-8:30/mi (465-510s), Z4: 7:00-7:45/mi (420-465s), Z5: < 7:00/mi (< 420s)
+const getZoneColor = (paceSec) => {
+    if (!paceSec || paceSec <= 0) return '#6c757d'; // Default fallback
+  
+    if (paceSec > 570) {
+      return '#6c757d'; // Z1 (Warmup/Recovery) - Grey
+    } else if (paceSec > 510) {
+      return '#28a745'; // Z2 (Endurance) - Green
+    } else if (paceSec > 465) {
+      return '#ffc107'; // Z3 (Tempo) - Yellow
+    } else if (paceSec > 420) {
+      return '#fd7e14'; // Z4 (Threshold) - Orange
+    } else {
+      return '#dc3545'; // Z5 (Anaerobic / Speed) - Red
+    }
+  };
+  
 // Helper factory to initialize defaults by type
 const createStep = (type) => {
   const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
@@ -357,81 +375,74 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
   );
 }
 
-// Visual workout profile chart component
+// Visual workout profile chart component with dynamic pace zone colors
 function RenderWorkoutChart({ steps, height }) {
-  const flattenSteps = (list) => {
-    let result = [];
-    list.forEach((s) => {
-      if (s.type === 'repeat') {
-        for (let i = 0; i < s.iterations; i++) {
-          result = result.concat(flattenSteps(s.steps));
-        }
-      } else {
-        result.push(s);
-      }
-    });
-    return result;
-  };
-
-  const flatSteps = flattenSteps(steps);
-  const totalDuration = flatSteps.reduce((acc, curr) => acc + curr.durationSec, 0) || 1;
-
-  // Speeds in mph / relative intensity (Velocity = 1 / targetPaceSec)
-  const velocities = flatSteps.map((s) => (s.targetPaceSec > 0 ? 1 / s.targetPaceSec : 0));
-  const maxVel = Math.max(...velocities, 0.0001);
-  const minVel = Math.min(...velocities, maxVel);
-
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'warmup': return '#ffc107';
-      case 'run': return '#28a745';
-      case 'recovery': return '#17a2b8';
-      case 'cooldown': return '#6c757d';
-      default: return '#007bff';
-    }
-  };
-
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: `${height}px`,
-        display: 'flex',
-        alignItems: 'flex-end',
-        backgroundColor: '#f8f9fa',
-        border: '1px solid #e9ecef',
-        borderRadius: '4px',
-        overflow: 'hidden',
-      }}
-    >
-      {flatSteps.map((step, idx) => {
-        const widthPct = (step.durationSec / totalDuration) * 100;
-
-        // Convert pace to relative height (% of max velocity in current workout)
-        const currentVel = step.targetPaceSec > 0 ? 1 / step.targetPaceSec : 0;
-        
-        let barHeightPct = 20; // Default floor height
-        if (maxVel === minVel) {
-          barHeightPct = 60; // Default baseline if all paces are identical
+    const flattenSteps = (list) => {
+      let result = [];
+      list.forEach((s) => {
+        if (s.type === 'repeat') {
+          for (let i = 0; i < s.iterations; i++) {
+            result = result.concat(flattenSteps(s.steps));
+          }
         } else {
-          // Normalize height between 25% and 95% relative to min and max workout velocities
-          barHeightPct = 25 + ((currentVel - minVel) / (maxVel - minVel)) * 70;
+          result.push(s);
         }
-
-        return (
-          <div
-            key={idx}
-            style={{
-              width: `${widthPct}%`,
-              height: `${barHeightPct}%`,
-              backgroundColor: getTypeColor(step.type),
-              borderRight: '1px solid rgba(255,255,255,0.4)',
-              transition: 'height 0.2s ease, width 0.2s ease',
-            }}
-            title={`${step.type.toUpperCase()}: ${formatMMSS(step.durationSec)} @ ${formatMMSS(step.targetPaceSec)}/mi`}
-          />
-        );
-      })}
-    </div>
-  );
-}
+      });
+      return result;
+    };
+  
+    const flatSteps = flattenSteps(steps);
+    const totalDuration = flatSteps.reduce((acc, curr) => acc + curr.durationSec, 0) || 1;
+  
+    // Speeds in relative velocity (Velocity = 1 / targetPaceSec)
+    const velocities = flatSteps.map((s) => (s.targetPaceSec > 0 ? 1 / s.targetPaceSec : 0));
+    const maxVel = Math.max(...velocities, 0.0001);
+    const minVel = Math.min(...velocities, maxVel);
+  
+    return (
+      <div
+        style={{
+          width: '100%',
+          height: `${height}px`,
+          display: 'flex',
+          alignItems: 'flex-end',
+          backgroundColor: '#f8f9fa',
+          border: '1px solid #e9ecef',
+          borderRadius: '4px',
+          overflow: 'hidden',
+        }}
+      >
+        {flatSteps.map((step, idx) => {
+          const widthPct = (step.durationSec / totalDuration) * 100;
+  
+          // Convert pace to relative height (% of max velocity in current workout)
+          const currentVel = step.targetPaceSec > 0 ? 1 / step.targetPaceSec : 0;
+          
+          let barHeightPct = 20; // Default floor height
+          if (maxVel === minVel) {
+            barHeightPct = 60; // Default baseline if all paces are identical
+          } else {
+            // Normalize height between 25% and 95% relative to min and max workout velocities
+            barHeightPct = 25 + ((currentVel - minVel) / (maxVel - minVel)) * 70;
+          }
+  
+          // Dynamic zone color based on target pace
+          const barColor = getZoneColor(step.targetPaceSec);
+  
+          return (
+            <div
+              key={idx}
+              style={{
+                width: `${widthPct}%`,
+                height: `${barHeightPct}%`,
+                backgroundColor: barColor,
+                borderRight: '1px solid rgba(255,255,255,0.4)',
+                transition: 'height 0.2s ease, width 0.2s ease, background-color 0.2s ease',
+              }}
+              title={`${step.type.toUpperCase()}: ${formatMMSS(step.durationSec)} @ ${formatMMSS(step.targetPaceSec)}/mi`}
+            />
+          );
+        })}
+      </div>
+    );
+  }
