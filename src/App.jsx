@@ -3,6 +3,7 @@ import DailyView from './components/DailyView';
 import MonthlyView from './components/MonthlyView';
 import GeneralOverview from './components/GeneralOverview'; 
 import WorkoutsView from './components/WorkoutsView';
+import WorkoutBuilder from './components/WorkoutBuilder';
 import GearView from './components/GearView';
 import OptionsView from './components/OptionsView';
 
@@ -146,6 +147,12 @@ export default function App() {
               Workouts
             </button>
             <button 
+              onClick={() => handleSelectTab('builder')}
+              style={dropdownBtnStyle(themeView)}
+            >
+              Workout Builder
+            </button>
+            <button 
               onClick={() => handleSelectTab('gear')}
               style={dropdownBtnStyle(themeView)}
             >
@@ -173,6 +180,7 @@ export default function App() {
         {activeTab === 'monthly' && <MonthlyView />}
         {activeTab === 'overview' && <GeneralOverview />}
         {activeTab === 'workouts' && <WorkoutsView />}
+        {activeTab === 'builder' && <WorkoutBuilder />}
         {activeTab === 'gear' && <GearView />}
         {activeTab === 'options' && (
           <OptionsView
