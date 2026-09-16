@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import './WorkoutBuilder.css';
 
 // Helper utilities for MM:SS parsing and formatting
@@ -10,15 +10,29 @@ const formatMMSS = (totalSeconds) => {
 
 const parseMMSS = (str) => {
   if (!str) return 0;
-  // Handle typing numbers directly or formatted string
-  if (!str.includes(':')) {
-    const num = parseInt(str, 10);
-    return isNaN(num) ? 0 : num * 60; // Default plain numbers to minutes
+  const cleanStr = String(str).trim();
+
+  // Handle explicit MM:SS format (e.g., "8:30" or "08:30")
+  if (cleanStr.includes(':')) {
+    const parts = cleanStr.split(':');
+    const mins = parseInt(parts[0], 10) || 0;
+    const secs = parseInt(parts[1], 10) || 0;
+    return mins * 60 + secs;
   }
-  const parts = str.split(':');
-  const mins = parseInt(parts[0], 10) || 0;
-  const secs = parseInt(parts[1], 10) || 0;
-  return mins * 60 + secs;
+
+  // Handle direct number input (e.g., "830" -> 8m 30s, "8" -> 8m 00s, "1030" -> 10m 30s)
+  const num = parseInt(cleanStr, 10);
+  if (isNaN(num)) return 0;
+
+  if (num < 100) {
+    // Single or double digits treated directly as minutes (e.g., "8" -> 8:00)
+    return num * 60;
+  } else {
+    // 3 or 4 digits treated as MMSS (e.g., "730" -> 7:30, "1030" -> 10:30)
+    const mins = Math.floor(num / 100);
+    const secs = num % 100;
+    return mins * 60 + Math.min(secs, 59);
+  }
 };
 
 // Formats distance in 0.00 mi
@@ -271,29 +285,36 @@ export default function WorkoutBuilder() {
   );
 }
 
-// Editable Time/Pace Input component that allows easy text typing
+// Editable Time/Pace Input component that allows natural MM:SS typing
 function MMSSInput({ valueSec, onChange }) {
   const [text, setText] = useState(formatMMSS(valueSec));
+  const [isFocused, setIsFocused] = useState(false);
 
-  // Sync state if external value change occurs
-  React.useEffect(() => {
-    setText(formatMMSS(valueSec));
-  }, [valueSec]);
+  useEffect(() => {
+    if (!isFocused) {
+      setText(formatMMSS(valueSec));
+    }
+  }, [valueSec, isFocused]);
 
   const handleChange = (e) => {
     const val = e.target.value;
     setText(val);
-    const parsed = parseMMSS(val);
-    if (parsed >= 0) {
-      onChange(parsed);
+
+    const parsedSec = parseMMSS(val);
+    if (parsedSec >= 0) {
+      onChange(parsedSec);
     }
   };
 
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
   const handleBlur = () => {
-    // Format on focus loss
-    const parsed = parseMMSS(text);
-    setText(formatMMSS(parsed));
-    onChange(parsed);
+    setIsFocused(false);
+    const parsedSec = parseMMSS(text);
+    setText(formatMMSS(parsedSec));
+    onChange(parsedSec);
   };
 
   return (
@@ -301,6 +322,7 @@ function MMSSInput({ valueSec, onChange }) {
       type="text"
       value={text}
       onChange={handleChange}
+      onFocus={handleFocus}
       onBlur={handleBlur}
       className="time-pace-input"
       placeholder="00:00"
