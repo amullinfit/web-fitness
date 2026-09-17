@@ -424,25 +424,56 @@ export default function WorkoutBuilder() {
     };
 
     return {
+      id: workoutId || 1,
       icu_training_load: Math.round(totals.totalSec / 60),
       name: workoutTitle,
-      description: generatePrimaryDescription(steps), // Leaves root description as is
+      description: generatePrimaryDescription(steps),
       type: 'Run',
       indoor: false,
+      color: null,
       moving_time: totals.totalSec,
       updated: new Date().toISOString(),
+      joules: 0,
+      joules_above_ftp: 0,
       workout_doc: {
         steps: icuSteps,
+        locales: [],
+        options: {},
         distance: totalMeters,
         duration: totals.totalSec,
-        description: workoutDescription, // Populates workout_doc.description
+        zoneTimes: [
+          { id: 'Z1', secs: 0 },
+          { id: 'Z2', secs: totals.totalSec },
+          { id: 'Z3', secs: 0 },
+          { id: 'Z4', secs: 0 },
+          { id: 'Z5', secs: 0 },
+          { id: 'Z6', secs: 0 },
+          { id: 'Z7', secs: 0 },
+        ],
+        description: workoutDescription,
+        strain_score: null,
+        average_watts: 0,
+        normalized_power: 0,
+        variability_index: null,
+        polarization_index: 0,
       },
       folder_id: selectedFolderId ? Number(selectedFolderId) : null,
+      day: null,
+      days: null,
+      plan_applied: null,
+      hide_from_athlete: false,
+      target: null,
       targets: ['PACE'],
+      carbs_per_hour: null,
+      tags: null,
+      attachments: null,
+      time: null,
+      sub_type: null,
+      for_week: false,
       distance: Number(totalMeters.toFixed(3)),
       icu_intensity: 80.0,
     };
-  }, [steps, workoutTitle, workoutDescription, totals, selectedFolderId]);
+  }, [steps, workoutTitle, workoutDescription, totals, selectedFolderId, workoutId]);
 
   // Step Modification Handlers
   const addStep = (type, parentRepeatId = null) => {
@@ -667,7 +698,7 @@ export default function WorkoutBuilder() {
             <button className="btn-add-step btn-add-repeat" onClick={() => addStep('repeat')}>+ Repeat Block</button>
           </div>
 
-          <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, null, steps.length)} style={{ minHeight: '120px' }}>
+          <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, null, steps.length)} style={{ minHeight: '120px', marginBottom: '24px' }}>
             {steps.map((step, index) => (
               <RenderStepRow
                 key={step.id}
@@ -681,6 +712,29 @@ export default function WorkoutBuilder() {
                 onDrop={handleDrop}
               />
             ))}
+          </div>
+
+          {/* Read-Only Intervals.icu JSON Preview */}
+          <div style={{ marginTop: '30px', paddingTop: '16px', borderTop: '2px solid #dee2e6' }}>
+            <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', color: '#333', marginBottom: '6px' }}>
+              Intervals.icu JSON Representation (Read-Only)
+            </label>
+            <textarea
+              readOnly
+              value={JSON.stringify([workoutPayloadObject], null, 2)}
+              rows={14}
+              style={{
+                width: '100%',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                padding: '10px',
+                backgroundColor: '#f8f9fa',
+                border: '1px solid #ced4da',
+                borderRadius: '4px',
+                boxSizing: 'border-box',
+                color: '#495057',
+              }}
+            />
           </div>
         </div>
       )}
