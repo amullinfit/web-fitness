@@ -725,7 +725,6 @@ export default function WorkoutBuilder() {
             ⚙️ Options ▾
           </button>
 
-          //------------
           {isOptionsMenuOpen && (
             <div
               style={{
@@ -787,7 +786,6 @@ export default function WorkoutBuilder() {
               )}
             </div>
           )}
-          //-----
         </div>
       </div>
 
