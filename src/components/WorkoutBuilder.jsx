@@ -108,7 +108,7 @@ const parseMMSS = (str) => {
 
 const formatDistance = (miles) => (miles || 0).toFixed(2) + ' mi';
 
-// Target pace presets defined as a multiplier/offset relative to threshold pace (e.g. 7:00 / mi = 420s)
+// Target pace presets defined as a multiplier/offset relative to threshold pace (e.g. 8:00 / mi = 480s)
 const PACE_PRESETS = [
   { label: '5K', multiplier: 0.90, color: '#dc3545' },      // ~10% faster than threshold
   { label: '10K', multiplier: 0.94, color: '#fd7e14' },     // ~6% faster than threshold
@@ -200,9 +200,9 @@ const generateZwoXml = () => {
       ? (step.durationValue || 0) 
       : Math.round((step.durationValue || 0) * 1609.344 / 5.0); // Rough estimate if distance-based
     
-    const targetPace = step.targetPaceSecs || 420;
-    // Convert pace to % of Threshold Pace (e.g., 420s / targetPaceSecs)
-    const powerFraction = (420 / targetPace).toFixed(2);
+    const targetPace = step.targetPaceSecs || 480;
+    // Convert pace to % of Threshold Pace (e.g., 480s / targetPaceSecs)
+    const powerFraction = (480 / targetPace).toFixed(2);
 
     if (step.type === 'warmup') {
       return `    <Warmup Duration="${durSec}" PowerLow="0.50" PowerHigh="${powerFraction}"/>`;
@@ -1374,7 +1374,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
           const calculatedSecs = Math.round(
             thresholdPaceMps > 0
               ? (1609.344 / thresholdPaceMps) * preset.multiplier
-              : 420 * preset.multiplier
+              : 480 * preset.multiplier
           );
 
           const isSelected = Math.abs((step.targetPaceSec || 0) - calculatedSecs) < 3;
