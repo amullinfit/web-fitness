@@ -888,7 +888,7 @@ export default function WorkoutBuilder() {
       {/* --- MODAL 2: Edit Workout Picker --- */}
       {isEditModalOpen && (
         <div style={modalOverlayStyle}>
-          <div style={{ ...modalContentStyle, width: '580px', maxWidth: '90vw' }}>
+          <div style={{ ...modalContentStyle, width: '680px', maxWidth: '90vw' }}>
             <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Select Workout to Edit</h3>
             
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '13px' }}>
@@ -924,7 +924,7 @@ export default function WorkoutBuilder() {
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '13px' }}>
               2. Select Workout:
             </label>
-            <div style={{ maxHeight: '340px', overflowY: 'auto', border: '1px solid #ccc', borderRadius: '6px', marginBottom: '16px' }}>
+            <div style={{ maxHeight: '360px', overflowY: 'auto', border: '1px solid #ccc', borderRadius: '6px', marginBottom: '16px' }}>
               {apiLoading ? (
                 <p style={{ padding: '16px', color: '#888', margin: 0, textAlign: 'center' }}>Loading workouts...</p>
               ) : workoutsList.length === 0 ? (
@@ -939,23 +939,23 @@ export default function WorkoutBuilder() {
                       key={w.id}
                       onClick={() => handleSelectWorkoutToEdit(w)}
                       style={{
-                        padding: '12px 16px',
+                        padding: '14px 16px',
                         borderBottom: '1px solid #eee',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '16px',
+                        gap: '20px',
                         transition: 'background-color 0.15s ease'
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      {/* 1. Left: Workout Title */}
+                      {/* 1. Left: Workout Title (24px) */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{
                             fontWeight: 'bold',
-                            fontSize: '15px',
+                            fontSize: '24px',
                             color: '#212529',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -966,16 +966,14 @@ export default function WorkoutBuilder() {
                         </div>
                       </div>
 
-                      {/* 2. Middle: Stacked Time & Distance */}
+                      {/* 2. Middle: Side-by-Side Time & Distance (18px) */}
                       <div
                         style={{
                           display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'flex-start',
-                          gap: '2px',
-                          fontSize: '12px',
-                          color: '#6c757d',
-                          minWidth: '85px',
+                          alignItems: 'center',
+                          gap: '12px',
+                          fontSize: '18px',
+                          color: '#495057',
                           flexShrink: 0
                         }}
                       >
@@ -983,7 +981,7 @@ export default function WorkoutBuilder() {
                         <span>📏 {formatDistance(w.distance ? w.distance / 1609.344 : wTotals.totalMiles)}</span>
                       </div>
 
-                      {/* 3. Right: Small Workout Chart Profile */}
+                      {/* 3. Right: Chart (120px x 40px) */}
                       <div style={{ width: '120px', flexShrink: 0, height: '40px' }}>
                         <RenderWorkoutChart steps={workoutSteps} height={40} />
                       </div>
