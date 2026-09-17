@@ -22,22 +22,30 @@ async function fetchWorkoutsApi(folderId = null) {
 }
 
 async function createFolderApi(folderName) {
-  const res = await fetch(VAL_WORKOUTBUILDER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: 'create_folder',
-      name: folderName,
-      type: 'FOLDER',
-      folderData: { name: folderName, type: 'FOLDER' },
-    }),
-  });
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to create folder (${res.status}): ${errorText}`);
+    const res = await fetch(VAL_WORKOUTBUILDER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'create_folder',
+        name: folderName,
+        type: 'FOLDER',
+      }),
+    });
+  
+    if (!res.ok) {
+      let errorDetails = '';
+      try {
+        const errJson = await res.json();
+        // Print the exact details object if returned by backend
+        errorDetails = JSON.stringify(errJson.details || errJson, null, 2);
+      } catch {
+        errorDetails = await res.text();
+      }
+      throw new Error(`Server returned status ${res.status}:\n${errorDetails}`);
+    }
+  
+    return await res.json();
   }
-  return await res.json();
-}
 
 async function saveWorkoutApi(action, workoutId, workoutData) {
   const method = action === 'update_workout' ? 'PUT' : 'POST';
