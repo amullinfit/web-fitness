@@ -888,7 +888,7 @@ export default function WorkoutBuilder() {
       {/* --- MODAL 2: Edit Workout Picker --- */}
       {isEditModalOpen && (
         <div style={modalOverlayStyle}>
-          <div style={{ ...modalContentStyle, width: '680px', maxWidth: '90vw' }}>
+          <div style={{ ...modalContentStyle, width: '720px', maxWidth: '90vw' }}>
             <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Select Workout to Edit</h3>
             
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '13px' }}>
@@ -943,15 +943,15 @@ export default function WorkoutBuilder() {
                         borderBottom: '1px solid #eee',
                         cursor: 'pointer',
                         display: 'flex',
-                        alignItems: 'center',
+                        alignItems: 'flex-end', // Aligns bottom of text and chart
                         gap: '20px',
                         transition: 'background-color 0.15s ease'
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      {/* 1. Left: Workout Title (24px) */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      {/* 1. Left-justified Name */}
+                      <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                         <div
                           style={{
                             fontWeight: 'bold',
@@ -959,14 +959,15 @@ export default function WorkoutBuilder() {
                             color: '#212529',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
+                            whiteSpace: 'nowrap',
+                            lineHeight: '1.1'
                           }}
                         >
                           {w.name || 'Untitled Workout'}
                         </div>
                       </div>
 
-                      {/* 2. Middle: Side-by-Side Time & Distance (18px) */}
+                      {/* 2. Side-by-Side Time & Distance (Bottom Aligned) */}
                       <div
                         style={{
                           display: 'flex',
@@ -974,15 +975,16 @@ export default function WorkoutBuilder() {
                           gap: '12px',
                           fontSize: '18px',
                           color: '#495057',
-                          flexShrink: 0
+                          flexShrink: 0,
+                          lineHeight: '1.1'
                         }}
                       >
                         <span>⏱️ {formatTime(w.moving_time || wTotals.totalSec)}</span>
                         <span>📏 {formatDistance(w.distance ? w.distance / 1609.344 : wTotals.totalMiles)}</span>
                       </div>
 
-                      {/* 3. Right: Chart (120px x 40px) */}
-                      <div style={{ width: '120px', flexShrink: 0, height: '40px' }}>
+                      {/* 3. Workout Chart (Bottom Aligned) */}
+                      <div style={{ width: '120px', flexShrink: 0, height: '40px', display: 'flex', alignItems: 'flex-end' }}>
                         <RenderWorkoutChart steps={workoutSteps} height={40} />
                       </div>
                     </div>
