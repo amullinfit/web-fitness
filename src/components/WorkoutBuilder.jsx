@@ -366,6 +366,19 @@ export default function WorkoutBuilder() {
   const workoutPayloadObject = useMemo(() => {
     const METERS_PER_MILE = 1609.344;
 
+    // Helper to format seconds as #h##m##s
+    const formatDescriptionTime = (totalSeconds) => {
+      const sec = Math.max(0, totalSeconds || 0);
+      const hrs = Math.floor(sec / 3600);
+      const mins = Math.floor((sec % 3600) / 60);
+      const secs = sec % 60;
+
+      if (hrs > 0) {
+        return `${hrs}h${mins}m${secs}s`;
+      }
+      return `${mins}m${secs}s`;
+    };
+
     const buildIcuStep = (step) => {
       if (step.type === 'repeat') {
         const childIcuSteps = (step.steps || []).map(buildIcuStep);
@@ -412,14 +425,19 @@ export default function WorkoutBuilder() {
     const generatePrimaryDescription = (stepList, depth = 0) => {
       if (!Array.isArray(stepList)) return '';
       const indent = '  '.repeat(depth);
+      
       return stepList
         .map((s) => {
           if (s.type === 'repeat') {
-            return `${indent}Repeats ${s.iterations}x\n${generatePrimaryDescription(s.steps, depth + 1)}`;
+            const innerSteps = generatePrimaryDescription(s.steps, depth + 1);
+            // Blank lines before and after repeat blocks with "#x" label
+            return `\n${indent}${s.iterations}x\n${innerSteps}\n`;
           }
-          return `${indent}- ${formatTime(s.durationSec)} @ ${formatMMSS(s.targetPaceSec)} Pace (${s.type})`;
+          return `${indent}- ${formatDescriptionTime(s.durationSec)} @ ${formatMMSS(s.targetPaceSec)} Pace (${s.type})`;
         })
-        .join('\n');
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n') // Clean up extra stacked newlines from nested repeats
+        .trim();
     };
 
     return {
@@ -473,7 +491,7 @@ export default function WorkoutBuilder() {
       icu_intensity: 80.0,
     };
   }, [steps, workoutTitle, workoutDescription, totals, selectedFolderId, saveFolderId, workoutId]);
-
+  
   const handleConfirmSaveWorkout = async () => {
     if (!saveTitle.trim()) {
       alert('Please enter a workout name.');
