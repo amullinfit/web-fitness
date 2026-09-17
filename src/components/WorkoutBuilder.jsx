@@ -18,6 +18,13 @@ async function fetchWorkoutsApi(folderId = null) {
   const res = await fetch(url, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch workouts');
   const data = await res.json();
+  
+  // If the returned object has a 'children' property (Intervals.icu folder format), use that
+  if (data && Array.isArray(data.children)) {
+    return data.children;
+  }
+  
+  // Fallback for standard array or wrapped { workouts: [...] } response
   return Array.isArray(data) ? data : (data.workouts || []);
 }
 
@@ -234,10 +241,16 @@ export default function WorkoutBuilder() {
     try {
       const folderList = await loadFolders();
       if (folderList.length > 0) {
-        const initialFolder = folderList[0].id;
-        setSelectedEditFolderId(initialFolder);
-        const wList = await fetchWorkoutsApi(initialFolder);
-        setWorkoutsList(wList);
+        const initialFolder = folderList[0];
+        setSelectedEditFolderId(initialFolder.id);
+
+        // Check if the folder object itself already contains 'children'
+        if (Array.isArray(initialFolder.children)) {
+          setWorkoutsList(initialFolder.children);
+        } else {
+          const wList = await fetchWorkoutsApi(initialFolder.id);
+          setWorkoutsList(wList);
+        }
       }
       setIsEditModalOpen(true);
     } catch (err) {
@@ -448,7 +461,7 @@ export default function WorkoutBuilder() {
         .replace(/\n{3,}/g, '\n\n') // Collapse any stacked blank lines down to 1
         .trim();
     };
-    
+
     return {
       id: workoutId || 1,
       icu_training_load: Math.round(totals.totalSec / 60),
@@ -838,8 +851,14 @@ export default function WorkoutBuilder() {
                 setSelectedEditFolderId(folderId);
                 setApiLoading(true);
                 try {
-                  const wList = await fetchWorkoutsApi(folderId);
-                  setWorkoutsList(wList);
+                  const targetFolder = folders.find((f) => String(f.id) === String(folderId));
+                  
+                  if (targetFolder && Array.isArray(targetFolder.children)) {
+                    setWorkoutsList(targetFolder.children);
+                  } else {
+                    const wList = await fetchWorkoutsApi(folderId);
+                    setWorkoutsList(wList);
+                  }
                 } catch (err) {
                   setStatusMessage(`Failed to fetch workouts: ${err.message}`);
                 } finally {
