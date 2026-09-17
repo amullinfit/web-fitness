@@ -285,6 +285,47 @@ export default function WorkoutBuilder() {
     }
   };
 
+  // Helper to check if the user has made changes since opening/saving
+  const hasUnsavedChanges = () => {
+    if (mode === 'CREATING') {
+      // In CREATING mode, check if steps differ from default steps or title changed
+      return steps.length > 0 || workoutTitle !== 'New Workout' || workoutDescription !== '';
+    }
+    if (mode === 'EDITING' && originalWorkoutSnapshot) {
+      // Compare current state against the original snapshot
+      const currentSnapshot = {
+        id: workoutId,
+        name: workoutTitle,
+        workoutDescription,
+        folder_id: selectedFolderId,
+        steps,
+      };
+      return JSON.stringify(currentSnapshot) !== JSON.stringify(originalWorkoutSnapshot);
+    }
+    return false;
+  };
+
+  const handleCloseWorkout = () => {
+    setIsOptionsMenuOpen(false);
+
+    if (hasUnsavedChanges()) {
+      const confirmClose = window.confirm(
+        'You have unsaved changes in this workout. Are you sure you want to close it and lose your changes?'
+      );
+      if (!confirmClose) return;
+    }
+
+    // Reset back to initial empty state
+    setMode('EMPTY');
+    setWorkoutId(null);
+    setWorkoutTitle('New Workout');
+    setWorkoutDescription('');
+    setSelectedFolderId('');
+    setSteps([]);
+    setOriginalWorkoutSnapshot(null);
+    setStatusMessage('Closed current workout.');
+  };
+
   const handleCancelEdits = () => {
     setIsOptionsMenuOpen(false);
     if (!originalWorkoutSnapshot) {
@@ -711,6 +752,12 @@ export default function WorkoutBuilder() {
               {mode === 'EDITING' && (
                 <button style={{ ...menuButtonStyle, color: '#dc3545' }} onClick={handleCancelEdits}>
                   ↩️ Cancel Edits
+                </button>
+              )}
+
+              {(mode === 'CREATING' || mode === 'EDITING') && (
+                <button style={{ ...menuButtonStyle, color: '#6c757d' }} onClick={handleCloseWorkout}>
+                  ✖️ Close Workout
                 </button>
               )}
             </div>
