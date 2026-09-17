@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import './WorkoutBuilder.css';
 
-// Updated API Endpoint for Vercel/Vite Proxy
+// API Endpoint for Vercel/Vite Proxy
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 
 async function fetchFoldersApi() {
   const res = await fetch(`${VAL_WORKOUTBUILDER_URL}?action=get_folders`, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch folders');
-  return await res.json();
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.folders || []);
 }
 
 async function fetchWorkoutsApi(folderId = null) {
@@ -16,7 +17,8 @@ async function fetchWorkoutsApi(folderId = null) {
     : `${VAL_WORKOUTBUILDER_URL}?action=get_workouts`;
   const res = await fetch(url, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch workouts');
-  return await res.json();
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.workouts || []);
 }
 
 async function createFolderApi(folderName) {
@@ -25,10 +27,15 @@ async function createFolderApi(folderName) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: 'create_folder',
+      name: folderName,
+      type: 'FOLDER',
       folderData: { name: folderName, type: 'FOLDER' },
     }),
   });
-  if (!res.ok) throw new Error('Failed to create folder');
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to create folder (${res.status}): ${errorText}`);
+  }
   return await res.json();
 }
 
@@ -43,20 +50,20 @@ async function saveWorkoutApi(action, workoutId, workoutData) {
       workoutData,
     }),
   });
-  if (!res.ok) throw new Error(`Failed to ${action === 'update_workout' ? 'update' : 'create'} workout`);
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to ${action === 'update_workout' ? 'update' : 'create'} workout: ${errorText}`);
+  }
   return await res.json();
 }
 
-// --- Helper utilities for MM:SS parsing and formatting ---
+// --- Helpers ---
 const formatTime = (totalSeconds) => {
-  const sec = totalSeconds || 0;
+  const sec = Math.max(0, totalSeconds || 0);
   const hrs = Math.floor(sec / 3600);
   const mins = Math.floor((sec % 3600) / 60);
   const secs = sec % 60;
-
-  if (hrs > 0) {
-    return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  }
+  if (hrs > 0) return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 };
 
@@ -69,37 +76,25 @@ const formatMMSS = (totalSeconds) => {
 const parseMMSS = (str) => {
   if (!str) return 0;
   const cleanStr = String(str).trim();
-
   if (cleanStr.includes(':')) {
     const parts = cleanStr.split(':');
     if (parts.length === 3) {
-      const hrs = parseInt(parts[0], 10) || 0;
-      const mins = parseInt(parts[1], 10) || 0;
-      const secs = parseInt(parts[2], 10) || 0;
-      return hrs * 3600 + mins * 60 + secs;
+      return (parseInt(parts[0], 10) || 0) * 3600 + (parseInt(parts[1], 10) || 0) * 60 + (parseInt(parts[2], 10) || 0);
     }
-    const mins = parseInt(parts[0], 10) || 0;
-    const secs = parseInt(parts[1], 10) || 0;
-    return mins * 60 + secs;
+    return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
   }
-
   const num = parseInt(cleanStr, 10);
   if (isNaN(num)) return 0;
-
-  if (num < 100) {
-    return num * 60;
-  } else {
-    const mins = Math.floor(num / 100);
-    const secs = num % 100;
-    return mins * 60 + Math.min(secs, 59);
-  }
+  if (num < 100) return num * 60;
+  const mins = Math.floor(num / 100);
+  const secs = num % 100;
+  return mins * 60 + Math.min(secs, 59);
 };
 
 const formatDistance = (miles) => (miles || 0).toFixed(2) + ' mi';
 
 const getZoneColor = (paceSec) => {
-  if (!paceSec || paceSec <= 0) return '#6c757d';
-  if (paceSec > 570) return '#6c757d';
+  if (!paceSec || paceSec <= 0 || paceSec > 570) return '#6c757d';
   if (paceSec > 510) return '#28a745';
   if (paceSec > 465) return '#ffc107';
   if (paceSec > 420) return '#fd7e14';
@@ -109,23 +104,21 @@ const getZoneColor = (paceSec) => {
 const createStep = (type) => {
   const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
   switch (type) {
-    case 'warmup':
-      return { id, type: 'warmup', durationSec: 600, targetPaceSec: 540 };
-    case 'run':
-      return { id, type: 'run', durationSec: 600, targetPaceSec: 480 };
-    case 'recovery':
-      return { id, type: 'recovery', durationSec: 120, targetPaceSec: 660 };
-    case 'cooldown':
-      return { id, type: 'cooldown', durationSec: 600, targetPaceSec: 540 };
+    case 'warmup': return { id, type: 'warmup', durationSec: 600, targetPaceSec: 540 };
+    case 'run': return { id, type: 'run', durationSec: 600, targetPaceSec: 480 };
+    case 'recovery': return { id, type: 'recovery', durationSec: 120, targetPaceSec: 660 };
+    case 'cooldown': return { id, type: 'cooldown', durationSec: 600, targetPaceSec: 540 };
     case 'repeat':
       return {
         id,
         type: 'repeat',
         iterations: 3,
-        steps: [createStep('run'), createStep('recovery')],
+        steps: [
+          { id: `${id}-1`, type: 'run', durationSec: 600, targetPaceSec: 480 },
+          { id: `${id}-2`, type: 'recovery', durationSec: 120, targetPaceSec: 660 }
+        ],
       };
-    default:
-      return { id, type: 'run', durationSec: 600, targetPaceSec: 480 };
+    default: return { id, type: 'run', durationSec: 600, targetPaceSec: 480 };
   }
 };
 
@@ -135,46 +128,76 @@ const createDefaultSteps = () => [
   createStep('cooldown'),
 ];
 
+// Map incoming Intervals.icu workout object back into local step format
+const mapIcuDocToSteps = (workout) => {
+  const stepsSource = workout?.workout_doc?.steps || workout?.steps;
+  if (!Array.isArray(stepsSource) || stepsSource.length === 0) {
+    return createDefaultSteps();
+  }
+
+  const mapStep = (s, idx) => {
+    const id = `step-loaded-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
+    if (s.reps && Array.isArray(s.steps)) {
+      return {
+        id,
+        type: 'repeat',
+        iterations: s.reps,
+        steps: s.steps.map(mapStep),
+      };
+    }
+
+    let type = 'run';
+    if (s.warmup || s.intensity === 'warmup') type = 'warmup';
+    else if (s.cooldown || s.intensity === 'cooldown') type = 'cooldown';
+    else if (s.intensity === 'rest') type = 'recovery';
+
+    let targetPaceSec = 480;
+    if (s.pace?.value) targetPaceSec = s.pace.value;
+    else if (s.pace?.start) targetPaceSec = s.pace.start;
+
+    return {
+      id,
+      type,
+      durationSec: s.duration || 300,
+      targetPaceSec,
+    };
+  };
+
+  return stepsSource.map(mapStep);
+};
+
 export default function WorkoutBuilder() {
-  // Page Mode: 'EMPTY' | 'CREATING' | 'EDITING'
   const [mode, setMode] = useState('EMPTY');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
 
-  // Active Workout State
   const [workoutId, setWorkoutId] = useState(null);
   const [workoutTitle, setWorkoutTitle] = useState('New Workout');
   const [workoutDescription, setWorkoutDescription] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState('');
   const [steps, setSteps] = useState([]);
 
-  // Original snapshot for "Cancel Edits"
   const [originalWorkoutSnapshot, setOriginalWorkoutSnapshot] = useState(null);
 
-  // Modal Dialog States
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [saveAsNew, setSaveAsNew] = useState(false);
 
-  // Folders & Workouts Data State
   const [folders, setFolders] = useState([]);
   const [workoutsList, setWorkoutsList] = useState([]);
   const [selectedEditFolderId, setSelectedEditFolderId] = useState('');
 
-  // Form Inputs
   const [newFolderName, setNewFolderName] = useState('');
   const [saveTitle, setSaveTitle] = useState('');
   const [saveFolderId, setSaveFolderId] = useState('');
   const [inlineFolderInput, setInlineFolderInput] = useState('');
   const [showInlineFolderInput, setShowInlineFolderInput] = useState(false);
 
-  // Status & Utility State
   const [apiLoading, setApiLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
 
-  // Load Folders Helper
   const loadFolders = async () => {
     try {
       const list = await fetchFoldersApi();
@@ -185,8 +208,6 @@ export default function WorkoutBuilder() {
       return [];
     }
   };
-
-  // --- Option Handlers ---
 
   const handleStartCreateNew = () => {
     setWorkoutId(null);
@@ -202,41 +223,45 @@ export default function WorkoutBuilder() {
   const handleOpenEditModal = async () => {
     setIsOptionsMenuOpen(false);
     setApiLoading(true);
-    const folderList = await loadFolders();
-    if (folderList.length > 0) {
-      const initialFolder = folderList[0].id;
-      setSelectedEditFolderId(initialFolder);
-      try {
+    try {
+      const folderList = await loadFolders();
+      if (folderList.length > 0) {
+        const initialFolder = folderList[0].id;
+        setSelectedEditFolderId(initialFolder);
         const wList = await fetchWorkoutsApi(initialFolder);
         setWorkoutsList(wList);
-      } catch (err) {
-        setStatusMessage(`Error fetching workouts: ${err.message}`);
       }
+      setIsEditModalOpen(true);
+    } catch (err) {
+      setStatusMessage(`Error opening edit dialog: ${err.message}`);
+    } finally {
+      setApiLoading(false);
     }
-    setApiLoading(false);
-    setIsEditModalOpen(true);
   };
 
   const handleSelectWorkoutToEdit = (workout) => {
-    setWorkoutId(workout.id);
-    setWorkoutTitle(workout.name || 'Untitled Workout');
-    setWorkoutDescription(workout.workout_doc?.description || '');
-    setSelectedFolderId(workout.folder_id || '');
+    try {
+      const loadedSteps = mapIcuDocToSteps(workout);
+      
+      setWorkoutId(workout.id);
+      setWorkoutTitle(workout.name || 'Untitled Workout');
+      setWorkoutDescription(workout.workout_doc?.description || workout.description || '');
+      setSelectedFolderId(workout.folder_id || '');
+      setSteps(loadedSteps);
 
-    const loadedSteps = workout.steps || createDefaultSteps();
-    setSteps(loadedSteps);
+      setOriginalWorkoutSnapshot({
+        id: workout.id,
+        name: workout.name || 'Untitled Workout',
+        workoutDescription: workout.workout_doc?.description || workout.description || '',
+        folder_id: workout.folder_id || '',
+        steps: JSON.parse(JSON.stringify(loadedSteps)),
+      });
 
-    const snapshot = {
-      id: workout.id,
-      name: workout.name || 'Untitled Workout',
-      workoutDescription: workout.workout_doc?.description || '',
-      folder_id: workout.folder_id || '',
-      steps: JSON.parse(JSON.stringify(loadedSteps)),
-    };
-    setOriginalWorkoutSnapshot(snapshot);
-
-    setMode('EDITING');
-    setIsEditModalOpen(false);
+      setMode('EDITING');
+      setIsEditModalOpen(false);
+    } catch (err) {
+      setStatusMessage(`Failed to load selected workout: ${err.message}`);
+    }
   };
 
   const handleCancelEdits = () => {
@@ -266,7 +291,7 @@ export default function WorkoutBuilder() {
     try {
       const createdFolder = await createFolderApi(newFolderName);
       setFolders((prev) => [...prev, createdFolder]);
-      setStatusMessage(`Created folder "${createdFolder.name}" successfully.`);
+      setStatusMessage(`Created folder "${createdFolder.name || newFolderName}" successfully.`);
       setIsFolderModalOpen(false);
       setNewFolderName('');
     } catch (err) {
@@ -280,9 +305,13 @@ export default function WorkoutBuilder() {
     setIsOptionsMenuOpen(false);
     setSaveAsNew(asNew);
     setSaveTitle(asNew ? `${workoutTitle} (Copy)` : workoutTitle);
-    await loadFolders();
-    setSaveFolderId(selectedFolderId || (folders.length > 0 ? folders[0].id : ''));
+    
+    setApiLoading(true);
+    const loadedFolders = await loadFolders();
+    setSaveFolderId(selectedFolderId || (loadedFolders.length > 0 ? loadedFolders[0].id : ''));
     setShowInlineFolderInput(false);
+    setApiLoading(false);
+    
     setIsSaveModalOpen(true);
   };
 
@@ -302,56 +331,17 @@ export default function WorkoutBuilder() {
     }
   };
 
-  const handleConfirmSaveWorkout = async () => {
-    if (!saveTitle.trim()) {
-      alert('Please enter a workout name.');
-      return;
-    }
-    setApiLoading(true);
-    setStatusMessage('Saving workout...');
-
-    const targetWorkoutId = saveAsNew ? null : workoutId;
-    const action = targetWorkoutId ? 'update_workout' : 'create_workout';
-
-    const payload = { ...workoutPayloadObject, name: saveTitle, folder_id: saveFolderId ? Number(saveFolderId) : null };
-
-    try {
-      const result = await saveWorkoutApi(action, targetWorkoutId, payload);
-      const finalId = result.id || targetWorkoutId;
-
-      setWorkoutId(finalId);
-      setWorkoutTitle(saveTitle);
-      setSelectedFolderId(saveFolderId);
-
-      const newSnapshot = {
-        id: finalId,
-        name: saveTitle,
-        workoutDescription,
-        folder_id: saveFolderId,
-        steps: JSON.parse(JSON.stringify(steps)),
-      };
-      setOriginalWorkoutSnapshot(newSnapshot);
-
-      setMode('EDITING');
-      setIsSaveModalOpen(false);
-      setStatusMessage(`Successfully saved workout "${saveTitle}"!`);
-    } catch (err) {
-      setStatusMessage(`Error saving workout: ${err.message}`);
-    } finally {
-      setApiLoading(false);
-    }
-  };
-
-  // Calculations & Payload Object
   const calculateTotals = (stepList) => {
     let totalSec = 0;
     let totalMiles = 0;
 
+    if (!Array.isArray(stepList)) return { totalSec, totalMiles };
+
     stepList.forEach((step) => {
       if (step.type === 'repeat') {
-        const nested = calculateTotals(step.steps);
-        totalSec += nested.totalSec * step.iterations;
-        totalMiles += nested.totalMiles * step.iterations;
+        const nested = calculateTotals(step.steps || []);
+        totalSec += nested.totalSec * (step.iterations || 1);
+        totalMiles += nested.totalMiles * (step.iterations || 1);
       } else {
         const sec = step.durationSec || 0;
         const pace = step.targetPaceSec || 1;
@@ -370,11 +360,11 @@ export default function WorkoutBuilder() {
 
     const buildIcuStep = (step) => {
       if (step.type === 'repeat') {
-        const childIcuSteps = step.steps.map(buildIcuStep);
+        const childIcuSteps = (step.steps || []).map(buildIcuStep);
         let repeatSecs = 0;
         let repeatMiles = 0;
 
-        step.steps.forEach((child) => {
+        (step.steps || []).forEach((child) => {
           const s = child.durationSec || 0;
           const p = child.targetPaceSec || 1;
           repeatSecs += s;
@@ -382,17 +372,17 @@ export default function WorkoutBuilder() {
         });
 
         return {
-          reps: step.iterations,
-          text: `Repeats ${step.iterations}x`,
+          reps: step.iterations || 1,
+          text: `Repeats ${step.iterations || 1}x`,
           steps: childIcuSteps,
-          distance: repeatMiles * step.iterations * METERS_PER_MILE,
-          duration: repeatSecs * step.iterations,
+          distance: repeatMiles * (step.iterations || 1) * METERS_PER_MILE,
+          duration: repeatSecs * (step.iterations || 1),
         };
       }
 
       const baseStep = {
-        duration: step.durationSec,
-        pace: { units: 'secs', value: step.targetPaceSec },
+        duration: step.durationSec || 0,
+        pace: { units: 'secs', value: step.targetPaceSec || 0 },
       };
 
       if (step.type === 'warmup') {
@@ -408,10 +398,11 @@ export default function WorkoutBuilder() {
       return baseStep;
     };
 
-    const icuSteps = steps.map(buildIcuStep);
+    const icuSteps = (steps || []).map(buildIcuStep);
     const totalMeters = totals.totalMiles * METERS_PER_MILE;
 
     const generatePrimaryDescription = (stepList, depth = 0) => {
+      if (!Array.isArray(stepList)) return '';
       const indent = '  '.repeat(depth);
       return stepList
         .map((s) => {
@@ -457,7 +448,7 @@ export default function WorkoutBuilder() {
         variability_index: null,
         polarization_index: 0,
       },
-      folder_id: selectedFolderId ? Number(selectedFolderId) : null,
+      folder_id: saveFolderId ? Number(saveFolderId) : (selectedFolderId ? Number(selectedFolderId) : null),
       day: null,
       days: null,
       plan_applied: null,
@@ -473,7 +464,50 @@ export default function WorkoutBuilder() {
       distance: Number(totalMeters.toFixed(3)),
       icu_intensity: 80.0,
     };
-  }, [steps, workoutTitle, workoutDescription, totals, selectedFolderId, workoutId]);
+  }, [steps, workoutTitle, workoutDescription, totals, selectedFolderId, saveFolderId, workoutId]);
+
+  const handleConfirmSaveWorkout = async () => {
+    if (!saveTitle.trim()) {
+      alert('Please enter a workout name.');
+      return;
+    }
+    setApiLoading(true);
+    setStatusMessage('Saving workout...');
+
+    const targetWorkoutId = saveAsNew ? null : workoutId;
+    const action = targetWorkoutId ? 'update_workout' : 'create_workout';
+
+    try {
+      const payload = { 
+        ...workoutPayloadObject, 
+        name: saveTitle, 
+        folder_id: saveFolderId ? Number(saveFolderId) : null 
+      };
+
+      const result = await saveWorkoutApi(action, targetWorkoutId, payload);
+      const finalId = result.id || targetWorkoutId;
+
+      setWorkoutId(finalId);
+      setWorkoutTitle(saveTitle);
+      setSelectedFolderId(saveFolderId);
+
+      setOriginalWorkoutSnapshot({
+        id: finalId,
+        name: saveTitle,
+        workoutDescription,
+        folder_id: saveFolderId,
+        steps: JSON.parse(JSON.stringify(steps)),
+      });
+
+      setMode('EDITING');
+      setIsSaveModalOpen(false);
+      setStatusMessage(`Successfully saved workout "${saveTitle}"!`);
+    } catch (err) {
+      setStatusMessage(`Error saving workout: ${err.message}`);
+    } finally {
+      setApiLoading(false);
+    }
+  };
 
   // Step Modification Handlers
   const addStep = (type, parentRepeatId = null) => {
@@ -484,10 +518,10 @@ export default function WorkoutBuilder() {
       const addRecursive = (list) =>
         list.map((s) => {
           if (s.id === parentRepeatId && s.type === 'repeat') {
-            return { ...s, steps: [...s.steps, newStep] };
+            return { ...s, steps: [...(s.steps || []), newStep] };
           }
           if (s.type === 'repeat') {
-            return { ...s, steps: addRecursive(s.steps) };
+            return { ...s, steps: addRecursive(s.steps || []) };
           }
           return s;
         });
@@ -497,7 +531,7 @@ export default function WorkoutBuilder() {
 
   const removeStep = (id) => {
     const filterRecursive = (list) =>
-      list.filter((s) => s.id !== id).map((s) => (s.type === 'repeat' ? { ...s, steps: filterRecursive(s.steps) } : s));
+      list.filter((s) => s.id !== id).map((s) => (s.type === 'repeat' ? { ...s, steps: filterRecursive(s.steps || []) } : s));
     setSteps(filterRecursive(steps));
   };
 
@@ -505,7 +539,7 @@ export default function WorkoutBuilder() {
     const updateRecursive = (list) =>
       list.map((s) => {
         if (s.id === id) return { ...s, [field]: value };
-        if (s.type === 'repeat') return { ...s, steps: updateRecursive(s.steps) };
+        if (s.type === 'repeat') return { ...s, steps: updateRecursive(s.steps || []) };
         return s;
       });
     setSteps(updateRecursive(steps));
@@ -528,10 +562,10 @@ export default function WorkoutBuilder() {
       if (!parentId) return list.filter((s) => s.id !== stepId);
       return list.map((s) => {
         if (s.id === parentId && s.type === 'repeat') {
-          return { ...s, steps: s.steps.filter((child) => child.id !== stepId) };
+          return { ...s, steps: (s.steps || []).filter((child) => child.id !== stepId) };
         }
         if (s.type === 'repeat') {
-          return { ...s, steps: removeFromTree(s.steps, parentId, stepId) };
+          return { ...s, steps: removeFromTree(s.steps || [], parentId, stepId) };
         }
         return s;
       });
@@ -545,12 +579,12 @@ export default function WorkoutBuilder() {
       }
       return list.map((s) => {
         if (s.id === parentId && s.type === 'repeat') {
-          const nextSteps = [...s.steps];
+          const nextSteps = [...(s.steps || [])];
           nextSteps.splice(index, 0, item);
           return { ...s, steps: nextSteps };
         }
         if (s.type === 'repeat') {
-          return { ...s, steps: insertIntoTree(s.steps, parentId, index, item) };
+          return { ...s, steps: insertIntoTree(s.steps || [], parentId, index, item) };
         }
         return s;
       });
@@ -584,7 +618,6 @@ export default function WorkoutBuilder() {
             ⚙️ Options ▾
           </button>
 
-          {/* Cascading Options Dropdown */}
           {isOptionsMenuOpen && (
             <div
               style={{
@@ -637,14 +670,12 @@ export default function WorkoutBuilder() {
         </div>
       </div>
 
-      {/* Global Status Banner */}
       {statusMessage && (
         <div style={{ padding: '10px 14px', marginBottom: '16px', backgroundColor: '#e2e3e5', color: '#383d41', borderRadius: '4px', fontSize: '13px' }}>
           {statusMessage}
         </div>
       )}
 
-      {/* --- EMPTY STATE --- */}
       {mode === 'EMPTY' && (
         <div style={{ textAlign: 'center', padding: '60px 20px', border: '2px dashed #ccc', borderRadius: '8px', color: '#6c757d' }}>
           <h3>No Workout Selected</h3>
@@ -652,7 +683,6 @@ export default function WorkoutBuilder() {
         </div>
       )}
 
-      {/* --- WORKOUT EDITOR STATE (CREATING or EDITING) --- */}
       {(mode === 'CREATING' || mode === 'EDITING') && (
         <div>
           <div className="builder-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -714,7 +744,6 @@ export default function WorkoutBuilder() {
             ))}
           </div>
 
-          {/* Read-Only Intervals.icu JSON Preview */}
           <div style={{ marginTop: '30px', paddingTop: '16px', borderTop: '2px solid #dee2e6' }}>
             <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', color: '#333', marginBottom: '6px' }}>
               Intervals.icu JSON Representation (Read-Only)
@@ -739,7 +768,7 @@ export default function WorkoutBuilder() {
         </div>
       )}
 
-      {/* --- MODAL 1: Create New Folder --- */}
+      {/* --- MODAL 1: Create Folder --- */}
       {isFolderModalOpen && (
         <div style={modalOverlayStyle}>
           <div style={modalContentStyle}>
@@ -754,14 +783,14 @@ export default function WorkoutBuilder() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button onClick={() => setIsFolderModalOpen(false)}>Cancel</button>
               <button onClick={handleCreateFolderSubmit} disabled={apiLoading} style={{ backgroundColor: '#007bff', color: '#fff' }}>
-                Create
+                {apiLoading ? 'Creating...' : 'Create'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- MODAL 2: Edit Existing Workout Picker --- */}
+      {/* --- MODAL 2: Edit Workout Picker --- */}
       {isEditModalOpen && (
         <div style={modalOverlayStyle}>
           <div style={{ ...modalContentStyle, width: '480px' }}>
@@ -791,7 +820,9 @@ export default function WorkoutBuilder() {
 
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '13px' }}>2. Select Workout:</label>
             <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '16px' }}>
-              {workoutsList.length === 0 ? (
+              {apiLoading ? (
+                <p style={{ padding: '12px', color: '#888', margin: 0 }}>Loading workouts...</p>
+              ) : workoutsList.length === 0 ? (
                 <p style={{ padding: '12px', color: '#888', margin: 0 }}>No workouts found in this folder.</p>
               ) : (
                 workoutsList.map((w) => (
@@ -823,7 +854,7 @@ export default function WorkoutBuilder() {
         </div>
       )}
 
-      {/* --- MODAL 3: Save / Save As Dialog --- */}
+      {/* --- MODAL 3: Save Dialog --- */}
       {isSaveModalOpen && (
         <div style={modalOverlayStyle}>
           <div style={modalContentStyle}>
@@ -869,14 +900,14 @@ export default function WorkoutBuilder() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button onClick={() => setIsSaveModalOpen(false)}>Cancel</button>
               <button onClick={handleConfirmSaveWorkout} disabled={apiLoading} style={{ backgroundColor: '#007bff', color: '#fff' }}>
-                Save
+                {apiLoading ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal Zoom View */}
+      {/* Chart Modal */}
       {isZoomOpen && (
         <div style={modalOverlayStyle} onClick={() => setIsZoomOpen(false)}>
           <div style={{ ...modalContentStyle, width: '700px' }} onClick={(e) => e.stopPropagation()}>
@@ -892,7 +923,6 @@ export default function WorkoutBuilder() {
   );
 }
 
-// Inline Styles for Option Dropdown and Modals
 const menuButtonStyle = {
   width: '100%',
   padding: '10px 14px',
@@ -925,7 +955,6 @@ const modalContentStyle = {
   boxShadow: '0px 10px 25px rgba(0,0,0,0.2)',
 };
 
-// Sub-components
 function MMSSInput({ valueSec, onChange }) {
   const [text, setText] = useState(formatTime(valueSec));
   const [isFocused, setIsFocused] = useState(false);
@@ -961,6 +990,7 @@ function MMSSInput({ valueSec, onChange }) {
 
 function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, onDragStart, onDrop }) {
   if (step.type === 'repeat') {
+    const childSteps = step.steps || [];
     return (
       <div
         className="repeat-block-container"
@@ -979,7 +1009,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
               type="number"
               min="1"
               max="99"
-              value={step.iterations}
+              value={step.iterations || 1}
               onChange={(e) => onUpdate(step.id, 'iterations', parseInt(e.target.value, 10) || 1)}
               style={{ width: '44px', marginLeft: '4px' }}
             />
@@ -987,8 +1017,8 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
           <button onClick={() => onRemove(step.id)} style={{ marginLeft: 'auto', cursor: 'pointer' }}>✕</button>
         </div>
 
-        <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, step.id, step.steps.length)}>
-          {step.steps.map((childStep, childIdx) => (
+        <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, step.id, childSteps.length)}>
+          {childSteps.map((childStep, childIdx) => (
             <RenderStepRow
               key={childStep.id}
               step={childStep}
@@ -1011,7 +1041,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
     );
   }
 
-  const distMiles = step.durationSec / (step.targetPaceSec || 1);
+  const distMiles = (step.durationSec || 0) / (step.targetPaceSec || 1);
 
   return (
     <div
@@ -1044,10 +1074,13 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
 function RenderWorkoutChart({ steps, height }) {
   const flattenSteps = (list) => {
     let result = [];
+    if (!Array.isArray(list)) return result;
+
     list.forEach((s) => {
       if (s.type === 'repeat') {
-        for (let i = 0; i < s.iterations; i++) {
-          result = result.concat(flattenSteps(s.steps));
+        const reps = s.iterations || 1;
+        for (let i = 0; i < reps; i++) {
+          result = result.concat(flattenSteps(s.steps || []));
         }
       } else {
         result.push(s);
@@ -1057,7 +1090,7 @@ function RenderWorkoutChart({ steps, height }) {
   };
 
   const flatSteps = flattenSteps(steps);
-  const totalDuration = flatSteps.reduce((acc, curr) => acc + curr.durationSec, 0) || 1;
+  const totalDuration = flatSteps.reduce((acc, curr) => acc + (curr.durationSec || 0), 0) || 1;
 
   const velocities = flatSteps.map((s) => (s.targetPaceSec > 0 ? 1 / s.targetPaceSec : 0));
   const maxVel = Math.max(...velocities, 0.0001);
@@ -1066,7 +1099,7 @@ function RenderWorkoutChart({ steps, height }) {
   return (
     <div style={{ width: '100%', height: `${height}px`, display: 'flex', alignItems: 'flex-end', backgroundColor: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: '4px', overflow: 'hidden' }}>
       {flatSteps.map((step, idx) => {
-        const widthPct = (step.durationSec / totalDuration) * 100;
+        const widthPct = ((step.durationSec || 0) / totalDuration) * 100;
         const currentVel = step.targetPaceSec > 0 ? 1 / step.targetPaceSec : 0;
         const barHeightPct = maxVel === minVel ? 60 : 25 + ((currentVel - minVel) / (maxVel - minVel)) * 70;
         const barColor = getZoneColor(step.targetPaceSec);
@@ -1080,7 +1113,7 @@ function RenderWorkoutChart({ steps, height }) {
               backgroundColor: barColor,
               borderRight: '1px solid rgba(255,255,255,0.4)',
             }}
-            title={`${step.type.toUpperCase()}: ${formatTime(step.durationSec)} @ ${formatMMSS(step.targetPaceSec)}/mi`}
+            title={`${(step.type || 'run').toUpperCase()}: ${formatTime(step.durationSec)} @ ${formatMMSS(step.targetPaceSec)}/mi`}
           />
         );
       })}
