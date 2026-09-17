@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import './WorkoutBuilder.css';
 
-const VAL_WORKOUTBUILDER_URL = "/api/val-workoutbuilder";
+// Updated API Endpoint for Vercel/Vite Proxy
+const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 
 async function fetchFoldersApi() {
   const res = await fetch(`${VAL_WORKOUTBUILDER_URL}?action=get_folders`, { method: 'GET' });
@@ -105,15 +106,6 @@ const getZoneColor = (paceSec) => {
   return '#dc3545';
 };
 
-const getZoneId = (paceSec) => {
-  if (!paceSec || paceSec <= 0) return 'Z1';
-  if (paceSec > 570) return 'Z1';
-  if (paceSec > 510) return 'Z2';
-  if (paceSec > 465) return 'Z3';
-  if (paceSec > 420) return 'Z4';
-  return 'Z5';
-};
-
 const createStep = (type) => {
   const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
   switch (type) {
@@ -151,7 +143,7 @@ export default function WorkoutBuilder() {
   // Active Workout State
   const [workoutId, setWorkoutId] = useState(null);
   const [workoutTitle, setWorkoutTitle] = useState('New Workout');
-  const [docNotes, setDocNotes] = useState('NOTES ONLY');
+  const [workoutDescription, setWorkoutDescription] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState('');
   const [steps, setSteps] = useState([]);
 
@@ -199,7 +191,7 @@ export default function WorkoutBuilder() {
   const handleStartCreateNew = () => {
     setWorkoutId(null);
     setWorkoutTitle('New Workout');
-    setDocNotes('NOTES ONLY');
+    setWorkoutDescription('');
     setSelectedFolderId('');
     setSteps(createDefaultSteps());
     setOriginalWorkoutSnapshot(null);
@@ -228,17 +220,16 @@ export default function WorkoutBuilder() {
   const handleSelectWorkoutToEdit = (workout) => {
     setWorkoutId(workout.id);
     setWorkoutTitle(workout.name || 'Untitled Workout');
-    setDocNotes(workout.workout_doc?.description || 'NOTES ONLY');
+    setWorkoutDescription(workout.workout_doc?.description || '');
     setSelectedFolderId(workout.folder_id || '');
 
-    // Map ICU steps to builder steps if available, or load fallback
     const loadedSteps = workout.steps || createDefaultSteps();
     setSteps(loadedSteps);
 
     const snapshot = {
       id: workout.id,
       name: workout.name || 'Untitled Workout',
-      docNotes: workout.workout_doc?.description || 'NOTES ONLY',
+      workoutDescription: workout.workout_doc?.description || '',
       folder_id: workout.folder_id || '',
       steps: JSON.parse(JSON.stringify(loadedSteps)),
     };
@@ -257,7 +248,7 @@ export default function WorkoutBuilder() {
     }
     setWorkoutId(originalWorkoutSnapshot.id);
     setWorkoutTitle(originalWorkoutSnapshot.name);
-    setDocNotes(originalWorkoutSnapshot.docNotes);
+    setWorkoutDescription(originalWorkoutSnapshot.workoutDescription);
     setSelectedFolderId(originalWorkoutSnapshot.folder_id);
     setSteps(JSON.parse(JSON.stringify(originalWorkoutSnapshot.steps)));
     setStatusMessage('Reverted edits to original state.');
@@ -335,7 +326,7 @@ export default function WorkoutBuilder() {
       const newSnapshot = {
         id: finalId,
         name: saveTitle,
-        docNotes,
+        workoutDescription,
         folder_id: saveFolderId,
         steps: JSON.parse(JSON.stringify(steps)),
       };
@@ -435,7 +426,7 @@ export default function WorkoutBuilder() {
     return {
       icu_training_load: Math.round(totals.totalSec / 60),
       name: workoutTitle,
-      description: generatePrimaryDescription(steps),
+      description: generatePrimaryDescription(steps), // Leaves root description as is
       type: 'Run',
       indoor: false,
       moving_time: totals.totalSec,
@@ -444,14 +435,14 @@ export default function WorkoutBuilder() {
         steps: icuSteps,
         distance: totalMeters,
         duration: totals.totalSec,
-        description: docNotes,
+        description: workoutDescription, // Populates workout_doc.description
       },
       folder_id: selectedFolderId ? Number(selectedFolderId) : null,
       targets: ['PACE'],
       distance: Number(totalMeters.toFixed(3)),
       icu_intensity: 80.0,
     };
-  }, [steps, workoutTitle, docNotes, totals, selectedFolderId]);
+  }, [steps, workoutTitle, workoutDescription, totals, selectedFolderId]);
 
   // Step Modification Handlers
   const addStep = (type, parentRepeatId = null) => {
@@ -579,52 +570,34 @@ export default function WorkoutBuilder() {
                 border: '1px solid #ddd',
               }}
             >
-              <button
-                style={menuButtonStyle}
-                onClick={handleStartCreateNew}
-              >
+              <button style={menuButtonStyle} onClick={handleStartCreateNew}>
                 ➕ Create New Workout
               </button>
 
-              <button
-                style={menuButtonStyle}
-                onClick={handleOpenEditModal}
-              >
+              <button style={menuButtonStyle} onClick={handleOpenEditModal}>
                 ✏️ Edit Existing Workout
               </button>
 
-              <button
-                style={menuButtonStyle}
-                onClick={handleOpenCreateFolderModal}
-              >
+              <button style={menuButtonStyle} onClick={handleOpenCreateFolderModal}>
                 📁 Create New Folder
               </button>
 
               {(mode === 'CREATING' || mode === 'EDITING') && <div style={{ height: '1px', backgroundColor: '#eee' }} />}
 
               {(mode === 'CREATING' || mode === 'EDITING') && (
-                <button
-                  style={menuButtonStyle}
-                  onClick={() => handleOpenSaveModal(false)}
-                >
+                <button style={menuButtonStyle} onClick={() => handleOpenSaveModal(false)}>
                   💾 Save Workout
                 </button>
               )}
 
               {mode === 'EDITING' && (
-                <button
-                  style={menuButtonStyle}
-                  onClick={() => handleOpenSaveModal(true)}
-                >
+                <button style={menuButtonStyle} onClick={() => handleOpenSaveModal(true)}>
                   📋 Save As New Workout
                 </button>
               )}
 
               {mode === 'EDITING' && (
-                <button
-                  style={{ ...menuButtonStyle, color: '#dc3545' }}
-                  onClick={handleCancelEdits}
-                >
+                <button style={{ ...menuButtonStyle, color: '#dc3545' }} onClick={handleCancelEdits}>
                   ↩️ Cancel Edits
                 </button>
               )}
@@ -667,12 +640,12 @@ export default function WorkoutBuilder() {
 
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontWeight: 'bold', fontSize: '12px', color: '#495057', marginBottom: '4px' }}>
-              Workout Doc Description (Notes):
+              Workout Description
             </label>
             <textarea
-              value={docNotes}
-              onChange={(e) => setDocNotes(e.target.value)}
-              placeholder="Notes..."
+              value={workoutDescription}
+              onChange={(e) => setWorkoutDescription(e.target.value)}
+              placeholder="Add an optional description or notes for this workout..."
               rows={2}
               style={{ width: '100%', padding: '8px', fontSize: '13px', borderRadius: '4px', border: '1px solid #ced4da', boxSizing: 'border-box' }}
             />
