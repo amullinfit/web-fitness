@@ -888,7 +888,7 @@ export default function WorkoutBuilder() {
       {/* --- MODAL 2: Edit Workout Picker --- */}
       {isEditModalOpen && (
         <div style={modalOverlayStyle}>
-          <div style={{ ...modalContentStyle, width: '560px', maxWidth: '90vw' }}>
+          <div style={{ ...modalContentStyle, width: '580px', maxWidth: '90vw' }}>
             <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Select Workout to Edit</h3>
             
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '13px' }}>
@@ -924,7 +924,7 @@ export default function WorkoutBuilder() {
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '13px' }}>
               2. Select Workout:
             </label>
-            <div style={{ maxHeight: '320px', overflowY: 'auto', border: '1px solid #ccc', borderRadius: '6px', marginBottom: '16px' }}>
+            <div style={{ maxHeight: '340px', overflowY: 'auto', border: '1px solid #ccc', borderRadius: '6px', marginBottom: '16px' }}>
               {apiLoading ? (
                 <p style={{ padding: '16px', color: '#888', margin: 0, textAlign: 'center' }}>Loading workouts...</p>
               ) : workoutsList.length === 0 ? (
@@ -939,31 +939,51 @@ export default function WorkoutBuilder() {
                       key={w.id}
                       onClick={() => handleSelectWorkoutToEdit(w)}
                       style={{
-                        padding: '12px',
+                        padding: '12px 16px',
                         borderBottom: '1px solid #eee',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        justify: 'space-between',
-                        gap: '12px',
+                        gap: '16px',
                         transition: 'background-color 0.15s ease'
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      {/* Left Side: Workout Title, Time & Distance */}
+                      {/* 1. Left: Workout Title */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div
+                          style={{
+                            fontWeight: 'bold',
+                            fontSize: '15px',
+                            color: '#212529',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
                           {w.name || 'Untitled Workout'}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#6c757d', display: 'flex', gap: '8px' }}>
-                          <span>⏱️ {formatTime(w.moving_time || wTotals.totalSec)}</span>
-                          <span>•</span>
-                          <span>📏 {formatDistance(w.distance ? w.distance / 1609.344 : wTotals.totalMiles)}</span>
                         </div>
                       </div>
 
-                      {/* Right Side: Small Workout Chart Profile */}
+                      {/* 2. Middle: Stacked Time & Distance */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          gap: '2px',
+                          fontSize: '12px',
+                          color: '#6c757d',
+                          minWidth: '85px',
+                          flexShrink: 0
+                        }}
+                      >
+                        <span>⏱️ {formatTime(w.moving_time || wTotals.totalSec)}</span>
+                        <span>📏 {formatDistance(w.distance ? w.distance / 1609.344 : wTotals.totalMiles)}</span>
+                      </div>
+
+                      {/* 3. Right: Small Workout Chart Profile */}
                       <div style={{ width: '120px', flexShrink: 0, height: '40px' }}>
                         <RenderWorkoutChart steps={workoutSteps} height={40} />
                       </div>
