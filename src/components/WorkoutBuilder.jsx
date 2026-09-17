@@ -4,6 +4,8 @@ import './WorkoutBuilder.css';
 // API Endpoint for Vercel/Vite Proxy
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 
+const default_threshold = 480;
+
 async function fetchFoldersApi() {
   const res = await fetch(`${VAL_WORKOUTBUILDER_URL}?action=get_folders`, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch folders');
@@ -113,7 +115,7 @@ const PACE_PRESETS = [
   { label: '5K', multiplier: 0.90, color: '#dc3545' },      // ~10% faster than threshold
   { label: '10K', multiplier: 0.94, color: '#fd7e14' },     // ~6% faster than threshold
   { label: 'Half', multiplier: 0.97, color: '#ffc107' },    // ~3% faster than threshold
-  { label: 'Thresholdx', multiplier: 1.00, color: '#28a745' }, // 100% threshold
+  { label: 'Threshold2', multiplier: 1.00, color: '#28a745' }, // 100% threshold
   { label: 'Tempo', multiplier: 1.05, color: '#17a2b8' },    // ~5% slower than threshold
   { label: 'Marathon', multiplier: 1.08, color: '#007bff' }, // ~8% slower than threshold
   { label: 'Easy', multiplier: 1.20, color: '#6c757d' },     // ~20% slower than threshold
@@ -200,9 +202,9 @@ const generateZwoXml = () => {
       ? (step.durationValue || 0) 
       : Math.round((step.durationValue || 0) * 1609.344 / 5.0); // Rough estimate if distance-based
     
-    const targetPace = step.targetPaceSecs || 480;
+    const targetPace = step.targetPaceSecs || default_threshold;
     // Convert pace to % of Threshold Pace (e.g., 480s / targetPaceSecs)
-    const powerFraction = (480 / targetPace).toFixed(2);
+    const powerFraction = (default_threshold / targetPace).toFixed(2);
 
     if (step.type === 'warmup') {
       return `    <Warmup Duration="${durSec}" PowerLow="0.50" PowerHigh="${powerFraction}"/>`;
@@ -1374,7 +1376,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
           const calculatedSecs = Math.round(
             thresholdPaceMps > 0
               ? (1609.344 / thresholdPaceMps) * preset.multiplier
-              : 480 * preset.multiplier
+              : default_threshold * preset.multiplier
           );
 
           const isSelected = Math.abs((step.targetPaceSec || 0) - calculatedSecs) < 3;
