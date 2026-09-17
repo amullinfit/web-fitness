@@ -113,7 +113,7 @@ const PACE_PRESETS = [
   { label: '5K', multiplier: 0.90, color: '#dc3545' },      // ~10% faster than threshold
   { label: '10K', multiplier: 0.94, color: '#fd7e14' },     // ~6% faster than threshold
   { label: 'Half', multiplier: 0.97, color: '#ffc107' },    // ~3% faster than threshold
-  { label: 'Threshold', multiplier: 1.00, color: '#28a745' }, // 100% threshold
+  { label: 'Thresholdx', multiplier: 1.00, color: '#28a745' }, // 100% threshold
   { label: 'Tempo', multiplier: 1.05, color: '#17a2b8' },    // ~5% slower than threshold
   { label: 'Marathon', multiplier: 1.08, color: '#007bff' }, // ~8% slower than threshold
   { label: 'Easy', multiplier: 1.20, color: '#6c757d' },     // ~20% slower than threshold
