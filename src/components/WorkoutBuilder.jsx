@@ -363,10 +363,11 @@ export default function WorkoutBuilder() {
 
   const totals = useMemo(() => calculateTotals(steps), [steps]);
 
+
   const workoutPayloadObject = useMemo(() => {
     const METERS_PER_MILE = 1609.344;
 
-    // Helper to format seconds as #h##m##s
+    // Helper to format step time as #h##m##s (or #m##s if < 1 hour)
     const formatDescriptionTime = (totalSeconds) => {
       const sec = Math.max(0, totalSeconds || 0);
       const hrs = Math.floor(sec / 3600);
@@ -422,21 +423,20 @@ export default function WorkoutBuilder() {
     const icuSteps = (steps || []).map(buildIcuStep);
     const totalMeters = totals.totalMiles * METERS_PER_MILE;
 
-    const generatePrimaryDescription = (stepList, depth = 0) => {
+    const generatePrimaryDescription = (stepList) => {
       if (!Array.isArray(stepList)) return '';
-      const indent = '  '.repeat(depth);
-      
+
       return stepList
         .map((s) => {
           if (s.type === 'repeat') {
-            const innerSteps = generatePrimaryDescription(s.steps, depth + 1);
-            // Blank lines before and after repeat blocks with "#x" label
-            return `\n${indent}${s.iterations}x\n${innerSteps}\n`;
+            const innerSteps = generatePrimaryDescription(s.steps);
+            // No indentation, surrounded by blank lines
+            return `\n${s.iterations}x\n${innerSteps}\n`;
           }
-          return `${indent}- ${formatDescriptionTime(s.durationSec)} @ ${formatMMSS(s.targetPaceSec)} Pace (${s.type})`;
+          return `- ${formatDescriptionTime(s.durationSec)} @ ${formatMMSS(s.targetPaceSec)} Pace (${s.type})`;
         })
         .join('\n')
-        .replace(/\n{3,}/g, '\n\n') // Clean up extra stacked newlines from nested repeats
+        .replace(/\n{3,}/g, '\n\n') // Clean up extra stacked newlines
         .trim();
     };
 
@@ -491,7 +491,7 @@ export default function WorkoutBuilder() {
       icu_intensity: 80.0,
     };
   }, [steps, workoutTitle, workoutDescription, totals, selectedFolderId, saveFolderId, workoutId]);
-  
+
   const handleConfirmSaveWorkout = async () => {
     if (!saveTitle.trim()) {
       alert('Please enter a workout name.');
