@@ -108,6 +108,17 @@ const parseMMSS = (str) => {
 
 const formatDistance = (miles) => (miles || 0).toFixed(2) + ' mi';
 
+// Target pace presets defined as a multiplier/offset relative to threshold pace (e.g. 7:00 / mi = 420s)
+const PACE_PRESETS = [
+  { label: '5K', multiplier: 0.90, color: '#dc3545' },      // ~10% faster than threshold
+  { label: '10K', multiplier: 0.94, color: '#fd7e14' },     // ~6% faster than threshold
+  { label: 'Half', multiplier: 0.97, color: '#ffc107' },    // ~3% faster than threshold
+  { label: 'Threshold', multiplier: 1.00, color: '#28a745' }, // 100% threshold
+  { label: 'Tempo', multiplier: 1.05, color: '#17a2b8' },    // ~5% slower than threshold
+  { label: 'Marathon', multiplier: 1.08, color: '#007bff' }, // ~8% slower than threshold
+  { label: 'Easy', multiplier: 1.20, color: '#6c757d' },     // ~20% slower than threshold
+];
+
 const getZoneColor = (paceSec) => {
   if (!paceSec || paceSec <= 0 || paceSec > 570) return '#6c757d';
   if (paceSec > 510) return '#28a745';
@@ -179,6 +190,76 @@ const mapIcuDocToSteps = (workout) => {
   };
 
   return stepsSource.map(mapStep);
+};
+
+// Converts active steps to ZWIFT .zwo XML format
+const generateZwoXml = () => {
+  const rawText = generateIcuText(steps);
+  const zwoSteps = steps.map((step) => {
+    const durSec = step.durationType === 'time' 
+      ? (step.durationValue || 0) 
+      : Math.round((step.durationValue || 0) * 1609.344 / 5.0); // Rough estimate if distance-based
+    
+    const targetPace = step.targetPaceSecs || 420;
+    // Convert pace to % of Threshold Pace (e.g., 420s / targetPaceSecs)
+    const powerFraction = (420 / targetPace).toFixed(2);
+
+    if (step.type === 'warmup') {
+      return `    <Warmup Duration="${durSec}" PowerLow="0.50" PowerHigh="${powerFraction}"/>`;
+    } else if (step.type === 'cooldown') {
+      return `    <Cooldown Duration="${durSec}" PowerLow="${powerFraction}" PowerHigh="0.50"/>`;
+    } else {
+      return `    <SteadyState Duration="${durSec}" Power="${powerFraction}"/>`;
+    }
+  }).join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+          <workout_file>
+          <author>Workout Builder</author>
+          <name>${workoutTitle || 'Workout'}</name>
+          <description>${workoutDescription || ''}</description>
+          <sportType>run</sportType>
+          <workout>
+          ${zwoSteps}
+          </workout>
+          </workout_file>`;
+};
+
+// Triggers browser download for files
+const downloadFile = (content, filename, mimeType) => {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+// Action handlers for options menu
+const handleCopyWorkoutText = () => {
+  setIsOptionsMenuOpen(false);
+  const text = generateIcuText(steps);
+  navigator.clipboard.writeText(text);
+  setStatusMessage('Workout text copied to clipboard!');
+};
+
+const handleDownloadIcu = () => {
+  setIsOptionsMenuOpen(false);
+  const text = generateIcuText(steps);
+  const filename = `${(workoutTitle || 'workout').toLowerCase().replace(/\s+/g, '_')}.icu`;
+  downloadFile(text, filename, 'text/plain;charset=utf-8');
+  setStatusMessage(`Downloaded ${filename}`);
+};
+
+const handleDownloadZwo = () => {
+  setIsOptionsMenuOpen(false);
+  const xml = generateZwoXml();
+  const filename = `${(workoutTitle || 'workout').toLowerCase().replace(/\s+/g, '_')}.zwo`;
+  downloadFile(xml, filename, 'application/xml;charset=utf-8');
+  setStatusMessage(`Downloaded ${filename}`);
 };
 
 export default function WorkoutBuilder() {
@@ -773,6 +854,25 @@ export default function WorkoutBuilder() {
                 </button>
               )}
 
+              {(mode === 'CREATING' || mode === 'EDITING') && <div style={{ height: '1px', backgroundColor: '#eee' }} />}
+
+              {/* --- EXPORT OPTIONS --- */}
+              {(mode === 'CREATING' || mode === 'EDITING') && (
+                <>
+                  <button style={menuButtonStyle} onClick={handleCopyWorkoutText}>
+                    📋 Copy Workout Text
+                  </button>
+                  <button style={menuButtonStyle} onClick={handleDownloadIcu}>
+                    ⬇️ Download .icu File
+                  </button>
+                  <button style={menuButtonStyle} onClick={handleDownloadZwo}>
+                    ⚡ Download .zwo File
+                  </button>
+                </>
+              )}
+
+              {(mode === 'CREATING' || mode === 'EDITING') && <div style={{ height: '1px', backgroundColor: '#eee' }} />}
+
               {mode === 'EDITING' && (
                 <button style={{ ...menuButtonStyle, color: '#dc3545' }} onClick={handleCancelEdits}>
                   ↩️ Cancel Edits
@@ -1163,7 +1263,7 @@ function MMSSInput({ valueSec, onChange }) {
   );
 }
 
-function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, onDragStart, onDrop }) {
+function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, onDragStart, onDrop, thresholdPaceMps = 3.83 }) {
   if (step.type === 'repeat') {
     const childSteps = step.steps || [];
     return (
@@ -1204,6 +1304,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
               onAddChild={onAddChild}
               onDragStart={onDragStart}
               onDrop={onDrop}
+              thresholdPaceMps={thresholdPaceMps}
             />
           ))}
         </div>
@@ -1224,24 +1325,71 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
       onDragStart={(e) => onDragStart(e, step, parentId)}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => onDrop(e, parentId, index)}
-      style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', border: '1px solid #ddd', marginBottom: '8px', borderRadius: '4px', backgroundColor: '#fff' }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        padding: '10px 12px',
+        border: '1px solid #ddd',
+        marginBottom: '8px',
+        borderRadius: '4px',
+        backgroundColor: '#fff'
+      }}
     >
-      <span style={{ cursor: 'grab' }}>⣿</span>
-      <span style={{ fontWeight: 'bold', width: '70px', textTransform: 'capitalize' }}>{step.type}</span>
+      {/* Top Row: Controls & Inputs */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+        <span style={{ cursor: 'grab' }}>⣿</span>
+        <span style={{ fontWeight: 'bold', width: '70px', textTransform: 'capitalize' }}>{step.type}</span>
 
-      <label style={{ fontSize: '12px' }}>
-        Time: <MMSSInput valueSec={step.durationSec} onChange={(newSec) => onUpdate(step.id, 'durationSec', newSec)} />
-      </label>
+        <label style={{ fontSize: '12px' }}>
+          Time: <MMSSInput valueSec={step.durationSec} onChange={(newSec) => onUpdate(step.id, 'durationSec', newSec)} />
+        </label>
 
-      <label style={{ fontSize: '12px' }}>
-        Pace: <MMSSInput valueSec={step.targetPaceSec} onChange={(newSec) => onUpdate(step.id, 'targetPaceSec', newSec)} />
-      </label>
+        <label style={{ fontSize: '12px' }}>
+          Pace: <MMSSInput valueSec={step.targetPaceSec} onChange={(newSec) => onUpdate(step.id, 'targetPaceSec', newSec)} />
+        </label>
 
-      <span style={{ fontSize: '12px', marginLeft: 'auto' }}>
-        Dist: <strong>{formatDistance(distMiles)}</strong>
-      </span>
+        <span style={{ fontSize: '12px', marginLeft: 'auto' }}>
+          Dist: <strong>{formatDistance(distMiles)}</strong>
+        </span>
 
-      <button onClick={() => onRemove(step.id)} style={{ cursor: 'pointer' }}>✕</button>
+        <button onClick={() => onRemove(step.id)} style={{ cursor: 'pointer' }}>✕</button>
+      </div>
+
+      {/* Bottom Row: Target Pace Presets */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '82px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '11px', color: '#6c757d', fontWeight: 'bold' }}>Presets:</span>
+        {PACE_PRESETS.map((preset) => {
+          const calculatedSecs = Math.round(
+            thresholdPaceMps > 0
+              ? (1609.344 / thresholdPaceMps) * preset.multiplier
+              : 420 * preset.multiplier
+          );
+
+          const isSelected = Math.abs((step.targetPaceSec || 0) - calculatedSecs) < 3;
+
+          return (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => onUpdate(step.id, 'targetPaceSec', calculatedSecs)}
+              style={{
+                padding: '2px 7px',
+                fontSize: '11px',
+                fontWeight: '600',
+                borderRadius: '12px',
+                border: `1px solid ${preset.color}`,
+                backgroundColor: isSelected ? preset.color : '#ffffff',
+                color: isSelected ? '#ffffff' : preset.color,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {preset.label} ({formatPace(calculatedSecs)})
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
