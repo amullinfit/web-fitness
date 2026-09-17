@@ -1264,15 +1264,26 @@ function MMSSInput({ valueSec, onChange }) {
 }
 
 function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, onDragStart, onDrop, thresholdPaceMps = 3.83 }) {
+  if (!step) return null;
+
+  // Safe pace formatter fallback to prevent crashes if formatPace is out of scope
+  const safeFormatPace = (secs) => {
+    if (typeof formatPace === 'function') return formatPace(secs);
+    if (!secs || isNaN(secs)) return '0:00';
+    const m = Math.floor(secs / 60);
+    const s = Math.round(secs % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   if (step.type === 'repeat') {
     const childSteps = step.steps || [];
     return (
       <div
         className="repeat-block-container"
         draggable
-        onDragStart={(e) => onDragStart(e, step, parentId)}
+        onDragStart={(e) => onDragStart && onDragStart(e, step, parentId)}
         onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => onDrop(e, parentId, index)}
+        onDrop={(e) => onDrop && onDrop(e, parentId, index)}
         style={{ border: '2px dashed #007bff', padding: '12px', marginBottom: '12px', borderRadius: '6px' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -1292,10 +1303,10 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
           <button onClick={() => onRemove(step.id)} style={{ marginLeft: 'auto', cursor: 'pointer' }}>✕</button>
         </div>
 
-        <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, step.id, childSteps.length)}>
+        <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop && onDrop(e, step.id, childSteps.length)}>
           {childSteps.map((childStep, childIdx) => (
             <RenderStepRow
-              key={childStep.id}
+              key={childStep.id || childIdx}
               step={childStep}
               index={childIdx}
               parentId={step.id}
@@ -1322,9 +1333,9 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
   return (
     <div
       draggable
-      onDragStart={(e) => onDragStart(e, step, parentId)}
+      onDragStart={(e) => onDragStart && onDragStart(e, step, parentId)}
       onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => onDrop(e, parentId, index)}
+      onDrop={(e) => onDrop && onDrop(e, parentId, index)}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -1336,10 +1347,10 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
         backgroundColor: '#fff'
       }}
     >
-      {/* Top Row: Controls & Inputs */}
+      {/* Top Row: Inputs */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
         <span style={{ cursor: 'grab' }}>⣿</span>
-        <span style={{ fontWeight: 'bold', width: '70px', textTransform: 'capitalize' }}>{step.type}</span>
+        <span style={{ fontWeight: 'bold', width: '70px', textTransform: 'capitalize' }}>{step.type || 'step'}</span>
 
         <label style={{ fontSize: '12px' }}>
           Time: <MMSSInput valueSec={step.durationSec} onChange={(newSec) => onUpdate(step.id, 'durationSec', newSec)} />
@@ -1350,7 +1361,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
         </label>
 
         <span style={{ fontSize: '12px', marginLeft: 'auto' }}>
-          Dist: <strong>{formatDistance(distMiles)}</strong>
+          Dist: <strong>{typeof formatDistance === 'function' ? formatDistance(distMiles) : `${distMiles.toFixed(2)} mi`}</strong>
         </span>
 
         <button onClick={() => onRemove(step.id)} style={{ cursor: 'pointer' }}>✕</button>
@@ -1359,7 +1370,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
       {/* Bottom Row: Target Pace Presets */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '82px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '11px', color: '#6c757d', fontWeight: 'bold' }}>Presets:</span>
-        {PACE_PRESETS.map((preset) => {
+        {(PACE_PRESETS || []).map((preset) => {
           const calculatedSecs = Math.round(
             thresholdPaceMps > 0
               ? (1609.344 / thresholdPaceMps) * preset.multiplier
@@ -1385,7 +1396,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
                 transition: 'all 0.15s ease'
               }}
             >
-              {preset.label} ({formatPace(calculatedSecs)})
+              {preset.label} ({safeFormatPace(calculatedSecs)})
             </button>
           );
         })}
