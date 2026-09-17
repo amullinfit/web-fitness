@@ -426,20 +426,29 @@ export default function WorkoutBuilder() {
     const generatePrimaryDescription = (stepList) => {
       if (!Array.isArray(stepList)) return '';
 
-      return stepList
-        .map((s) => {
+      const lines = [];
+
+      const processSteps = (list) => {
+        list.forEach((s) => {
           if (s.type === 'repeat') {
-            const innerSteps = generatePrimaryDescription(s.steps);
-            // No indentation, surrounded by blank lines
-            return `\n${s.iterations}x\n${innerSteps}\n`;
+            lines.push(''); // Blank line before repeat
+            lines.push(`${s.iterations}x`);
+            processSteps(s.steps || []);
+            lines.push(''); // Blank line after repeat
+          } else {
+            lines.push(`- ${formatDescriptionTime(s.durationSec)} @ ${formatMMSS(s.targetPaceSec)} Pace (${s.type})`);
           }
-          return `- ${formatDescriptionTime(s.durationSec)} @ ${formatMMSS(s.targetPaceSec)} Pace (${s.type})`;
-        })
+        });
+      };
+
+      processSteps(stepList);
+
+      return lines
         .join('\n')
-        .replace(/\n{3,}/g, '\n\n') // Clean up extra stacked newlines
+        .replace(/\n{3,}/g, '\n\n') // Collapse any stacked blank lines down to 1
         .trim();
     };
-
+    
     return {
       id: workoutId || 1,
       icu_training_load: Math.round(totals.totalSec / 60),
