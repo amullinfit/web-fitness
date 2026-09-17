@@ -305,6 +305,24 @@ export default function WorkoutBuilder() {
     return false;
   };
 
+  const handleDuplicateWorkout = () => {
+    setIsOptionsMenuOpen(false);
+
+    // Append "(Copy)" to the existing workout title
+    const newTitle = workoutTitle ? `${workoutTitle} (Copy)` : 'New Workout (Copy)';
+
+    // Switch mode to CREATING and clear the ID so it saves as a new workout
+    setMode('CREATING');
+    setWorkoutId(null);
+    setWorkoutTitle(newTitle);
+    
+    // Deep-clone steps to break references to the original
+    setSteps(JSON.parse(JSON.stringify(steps)));
+    setOriginalWorkoutSnapshot(null);
+
+    setStatusMessage(`Duplicated workout as "${newTitle}". Save when ready.`);
+  };
+
   const handleCloseWorkout = () => {
     setIsOptionsMenuOpen(false);
 
@@ -707,6 +725,7 @@ export default function WorkoutBuilder() {
             ⚙️ Options ▾
           </button>
 
+          //------------
           {isOptionsMenuOpen && (
             <div
               style={{
@@ -749,6 +768,12 @@ export default function WorkoutBuilder() {
                 </button>
               )}
 
+              {(mode === 'CREATING' || mode === 'EDITING') && (
+                <button style={menuButtonStyle} onClick={handleDuplicateWorkout}>
+                  📄 Duplicate Workout
+                </button>
+              )}
+
               {mode === 'EDITING' && (
                 <button style={{ ...menuButtonStyle, color: '#dc3545' }} onClick={handleCancelEdits}>
                   ↩️ Cancel Edits
@@ -762,6 +787,7 @@ export default function WorkoutBuilder() {
               )}
             </div>
           )}
+          //-----
         </div>
       </div>
 
