@@ -4,13 +4,13 @@ import './WorkoutBuilder.css';
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 const VAL_MY_PACES_URL = '/api/val-my-paces';
 
-const DEFAULT_THRESHOLD = 495; // 8:15/mi default fallback (495 seconds)
+const DEFAULT_THRESHOLD = 480; // 8:00/mi default fallback (480 seconds)
 
-// Updated PRESET_COLORS order: Grey, Cyan, Green, Blue, Yellow, Orange, Red
+// Updated PRESET_COLORS order: Grey, Green, Cyan, Blue, Yellow, Orange, Red
 const PRESET_COLORS = [
   '#6c757d', // Grey / Zone 1
-  '#17a2b8', // Cyan / Zone 2
-  '#28a745', // Green / Zone 3
+  '#28a745', // Green / Zone 2
+  '#17a2b8', // Cyan / Zone 3
   '#007bff', // Blue / Zone 4
   '#ffc107', // Yellow / Zone 5a
   '#fd7e14', // Orange / Zone 5b
@@ -136,7 +136,7 @@ const createStep = (type, mode = 'time') => {
 
   switch (type) {
     case 'warmup': return { id, type: 'warmup', durationSec, distanceMiles, targetPaceSec: 619 };
-    case 'run': return { id, type: 'run', durationSec, distanceMiles, targetPaceSec: 495 };
+    case 'run': return { id, type: 'run', durationSec, distanceMiles, targetPaceSec: DEFAULT_THRESHOLD };
     case 'recovery': return { id, type: 'recovery', durationSec: mode === 'time' ? 120 : 0, distanceMiles: mode === 'distance' ? 0.25 : 0, targetPaceSec: 660 };
     case 'cooldown': return { id, type: 'cooldown', durationSec, distanceMiles, targetPaceSec: 619 };
     case 'repeat':
@@ -145,11 +145,11 @@ const createStep = (type, mode = 'time') => {
         type: 'repeat',
         iterations: 3,
         steps: [
-          { id: `${id}-1`, type: 'run', durationSec, distanceMiles, targetPaceSec: 495 },
+          { id: `${id}-1`, type: 'run', durationSec, distanceMiles, targetPaceSec: DEFAULT_THRESHOLD },
           { id: `${id}-2`, type: 'recovery', durationSec: mode === 'time' ? 120 : 0, distanceMiles: mode === 'distance' ? 0.25 : 0, targetPaceSec: 660 }
         ],
       };
-    default: return { id, type: 'run', durationSec, distanceMiles, targetPaceSec: 495 };
+    default: return { id, type: 'run', durationSec, distanceMiles, targetPaceSec: DEFAULT_THRESHOLD };
   }
 };
 
@@ -181,7 +181,7 @@ const mapIcuDocToSteps = (workout) => {
     else if (s.cooldown || s.intensity === 'cooldown') type = 'cooldown';
     else if (s.intensity === 'rest') type = 'recovery';
 
-    let targetPaceSec = 495;
+    let targetPaceSec = DEFAULT_THRESHOLD;
     if (s.pace?.value) targetPaceSec = convertToPaceSec(s.pace.value);
     else if (s.pace?.start) targetPaceSec = convertToPaceSec(s.pace.start);
 
@@ -202,7 +202,7 @@ const mapIcuDocToSteps = (workout) => {
 
 const downloadFile = (content, filename, mimeType) => {
   const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
+  const url = URL.createElementObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
@@ -276,7 +276,7 @@ export default function WorkoutBuilder() {
     if (!icuPacesData) {
       // Default Fallback
       const defaultZoneNames = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5a', 'Zone 5b', 'Zone 5c'];
-      const defaultPaces = [619, 538, 525, 495, 479, 444, 50];
+      const defaultPaces = [619, 538, 525, DEFAULT_THRESHOLD, 479, 444, 50];
 
       return defaultZoneNames.map((name, idx) => ({
         label: name,
