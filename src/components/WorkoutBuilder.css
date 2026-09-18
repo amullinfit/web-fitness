@@ -1,211 +1,388 @@
 .workout-builder-container {
-    max-width: 900px;
-    margin: 0 auto;
-    font-family: inherit;
-  }
-  
-  .builder-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-  
-  .builder-title-input {
-    font-size: 22px;
-    font-weight: bold;
-    border: none;
-    border-bottom: 2px solid #ccc;
-    padding: 4px;
-    background: transparent;
-    color: inherit;
-  }
-  
-  .builder-totals {
-    font-size: 16px;
-    font-weight: 600;
-  }
-  
-  .total-time-val {
-    color: #007bff;
-  }
-  
-  .total-dist-val {
-    color: #28a745;
-  }
-  
-  .chart-card {
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 20px;
-  }
-  
-  .chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-  
-  .chart-title {
-    font-weight: bold;
-    font-size: 13px;
-    opacity: 0.8;
-    text-transform: uppercase;
-  }
-  
-  .btn-zoom {
-    padding: 4px 10px;
-    font-size: 12px;
-    cursor: pointer;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    background: transparent;
-    color: inherit;
-  }
-  
-  .action-bar {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-  
-  .btn-add-step {
-    padding: 6px 12px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    background: #ffffff;
-    cursor: pointer;
-    font-size: 14px;
-    color: #1a1a1a;
-  }
-  
-  .btn-add-repeat {
-    background: #e2e8f0;
-    border-color: #cbd5e1;
-  }
-  
-  /* Step Rows */
-  .step-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 12px;
-    margin-bottom: 8px;
-    background-color: #ffffff;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    color: #1a1a1a;
-  }
-  
-  .repeat-block-container {
-    border: 2px dashed #007bff;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 10px;
-    background-color: #f4f8ff;
-    color: #1a1a1a;
-  }
-  
-  .repeat-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-  
-  .repeat-inner-drop {
-    min-height: 50px;
-    padding: 8px;
-    background-color: #ffffff;
-    border-radius: 6px;
-    border: 1px dashed #b3d7ff;
-  }
-  
-  .drag-handle {
-    cursor: grab;
-    font-size: 18px;
-    color: #888;
-    user-select: none;
-  }
-  
-  .drag-handle:active {
-    cursor: grabbing;
-  }
-  
-  .step-type-label {
-    width: 80px;
-    text-transform: capitalize;
-    font-weight: bold;
-  }
-  
-  .input-label {
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  
-  .time-pace-input {
-    width: 54px;
-    text-align: center;
-    padding: 2px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-  }
-  
-  .dist-display {
-    font-size: 13px;
-  }
-  
-  .btn-remove {
-    margin-left: auto;
-    background: none;
-    border: none;
-    color: #dc3545;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 0 4px;
-  }
-  
-  /* Modal Styling */
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
-  }
-  
-  .modal-content {
-    background-color: #ffffff;
-    color: #1a1a1a;
-    padding: 24px;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 900px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  }
-  
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-  
-  .btn-modal-close {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-  }
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: inherit;
+  padding: 20px;
+}
+
+.builder-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.builder-header-title {
+  margin: 0;
+  font-size: 24px;
+}
+
+.options-menu-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: bold;
+  background-color: #007bff;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.options-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  width: 210px;
+  background-color: #ffffff;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  z-index: 100;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: #eee;
+}
+
+.status-message-banner {
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background-color: #e2e3e5;
+  color: #383d41;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.empty-state-card {
+  text-align: center;
+  padding: 60px 20px;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  color: #6c757d;
+}
+
+/* Controls Bar (Mode & Pace Method) */
+.builder-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.control-label {
+  font-size: 13px;
+  font-weight: bold;
+  color: #495057;
+  margin-right: 6px;
+}
+
+.mode-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toggle-btn {
+  padding: 5px 12px;
+  font-size: 13px;
+  border: 1px solid #ced4da;
+  background-color: #ffffff;
+  color: #495057;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toggle-btn.active {
+  background-color: #007bff;
+  color: #ffffff;
+  border-color: #007bff;
+  font-weight: bold;
+}
+
+.pace-method-group {
+  display: flex;
+  align-items: center;
+}
+
+.pace-method-select {
+  padding: 5px 10px;
+  font-size: 13px;
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+  background-color: #ffffff;
+}
+
+.builder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.builder-title-input {
+  font-size: 18px;
+  font-weight: bold;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 6px 10px;
+  width: 55%;
+}
+
+.builder-totals {
+  font-size: 14px;
+}
+
+.total-time-val {
+  color: #007bff;
+}
+
+.total-dist-val {
+  color: #28a745;
+}
+
+.description-label {
+  display: block;
+  font-weight: bold;
+  font-size: 12px;
+  color: #495057;
+  margin-bottom: 4px;
+}
+
+.description-textarea {
+  width: 100%;
+  padding: 8px;
+  font-size: 13px;
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+  box-sizing: border-box;
+}
+
+.chart-card {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 20px;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.chart-title {
+  font-weight: bold;
+  font-size: 13px;
+  opacity: 0.8;
+  text-transform: uppercase;
+}
+
+.btn-zoom {
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: transparent;
+  color: inherit;
+}
+
+.action-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.btn-add-step {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.btn-add-repeat {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+/* Step Rows & Layout Alignment fixes */
+.step-row-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  background-color: #ffffff;
+}
+
+.step-row-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Give name wider fixed/flexible width so it doesn't collide with numbers */
+.step-type-label {
+  width: 110px;
+  min-width: 110px;
+  text-transform: capitalize;
+  font-weight: bold;
+  font-size: 14px;
+  color: #212529;
+}
+
+.repeat-block-container {
+  border: 2px dashed #007bff;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background-color: #f4f8ff;
+  color: #1a1a1a;
+}
+
+.repeat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.repeat-type-title {
+  width: 110px;
+  min-width: 110px;
+}
+
+.drag-handle {
+  cursor: grab;
+  font-size: 18px;
+  color: #888;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.input-label {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.time-pace-input {
+  width: 60px;
+  text-align: center;
+  padding: 4px;
+  font-size: 13px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.dist-display {
+  font-size: 12px;
+  margin-left: auto;
+  font-weight: bold;
+  color: #495057;
+}
+
+.btn-remove {
+  background: none;
+  border: none;
+  color: #dc3545;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+/* Preset buttons indentation aligned past drag handle + step name */
+.step-presets-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 140px;
+  flex-wrap: wrap;
+}
+
+/* JSON Preview Area */
+.json-preview-container {
+  margin-top: 30px;
+  padding-top: 16px;
+  border-top: 2px solid #dee2e6;
+}
+
+.json-preview-label {
+  display: block;
+  font-weight: bold;
+  font-size: 13px;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.json-preview-textarea {
+  width: 100%;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #495057;
+}
+
+/* Modal Selector Item Styling */
+.workout-select-item {
+  padding: 14px 16px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  transition: background-color 0.15s ease;
+}
+
+.workout-select-item:hover {
+  background-color: #f8f9fa;
+}
+
+.workout-select-title {
+  font-weight: bold;
+  font-size: 24px;
+  color: #212529;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+.workout-select-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  color: #495057;
+  flex-shrink: 0;
+  line-height: 1.1;
+}

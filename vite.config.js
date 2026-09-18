@@ -4,10 +4,15 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      '/api/val-my-paces': {
+        target: 'https://amullinfit--d730183ab38111f1aeeb1607ee4eb77e.web.val.run',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/val-my-paces/, '')
+      },
       '/api/val-workoutbuilder': {
         target: 'https://amullinfit--c1c217a8b22511f19b531607ee4eb77e.web.val.run',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/val-workouts/, '')
+        rewrite: (path) => path.replace(/^\/api\/val-workoutbuilder/, '')
       },
       '/api/val-workouts': {
         target: 'https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run',
@@ -32,7 +37,7 @@ export default defineConfig({
       '/api/val-gear-add': {
         target: 'https://amullinfit--77b77396a8b711f19a3f1607ee4eb77e.web.val.run',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/val-gear-remove/, '')
+        rewrite: (path) => path.replace(/^\/api\/val-gear-add/, '')
       },
       '/api/historical': {
         target: 'https://amullinfit--60610b3ea60611f1bbff1607ee4eb77e.web.val.run',

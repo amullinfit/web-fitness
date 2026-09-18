@@ -1,11 +1,23 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import './WorkoutBuilder.css';
 
-// API Endpoint for Vercel/Vite Proxy
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
+const VAL_MY_PACES_URL = '/api/val-my-paces';
 
-const default_threshold = 480;
+const DEFAULT_THRESHOLD = 480; // 8:00/mi default fallback
 
+// Color mapping for preset buttons and charts based on pace/zone
+const PRESET_COLORS = [
+  '#6c757d', // Grey / Warmup / Z1
+  '#28a745', // Green / Z2
+  '#ffc107', // Yellow / Z3
+  '#fd7e14', // Orange / Z4
+  '#dc3545', // Red / Z5
+  '#007bff', // Blue / Extra
+  '#17a2b8', // Cyan / Extra
+];
+
+// --- API Functions ---
 async function fetchFoldersApi() {
   const res = await fetch(`${VAL_WORKOUTBUILDER_URL}?action=get_folders`, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch folders');
@@ -20,52 +32,35 @@ async function fetchWorkoutsApi(folderId = null) {
   const res = await fetch(url, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch workouts');
   const data = await res.json();
-  
-  // If the returned object has a 'children' property (Intervals.icu folder format), use that
-  if (data && Array.isArray(data.children)) {
-    return data.children;
-  }
-  
-  // Fallback for standard array or wrapped { workouts: [...] } response
+  if (data && Array.isArray(data.children)) return data.children;
   return Array.isArray(data) ? data : (data.workouts || []);
 }
 
 async function createFolderApi(folderName) {
-    const res = await fetch(VAL_WORKOUTBUILDER_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'create_folder',
-        name: folderName,
-        type: 'FOLDER',
-      }),
-    });
-  
-    if (!res.ok) {
-      let errorDetails = '';
-      try {
-        const errJson = await res.json();
-        // Print the exact details object if returned by backend
-        errorDetails = JSON.stringify(errJson.details || errJson, null, 2);
-      } catch {
-        errorDetails = await res.text();
-      }
-      throw new Error(`Server returned status ${res.status}:\n${errorDetails}`);
+  const res = await fetch(VAL_WORKOUTBUILDER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'create_folder', name: folderName, type: 'FOLDER' }),
+  });
+  if (!res.ok) {
+    let errorDetails = '';
+    try {
+      const errJson = await res.json();
+      errorDetails = JSON.stringify(errJson.details || errJson, null, 2);
+    } catch {
+      errorDetails = await res.text();
     }
-  
-    return await res.json();
+    throw new Error(`Server returned status ${res.status}:\n${errorDetails}`);
   }
+  return await res.json();
+}
 
 async function saveWorkoutApi(action, workoutId, workoutData) {
   const method = action === 'update_workout' ? 'PUT' : 'POST';
   const res = await fetch(VAL_WORKOUTBUILDER_URL, {
     method,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action,
-      workoutId,
-      workoutData,
-    }),
+    body: JSON.stringify({ action, workoutId, workoutData }),
   });
   if (!res.ok) {
     const errorText = await res.text();
@@ -74,9 +69,15 @@ async function saveWorkoutApi(action, workoutId, workoutData) {
   return await res.json();
 }
 
+async function fetchMyPacesApi() {
+  const res = await fetch(VAL_MY_PACES_URL, { method: 'GET' });
+  if (!res.ok) throw new Error('Failed to fetch paces from Intervals.icu');
+  return await res.json();
+}
+
 // --- Helpers ---
 const formatTime = (totalSeconds) => {
-  const sec = Math.max(0, totalSeconds || 0);
+  const sec = Math.max(0, Math.round(totalSeconds || 0));
   const hrs = Math.floor(sec / 3600);
   const mins = Math.floor((sec % 3600) / 60);
   const secs = sec % 60;
@@ -85,8 +86,9 @@ const formatTime = (totalSeconds) => {
 };
 
 const formatMMSS = (totalSeconds) => {
-  const mins = Math.floor((totalSeconds || 0) / 60);
-  const secs = (totalSeconds || 0) % 60;
+  const sec = Math.max(0, Math.round(totalSeconds || 0));
+  const mins = Math.floor(sec / 60);
+  const secs = sec % 60;
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 };
 
@@ -110,57 +112,40 @@ const parseMMSS = (str) => {
 
 const formatDistance = (miles) => (miles || 0).toFixed(2) + ' mi';
 
-// Target pace presets defined as a multiplier/offset relative to threshold pace (e.g. 8:00 / mi = 480s)
-const PACE_PRESETS = [
-  { label: '5K', multiplier: 0.90, color: '#dc3545' },      // ~10% faster than threshold
-  { label: '10K', multiplier: 0.94, color: '#fd7e14' },     // ~6% faster than threshold
-  { label: 'Half', multiplier: 0.97, color: '#ffc107' },    // ~3% faster than threshold
-  { label: 'Threshold2', multiplier: 1.00, color: '#28a745' }, // 100% threshold
-  { label: 'Tempo', multiplier: 1.05, color: '#17a2b8' },    // ~5% slower than threshold
-  { label: 'Marathon', multiplier: 1.08, color: '#007bff' }, // ~8% slower than threshold
-  { label: 'Easy', multiplier: 1.20, color: '#6c757d' },     // ~20% slower than threshold
-];
-
-const getZoneColor = (paceSec) => {
-  if (!paceSec || paceSec <= 0 || paceSec > 570) return '#6c757d';
-  if (paceSec > 510) return '#28a745';
-  if (paceSec > 465) return '#ffc107';
-  if (paceSec > 420) return '#fd7e14';
-  return '#dc3545';
-};
-
-const createStep = (type) => {
+const createStep = (type, mode = 'time') => {
   const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+  const durationSec = mode === 'time' ? 600 : 0;
+  const distanceMiles = mode === 'distance' ? 1.0 : 0;
+
   switch (type) {
-    case 'warmup': return { id, type: 'warmup', durationSec: 600, targetPaceSec: 540 };
-    case 'run': return { id, type: 'run', durationSec: 600, targetPaceSec: 480 };
-    case 'recovery': return { id, type: 'recovery', durationSec: 120, targetPaceSec: 660 };
-    case 'cooldown': return { id, type: 'cooldown', durationSec: 600, targetPaceSec: 540 };
+    case 'warmup': return { id, type: 'warmup', durationSec, distanceMiles, targetPaceSec: 540 };
+    case 'run': return { id, type: 'run', durationSec, distanceMiles, targetPaceSec: 480 };
+    case 'recovery': return { id, type: 'recovery', durationSec: mode === 'time' ? 120 : 0, distanceMiles: mode === 'distance' ? 0.25 : 0, targetPaceSec: 660 };
+    case 'cooldown': return { id, type: 'cooldown', durationSec, distanceMiles, targetPaceSec: 540 };
     case 'repeat':
       return {
         id,
         type: 'repeat',
         iterations: 3,
         steps: [
-          { id: `${id}-1`, type: 'run', durationSec: 600, targetPaceSec: 480 },
-          { id: `${id}-2`, type: 'recovery', durationSec: 120, targetPaceSec: 660 }
+          { id: `${id}-1`, type: 'run', durationSec, distanceMiles, targetPaceSec: 480 },
+          { id: `${id}-2`, type: 'recovery', durationSec: mode === 'time' ? 120 : 0, distanceMiles: mode === 'distance' ? 0.25 : 0, targetPaceSec: 660 }
         ],
       };
-    default: return { id, type: 'run', durationSec: 600, targetPaceSec: 480 };
+    default: return { id, type: 'run', durationSec, distanceMiles, targetPaceSec: 480 };
   }
 };
 
-const createDefaultSteps = () => [
-  createStep('warmup'),
-  createStep('repeat'),
-  createStep('cooldown'),
+const createDefaultSteps = (mode = 'time') => [
+  createStep('warmup', mode),
+  createStep('repeat', mode),
+  createStep('cooldown', mode),
 ];
 
-// Map incoming Intervals.icu workout object back into local step format
 const mapIcuDocToSteps = (workout) => {
   const stepsSource = workout?.workout_doc?.steps || workout?.steps;
   if (!Array.isArray(stepsSource) || stepsSource.length === 0) {
-    return createDefaultSteps();
+    return createDefaultSteps('time');
   }
 
   const mapStep = (s, idx) => {
@@ -183,10 +168,14 @@ const mapIcuDocToSteps = (workout) => {
     if (s.pace?.value) targetPaceSec = s.pace.value;
     else if (s.pace?.start) targetPaceSec = s.pace.start;
 
+    const durationSec = s.duration || 300;
+    const distanceMiles = s.distance ? s.distance / 1609.344 : (durationSec / targetPaceSec);
+
     return {
       id,
       type,
-      durationSec: s.duration || 300,
+      durationSec,
+      distanceMiles,
       targetPaceSec,
     };
   };
@@ -194,40 +183,6 @@ const mapIcuDocToSteps = (workout) => {
   return stepsSource.map(mapStep);
 };
 
-// Converts active steps to ZWIFT .zwo XML format
-const generateZwoXml = () => {
-  const rawText = generateIcuText(steps);
-  const zwoSteps = steps.map((step) => {
-    const durSec = step.durationType === 'time' 
-      ? (step.durationValue || 0) 
-      : Math.round((step.durationValue || 0) * 1609.344 / 5.0); // Rough estimate if distance-based
-    
-    const targetPace = step.targetPaceSecs || default_threshold;
-    // Convert pace to % of Threshold Pace (e.g., 480s / targetPaceSecs)
-    const powerFraction = (default_threshold / targetPace).toFixed(2);
-
-    if (step.type === 'warmup') {
-      return `    <Warmup Duration="${durSec}" PowerLow="0.50" PowerHigh="${powerFraction}"/>`;
-    } else if (step.type === 'cooldown') {
-      return `    <Cooldown Duration="${durSec}" PowerLow="${powerFraction}" PowerHigh="0.50"/>`;
-    } else {
-      return `    <SteadyState Duration="${durSec}" Power="${powerFraction}"/>`;
-    }
-  }).join('\n');
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-          <workout_file>
-          <author>Workout Builder</author>
-          <name>${workoutTitle || 'Workout'}</name>
-          <description>${workoutDescription || ''}</description>
-          <sportType>run</sportType>
-          <workout>
-          ${zwoSteps}
-          </workout>
-          </workout_file>`;
-};
-
-// Triggers browser download for files
 const downloadFile = (content, filename, mimeType) => {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -240,30 +195,6 @@ const downloadFile = (content, filename, mimeType) => {
   URL.revokeObjectURL(url);
 };
 
-// Action handlers for options menu
-const handleCopyWorkoutText = () => {
-  setIsOptionsMenuOpen(false);
-  const text = generateIcuText(steps);
-  navigator.clipboard.writeText(text);
-  setStatusMessage('Workout text copied to clipboard!');
-};
-
-const handleDownloadIcu = () => {
-  setIsOptionsMenuOpen(false);
-  const text = generateIcuText(steps);
-  const filename = `${(workoutTitle || 'workout').toLowerCase().replace(/\s+/g, '_')}.icu`;
-  downloadFile(text, filename, 'text/plain;charset=utf-8');
-  setStatusMessage(`Downloaded ${filename}`);
-};
-
-const handleDownloadZwo = () => {
-  setIsOptionsMenuOpen(false);
-  const xml = generateZwoXml();
-  const filename = `${(workoutTitle || 'workout').toLowerCase().replace(/\s+/g, '_')}.zwo`;
-  downloadFile(xml, filename, 'application/xml;charset=utf-8');
-  setStatusMessage(`Downloaded ${filename}`);
-};
-
 export default function WorkoutBuilder() {
   const [mode, setMode] = useState('EMPTY');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
@@ -273,6 +204,14 @@ export default function WorkoutBuilder() {
   const [workoutDescription, setWorkoutDescription] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState('');
   const [steps, setSteps] = useState([]);
+
+  // New Workout settings state
+  const [workoutMode, setWorkoutMode] = useState('time'); // 'time' | 'distance'
+  const [paceMethod, setPaceMethod] = useState('Pace'); 
+
+  // Intervals.icu data
+  const [icuPacesData, setIcuPacesData] = useState(null);
+  const [thresholdPaceSec, setThresholdPaceSec] = useState(DEFAULT_THRESHOLD);
 
   const [originalWorkoutSnapshot, setOriginalWorkoutSnapshot] = useState(null);
 
@@ -296,6 +235,104 @@ export default function WorkoutBuilder() {
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
 
+  // Fetch Intervals.icu paces on initial mount
+  useEffect(() => {
+    async function loadPaces() {
+      try {
+        const data = await fetchMyPacesApi();
+        setIcuPacesData(data);
+        if (data.threshold_pace || data.thresholdPace) {
+          setThresholdPaceSec(data.threshold_pace || data.thresholdPace);
+        }
+      } catch (err) {
+        console.warn('Could not fetch Intervals.icu paces, using defaults:', err.message);
+      }
+    }
+    loadPaces();
+  }, []);
+
+  // Compute preset list dynamically based on paceMethod and icuPacesData
+  const dynamicPresets = useMemo(() => {
+    const rawPaces = icuPacesData?.paces || icuPacesData?.zones || [];
+
+    if (rawPaces.length > 0) {
+      return rawPaces.map((p, idx) => {
+        const color = PRESET_COLORS[idx % PRESET_COLORS.length];
+        const paceVal = p.paceSec || p.value || DEFAULT_THRESHOLD;
+        const lowPace = p.lowPace || p.startPace || Math.round(paceVal * 0.95);
+        const highPace = p.highPace || p.endPace || Math.round(paceVal * 1.05);
+        const pctVal = Math.round((DEFAULT_THRESHOLD / paceVal) * 100);
+        const pctLow = Math.round((DEFAULT_THRESHOLD / highPace) * 100);
+        const pctHigh = Math.round((DEFAULT_THRESHOLD / lowPace) * 100);
+
+        let label = p.name || p.label || `Zone ${idx + 1}`;
+        let displayPace = formatMMSS(paceVal);
+
+        switch (paceMethod) {
+          case 'Pace Range':
+            displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
+            break;
+          case 'Zone':
+            label = p.zoneName || `Z${idx + 1}`;
+            displayPace = formatMMSS(paceVal);
+            break;
+          case 'Zone Range':
+            label = p.zoneName || `Z${idx + 1}`;
+            displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
+            break;
+          case 'Threshold %':
+            displayPace = `${pctVal}%`;
+            break;
+          case 'Theshold % Range':
+          case 'Threshold % Range':
+            displayPace = `${pctLow}%-${pctHigh}%`;
+            break;
+          case 'Pace':
+          default:
+            displayPace = formatMMSS(paceVal);
+            break;
+        }
+
+        return {
+          label,
+          displayPace,
+          targetPaceSec: paceVal,
+          color,
+        };
+      });
+    }
+
+    // Default Fallback presets if API call failed
+    const defaultPaces = [
+      { label: 'Easy', mult: 1.20, color: PRESET_COLORS[0] },
+      { label: 'Marathon', mult: 1.08, color: PRESET_COLORS[1] },
+      { label: 'Tempo', mult: 1.05, color: PRESET_COLORS[2] },
+      { label: 'Threshold', mult: 1.00, color: PRESET_COLORS[3] },
+      { label: 'Half', mult: 0.97, color: PRESET_COLORS[4] },
+      { label: '10K', mult: 0.94, color: PRESET_COLORS[5] },
+      { label: '5K', mult: 0.90, color: PRESET_COLORS[6] },
+    ];
+
+    return defaultPaces.map((p) => {
+      const paceVal = Math.round(thresholdPaceSec * p.mult);
+      let displayPace = formatMMSS(paceVal);
+
+      if (paceMethod.includes('Range')) {
+        displayPace = `${formatMMSS(Math.round(paceVal * 0.97))}-${formatMMSS(Math.round(paceVal * 1.03))}`;
+      } else if (paceMethod.includes('Threshold %')) {
+        const pct = Math.round((thresholdPaceSec / paceVal) * 100);
+        displayPace = `${pct}%`;
+      }
+
+      return {
+        label: p.label,
+        displayPace,
+        targetPaceSec: paceVal,
+        color: p.color,
+      };
+    });
+  }, [icuPacesData, thresholdPaceSec, paceMethod]);
+
   const loadFolders = async () => {
     try {
       const list = await fetchFoldersApi();
@@ -312,7 +349,7 @@ export default function WorkoutBuilder() {
     setWorkoutTitle('New Workout');
     setWorkoutDescription('');
     setSelectedFolderId('');
-    setSteps(createDefaultSteps());
+    setSteps(createDefaultSteps(workoutMode));
     setOriginalWorkoutSnapshot(null);
     setMode('CREATING');
     setIsOptionsMenuOpen(false);
@@ -327,7 +364,6 @@ export default function WorkoutBuilder() {
         const initialFolder = folderList[0];
         setSelectedEditFolderId(initialFolder.id);
 
-        // Check if the folder object itself already contains 'children'
         if (Array.isArray(initialFolder.children)) {
           setWorkoutsList(initialFolder.children);
         } else {
@@ -346,7 +382,6 @@ export default function WorkoutBuilder() {
   const handleSelectWorkoutToEdit = (workout) => {
     try {
       const loadedSteps = mapIcuDocToSteps(workout);
-      
       setWorkoutId(workout.id);
       setWorkoutTitle(workout.name || 'Untitled Workout');
       setWorkoutDescription(workout.workout_doc?.description || workout.description || '');
@@ -368,14 +403,11 @@ export default function WorkoutBuilder() {
     }
   };
 
-  // Helper to check if the user has made changes since opening/saving
   const hasUnsavedChanges = () => {
     if (mode === 'CREATING') {
-      // In CREATING mode, check if steps differ from default steps or title changed
       return steps.length > 0 || workoutTitle !== 'New Workout' || workoutDescription !== '';
     }
     if (mode === 'EDITING' && originalWorkoutSnapshot) {
-      // Compare current state against the original snapshot
       const currentSnapshot = {
         id: workoutId,
         name: workoutTitle,
@@ -390,33 +422,23 @@ export default function WorkoutBuilder() {
 
   const handleDuplicateWorkout = () => {
     setIsOptionsMenuOpen(false);
-
-    // Append "(Copy)" to the existing workout title
     const newTitle = workoutTitle ? `${workoutTitle} (Copy)` : 'New Workout (Copy)';
-
-    // Switch mode to CREATING and clear the ID so it saves as a new workout
     setMode('CREATING');
     setWorkoutId(null);
     setWorkoutTitle(newTitle);
-    
-    // Deep-clone steps to break references to the original
     setSteps(JSON.parse(JSON.stringify(steps)));
     setOriginalWorkoutSnapshot(null);
-
     setStatusMessage(`Duplicated workout as "${newTitle}". Save when ready.`);
   };
 
   const handleCloseWorkout = () => {
     setIsOptionsMenuOpen(false);
-
     if (hasUnsavedChanges()) {
       const confirmClose = window.confirm(
         'You have unsaved changes in this workout. Are you sure you want to close it and lose your changes?'
       );
       if (!confirmClose) return;
     }
-
-    // Reset back to initial empty state
     setMode('EMPTY');
     setWorkoutId(null);
     setWorkoutTitle('New Workout');
@@ -468,13 +490,13 @@ export default function WorkoutBuilder() {
     setIsOptionsMenuOpen(false);
     setSaveAsNew(asNew);
     setSaveTitle(asNew ? `${workoutTitle} (Copy)` : workoutTitle);
-    
+
     setApiLoading(true);
     const loadedFolders = await loadFolders();
     setSaveFolderId(selectedFolderId || (loadedFolders.length > 0 ? loadedFolders[0].id : ''));
     setShowInlineFolderInput(false);
     setApiLoading(false);
-    
+
     setIsSaveModalOpen(true);
   };
 
@@ -494,7 +516,8 @@ export default function WorkoutBuilder() {
     }
   };
 
-  const calculateTotals = (stepList) => {
+  // Calculates time/distance totals respecting workoutMode
+  const calculateTotals = (stepList, currentMode = workoutMode) => {
     let totalSec = 0;
     let totalMiles = 0;
 
@@ -502,38 +525,106 @@ export default function WorkoutBuilder() {
 
     stepList.forEach((step) => {
       if (step.type === 'repeat') {
-        const nested = calculateTotals(step.steps || []);
+        const nested = calculateTotals(step.steps || [], currentMode);
         totalSec += nested.totalSec * (step.iterations || 1);
         totalMiles += nested.totalMiles * (step.iterations || 1);
       } else {
-        const sec = step.durationSec || 0;
         const pace = step.targetPaceSec || 1;
-        totalSec += sec;
-        totalMiles += sec / pace;
+        if (currentMode === 'distance') {
+          const miles = step.distanceMiles || 0;
+          totalMiles += miles;
+          totalSec += miles * pace;
+        } else {
+          const sec = step.durationSec || 0;
+          totalSec += sec;
+          totalMiles += sec / pace;
+        }
       }
     });
 
     return { totalSec, totalMiles };
   };
 
-  const totals = useMemo(() => calculateTotals(steps), [steps]);
+  const totals = useMemo(() => calculateTotals(steps, workoutMode), [steps, workoutMode]);
 
+  const generateIcuText = (stepList) => {
+    if (!Array.isArray(stepList)) return '';
+    const lines = [];
+
+    const processSteps = (list) => {
+      list.forEach((s) => {
+        if (s.type === 'repeat') {
+          lines.push(`\n${s.iterations}x`);
+          processSteps(s.steps || []);
+          lines.push('');
+        } else {
+          const durStr = workoutMode === 'distance' 
+            ? `${(s.distanceMiles || 0).toFixed(2)}mi` 
+            : formatTime(s.durationSec);
+          lines.push(`- ${durStr} @ ${formatMMSS(s.targetPaceSec)} Pace (${s.type})`);
+        }
+      });
+    };
+
+    processSteps(stepList);
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  };
+
+  const generateZwoXml = () => {
+    const zwoSteps = steps.map((step) => {
+      const durSec = workoutMode === 'time'
+        ? (step.durationSec || 0)
+        : Math.round((step.distanceMiles || 0) * (step.targetPaceSec || DEFAULT_THRESHOLD));
+
+      const targetPace = step.targetPaceSec || thresholdPaceSec;
+      const powerFraction = (thresholdPaceSec / targetPace).toFixed(2);
+
+      if (step.type === 'warmup') {
+        return `    <Warmup Duration="${durSec}" PowerLow="0.50" PowerHigh="${powerFraction}"/>`;
+      } else if (step.type === 'cooldown') {
+        return `    <Cooldown Duration="${durSec}" PowerLow="${powerFraction}" PowerHigh="0.50"/>`;
+      } else {
+        return `    <SteadyState Duration="${durSec}" Power="${powerFraction}"/>`;
+      }
+    }).join('\n');
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+  <author>Workout Builder</author>
+  <name>${workoutTitle || 'Workout'}</name>
+  <description>${workoutDescription || ''}</description>
+  <sportType>run</sportType>
+  <workout>
+${zwoSteps}
+  </workout>
+</workout_file>`;
+  };
+
+  const handleCopyWorkoutText = () => {
+    setIsOptionsMenuOpen(false);
+    const text = generateIcuText(steps);
+    navigator.clipboard.writeText(text);
+    setStatusMessage('Workout text copied to clipboard!');
+  };
+
+  const handleDownloadIcu = () => {
+    setIsOptionsMenuOpen(false);
+    const text = generateIcuText(steps);
+    const filename = `${(workoutTitle || 'workout').toLowerCase().replace(/\s+/g, '_')}.icu`;
+    downloadFile(text, filename, 'text/plain;charset=utf-8');
+    setStatusMessage(`Downloaded ${filename}`);
+  };
+
+  const handleDownloadZwo = () => {
+    setIsOptionsMenuOpen(false);
+    const xml = generateZwoXml();
+    const filename = `${(workoutTitle || 'workout').toLowerCase().replace(/\s+/g, '_')}.zwo`;
+    downloadFile(xml, filename, 'application/xml;charset=utf-8');
+    setStatusMessage(`Downloaded ${filename}`);
+  };
 
   const workoutPayloadObject = useMemo(() => {
     const METERS_PER_MILE = 1609.344;
-
-    // Helper to format step time as #h##m##s (or #m##s if < 1 hour)
-    const formatDescriptionTime = (totalSeconds) => {
-      const sec = Math.max(0, totalSeconds || 0);
-      const hrs = Math.floor(sec / 3600);
-      const mins = Math.floor((sec % 3600) / 60);
-      const secs = sec % 60;
-
-      if (hrs > 0) {
-        return `${hrs}h${mins}m${secs}s`;
-      }
-      return `${mins}m${secs}s`;
-    };
 
     const buildIcuStep = (step) => {
       if (step.type === 'repeat') {
@@ -542,10 +633,16 @@ export default function WorkoutBuilder() {
         let repeatMiles = 0;
 
         (step.steps || []).forEach((child) => {
-          const s = child.durationSec || 0;
           const p = child.targetPaceSec || 1;
-          repeatSecs += s;
-          repeatMiles += s / p;
+          if (workoutMode === 'distance') {
+            const m = child.distanceMiles || 0;
+            repeatMiles += m;
+            repeatSecs += m * p;
+          } else {
+            const s = child.durationSec || 0;
+            repeatSecs += s;
+            repeatMiles += s / p;
+          }
         });
 
         return {
@@ -557,8 +654,12 @@ export default function WorkoutBuilder() {
         };
       }
 
+      const stepSecs = workoutMode === 'distance' 
+        ? (step.distanceMiles || 0) * (step.targetPaceSec || 1) 
+        : (step.durationSec || 0);
+
       const baseStep = {
-        duration: step.durationSec || 0,
+        duration: stepSecs,
         pace: { units: 'secs', value: step.targetPaceSec || 0 },
       };
 
@@ -578,37 +679,11 @@ export default function WorkoutBuilder() {
     const icuSteps = (steps || []).map(buildIcuStep);
     const totalMeters = totals.totalMiles * METERS_PER_MILE;
 
-    const generatePrimaryDescription = (stepList) => {
-      if (!Array.isArray(stepList)) return '';
-
-      const lines = [];
-
-      const processSteps = (list) => {
-        list.forEach((s) => {
-          if (s.type === 'repeat') {
-            lines.push(''); // Blank line before repeat
-            lines.push(`${s.iterations}x`);
-            processSteps(s.steps || []);
-            lines.push(''); // Blank line after repeat
-          } else {
-            lines.push(`- ${formatDescriptionTime(s.durationSec)} @ ${formatMMSS(s.targetPaceSec)} Pace (${s.type})`);
-          }
-        });
-      };
-
-      processSteps(stepList);
-
-      return lines
-        .join('\n')
-        .replace(/\n{3,}/g, '\n\n') // Collapse any stacked blank lines down to 1
-        .trim();
-    };
-
     return {
       id: workoutId || 1,
       icu_training_load: Math.round(totals.totalSec / 60),
       name: workoutTitle,
-      description: generatePrimaryDescription(steps),
+      description: generateIcuText(steps),
       type: 'Run',
       indoor: false,
       color: null,
@@ -622,39 +697,12 @@ export default function WorkoutBuilder() {
         options: {},
         distance: totalMeters,
         duration: totals.totalSec,
-        zoneTimes: [
-          { id: 'Z1', secs: 0 },
-          { id: 'Z2', secs: totals.totalSec },
-          { id: 'Z3', secs: 0 },
-          { id: 'Z4', secs: 0 },
-          { id: 'Z5', secs: 0 },
-          { id: 'Z6', secs: 0 },
-          { id: 'Z7', secs: 0 },
-        ],
         description: workoutDescription,
-        strain_score: null,
-        average_watts: 0,
-        normalized_power: 0,
-        variability_index: null,
-        polarization_index: 0,
       },
       folder_id: saveFolderId ? Number(saveFolderId) : (selectedFolderId ? Number(selectedFolderId) : null),
-      day: null,
-      days: null,
-      plan_applied: null,
-      hide_from_athlete: false,
-      target: null,
-      targets: ['PACE'],
-      carbs_per_hour: null,
-      tags: null,
-      attachments: null,
-      time: null,
-      sub_type: null,
-      for_week: false,
       distance: Number(totalMeters.toFixed(3)),
-      icu_intensity: 80.0,
     };
-  }, [steps, workoutTitle, workoutDescription, totals, selectedFolderId, saveFolderId, workoutId]);
+  }, [steps, workoutTitle, workoutDescription, totals, selectedFolderId, saveFolderId, workoutId, workoutMode]);
 
   const handleConfirmSaveWorkout = async () => {
     if (!saveTitle.trim()) {
@@ -699,9 +747,8 @@ export default function WorkoutBuilder() {
     }
   };
 
-  // Step Modification Handlers
   const addStep = (type, parentRepeatId = null) => {
-    const newStep = createStep(type);
+    const newStep = createStep(type, workoutMode);
     if (!parentRepeatId) {
       setSteps([...steps, newStep]);
     } else {
@@ -735,7 +782,6 @@ export default function WorkoutBuilder() {
     setSteps(updateRecursive(steps));
   };
 
-  // Drag and Drop
   const handleDragStart = (e, step, parentId) => {
     e.stopPropagation();
     setDraggedItem({ step, parentId });
@@ -786,79 +832,51 @@ export default function WorkoutBuilder() {
   };
 
   return (
-    <div className="workout-builder-container" style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
-      {/* Header Bar with Cascading Options Menu */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', position: 'relative' }}>
-        <h1 style={{ margin: 0, fontSize: '24px' }}>Workout Builder</h1>
+    <div className="workout-builder-container">
+      {/* Header Bar */}
+      <div className="builder-header-bar">
+        <h1 className="builder-header-title">Workout Builder</h1>
 
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
-            style={{
-              padding: '8px 16px',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              backgroundColor: '#007bff',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
+            className="options-menu-btn"
           >
             ⚙️ Options ▾
           </button>
 
           {isOptionsMenuOpen && (
-            <div
-              style={{
-                position: 'absolute',
-                right: 0,
-                top: '100%',
-                marginTop: '4px',
-                width: '210px',
-                backgroundColor: '#ffffff',
-                boxShadow: '0px 4px 12px rgba(0,0,0,0.15)',
-                borderRadius: '6px',
-                zIndex: 100,
-                overflow: 'hidden',
-                border: '1px solid #ddd',
-              }}
-            >
+            <div className="options-menu-dropdown">
               <button style={menuButtonStyle} onClick={handleStartCreateNew}>
                 ➕ Create New Workout
               </button>
-
               <button style={menuButtonStyle} onClick={handleOpenEditModal}>
                 ✏️ Edit Existing Workout
               </button>
-
               <button style={menuButtonStyle} onClick={handleOpenCreateFolderModal}>
                 📁 Create New Folder
               </button>
 
-              {(mode === 'CREATING' || mode === 'EDITING') && <div style={{ height: '1px', backgroundColor: '#eee' }} />}
+              {(mode === 'CREATING' || mode === 'EDITING') && <div className="menu-divider" />}
 
               {(mode === 'CREATING' || mode === 'EDITING') && (
                 <button style={menuButtonStyle} onClick={() => handleOpenSaveModal(false)}>
                   💾 Save Workout
                 </button>
               )}
-
               {mode === 'EDITING' && (
                 <button style={menuButtonStyle} onClick={() => handleOpenSaveModal(true)}>
                   📋 Save As New Workout
                 </button>
               )}
-
               {(mode === 'CREATING' || mode === 'EDITING') && (
                 <button style={menuButtonStyle} onClick={handleDuplicateWorkout}>
                   📄 Duplicate Workout
                 </button>
               )}
 
-              {(mode === 'CREATING' || mode === 'EDITING') && <div style={{ height: '1px', backgroundColor: '#eee' }} />}
+              {(mode === 'CREATING' || mode === 'EDITING') && <div className="menu-divider" />}
 
-              {/* --- EXPORT OPTIONS --- */}
               {(mode === 'CREATING' || mode === 'EDITING') && (
                 <>
                   <button style={menuButtonStyle} onClick={handleCopyWorkoutText}>
@@ -873,14 +891,13 @@ export default function WorkoutBuilder() {
                 </>
               )}
 
-              {(mode === 'CREATING' || mode === 'EDITING') && <div style={{ height: '1px', backgroundColor: '#eee' }} />}
+              {(mode === 'CREATING' || mode === 'EDITING') && <div className="menu-divider" />}
 
               {mode === 'EDITING' && (
                 <button style={{ ...menuButtonStyle, color: '#dc3545' }} onClick={handleCancelEdits}>
                   ↩️ Cancel Edits
                 </button>
               )}
-
               {(mode === 'CREATING' || mode === 'EDITING') && (
                 <button style={{ ...menuButtonStyle, color: '#6c757d' }} onClick={handleCloseWorkout}>
                   ✖️ Close Workout
@@ -892,13 +909,13 @@ export default function WorkoutBuilder() {
       </div>
 
       {statusMessage && (
-        <div style={{ padding: '10px 14px', marginBottom: '16px', backgroundColor: '#e2e3e5', color: '#383d41', borderRadius: '4px', fontSize: '13px' }}>
+        <div className="status-message-banner">
           {statusMessage}
         </div>
       )}
 
       {mode === 'EMPTY' && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', border: '2px dashed #ccc', borderRadius: '8px', color: '#6c757d' }}>
+        <div className="empty-state-card">
           <h3>No Workout Selected</h3>
           <p>Click the <strong>Options</strong> button above to create a new workout or edit an existing one.</p>
         </div>
@@ -906,22 +923,58 @@ export default function WorkoutBuilder() {
 
       {(mode === 'CREATING' || mode === 'EDITING') && (
         <div>
-          <div className="builder-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          {/* Controls Bar: Time/Distance Toggle & Pace Method Dropdown */}
+          <div className="builder-controls-bar">
+            <div className="mode-toggle-group">
+              <span className="control-label">Build By:</span>
+              <button
+                type="button"
+                className={`toggle-btn ${workoutMode === 'time' ? 'active' : ''}`}
+                onClick={() => setWorkoutMode('time')}
+              >
+                ⏱️ Time
+              </button>
+              <button
+                type="button"
+                className={`toggle-btn ${workoutMode === 'distance' ? 'active' : ''}`}
+                onClick={() => setWorkoutMode('distance')}
+              >
+                📏 Distance
+              </button>
+            </div>
+
+            <div className="pace-method-group">
+              <span className="control-label">Pace Method:</span>
+              <select
+                value={paceMethod}
+                onChange={(e) => setPaceMethod(e.target.value)}
+                className="pace-method-select"
+              >
+                <option value="Pace">Pace</option>
+                <option value="Pace Range">Pace Range</option>
+                <option value="Zone">Zone</option>
+                <option value="Zone Range">Zone Range</option>
+                <option value="Threshold %">Threshold %</option>
+                <option value="Theshold % Range">Threshold % Range</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="builder-header">
             <input
               type="text"
               value={workoutTitle}
               onChange={(e) => setWorkoutTitle(e.target.value)}
               className="builder-title-input"
               placeholder="Workout Title"
-              style={{ fontSize: '18px', padding: '6px 10px', width: '60%' }}
             />
-            <div className="builder-totals" style={{ fontSize: '14px' }}>
-              Total Time: <strong>{formatTime(totals.totalSec)}</strong> | Total Dist: <strong>{formatDistance(totals.totalMiles)}</strong>
+            <div className="builder-totals">
+              Total Time: <strong className="total-time-val">{formatTime(totals.totalSec)}</strong> | Total Dist: <strong className="total-dist-val">{formatDistance(totals.totalMiles)}</strong>
             </div>
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontWeight: 'bold', fontSize: '12px', color: '#495057', marginBottom: '4px' }}>
+            <label className="description-label">
               Workout Description
             </label>
             <textarea
@@ -929,19 +982,19 @@ export default function WorkoutBuilder() {
               onChange={(e) => setWorkoutDescription(e.target.value)}
               placeholder="Add an optional description or notes for this workout..."
               rows={2}
-              style={{ width: '100%', padding: '8px', fontSize: '13px', borderRadius: '4px', border: '1px solid #ced4da', boxSizing: 'border-box' }}
+              className="description-textarea"
             />
           </div>
 
-          <div className="chart-card" style={{ marginBottom: '16px' }}>
-            <div className="chart-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span className="chart-title" style={{ fontWeight: 'bold' }}>Workout Profile Chart</span>
+          <div className="chart-card">
+            <div className="chart-header">
+              <span className="chart-title">Workout Profile Chart</span>
               <button className="btn-zoom" onClick={() => setIsZoomOpen(true)}>🔍 Zoom Chart</button>
             </div>
-            <RenderWorkoutChart steps={steps} height={120} />
+            <RenderWorkoutChart steps={steps} height={120} workoutMode={workoutMode} />
           </div>
 
-          <div className="action-bar" style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <div className="action-bar">
             <button className="btn-add-step" onClick={() => addStep('warmup')}>+ Warmup</button>
             <button className="btn-add-step" onClick={() => addStep('run')}>+ Run</button>
             <button className="btn-add-step" onClick={() => addStep('recovery')}>+ Recovery</button>
@@ -956,6 +1009,8 @@ export default function WorkoutBuilder() {
                 step={step}
                 index={index}
                 parentId={null}
+                workoutMode={workoutMode}
+                presets={dynamicPresets}
                 onRemove={removeStep}
                 onUpdate={updateStepField}
                 onAddChild={addStep}
@@ -965,31 +1020,21 @@ export default function WorkoutBuilder() {
             ))}
           </div>
 
-          <div style={{ marginTop: '30px', paddingTop: '16px', borderTop: '2px solid #dee2e6' }}>
-            <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', color: '#333', marginBottom: '6px' }}>
+          <div className="json-preview-container">
+            <label className="json-preview-label">
               Intervals.icu JSON Representation (Read-Only)
             </label>
             <textarea
               readOnly
               value={JSON.stringify([workoutPayloadObject], null, 2)}
               rows={14}
-              style={{
-                width: '100%',
-                fontFamily: 'monospace',
-                fontSize: '12px',
-                padding: '10px',
-                backgroundColor: '#f8f9fa',
-                border: '1px solid #ced4da',
-                borderRadius: '4px',
-                boxSizing: 'border-box',
-                color: '#495057',
-              }}
+              className="json-preview-textarea"
             />
           </div>
         </div>
       )}
 
-      {/* --- MODAL 1: Create Folder --- */}
+      {/* --- MODALS --- */}
       {isFolderModalOpen && (
         <div style={modalOverlayStyle}>
           <div style={modalContentStyle}>
@@ -1011,7 +1056,6 @@ export default function WorkoutBuilder() {
         </div>
       )}
 
-      {/* --- MODAL 2: Edit Workout Picker --- */}
       {isEditModalOpen && (
         <div style={modalOverlayStyle}>
           <div style={{ ...modalContentStyle, width: '720px', maxWidth: '90vw' }}>
@@ -1058,60 +1102,27 @@ export default function WorkoutBuilder() {
               ) : (
                 workoutsList.map((w) => {
                   const workoutSteps = mapIcuDocToSteps(w);
-                  const wTotals = calculateTotals(workoutSteps);
+                  const wTotals = calculateTotals(workoutSteps, workoutMode);
 
                   return (
                     <div
                       key={w.id}
                       onClick={() => handleSelectWorkoutToEdit(w)}
-                      style={{
-                        padding: '14px 16px',
-                        borderBottom: '1px solid #eee',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'flex-end', // Aligns bottom of text and chart
-                        gap: '20px',
-                        transition: 'background-color 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      className="workout-select-item"
                     >
-                      {/* 1. Left-justified Name */}
                       <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                        <div
-                          style={{
-                            fontWeight: 'bold',
-                            fontSize: '24px',
-                            color: '#212529',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            lineHeight: '1.1'
-                          }}
-                        >
+                        <div className="workout-select-title">
                           {w.name || 'Untitled Workout'}
                         </div>
                       </div>
 
-                      {/* 2. Side-by-Side Time & Distance (Bottom Aligned) */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '12px',
-                          fontSize: '18px',
-                          color: '#495057',
-                          flexShrink: 0,
-                          lineHeight: '1.1'
-                        }}
-                      >
+                      <div className="workout-select-meta">
                         <span>⏱️ {formatTime(w.moving_time || wTotals.totalSec)}</span>
                         <span>📏 {formatDistance(w.distance ? w.distance / 1609.344 : wTotals.totalMiles)}</span>
                       </div>
 
-                      {/* 3. Workout Chart (Bottom Aligned) */}
                       <div style={{ width: '120px', flexShrink: 0, height: '40px', display: 'flex', alignItems: 'flex-end' }}>
-                        <RenderWorkoutChart steps={workoutSteps} height={40} />
+                        <RenderWorkoutChart steps={workoutSteps} height={40} workoutMode={workoutMode} />
                       </div>
                     </div>
                   );
@@ -1131,7 +1142,6 @@ export default function WorkoutBuilder() {
         </div>
       )}
 
-      {/* --- MODAL 3: Save Dialog --- */}
       {isSaveModalOpen && (
         <div style={modalOverlayStyle}>
           <div style={modalContentStyle}>
@@ -1184,7 +1194,6 @@ export default function WorkoutBuilder() {
         </div>
       )}
 
-      {/* Chart Modal */}
       {isZoomOpen && (
         <div style={modalOverlayStyle} onClick={() => setIsZoomOpen(false)}>
           <div style={{ ...modalContentStyle, width: '700px' }} onClick={(e) => e.stopPropagation()}>
@@ -1192,7 +1201,7 @@ export default function WorkoutBuilder() {
               <h2 style={{ margin: 0 }}>{workoutTitle} - Profile View</h2>
               <button onClick={() => setIsZoomOpen(false)}>✕</button>
             </div>
-            <RenderWorkoutChart steps={steps} height={280} />
+            <RenderWorkoutChart steps={steps} height={280} workoutMode={workoutMode} />
           </div>
         </div>
       )}
@@ -1213,10 +1222,7 @@ const menuButtonStyle = {
 
 const modalOverlayStyle = {
   position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
+  top: 0, left: 0, right: 0, bottom: 0,
   backgroundColor: 'rgba(0,0,0,0.5)',
   display: 'flex',
   justifyContent: 'center',
@@ -1233,11 +1239,11 @@ const modalContentStyle = {
 };
 
 function MMSSInput({ valueSec, onChange }) {
-  const [text, setText] = useState(formatTime(valueSec));
+  const [text, setText] = useState(formatMMSS(valueSec));
   const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
-    if (!isFocused) setText(formatTime(valueSec));
+    if (!isFocused) setText(formatMMSS(valueSec));
   }, [valueSec, isFocused]);
 
   const handleChange = (e) => {
@@ -1256,26 +1262,16 @@ function MMSSInput({ valueSec, onChange }) {
       onBlur={() => {
         setIsFocused(false);
         const parsedSec = parseMMSS(text);
-        setText(formatTime(parsedSec));
+        setText(formatMMSS(parsedSec));
         onChange(parsedSec);
       }}
       className="time-pace-input"
-      style={{ width: '60px', padding: '4px', fontSize: '13px' }}
     />
   );
 }
 
-function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, onDragStart, onDrop, thresholdPaceMps = 3.83 }) {
+function RenderStepRow({ step, index, parentId, workoutMode, presets, onRemove, onUpdate, onAddChild, onDragStart, onDrop }) {
   if (!step) return null;
-
-  // Safe pace formatter fallback to prevent crashes if formatPace is out of scope
-  const safeFormatPace = (secs) => {
-    if (typeof formatPace === 'function') return formatPace(secs);
-    if (!secs || isNaN(secs)) return '0:00';
-    const m = Math.floor(secs / 60);
-    const s = Math.round(secs % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
-  };
 
   if (step.type === 'repeat') {
     const childSteps = step.steps || [];
@@ -1286,11 +1282,10 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
         onDragStart={(e) => onDragStart && onDragStart(e, step, parentId)}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => onDrop && onDrop(e, parentId, index)}
-        style={{ border: '2px dashed #007bff', padding: '12px', marginBottom: '12px', borderRadius: '6px' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <span style={{ cursor: 'grab' }}>⣿</span>
-          <strong>Repeat Block</strong>
+        <div className="repeat-header">
+          <span className="drag-handle">⣿</span>
+          <strong className="repeat-type-title">Repeat Block</strong>
           <label style={{ fontSize: '12px' }}>
             Repeats:
             <input
@@ -1302,7 +1297,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
               style={{ width: '44px', marginLeft: '4px' }}
             />
           </label>
-          <button onClick={() => onRemove(step.id)} style={{ marginLeft: 'auto', cursor: 'pointer' }}>✕</button>
+          <button onClick={() => onRemove(step.id)} className="btn-remove">✕</button>
         </div>
 
         <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop && onDrop(e, step.id, childSteps.length)}>
@@ -1312,82 +1307,88 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
               step={childStep}
               index={childIdx}
               parentId={step.id}
+              workoutMode={workoutMode}
+              presets={presets}
               onRemove={onRemove}
               onUpdate={onUpdate}
               onAddChild={onAddChild}
               onDragStart={onDragStart}
               onDrop={onDrop}
-              thresholdPaceMps={thresholdPaceMps}
             />
           ))}
         </div>
 
         <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-          <button onClick={() => onAddChild('run', step.id)} style={{ fontSize: '12px' }}>+ Add Run</button>
-          <button onClick={() => onAddChild('recovery', step.id)} style={{ fontSize: '12px' }}>+ Add Recovery</button>
+          <button onClick={() => onAddChild('run', step.id)} className="btn-add-step" style={{ fontSize: '12px' }}>+ Add Run</button>
+          <button onClick={() => onAddChild('recovery', step.id)} className="btn-add-step" style={{ fontSize: '12px' }}>+ Add Recovery</button>
         </div>
       </div>
     );
   }
 
-  const distMiles = (step.durationSec || 0) / (step.targetPaceSec || 1);
+  // Calculated counterpart display
+  const calculatedMiles = (step.durationSec || 0) / (step.targetPaceSec || 1);
+  const calculatedTimeSec = (step.distanceMiles || 0) * (step.targetPaceSec || 1);
 
   return (
     <div
+      className="step-row-container"
       draggable
       onDragStart={(e) => onDragStart && onDragStart(e, step, parentId)}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => onDrop && onDrop(e, parentId, index)}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '6px',
-        padding: '10px 12px',
-        border: '1px solid #ddd',
-        marginBottom: '8px',
-        borderRadius: '4px',
-        backgroundColor: '#fff'
-      }}
     >
       {/* Top Row: Inputs */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
-        <span style={{ cursor: 'grab' }}>⣿</span>
-        <span style={{ fontWeight: 'bold', width: '70px', textTransform: 'capitalize' }}>{step.type || 'step'}</span>
+      <div className="step-row-inputs">
+        <span className="drag-handle">⣿</span>
+        <span className="step-type-label">{step.type || 'step'}</span>
 
-        <label style={{ fontSize: '12px' }}>
-          Time: <MMSSInput valueSec={step.durationSec} onChange={(newSec) => onUpdate(step.id, 'durationSec', newSec)} />
-        </label>
+        {workoutMode === 'time' ? (
+          <label className="input-label">
+            Time: <MMSSInput valueSec={step.durationSec} onChange={(newSec) => onUpdate(step.id, 'durationSec', newSec)} />
+          </label>
+        ) : (
+          <label className="input-label">
+            Dist:
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={step.distanceMiles || 0}
+              onChange={(e) => onUpdate(step.id, 'distanceMiles', parseFloat(e.target.value) || 0)}
+              className="time-pace-input"
+              style={{ width: '60px' }}
+            />
+            mi
+          </label>
+        )}
 
-        <label style={{ fontSize: '12px' }}>
+        <label className="input-label">
           Pace: <MMSSInput valueSec={step.targetPaceSec} onChange={(newSec) => onUpdate(step.id, 'targetPaceSec', newSec)} />
         </label>
 
-        <span style={{ fontSize: '12px', marginLeft: 'auto' }}>
-          Dist: <strong>{typeof formatDistance === 'function' ? formatDistance(distMiles) : `${distMiles.toFixed(2)} mi`}</strong>
+        <span className="dist-display">
+          {workoutMode === 'time'
+            ? `Dist: ${formatDistance(calculatedMiles)}`
+            : `Time: ${formatTime(calculatedTimeSec)}`}
         </span>
 
-        <button onClick={() => onRemove(step.id)} style={{ cursor: 'pointer' }}>✕</button>
+        <button onClick={() => onRemove(step.id)} className="btn-remove">✕</button>
       </div>
 
-      {/* Bottom Row: Target Pace Presets */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '82px', flexWrap: 'wrap' }}>
+      {/* Bottom Row: Dynamic Presets */}
+      <div className="step-presets-row">
         <span style={{ fontSize: '11px', color: '#6c757d', fontWeight: 'bold' }}>Presets:</span>
-        {(PACE_PRESETS || []).map((preset) => {
-          const calculatedSecs = Math.round(
-            thresholdPaceMps > 0
-              ? (1609.344 / thresholdPaceMps) * preset.multiplier
-              : default_threshold * preset.multiplier
-          );
-
-          const isSelected = Math.abs((step.targetPaceSec || 0) - calculatedSecs) < 3;
+        {(presets || []).map((preset) => {
+          const isSelected = Math.abs((step.targetPaceSec || 0) - preset.targetPaceSec) < 3;
 
           return (
             <button
               key={preset.label}
               type="button"
-              onClick={() => onUpdate(step.id, 'targetPaceSec', calculatedSecs)}
+              onClick={() => onUpdate(step.id, 'targetPaceSec', preset.targetPaceSec)}
               style={{
-                padding: '2px 7px',
+                padding: '2px 8px',
                 fontSize: '11px',
                 fontWeight: '600',
                 borderRadius: '12px',
@@ -1398,7 +1399,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
                 transition: 'all 0.15s ease'
               }}
             >
-              {preset.label} ({safeFormatPace(calculatedSecs)})
+              {preset.label} ({preset.displayPace})
             </button>
           );
         })}
@@ -1407,7 +1408,7 @@ function RenderStepRow({ step, index, parentId, onRemove, onUpdate, onAddChild, 
   );
 }
 
-function RenderWorkoutChart({ steps, height }) {
+function RenderWorkoutChart({ steps, height, workoutMode }) {
   const flattenSteps = (list) => {
     let result = [];
     if (!Array.isArray(list)) return result;
@@ -1426,19 +1427,39 @@ function RenderWorkoutChart({ steps, height }) {
   };
 
   const flatSteps = flattenSteps(steps);
-  const totalDuration = flatSteps.reduce((acc, curr) => acc + (curr.durationSec || 0), 0) || 1;
+  const totalWeight = flatSteps.reduce((acc, curr) => {
+    const val = workoutMode === 'distance' 
+      ? (curr.distanceMiles || 0) 
+      : (curr.durationSec || 0);
+    return acc + val;
+  }, 0) || 1;
 
   const velocities = flatSteps.map((s) => (s.targetPaceSec > 0 ? 1 / s.targetPaceSec : 0));
   const maxVel = Math.max(...velocities, 0.0001);
   const minVel = Math.min(...velocities, maxVel);
 
+  const getBarColor = (paceSec) => {
+    if (!paceSec || paceSec <= 0 || paceSec > 570) return '#6c757d';
+    if (paceSec > 510) return '#28a745';
+    if (paceSec > 465) return '#ffc107';
+    if (paceSec > 420) return '#fd7e14';
+    return '#dc3545';
+  };
+
   return (
     <div style={{ width: '100%', height: `${height}px`, display: 'flex', alignItems: 'flex-end', backgroundColor: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: '4px', overflow: 'hidden' }}>
       {flatSteps.map((step, idx) => {
-        const widthPct = ((step.durationSec || 0) / totalDuration) * 100;
+        const stepWeight = workoutMode === 'distance' 
+          ? (step.distanceMiles || 0) 
+          : (step.durationSec || 0);
+        const widthPct = (stepWeight / totalWeight) * 100;
         const currentVel = step.targetPaceSec > 0 ? 1 / step.targetPaceSec : 0;
         const barHeightPct = maxVel === minVel ? 60 : 25 + ((currentVel - minVel) / (maxVel - minVel)) * 70;
-        const barColor = getZoneColor(step.targetPaceSec);
+        const barColor = getBarColor(step.targetPaceSec);
+
+        const durLabel = workoutMode === 'distance' 
+          ? formatDistance(step.distanceMiles) 
+          : formatTime(step.durationSec);
 
         return (
           <div
@@ -1449,7 +1470,7 @@ function RenderWorkoutChart({ steps, height }) {
               backgroundColor: barColor,
               borderRight: '1px solid rgba(255,255,255,0.4)',
             }}
-            title={`${(step.type || 'run').toUpperCase()}: ${formatTime(step.durationSec)} @ ${formatMMSS(step.targetPaceSec)}/mi`}
+            title={`${(step.type || 'run').toUpperCase()}: ${durLabel} @ ${formatMMSS(step.targetPaceSec)}/mi`}
           />
         );
       })}
