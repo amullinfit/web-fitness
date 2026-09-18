@@ -501,11 +501,11 @@ export default function WorkoutBuilder() {
       setNewFolderName('');
     } catch (err) {
       setStatusMessage(`Error creating folder: ${err.message}`);
-    } flex {
+    } finally {
       setApiLoading(false);
     }
   };
-
+  
   const handleOpenSaveModal = async (asNew = false) => {
     setIsOptionsMenuOpen(false);
     setSaveAsNew(asNew);
