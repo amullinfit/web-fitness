@@ -196,7 +196,7 @@ export default function App() {
     </div>
   );
 }
-
+ 
 // Helper style for clean dropdown option buttons
 const dropdownBtnStyle = (themeView) => ({
   background: 'none',
