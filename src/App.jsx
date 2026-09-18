@@ -10,7 +10,7 @@ import OptionsView from './components/OptionsView';
 const APP_TITLE = 'Web Fitness'; // Central title configuration
   
 export default function App() {
-  // Local state per browser instance -- default to 'monthly'
+  // Local state per browser instance - default to 'monthly'
   const [activeTab, setActiveTab] = useState('monthly');
   const [menuOpen, setMenuOpen] = useState(false);
   const [layoutVersion, setLayoutVersion] = useState(
