@@ -4,17 +4,17 @@ import './WorkoutBuilder.css';
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 const VAL_MY_PACES_URL = '/api/val-my-paces';
 
-const DEFAULT_THRESHOLD = 480; // 8:00/mi default fallback
+const DEFAULT_THRESHOLD = 480; // 8:00/mi default fallback (480 seconds)
 
-// Color mapping for preset buttons and charts based on pace/zone
+// Updated color mapping: Grey, Cyan, Green, Blue, Yellow, Orange, Red
 const PRESET_COLORS = [
-  '#6c757d', // Grey / Warmup / Z1
-  '#28a745', // Green / Z2
-  '#ffc107', // Yellow / Z3
-  '#fd7e14', // Orange / Z4
-  '#dc3545', // Red / Z5
-  '#007bff', // Blue / Extra
-  '#17a2b8', // Cyan / Extra
+  '#6c757d', // Grey (Zone 1 / Warmup / Easy)
+  '#17a2b8', // Cyan (Zone 2)
+  '#28a745', // Green (Zone 3)
+  '#007bff', // Blue (Zone 4)
+  '#ffc107', // Yellow (Zone 5)
+  '#fd7e14', // Orange (Zone 6)
+  '#dc3545', // Red (Zone 7)
 ];
 
 // --- API Functions ---
@@ -110,6 +110,17 @@ const parseMMSS = (str) => {
   return mins * 60 + Math.min(secs, 59);
 };
 
+// Helper to reliably normalize m/s or sec/mi into target pace seconds
+const parsePaceValueToSec = (val, defaultThresholdSec) => {
+  if (!val || val <= 0) return defaultThresholdSec;
+  // If value is small (e.g. 0.5 - 10.0), it's speed in m/s. Convert m/s to sec/mi
+  if (val < 15) {
+    return Math.round(1609.344 / val);
+  }
+  // Otherwise it is already total seconds per mile
+  return Math.round(val);
+};
+
 const formatDistance = (miles) => (miles || 0).toFixed(2) + ' mi';
 
 const createStep = (type, mode = 'time') => {
@@ -165,8 +176,8 @@ const mapIcuDocToSteps = (workout) => {
     else if (s.intensity === 'rest') type = 'recovery';
 
     let targetPaceSec = 480;
-    if (s.pace?.value) targetPaceSec = s.pace.value;
-    else if (s.pace?.start) targetPaceSec = s.pace.start;
+    if (s.pace?.value) targetPaceSec = parsePaceValueToSec(s.pace.value, 480);
+    else if (s.pace?.start) targetPaceSec = parsePaceValueToSec(s.pace.start, 480);
 
     const durationSec = s.duration || 300;
     const distanceMiles = s.distance ? s.distance / 1609.344 : (durationSec / targetPaceSec);
@@ -241,8 +252,11 @@ export default function WorkoutBuilder() {
       try {
         const data = await fetchMyPacesApi();
         setIcuPacesData(data);
-        if (data.threshold_pace || data.thresholdPace) {
-          setThresholdPaceSec(data.threshold_pace || data.thresholdPace);
+        
+        // Extract threshold pace safely
+        const rawThresh = data.threshold_pace || data.thresholdPace || data.threshold;
+        if (rawThresh) {
+          setThresholdPaceSec(parsePaceValueToSec(rawThresh, DEFAULT_THRESHOLD));
         }
       } catch (err) {
         console.warn('Could not fetch Intervals.icu paces, using defaults:', err.message);
@@ -253,32 +267,38 @@ export default function WorkoutBuilder() {
 
   // Compute preset list dynamically based on paceMethod and icuPacesData
   const dynamicPresets = useMemo(() => {
-    const rawPaces = icuPacesData?.paces || icuPacesData?.zones || [];
+    const rawPaces = icuPacesData?.paces || icuPacesData?.zones || icuPacesData?.pace_zones || [];
+    const zoneNames = icuPacesData?.pace_zone_names || [];
 
     if (rawPaces.length > 0) {
       return rawPaces.map((p, idx) => {
         const color = PRESET_COLORS[idx % PRESET_COLORS.length];
-        const paceVal = p.paceSec || p.value || DEFAULT_THRESHOLD;
-        const lowPace = p.lowPace || p.startPace || Math.round(paceVal * 0.95);
-        const highPace = p.highPace || p.endPace || Math.round(paceVal * 1.05);
-        const pctVal = Math.round((DEFAULT_THRESHOLD / paceVal) * 100);
-        const pctLow = Math.round((DEFAULT_THRESHOLD / highPace) * 100);
-        const pctHigh = Math.round((DEFAULT_THRESHOLD / lowPace) * 100);
+        const rawVal = p.paceSec || p.value || p.targetSpeed || p.speed || p.pace || DEFAULT_THRESHOLD;
+        const paceVal = parsePaceValueToSec(rawVal, thresholdPaceSec);
 
-        let label = p.name || p.label || `Zone ${idx + 1}`;
+        const rawLow = p.lowPace || p.startPace || p.minSpeed || Math.round(paceVal * 0.95);
+        const rawHigh = p.highPace || p.endPace || p.maxSpeed || Math.round(paceVal * 1.05);
+
+        const lowPace = parsePaceValueToSec(rawLow, Math.round(paceVal * 0.95));
+        const highPace = parsePaceValueToSec(rawHigh, Math.round(paceVal * 1.05));
+
+        const pctVal = Math.round((thresholdPaceSec / paceVal) * 100);
+        const pctLow = Math.round((thresholdPaceSec / Math.max(1, highPace)) * 100);
+        const pctHigh = Math.round((thresholdPaceSec / Math.max(1, lowPace)) * 100);
+
+        // Derive name directly from zoneNames array or properties
+        let label = zoneNames[idx] || p.name || p.zoneName || p.label || `Z${idx + 1}`;
         let displayPace = formatMMSS(paceVal);
 
         switch (paceMethod) {
           case 'Pace Range':
-            displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
+            displayPace = `${formatMMSS(highPace)}-${formatMMSS(lowPace)}`;
             break;
           case 'Zone':
-            label = p.zoneName || `Z${idx + 1}`;
             displayPace = formatMMSS(paceVal);
             break;
           case 'Zone Range':
-            label = p.zoneName || `Z${idx + 1}`;
-            displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
+            displayPace = `${formatMMSS(highPace)}-${formatMMSS(lowPace)}`;
             break;
           case 'Threshold %':
             displayPace = `${pctVal}%`;
@@ -304,13 +324,13 @@ export default function WorkoutBuilder() {
 
     // Default Fallback presets if API call failed
     const defaultPaces = [
-      { label: 'Easy', mult: 1.20, color: PRESET_COLORS[0] },
-      { label: 'Marathon', mult: 1.08, color: PRESET_COLORS[1] },
-      { label: 'Tempo', mult: 1.05, color: PRESET_COLORS[2] },
-      { label: 'Threshold', mult: 1.00, color: PRESET_COLORS[3] },
-      { label: 'Half', mult: 0.97, color: PRESET_COLORS[4] },
-      { label: '10K', mult: 0.94, color: PRESET_COLORS[5] },
-      { label: '5K', mult: 0.90, color: PRESET_COLORS[6] },
+      { label: zoneNames[0] || 'Z1 Easy', mult: 1.25, color: PRESET_COLORS[0] },
+      { label: zoneNames[1] || 'Z2 Marathon', mult: 1.12, color: PRESET_COLORS[1] },
+      { label: zoneNames[2] || 'Z3 Tempo', mult: 1.05, color: PRESET_COLORS[2] },
+      { label: zoneNames[3] || 'Z4 Threshold', mult: 1.00, color: PRESET_COLORS[3] },
+      { label: zoneNames[4] || 'Z5 Interval', mult: 0.95, color: PRESET_COLORS[4] },
+      { label: zoneNames[5] || 'Z6 Repetition', mult: 0.90, color: PRESET_COLORS[5] },
+      { label: zoneNames[6] || 'Z7 Sprint', mult: 0.82, color: PRESET_COLORS[6] },
     ];
 
     return defaultPaces.map((p) => {
@@ -481,7 +501,7 @@ export default function WorkoutBuilder() {
       setNewFolderName('');
     } catch (err) {
       setStatusMessage(`Error creating folder: ${err.message}`);
-    } finally {
+    } flex {
       setApiLoading(false);
     }
   };
@@ -923,7 +943,7 @@ ${zwoSteps}
 
       {(mode === 'CREATING' || mode === 'EDITING') && (
         <div>
-          {/* Controls Bar: Time/Distance Toggle & Pace Method Dropdown */}
+          {/* Controls Bar: Time/Distance Toggle, Threshold Pace Display & Pace Method Dropdown */}
           <div className="builder-controls-bar">
             <div className="mode-toggle-group">
               <span className="control-label">Build By:</span>
@@ -941,6 +961,9 @@ ${zwoSteps}
               >
                 📏 Distance
               </button>
+              <span style={{ marginLeft: '12px', fontSize: '13px', fontWeight: '600', color: '#495057' }}>
+                Threshold Pace: <strong style={{ color: '#007bff' }}>{formatMMSS(thresholdPaceSec)}/mi</strong>
+              </span>
             </div>
 
             <div className="pace-method-group">
@@ -991,7 +1014,7 @@ ${zwoSteps}
               <span className="chart-title">Workout Profile Chart</span>
               <button className="btn-zoom" onClick={() => setIsZoomOpen(true)}>🔍 Zoom Chart</button>
             </div>
-            <RenderWorkoutChart steps={steps} height={120} workoutMode={workoutMode} />
+            <RenderWorkoutChart steps={steps} height={120} workoutMode={workoutMode} presets={dynamicPresets} />
           </div>
 
           <div className="action-bar">
@@ -999,7 +1022,7 @@ ${zwoSteps}
             <button className="btn-add-step" onClick={() => addStep('run')}>+ Run</button>
             <button className="btn-add-step" onClick={() => addStep('recovery')}>+ Recovery</button>
             <button className="btn-add-step" onClick={() => addStep('cooldown')}>+ Cooldown</button>
-            <button className="btn-add-step btn-add-repeat" onClick={() => addStep('repeat')}>+ Repeat Block</button>
+            <button className="btn-add-step btn-add-repeat" onClick={() => addStep('repeat')}>+ Repeat</button>
           </div>
 
           <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, null, steps.length)} style={{ minHeight: '120px', marginBottom: '24px' }}>
@@ -1122,7 +1145,7 @@ ${zwoSteps}
                       </div>
 
                       <div style={{ width: '120px', flexShrink: 0, height: '40px', display: 'flex', alignItems: 'flex-end' }}>
-                        <RenderWorkoutChart steps={workoutSteps} height={40} workoutMode={workoutMode} />
+                        <RenderWorkoutChart steps={workoutSteps} height={40} workoutMode={workoutMode} presets={dynamicPresets} />
                       </div>
                     </div>
                   );
@@ -1201,7 +1224,7 @@ ${zwoSteps}
               <h2 style={{ margin: 0 }}>{workoutTitle} - Profile View</h2>
               <button onClick={() => setIsZoomOpen(false)}>✕</button>
             </div>
-            <RenderWorkoutChart steps={steps} height={280} workoutMode={workoutMode} />
+            <RenderWorkoutChart steps={steps} height={280} workoutMode={workoutMode} presets={dynamicPresets} />
           </div>
         </div>
       )}
@@ -1285,7 +1308,7 @@ function RenderStepRow({ step, index, parentId, workoutMode, presets, onRemove, 
       >
         <div className="repeat-header">
           <span className="drag-handle">⣿</span>
-          <strong className="repeat-type-title">Repeat Block</strong>
+          <strong className="repeat-type-title">Repeat</strong>
           <label style={{ fontSize: '12px' }}>
             Repeats:
             <input
@@ -1408,7 +1431,7 @@ function RenderStepRow({ step, index, parentId, workoutMode, presets, onRemove, 
   );
 }
 
-function RenderWorkoutChart({ steps, height, workoutMode }) {
+function RenderWorkoutChart({ steps, height, workoutMode, presets = [] }) {
   const flattenSteps = (list) => {
     let result = [];
     if (!Array.isArray(list)) return result;
@@ -1437,13 +1460,33 @@ function RenderWorkoutChart({ steps, height, workoutMode }) {
   const velocities = flatSteps.map((s) => (s.targetPaceSec > 0 ? 1 / s.targetPaceSec : 0));
   const maxVel = Math.max(...velocities, 0.0001);
   const minVel = Math.min(...velocities, maxVel);
- 
+
+  // Dynamically resolve bar color from PRESET_COLORS based on matching preset pace
   const getBarColor = (paceSec) => {
-    if (!paceSec || paceSec <= 0 || paceSec > 570) return '#6c757d';
-    if (paceSec > 510) return '#28a745';
-    if (paceSec > 465) return '#ffc107';
-    if (paceSec > 420) return '#fd7e14';
-    return '#dc3545';
+    if (!paceSec || paceSec <= 0) return PRESET_COLORS[0];
+    if (presets && presets.length > 0) {
+      let closestPreset = presets[0];
+      let minDiff = Infinity;
+
+      presets.forEach((preset) => {
+        const diff = Math.abs(preset.targetPaceSec - paceSec);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestPreset = preset;
+        }
+      });
+
+      if (closestPreset?.color) return closestPreset.color;
+    }
+
+    // Fallback based on threshold scale
+    if (paceSec > 570) return PRESET_COLORS[0]; // Grey
+    if (paceSec > 510) return PRESET_COLORS[1]; // Cyan
+    if (paceSec > 465) return PRESET_COLORS[2]; // Green
+    if (paceSec > 420) return PRESET_COLORS[3]; // Blue
+    if (paceSec > 380) return PRESET_COLORS[4]; // Yellow
+    if (paceSec > 340) return PRESET_COLORS[5]; // Orange
+    return PRESET_COLORS[6]; // Red
   };
 
   return (
