@@ -4,17 +4,17 @@ import './WorkoutBuilder.css';
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 const VAL_MY_PACES_URL = '/api/val-my-paces';
 
-const DEFAULT_THRESHOLD = 480; // 8:00/mi default fallback (480 seconds)
+const DEFAULT_THRESHOLD = 495; // 8:15/mi default fallback (495 seconds)
 
-// Swapped Cyan and Green
+// Updated PRESET_COLORS order: Grey, Cyan, Green, Blue, Yellow, Orange, Red
 const PRESET_COLORS = [
-  '#6c757d', // Grey (Zone 1 / Warmup / Easy)
-  '#28a745', // Green (Zone 2) 
-  '#17a2b8', // Cyan (Zone 3) 
-  '#007bff', // Blue (Zone 4)
-  '#ffc107', // Yellow (Zone 5)
-  '#fd7e14', // Orange (Zone 6)
-  '#dc3545', // Red (Zone 7 / As Hard as Possible)
+  '#6c757d', // Grey / Zone 1
+  '#17a2b8', // Cyan / Zone 2
+  '#28a745', // Green / Zone 3
+  '#007bff', // Blue / Zone 4
+  '#ffc107', // Yellow / Zone 5a
+  '#fd7e14', // Orange / Zone 5b
+  '#dc3545', // Red / Zone 5c
 ];
 
 // --- API Functions ---
@@ -94,7 +94,7 @@ const formatMMSS = (totalSeconds) => {
 
 const parseMMSS = (str) => {
   if (!str) return 0;
-  const cleanStr = String(str).trim();
+  let cleanStr = String(str).trim().replace(/\/mi|\/km/g, '');
   if (cleanStr.includes(':')) {
     const parts = cleanStr.split(':');
     if (parts.length === 3) {
@@ -110,15 +110,21 @@ const parseMMSS = (str) => {
   return mins * 60 + Math.min(secs, 59);
 };
 
-// Helper to reliably normalize m/s or sec/mi into target pace seconds
-const parsePaceValueToSec = (val, defaultThresholdSec) => {
-  if (!val || val <= 0) return defaultThresholdSec;
-  // If value is small (e.g. 0.5 - 10.0), it's speed in m/s. Convert m/s to sec/mi
-  if (val < 15) {
-    return Math.round(1609.344 / val);
+// Converts string "8:15/mi" or numeric m/s to total seconds per mile
+const convertToPaceSec = (val) => {
+  if (!val) return DEFAULT_THRESHOLD;
+  if (typeof val === 'string') {
+    return parseMMSS(val);
   }
-  // Otherwise it is already total seconds per mile
-  return Math.round(val);
+  if (typeof val === 'number' && val > 0) {
+    // If value is small (< 15), treat as m/s speed from Intervals.icu
+    if (val < 15) {
+      return Math.round(1609.344 / val);
+    }
+    // Otherwise treat as raw seconds
+    return Math.round(val);
+  }
+  return DEFAULT_THRESHOLD;
 };
 
 const formatDistance = (miles) => (miles || 0).toFixed(2) + ' mi';
@@ -129,21 +135,21 @@ const createStep = (type, mode = 'time') => {
   const distanceMiles = mode === 'distance' ? 1.0 : 0;
 
   switch (type) {
-    case 'warmup': return { id, type: 'warmup', durationSec, distanceMiles, targetPaceSec: 540 };
-    case 'run': return { id, type: 'run', durationSec, distanceMiles, targetPaceSec: 480 };
+    case 'warmup': return { id, type: 'warmup', durationSec, distanceMiles, targetPaceSec: 619 };
+    case 'run': return { id, type: 'run', durationSec, distanceMiles, targetPaceSec: 495 };
     case 'recovery': return { id, type: 'recovery', durationSec: mode === 'time' ? 120 : 0, distanceMiles: mode === 'distance' ? 0.25 : 0, targetPaceSec: 660 };
-    case 'cooldown': return { id, type: 'cooldown', durationSec, distanceMiles, targetPaceSec: 540 };
+    case 'cooldown': return { id, type: 'cooldown', durationSec, distanceMiles, targetPaceSec: 619 };
     case 'repeat':
       return {
         id,
         type: 'repeat',
         iterations: 3,
         steps: [
-          { id: `${id}-1`, type: 'run', durationSec, distanceMiles, targetPaceSec: 480 },
+          { id: `${id}-1`, type: 'run', durationSec, distanceMiles, targetPaceSec: 495 },
           { id: `${id}-2`, type: 'recovery', durationSec: mode === 'time' ? 120 : 0, distanceMiles: mode === 'distance' ? 0.25 : 0, targetPaceSec: 660 }
         ],
       };
-    default: return { id, type: 'run', durationSec, distanceMiles, targetPaceSec: 480 };
+    default: return { id, type: 'run', durationSec, distanceMiles, targetPaceSec: 495 };
   }
 };
 
@@ -175,9 +181,9 @@ const mapIcuDocToSteps = (workout) => {
     else if (s.cooldown || s.intensity === 'cooldown') type = 'cooldown';
     else if (s.intensity === 'rest') type = 'recovery';
 
-    let targetPaceSec = 480;
-    if (s.pace?.value) targetPaceSec = parsePaceValueToSec(s.pace.value, 480);
-    else if (s.pace?.start) targetPaceSec = parsePaceValueToSec(s.pace.start, 480);
+    let targetPaceSec = 495;
+    if (s.pace?.value) targetPaceSec = convertToPaceSec(s.pace.value);
+    else if (s.pace?.start) targetPaceSec = convertToPaceSec(s.pace.start);
 
     const durationSec = s.duration || 300;
     const distanceMiles = s.distance ? s.distance / 1609.344 : (durationSec / targetPaceSec);
@@ -252,134 +258,76 @@ export default function WorkoutBuilder() {
       try {
         const data = await fetchMyPacesApi();
         setIcuPacesData(data);
-        
-        // Extract threshold pace safely
-        const rawThresh = data.threshold_pace || data.thresholdPace || data.threshold;
+
+        // Priority 1: run_pace string ("8:15/mi"), Priority 2: numeric threshold_pace (m/s)
+        const rawThresh = data.run_pace || data.threshold_pace || data.thresholdPace;
         if (rawThresh) {
-          setThresholdPaceSec(parsePaceValueToSec(rawThresh, DEFAULT_THRESHOLD));
+          setThresholdPaceSec(convertToPaceSec(rawThresh));
         }
       } catch (err) {
-        console.warn('Could not fetch Intervals.icu paces, using defaults:', err.message);
+        console.warn('Could not fetch Intervals.icu paces, using default fallbacks:', err.message);
       }
     }
     loadPaces();
   }, []);
 
-  /**
-   * Safely extracts total seconds per mile from an ICU zone entry or raw value.
-   * Priorities:
-   * 1. String pace like "08:15" or "8:15" (pace_value_str)
-   * 2. Numeric m/s speed (pace_value_num)
-   * 3. Direct numeric seconds per mile
-   */
-  const parseIcuZoneToPaceSec = (zoneObj, fallbackThreshSec) => {
-    if (!zoneObj) return fallbackThreshSec;
-
-    // If passed a primitive string/number directly
-    if (typeof zoneObj !== 'object') {
-      if (typeof zoneObj === 'string' && zoneObj.includes(':')) {
-        return parseMMSS(zoneObj);
-      }
-      const num = Number(zoneObj);
-      if (!isNaN(num) && num > 0) {
-        return num < 15 ? Math.round(1609.344 / num) : Math.round(num);
-      }
-      return fallbackThreshSec;
-    }
-
-    // 1. Check string formatted pace (e.g., pace_value_str: "08:15")
-    const strVal = zoneObj.pace_value_str || zoneObj.paceStr || zoneObj.pace_str;
-    if (strVal && typeof strVal === 'string' && strVal.includes(':')) {
-      return parseMMSS(strVal);
-    }
-
-    // 2. Check numeric value / m/s speed (e.g., pace_value_num)
-    const numVal = zoneObj.pace_value_num ?? zoneObj.targetSpeed ?? zoneObj.speed ?? zoneObj.value;
-    if (numVal !== undefined && numVal !== null && !isNaN(numVal) && numVal > 0) {
-      const val = Number(numVal);
-      // Values < 15 represent speed in m/s
-      return val < 15 ? Math.round(1609.344 / val) : Math.round(val);
-    }
-
-    // 3. Fallback to percentage of threshold if available (e.g., zone low/high/target %)
-    const pct = zoneObj.pct || zoneObj.target_pct || zoneObj.percent;
-    if (pct && !isNaN(pct) && pct > 0) {
-      return Math.round(fallbackThreshSec / (pct / 100));
-    }
-
-    return fallbackThreshSec;
-  };
-
-  // Compute preset list dynamically based on paceMethod and icuPacesData
+  // Dynamically compute preset values from VAL_MY_PACES_URL schema
   const dynamicPresets = useMemo(() => {
-    const rawPaces = icuPacesData?.paces || icuPacesData?.zones || icuPacesData?.pace_zones || [];
-    const zoneNames = icuPacesData?.pace_zone_names || [];
+    if (!icuPacesData) {
+      // Default Fallback
+      const defaultZoneNames = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5a', 'Zone 5b', 'Zone 5c'];
+      const defaultPaces = [619, 538, 525, 495, 479, 444, 50];
 
-    if (rawPaces.length > 0) {
-      return rawPaces.map((p, idx) => {
-        const color = PRESET_COLORS[idx % PRESET_COLORS.length];
-        
-        // Calculate pace from zone object
-        const paceVal = parseIcuZoneToPaceSec(p, thresholdPaceSec);
+      return defaultZoneNames.map((name, idx) => ({
+        label: name,
+        displayPace: formatMMSS(defaultPaces[idx]),
+        targetPaceSec: defaultPaces[idx],
+        color: PRESET_COLORS[idx % PRESET_COLORS.length],
+      }));
+    }
 
-        // Low / High boundary extraction
-        const lowVal = p.min_pace || p.lowPace || p.startPace || p.min_speed;
-        const highVal = p.max_pace || p.highPace || p.endPace || p.max_speed;
+    const zoneNames = icuPacesData.pace_zone_names || [];
+    const paceValueStr = icuPacesData.pace_value_str || [];
+    const paceValueNum = icuPacesData.pace_value_num || [];
+    const pacePercentages = icuPacesData.pace_zones || [];
 
-        const lowPaceSec = lowVal ? parseIcuZoneToPaceSec(lowVal, paceVal) : Math.round(paceVal * 1.05);
-        const highPaceSec = highVal ? parseIcuZoneToPaceSec(highVal, paceVal) : Math.round(paceVal * 0.95);
+    // Length derived from names or string array
+    const itemCount = Math.max(zoneNames.length, paceValueStr.length, paceValueNum.length);
+    const presetsList = [];
 
-        const pctVal = Math.round((thresholdPaceSec / paceVal) * 100);
-        const pctLow = Math.round((thresholdPaceSec / Math.max(1, lowPaceSec)) * 100);
-        const pctHigh = Math.round((thresholdPaceSec / Math.max(1, highPaceSec)) * 100);
+    for (let i = 0; i < itemCount; i++) {
+      const label = zoneNames[i] || `Zone ${i + 1}`;
+      const color = PRESET_COLORS[i % PRESET_COLORS.length];
 
-        // Label resolution
-        let label = zoneNames[idx] || p.name || p.zoneName || p.label || `Z${idx + 1}`;
-        
-        // Default to formatted pace matching pace_value_str format (mm:ss)
-        let displayPace = formatMMSS(paceVal);
+      // Convert from human string "10:19/mi" or numeric m/s speed
+      let paceSec = 0;
+      if (paceValueStr[i]) {
+        paceSec = parseMMSS(paceValueStr[i]);
+      } else if (paceValueNum[i]) {
+        paceSec = convertToPaceSec(paceValueNum[i]);
+      } else {
+        paceSec = thresholdPaceSec;
+      }
 
-        switch (paceMethod) {
-          case 'Pace Range':
-            displayPace = `${formatMMSS(highPaceSec)}-${formatMMSS(lowPaceSec)}`;
-            break;
-          case 'Zone Range':
-            displayPace = `${formatMMSS(highPaceSec)}-${formatMMSS(lowPaceSec)}`;
-            break;
-          case 'Threshold %':
-            displayPace = `${pctVal}%`;
-            break;
-          case 'Theshold % Range':
-          case 'Threshold % Range':
-            displayPace = `${pctLow}%-${pctHigh}%`;
-            break;
-          case 'Zone':
-          case 'Pace':
-          default:
-            displayPace = formatMMSS(paceVal);
-            break;
-        }
+      let displayPace = formatMMSS(paceSec);
+      if (paceMethod === 'Threshold %') {
+        const pct = pacePercentages[i] || Math.round((thresholdPaceSec / paceSec) * 100);
+        displayPace = `${pct}%`;
+      } else if (paceMethod.includes('Range')) {
+        const lowPace = Math.round(paceSec * 0.97);
+        const highPace = Math.round(paceSec * 1.03);
+        displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
+      }
 
-        return {
-          label,
-          displayPace,
-          targetPaceSec: paceVal,
-          color,
-        };
+      presetsList.push({
+        label,
+        displayPace,
+        targetPaceSec: paceSec,
+        color,
       });
     }
 
-    // Fallback defaults if icuPacesData is not yet loaded
-    const defaultMultipliers = [1.25, 1.12, 1.05, 1.00, 0.95, 0.90, 0.82];
-    return defaultMultipliers.map((mult, idx) => {
-      const paceVal = Math.round(thresholdPaceSec * mult);
-      return {
-        label: zoneNames[idx] || `Zone ${idx + 1}`,
-        displayPace: formatMMSS(paceVal),
-        targetPaceSec: paceVal,
-        color: PRESET_COLORS[idx % PRESET_COLORS.length],
-      };
-    });
+    return presetsList;
   }, [icuPacesData, thresholdPaceSec, paceMethod]);
 
   const loadFolders = async () => {
@@ -565,7 +513,6 @@ export default function WorkoutBuilder() {
     }
   };
 
-  // Calculates time/distance totals respecting workoutMode
   const calculateTotals = (stepList, currentMode = workoutMode) => {
     let totalSec = 0;
     let totalMiles = 0;
@@ -972,7 +919,7 @@ ${zwoSteps}
 
       {(mode === 'CREATING' || mode === 'EDITING') && (
         <div>
-          {/* Controls Bar: Time/Distance Toggle, Threshold Pace Display & Pace Method Dropdown */}
+          {/* Controls Bar: Time/Distance Toggle, Threshold Display & Pace Method Dropdown */}
           <div className="builder-controls-bar">
             <div className="mode-toggle-group">
               <span className="control-label">Build By:</span>
@@ -990,8 +937,9 @@ ${zwoSteps}
               >
                 📏 Distance
               </button>
+
               <span style={{ marginLeft: '12px', fontSize: '13px', fontWeight: '600', color: '#495057' }}>
-                Threshold Pace: <strong style={{ color: '#007bff' }}>{formatMMSS(thresholdPaceSec)}/mi</strong>
+                Threshold Pace: <span style={{ color: '#007bff' }}>{formatMMSS(thresholdPaceSec)}</span> /mi
               </span>
             </div>
 
@@ -1460,7 +1408,7 @@ function RenderStepRow({ step, index, parentId, workoutMode, presets, onRemove, 
   );
 }
 
-function RenderWorkoutChart({ steps, height, workoutMode, presets = [] }) {
+function RenderWorkoutChart({ steps, height, workoutMode, presets }) {
   const flattenSteps = (list) => {
     let result = [];
     if (!Array.isArray(list)) return result;
@@ -1490,29 +1438,24 @@ function RenderWorkoutChart({ steps, height, workoutMode, presets = [] }) {
   const maxVel = Math.max(...velocities, 0.0001);
   const minVel = Math.min(...velocities, maxVel);
 
-  // Dynamically resolve bar color from PRESET_COLORS based on matching preset pace
   const getBarColor = (paceSec) => {
     if (!paceSec || paceSec <= 0) return PRESET_COLORS[0];
+    if (!presets || presets.length === 0) return PRESET_COLORS[0];
 
-    // Find closest matching zone preset
-    if (presets && presets.length > 0) {
-      let closestPreset = presets[0];
-      let minDiff = Infinity;
+    let closestColor = PRESET_COLORS[0];
+    let smallestDiff = Infinity;
 
-      presets.forEach((preset) => {
-        const diff = Math.abs(preset.targetPaceSec - paceSec);
-        if (diff < minDiff) {
-          minDiff = diff;
-          closestPreset = preset;
-        }
-      });
+    presets.forEach((p) => {
+      const diff = Math.abs(p.targetPaceSec - paceSec);
+      if (diff < smallestDiff) {
+        smallestDiff = diff;
+        closestColor = p.color;
+      }
+    });
 
-      if (closestPreset?.color) return closestPreset.color;
-    }
-
-    return PRESET_COLORS[0];
+    return closestColor;
   };
-  
+
   return (
     <div style={{ width: '100%', height: `${height}px`, display: 'flex', alignItems: 'flex-end', backgroundColor: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: '4px', overflow: 'hidden' }}>
       {flatSteps.map((step, idx) => {
