@@ -315,7 +315,7 @@
   cursor: pointer;
   padding: 0 4px;
 }
-
+ 
 /* Preset buttons indentation aligned past drag handle + step name */
 .step-presets-row {
   display: flex;

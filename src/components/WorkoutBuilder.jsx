@@ -1437,7 +1437,7 @@ function RenderWorkoutChart({ steps, height, workoutMode }) {
   const velocities = flatSteps.map((s) => (s.targetPaceSec > 0 ? 1 / s.targetPaceSec : 0));
   const maxVel = Math.max(...velocities, 0.0001);
   const minVel = Math.min(...velocities, maxVel);
-
+ 
   const getBarColor = (paceSec) => {
     if (!paceSec || paceSec <= 0 || paceSec > 570) return '#6c757d';
     if (paceSec > 510) return '#28a745';

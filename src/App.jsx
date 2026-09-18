@@ -10,8 +10,8 @@ import OptionsView from './components/OptionsView';
 const APP_TITLE = 'Web Fitness'; // Central title configuration
 
 export default function App() {
-  // Local state per browser instance
-  const [activeTab, setActiveTab] = useState('daily');
+  // Local state per browser instance - default to 'monthly'
+  const [activeTab, setActiveTab] = useState('monthly');
   const [menuOpen, setMenuOpen] = useState(false);
   const [layoutVersion, setLayoutVersion] = useState(
     localStorage.getItem('wf_version') || 'desktop'
@@ -78,7 +78,7 @@ export default function App() {
         }}
       >
         <h1 
-          onClick={() => handleSelectTab('daily')}
+          onClick={() => handleSelectTab('monthly')}
           style={{ 
             margin: 0, 
             fontSize: '20px', 
@@ -123,12 +123,6 @@ export default function App() {
             }}
           >
             <button 
-              onClick={() => handleSelectTab('daily')}
-              style={dropdownBtnStyle(themeView)}
-            >
-              Daily View
-            </button>
-            <button 
               onClick={() => handleSelectTab('monthly')}
               style={dropdownBtnStyle(themeView)}
             >
@@ -141,10 +135,10 @@ export default function App() {
               General Overview
             </button>
             <button 
-              onClick={() => handleSelectTab('workouts')}
+              onClick={() => handleSelectTab('gear')}
               style={dropdownBtnStyle(themeView)}
             >
-              Workouts
+              Gear
             </button>
             <button 
               onClick={() => handleSelectTab('builder')}
@@ -153,10 +147,16 @@ export default function App() {
               Workout Builder
             </button>
             <button 
-              onClick={() => handleSelectTab('gear')}
+              onClick={() => handleSelectTab('daily')}
               style={dropdownBtnStyle(themeView)}
             >
-              Gear
+              Daily View
+            </button>
+            <button 
+              onClick={() => handleSelectTab('workouts')}
+              style={dropdownBtnStyle(themeView)}
+            >
+              Workouts
             </button>
             <button 
               onClick={() => handleSelectTab('options')}
@@ -176,12 +176,12 @@ export default function App() {
           margin: '0 auto',
         }}
       >
-        {activeTab === 'daily' && <DailyView />}
         {activeTab === 'monthly' && <MonthlyView />}
         {activeTab === 'overview' && <GeneralOverview />}
-        {activeTab === 'workouts' && <WorkoutsView />}
-        {activeTab === 'builder' && <WorkoutBuilder />}
         {activeTab === 'gear' && <GearView />}
+        {activeTab === 'builder' && <WorkoutBuilder />}
+        {activeTab === 'daily' && <DailyView />}
+        {activeTab === 'workouts' && <WorkoutsView />}
         {activeTab === 'options' && (
           <OptionsView
             layoutVersion={layoutVersion}

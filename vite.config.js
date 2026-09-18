@@ -8,7 +8,7 @@ export default defineConfig({
         target: 'https://amullinfit--d730183ab38111f1aeeb1607ee4eb77e.web.val.run',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/val-my-paces/, '')
-      },
+      }, 
       '/api/val-workoutbuilder': {
         target: 'https://amullinfit--c1c217a8b22511f19b531607ee4eb77e.web.val.run',
         changeOrigin: true,
