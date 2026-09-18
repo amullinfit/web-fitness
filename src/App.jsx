@@ -8,7 +8,7 @@ import GearView from './components/GearView';
 import OptionsView from './components/OptionsView';
 
 const APP_TITLE = 'Web Fitness'; // Central title configuration
-
+  
 export default function App() {
   // Local state per browser instance -- default to 'monthly'
   const [activeTab, setActiveTab] = useState('monthly');
