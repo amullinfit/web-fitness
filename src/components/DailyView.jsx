@@ -474,7 +474,7 @@ export default function DailyView() {
     });
   };
 
-  const renderWorkoutCard = (workout, index) => {
+  const renderWorkoutCard = (workout, index, isSelectedDate) => {
     const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings);
     const workoutDateStr = getLocalDateString(
       workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date
@@ -496,6 +496,13 @@ export default function DailyView() {
     const isRemoving = removingGearId === activityId;
 
     const hasValidShoe = shoeName && String(gearId) !== '69215';
+
+    // Extract props passed to WorkoutChart for inspection
+    const chartDataDebug = {
+      workout: workout,
+      thresholdPace: thresholdPaceMps,
+      chartHeight: isMobile ? "110px" : "140px"
+    };
 
     return (
       <div key={activityId || index} className="daily-workout-card">
@@ -546,6 +553,32 @@ export default function DailyView() {
           {workout.name || workout.title || `${workout.type || 'Workout'}`}
         </h3>
 
+        {/* Selected Date Debug Data Display */}
+        {isSelectedDate && (
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#555', marginBottom: '4px' }}>
+              WorkoutChart Props (selectedDate):
+            </label>
+            <textarea
+              readOnly
+              value={JSON.stringify(chartDataDebug, null, 2)}
+              rows={8}
+              style={{
+                width: '100%',
+                fontFamily: 'monospace',
+                fontSize: '11px',
+                padding: '8px',
+                backgroundColor: '#1e1e1e',
+                color: '#00ff66',
+                border: '1px solid #333',
+                borderRadius: '4px',
+                boxSizing: 'border-box',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+        )}
+
         {(workout.workout_doc || workout.intervals) && (
           <WorkoutChart
             workout={workout}
@@ -559,7 +592,7 @@ export default function DailyView() {
     );
   };
 
-  const renderDaySection = (dateObj, dateStr, dayWorkouts) => {
+  const renderDaySection = (dateObj, dateStr, dayWorkouts, isSelectedDate = false) => {
     const isToday = dateStr === todayStr;
 
     return (
@@ -577,7 +610,7 @@ export default function DailyView() {
           </div>
         ) : (
           <div className="daily-workouts-list">
-            {dayWorkouts.map((workout, idx) => renderWorkoutCard(workout, idx))}
+            {dayWorkouts.map((workout, idx) => renderWorkoutCard(workout, idx, isSelectedDate))}
           </div>
         )}
       </div>
@@ -616,22 +649,9 @@ export default function DailyView() {
         </div>
       </div>
 
-        {/* ---------------------------------------------------------------------------------------------------------- */}
-        <div className="daily-view-container">
-            <label>
-            First day workouts (Read-Only)
-            </label>
-          <textarea
-            readOnly
-            value={selectedDayWorkouts}
-            rows={14}
-          />
-        </div>
-        {/* ---------------------------------------------------------------------------------------------------------- */}
-
       <div className="daily-two-day-grid">
-        {renderDaySection(selectedDate, selectedDateStr, selectedDayWorkouts)}
-        {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts)}
+        {renderDaySection(selectedDate, selectedDateStr, selectedDayWorkouts, true)}
+        {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts, false)}
       </div>
 
       {modalWorkoutId && (
