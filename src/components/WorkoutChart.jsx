@@ -232,7 +232,6 @@ const parseBoolProp = (val, defaultValue = true) => {
 
 export default function WorkoutChart({ 
   workout, 
-  thresholdPace, 
   chartHeight = '140px',
   showYAxis,
   showWorkoutName = true,
@@ -270,8 +269,8 @@ export default function WorkoutChart({
   const totalDurationSec = Math.max(totalPlannedSec, totalExecutedSec, 1);
   const totalDurationMins = Math.round(totalDurationSec / 60);
 
-  // Prefer thresholdPace prop, fallback to pacesData context, or null
-  const effectiveThreshold = thresholdPace || pacesData?.threshold_pace || pacesData?.run_pace_sec;
+  // Retrieve threshold pace directly from pacesData context
+  const effectiveThreshold = pacesData?.threshold_pace || pacesData?.run_pace_sec;
   const thresholdSecPerMile = effectiveThreshold && effectiveThreshold > 0
     ? (effectiveThreshold < 15 ? speedToPaceSeconds(effectiveThreshold) : effectiveThreshold)
     : null;
