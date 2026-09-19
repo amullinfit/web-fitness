@@ -169,6 +169,9 @@ export const formatTime = (totalSeconds) => {
 
     // - Get the pace data from intervals.icu
     export function useIcuPaces() {
+     //   const [icuPacesData, setIcuPacesData] = useState(null);
+     //   const [thresholdPaceSec, setThresholdPaceSec] = useState(DEFAULT_THRESHOLD);
+
         // Fetch Intervals.icu paces on initial mount
         const { icuPacesData, thresholdPaceSec } = useIcuPaces();
 
