@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import WorkoutChart from './WorkoutChart';
 import '../CSS/WorkoutBuilder.css';
 import { convertWorkoutToTargetFormat } from "../utils/WorkoutConverter.js";
-import { usePaces } from '../utils//PacesContext';
+import { usePaces } from '../utils//PacesContext.jsx';
 
 import { 
   fetchFoldersApi, 
