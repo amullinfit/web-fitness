@@ -38,10 +38,6 @@ export default function WorkoutBuilder() {
   const [workoutMode, setWorkoutMode] = useState('time'); // 'time' | 'distance'
   const [paceMethod, setPaceMethod] = useState('Pace'); 
 
-  // Intervals.icu data
-  const [icuPacesData, setIcuPacesData] = useState(null);
-  const [thresholdPaceSec, setThresholdPaceSec] = useState(DEFAULT_THRESHOLD);
-
   const [originalWorkoutSnapshot, setOriginalWorkoutSnapshot] = useState(null);
 
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
