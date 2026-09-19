@@ -6,6 +6,7 @@ import WorkoutsView from './components/WorkoutsView';
 import WorkoutBuilder from './components/WorkoutBuilder';
 import GearView from './components/GearView';
 import OptionsView from './components/OptionsView';
+import { PacesProvider } from './components/PacesContext';
 
 const APP_TITLE = 'Web Fitness'; // Central title configuration
   
@@ -57,143 +58,145 @@ export default function App() {
   };
 
   return (
-    <div
-      style={{
-        ...getThemeStyles(),
-        minHeight: '100vh',
-        marginRight: `${rightOffset}px`,
-        boxSizing: 'border-box',
-        transition: 'all 0.2s ease',
-      }}
-    >
-      {/* Header Bar */}
-      <header
+    <PacesProvider>
+      <div
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '12px 20px',
-          borderBottom: '1px solid #ccc',
-          position: 'relative', // Allows absolute positioning of the dropdown menu
+          ...getThemeStyles(),
+          minHeight: '100vh',
+          marginRight: `${rightOffset}px`,
+          boxSizing: 'border-box',
+          transition: 'all 0.2s ease',
         }}
       >
-        <h1 
-          onClick={() => handleSelectTab('monthly')}
-          style={{ 
-            margin: 0, 
-            fontSize: '20px', 
-            color: 'var(--text-h, inherit)',
-            cursor: 'pointer' // Indicates that the title is clickable
-          }}
-        >
-          {APP_TITLE}
-        </h1>
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
+        {/* Header Bar */}
+        <header
           style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '24px',
-            color: 'var(--text-h, inherit)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 20px',
+            borderBottom: '1px solid #ccc',
+            position: 'relative', // Allows absolute positioning of the dropdown menu
           }}
-          aria-label="Options Menu"
         >
-          &#9776;
-        </button>
-
-        {/* Floating Vertical Dropdown Navigation */}
-        {menuOpen && (
-          <nav
-            style={{
-              position: 'absolute',
-              top: '100%',
-              right: '15px',
-              backgroundColor: themeView === 'dark' ? '#1e1e1e' : '#ffffff',
-              color: themeView === 'dark' ? '#ffffff' : '#000000',
-              border: '1px solid #ccc',
-              borderRadius: '8px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              padding: '10px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
-              zIndex: 1000,
-              minWidth: '160px',
+          <h1 
+            onClick={() => handleSelectTab('monthly')}
+            style={{ 
+              margin: 0, 
+              fontSize: '20px', 
+              color: 'var(--text-h, inherit)',
+              cursor: 'pointer' // Indicates that the title is clickable
             }}
           >
-            <button 
-              onClick={() => handleSelectTab('monthly')}
-              style={dropdownBtnStyle(themeView)}
-            >
-              Monthly View
-            </button>
-            <button 
-              onClick={() => handleSelectTab('overview')}
-              style={dropdownBtnStyle(themeView)}
-            >
-              General Overview
-            </button>
-            <button 
-              onClick={() => handleSelectTab('gear')}
-              style={dropdownBtnStyle(themeView)}
-            >
-              Gear
-            </button>
-            <button 
-              onClick={() => handleSelectTab('builder')}
-              style={dropdownBtnStyle(themeView)}
-            >
-              Workout Builder
-            </button>
-            <button 
-              onClick={() => handleSelectTab('daily')}
-              style={dropdownBtnStyle(themeView)}
-            >
-              Daily View
-            </button>
-            <button 
-              onClick={() => handleSelectTab('workouts')}
-              style={dropdownBtnStyle(themeView)}
-            >
-              Workouts
-            </button>
-            <button 
-              onClick={() => handleSelectTab('options')}
-              style={dropdownBtnStyle(themeView)}
-            >
-              Options
-            </button>
-          </nav>
-        )}
-      </header>
+            {APP_TITLE}
+          </h1>
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '24px',
+              color: 'var(--text-h, inherit)',
+            }}
+            aria-label="Options Menu"
+          >
+            &#9776;
+          </button>
 
-      {/* View Routing */}
-      <main
-        style={{
-          padding: layoutVersion === 'mobile' ? '10px' : '20px',
-          maxWidth: layoutVersion === 'mobile' ? '480px' : '100%',
-          margin: '0 auto',
-        }}
-      >
-        {activeTab === 'monthly' && <MonthlyView />}
-        {activeTab === 'overview' && <GeneralOverview />}
-        {activeTab === 'gear' && <GearView />}
-        {activeTab === 'builder' && <WorkoutBuilder />}
-        {activeTab === 'daily' && <DailyView />}
-        {activeTab === 'workouts' && <WorkoutsView />}
-        {activeTab === 'options' && (
-          <OptionsView
-            layoutVersion={layoutVersion}
-            setLayoutVersion={setLayoutVersion}
-            themeView={themeView}
-            setThemeView={setThemeView}
-            rightOffset={rightOffset}
-            setRightOffset={setRightOffset}
-          />
-        )}
-      </main>
-    </div>
+          {/* Floating Vertical Dropdown Navigation */}
+          {menuOpen && (
+            <nav
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: '15px',
+                backgroundColor: themeView === 'dark' ? '#1e1e1e' : '#ffffff',
+                color: themeView === 'dark' ? '#ffffff' : '#000000',
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                padding: '10px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                zIndex: 1000,
+                minWidth: '160px',
+              }}
+            >
+              <button 
+                onClick={() => handleSelectTab('monthly')}
+                style={dropdownBtnStyle(themeView)}
+              >
+                Monthly View
+              </button>
+              <button 
+                onClick={() => handleSelectTab('overview')}
+                style={dropdownBtnStyle(themeView)}
+              >
+                General Overview
+              </button>
+              <button 
+                onClick={() => handleSelectTab('gear')}
+                style={dropdownBtnStyle(themeView)}
+              >
+                Gear
+              </button>
+              <button 
+                onClick={() => handleSelectTab('builder')}
+                style={dropdownBtnStyle(themeView)}
+              >
+                Workout Builder
+              </button>
+              <button 
+                onClick={() => handleSelectTab('daily')}
+                style={dropdownBtnStyle(themeView)}
+              >
+                Daily View
+              </button>
+              <button 
+                onClick={() => handleSelectTab('workouts')}
+                style={dropdownBtnStyle(themeView)}
+              >
+                Workouts
+              </button>
+              <button 
+                onClick={() => handleSelectTab('options')}
+                style={dropdownBtnStyle(themeView)}
+              >
+                Options
+              </button>
+            </nav>
+          )}
+        </header>
+
+        {/* View Routing */}
+        <main
+          style={{
+            padding: layoutVersion === 'mobile' ? '10px' : '20px',
+            maxWidth: layoutVersion === 'mobile' ? '480px' : '100%',
+            margin: '0 auto',
+          }}
+        >
+          {activeTab === 'monthly' && <MonthlyView />}
+          {activeTab === 'overview' && <GeneralOverview />}
+          {activeTab === 'gear' && <GearView />}
+          {activeTab === 'builder' && <WorkoutBuilder />}
+          {activeTab === 'daily' && <DailyView />}
+          {activeTab === 'workouts' && <WorkoutsView />}
+          {activeTab === 'options' && (
+            <OptionsView
+              layoutVersion={layoutVersion}
+              setLayoutVersion={setLayoutVersion}
+              themeView={themeView}
+              setThemeView={setThemeView}
+              rightOffset={rightOffset}
+              setRightOffset={setRightOffset}
+            />
+          )}
+        </main>
+      </div>
+    </PacesProvider>
   );
 }
  

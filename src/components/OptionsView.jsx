@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import './OptionsView.css';
+import { usePaces } from './PacesContext'; 
 
 export default function OptionsView({ 
   rightOffset, 
   setRightOffset 
 }) {
+  const { pacesData, loading } = usePaces();
+
   // State to hold the dynamic maximum slider value
   const [maxOffset, setMaxOffset] = useState(500);
 
@@ -34,7 +37,14 @@ export default function OptionsView({
     <div className="options-container">
       {/* Top Header Bar */}
       <header className="options-header">
-        <h1 className="webfitness-title">WebFitness Options</h1>
+        <h1 className="webfitness-title">
+          WebFitness Options
+          {loading ? (
+            <span style={{ fontSize: '16px', fontWeight: 'normal', opacity: 0.7 }}> (Loading...)</span>
+          ) : pacesData?.name ? (
+            <span style={{ fontSize: '18px', fontWeight: 'normal', marginLeft: '8px' }}> - {pacesData.name}</span>
+          ) : null}
+        </h1>
       </header>
 
       <div className="options-content">
