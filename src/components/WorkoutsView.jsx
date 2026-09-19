@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import WorkoutChart from './WorkoutChart';
-import WorkoutTextSection from './WorkoutTextSection';
+import WorkoutTextSection from '../utils/WorkoutTextSection';
 
 // Proxy endpoint defined in vercel.json / vite.config.js
 const VAL_WORKOUTS_URL = "/api/val-workouts";
