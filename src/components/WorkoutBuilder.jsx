@@ -10,7 +10,7 @@ import {
   createFolderApi, 
   saveWorkoutApi, 
   fetchMyPacesApi
-} from '../utils/WorkoutBuilderHelper'; // Adjust relative path as needed
+} from '../utils/WorkoutBuilderHelpers.js';
 
 const DEFAULT_THRESHOLD = 480; // 8:00/mi default fallback (480 seconds)
 
