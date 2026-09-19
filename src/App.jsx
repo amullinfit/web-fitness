@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DailyView from './components/DailyView.jsx';
 import OptionsView from './components/OptionsView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
@@ -101,6 +102,12 @@ function HeaderBar({
           }}
         >
           <button
+            onClick={() => handleSelectTab('daily')}
+            style={dropdownBtnStyle(themeView)}
+          >
+            Daily View
+          </button>
+          <button
             onClick={() => handleSelectTab('options')}
             style={dropdownBtnStyle(themeView)}
           >
@@ -115,7 +122,8 @@ function HeaderBar({
 export default function App() {
   console.log('[App Debug] 🚀 Render cycle started.');
 
-  const [activeTab, setActiveTab] = useState('options');
+  // Set 'daily' as the default starting view
+  const [activeTab, setActiveTab] = useState('daily');
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [layoutVersion, setLayoutVersion] = useState(
@@ -184,7 +192,15 @@ export default function App() {
             margin: '0 auto',
           }}
         >
-          {activeTab === 'options' ? (
+          {activeTab === 'daily' && (
+            <ErrorBoundary key="daily" name="Daily View">
+              <WithDebugLog name="DailyView">
+                <DailyView />
+              </WithDebugLog>
+            </ErrorBoundary>
+          )}
+
+          {activeTab === 'options' && (
             <ErrorBoundary key="options" name="Options View">
               <WithDebugLog name="OptionsView">
                 <OptionsView
@@ -197,8 +213,6 @@ export default function App() {
                 />
               </WithDebugLog>
             </ErrorBoundary>
-          ) : (
-            <p>No active view selected.</p>
           )}
         </main>
       </div>
