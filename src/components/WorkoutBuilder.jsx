@@ -4,8 +4,13 @@ import '../CSS/WorkoutBuilder.css';
 import { convertWorkoutToTargetFormat } from "../utils/WorkoutConverter.js";
 import { usePaces } from '../utils//PacesContext';
 
-const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
-const VAL_MY_PACES_URL = '/api/val-my-paces';
+import { 
+  fetchFoldersApi, 
+  fetchWorkoutsApi, 
+  createFolderApi, 
+  saveWorkoutApi, 
+  fetchMyPacesApi
+} from '../utils/WorkoutBuilderHelper'; // Adjust relative path as needed
 
 const DEFAULT_THRESHOLD = 480; // 8:00/mi default fallback (480 seconds)
 
@@ -19,64 +24,6 @@ const PRESET_COLORS = [
   '#fd7e14', // Orange / Zone 5b
   '#dc3545', // Red / Zone 5c
 ];
-
-// --- API Functions ---
-async function fetchFoldersApi() {
-  const res = await fetch(`${VAL_WORKOUTBUILDER_URL}?action=get_folders`, { method: 'GET' });
-  if (!res.ok) throw new Error('Failed to fetch folders');
-  const data = await res.json();
-  return Array.isArray(data) ? data : (data.folders || []);
-}
-
-async function fetchWorkoutsApi(folderId = null) {
-  const url = folderId 
-    ? `${VAL_WORKOUTBUILDER_URL}?action=get_workouts&folder_id=${folderId}` 
-    : `${VAL_WORKOUTBUILDER_URL}?action=get_workouts`;
-  const res = await fetch(url, { method: 'GET' });
-  if (!res.ok) throw new Error('Failed to fetch workouts');
-  const data = await res.json();
-  if (data && Array.isArray(data.children)) return data.children;
-  return Array.isArray(data) ? data : (data.workouts || []);
-}
-
-async function createFolderApi(folderName) {
-  const res = await fetch(VAL_WORKOUTBUILDER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'create_folder', name: folderName, type: 'FOLDER' }),
-  });
-  if (!res.ok) {
-    let errorDetails = '';
-    try {
-      const errJson = await res.json();
-      errorDetails = JSON.stringify(errJson.details || errJson, null, 2);
-    } catch {
-      errorDetails = await res.text();
-    }
-    throw new Error(`Server returned status ${res.status}:\n${errorDetails}`);
-  }
-  return await res.json();
-}
-
-async function saveWorkoutApi(action, workoutId, workoutData) {
-  const method = action === 'update_workout' ? 'PUT' : 'POST';
-  const res = await fetch(VAL_WORKOUTBUILDER_URL, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, workoutId, workoutData }),
-  });
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to ${action === 'update_workout' ? 'update' : 'create'} workout: ${errorText}`);
-  }
-  return await res.json();
-}
-
-async function fetchMyPacesApi() {
-  const res = await fetch(VAL_MY_PACES_URL, { method: 'GET' });
-  if (!res.ok) throw new Error('Failed to fetch paces from Intervals.icu');
-  return await res.json();
-}
 
 // --- Helpers ---
 const formatTime = (totalSeconds) => {
@@ -274,7 +221,7 @@ export default function WorkoutBuilder() {
     loadPaces();
   }, []);
 
-  // Dynamically compute preset values from VAL_MY_PACES_URL schema
+  // Dynamically compute preset values from intervals.icu data
   const dynamicPresets = useMemo(() => {
     if (!icuPacesData) {
       // Default Fallback
