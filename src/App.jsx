@@ -1,20 +1,23 @@
-import React, { useContext } from 'react';
+import React, { useEffect } from 'react';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
-import { PacesProvider, PacesContext } from './utils/PacesContext.jsx'; 
-import { usePaces } from './utils/PacesContext.jsx';
-
+import { PacesProvider, usePaces } from './utils/PacesContext.jsx'; // Using the custom hook pattern
 
 const APP_TITLE = 'Web Fitness';
 
-// Child component so useContext can access values inside PacesProvider
 function HeaderBar() {
+  const { pacesData } = usePaces();
 
-  // Access the name from PacesContext
-  const { pacesData } = usePaces();  
-
-  console.log('App Debug:', pacesData);
-
-  const name = pacesData?.name || 'unknown'; // Fallback if name isn't set yet
+  // Log pacesData whenever it changes or updates
+  useEffect(() => {
+    if (pacesData) {
+      console.log('[HeaderBar Debug] 📊 PacesData retrieved:', pacesData);
+      
+      // Example: Logging specific properties
+      console.log(`[HeaderBar Debug] User Name: ${pacesData.name}`);
+    } else {
+      console.log('[HeaderBar Debug] ⚠️ PacesData is empty or undefined');
+    }
+  }, [pacesData]);
 
   return (
     <header
@@ -34,7 +37,7 @@ function HeaderBar() {
           color: 'var(--text-h, inherit)',
         }}
       >
-        {APP_TITLE} {name && `- ${name}`}
+        {APP_TITLE} {pacesData?.name ? `- ${pacesData.name}` : ''}
       </h1>
     </header>
   );
@@ -54,10 +57,8 @@ export default function App() {
           transition: 'all 0.2s ease',
         }}
       >
-        {/* Header Bar consuming Context */}
         <HeaderBar />
 
-        {/* Main Content Area */}
         <main
           style={{
             padding: '20px',
