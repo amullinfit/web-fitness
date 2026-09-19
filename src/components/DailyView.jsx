@@ -618,6 +618,17 @@ export default function DailyView() {
 
       <div className="daily-two-day-grid">
         {renderDaySection(selectedDate, selectedDateStr, selectedDayWorkouts)}
+
+        <div className="daily-workouts-list">
+              Intervals.icu JSON Representation (Read-Only)
+            <textarea
+              readOnly
+              value={JSON.stringify([workoutPayloadObject], null, 2)}
+              rows={14}
+            />
+          </div>
+
+
         {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts)}
       </div>
 

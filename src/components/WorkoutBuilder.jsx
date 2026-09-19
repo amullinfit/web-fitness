@@ -995,6 +995,17 @@ ${zwoSteps}
             <RenderWorkoutChart steps={steps} height={120} workoutMode={workoutMode} presets={dynamicPresets} />
           </div>
 
+          <div className="chart-card">
+            <div className="chart-header">
+                <span className="chart-title">WorkoutChart POC</span>
+                <button className="btn-zoom" onClick={() => setIsZoomOpen(true)}>🔍 Zoom Chart</button>
+             </div>
+            <WorkoutChart
+              workout={JSON.stringify([workoutPayloadObject], null, 2)}
+              chartHeight="140px"
+            />
+          </div>
+
           <div className="action-bar">
             <button className="btn-add-step" onClick={() => addStep('warmup')}>+ Warmup</button>
             <button className="btn-add-step" onClick={() => addStep('run')}>+ Run</button>
@@ -1032,18 +1043,6 @@ ${zwoSteps}
               className="json-preview-textarea"
             />
           </div>
-
-          <div className="chart-card">
-            <div className="chart-header">
-                <span className="chart-title">WorkoutChart POC</span>
-                <button className="btn-zoom" onClick={() => setIsZoomOpen(true)}>🔍 Zoom Chart</button>
-             </div>
-            <WorkoutChart
-              workout={JSON.stringify([workoutPayloadObject], null, 2)}
-              chartHeight="140px"
-            />
-          </div>
-
         </div>
       )}
 
