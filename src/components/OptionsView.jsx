@@ -6,7 +6,8 @@ export default function OptionsView({
   rightOffset, 
   setRightOffset 
 }) {
-  const { pacesData, loading } = usePaces();
+  // Destructure `paces` to match PacesContext.jsx
+  const { paces, loading } = usePaces();
 
   // State to hold the dynamic maximum slider value
   const [maxOffset, setMaxOffset] = useState(500);
@@ -19,10 +20,8 @@ export default function OptionsView({
       
       setMaxOffset(newMax);
 
-      // If current offset exceeds the new maximum, clamp it down
-      if (rightOffset > newMax) {
-        setRightOffset(newMax);
-      }
+      // Clamp down offset using functional state update
+      setRightOffset((prevOffset) => (prevOffset > newMax ? newMax : prevOffset));
     };
 
     // Run on mount
@@ -31,7 +30,7 @@ export default function OptionsView({
     // Listen for window resizes
     window.addEventListener('resize', updateMaxOffset);
     return () => window.removeEventListener('resize', updateMaxOffset);
-  }, [rightOffset, setRightOffset]);
+  }, [setRightOffset]);
 
   return (
     <div className="options-container">
@@ -41,8 +40,8 @@ export default function OptionsView({
           WebFitness Options
           {loading ? (
             <span style={{ fontSize: '16px', fontWeight: 'normal', opacity: 0.7 }}> (Loading...)</span>
-          ) : pacesData?.name ? (
-            <span style={{ fontSize: '18px', fontWeight: 'normal', marginLeft: '8px' }}> - {pacesData.name}</span>
+          ) : paces?.name ? (
+            <span style={{ fontSize: '18px', fontWeight: 'normal', marginLeft: '8px' }}> - {paces.name}</span>
           ) : null}
         </h1>
       </header>
