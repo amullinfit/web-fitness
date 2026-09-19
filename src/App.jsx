@@ -69,6 +69,8 @@ export default function App() {
     localStorage.setItem('wf_offset', rightOffset);
   }, [layoutVersion, themeView, rightOffset]);
 
+console.log('XXX');
+
   // Auto-close menu timer debug
   useEffect(() => {
     if (!menuOpen) return;
