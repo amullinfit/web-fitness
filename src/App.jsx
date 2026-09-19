@@ -2,46 +2,83 @@ import React, { useState, useEffect } from 'react';
 import DailyView from './components/DailyView.jsx';
 import MonthlyView from './components/MonthlyView.jsx';
 import GeneralOverview from './components/GeneralOverview.jsx'; 
-import WorkoutsView from './components/WorkoutsView.jsx';
 //import WorkoutBuilder from './components/WorkoutBuilder.jsx';
 import GearView from './components/GearView.jsx';
 import OptionsView from './components/OptionsView.jsx';
 import { PacesProvider } from './utils/PacesContext.jsx';
 
-const APP_TITLE = 'Web Fitness'; // Central title configuration
+// [DEBUG Helper] Wrap components to log successful mounts and unmounts
+const WithDebugLog = ({ name, children }) => {
+  useEffect(() => {
+    console.log(`[App Debug] ✅ SUCCESS: <${name} /> mounted successfully.`);
+    return () => console.log(`[App Debug] ℹ️ UNMOUNT: <${name} /> unmounted.`);
+  }, [name]);
 
-const START_PAGE = 'daily';
+  return children;
+};
+
+const APP_TITLE = 'Web Fitness';
 
 export default function App() {
-  // Local state per browser instance - default to 'monthly'
-  const [activeTab, setActiveTab] = useState('daily');
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [layoutVersion, setLayoutVersion] = useState(
-    localStorage.getItem('wf_version') || 'desktop'
-  );
-  const [themeView, setThemeView] = useState(
-    localStorage.getItem('wf_theme') || 'light'
-  );
-  const [rightOffset, setRightOffset] = useState(
-    Number(localStorage.getItem('wf_offset')) || 0
-  );
+  console.log('[App Debug] 🚀 Render cycle started.');
+
+  // Local state per browser instance
+  const [activeTab, setActiveTab] = useState(() => {
+    console.log('[App Debug] Initializing activeTab state to "daily"');
+    return 'daily';
+  });
+
+  const [menuOpen, setMenuOpen] = useState(() => {
+    console.log('[App Debug] Initializing menuOpen state to false');
+    return false;
+  });
+
+  const [layoutVersion, setLayoutVersion] = useState(() => {
+    const val = localStorage.getItem('wf_version') || 'desktop';
+    console.log(`[App Debug] Loaded layoutVersion: "${val}"`);
+    return val;
+  });
+
+  const [themeView, setThemeView] = useState(() => {
+    const val = localStorage.getItem('wf_theme') || 'light';
+    console.log(`[App Debug] Loaded themeView: "${val}"`);
+    return val;
+  });
+
+  const [rightOffset, setRightOffset] = useState(() => {
+    const val = Number(localStorage.getItem('wf_offset')) || 0;
+    console.log(`[App Debug] Loaded rightOffset: ${val}`);
+    return val;
+  });
+
+  // Track state changes after initial render
+  useEffect(() => {
+    console.log(`[App Debug] State updated -> activeTab: "${activeTab}"`);
+  }, [activeTab]);
 
   useEffect(() => {
+    console.log(`[App Debug] State updated -> menuOpen: ${menuOpen}`);
+  }, [menuOpen]);
+
+  // Sync to LocalStorage
+  useEffect(() => {
+    console.log('[App Debug] Syncing settings to localStorage...');
     localStorage.setItem('wf_version', layoutVersion);
     localStorage.setItem('wf_theme', themeView);
     localStorage.setItem('wf_offset', rightOffset);
   }, [layoutVersion, themeView, rightOffset]);
 
-  // Auto-close menu after 4 seconds if left open
+  // Auto-close menu timer debug
   useEffect(() => {
     if (!menuOpen) return;
+    console.log('[App Debug] ⏱️ Auto-close menu timer started (4s)');
     const timer = setTimeout(() => {
+      console.log('[App Debug] ⏱️ Auto-close menu timer triggered');
       setMenuOpen(false);
     }, 4000);
     return () => clearTimeout(timer);
   }, [menuOpen]);
 
-  // Apply theme styling
   const getThemeStyles = () => {
     if (themeView === 'dark')
       return { backgroundColor: '#121212', color: '#ffffff' };
@@ -55,8 +92,9 @@ export default function App() {
   };
 
   const handleSelectTab = (tab) => {
+    console.log(`[App Debug] 🎯 Tab select requested: "${tab}"`);
     setActiveTab(tab);
-    setMenuOpen(false); // Close menu when an option is picked
+    setMenuOpen(false);
   };
 
   return (
@@ -78,7 +116,7 @@ export default function App() {
             alignItems: 'center',
             padding: '12px 20px',
             borderBottom: '1px solid #ccc',
-            position: 'relative', // Allows absolute positioning of the dropdown menu
+            position: 'relative',
           }}
         >
           <h1 
@@ -87,13 +125,16 @@ export default function App() {
               margin: 0, 
               fontSize: '20px', 
               color: 'var(--text-h, inherit)',
-              cursor: 'pointer' // Indicates that the title is clickable
+              cursor: 'pointer'
             }}
           >
             {APP_TITLE}
           </h1>
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
+            onClick={() => {
+              console.log(`[App Debug] Toggle menu click -> Next state: ${!menuOpen}`);
+              setMenuOpen(!menuOpen);
+            }}
             style={{
               background: 'none',
               border: 'none',
@@ -157,12 +198,6 @@ export default function App() {
                 Daily View
               </button>
               <button 
-                onClick={() => handleSelectTab('workouts')}
-                style={dropdownBtnStyle(themeView)}
-              >
-                Workouts
-              </button>
-              <button 
                 onClick={() => handleSelectTab('options')}
                 style={dropdownBtnStyle(themeView)}
               >
@@ -172,7 +207,7 @@ export default function App() {
           )}
         </header>
 
-        {/* View Routing */}
+        {/* View Routing wrapped with Debug logging */}
         <main
           style={{
             padding: layoutVersion === 'mobile' ? '10px' : '20px',
@@ -180,29 +215,49 @@ export default function App() {
             margin: '0 auto',
           }}
         >
-          {activeTab === 'monthly' && <MonthlyView />}
-          {activeTab === 'overview' && <GeneralOverview />}
-          {activeTab === 'gear' && <GearView />}
-{/*          {activeTab === 'builder' && <WorkoutBuilder />} */}
-          {activeTab === 'daily' && <DailyView />}
-          {activeTab === 'workouts' && <WorkoutsView />}
+          {activeTab === 'monthly' && (
+            <WithDebugLog name="MonthlyView">
+              <MonthlyView />
+            </WithDebugLog>
+          )}
+          {activeTab === 'overview' && (
+            <WithDebugLog name="GeneralOverview">
+              <GeneralOverview />
+            </WithDebugLog>
+          )}
+          {activeTab === 'gear' && (
+            <WithDebugLog name="GearView">
+              <GearView />
+            </WithDebugLog>
+          )}
+          {activeTab === 'builder' && (
+            <WithDebugLog name="WorkoutBuilder">
+              <div>Workout Builder is commented out in imports</div>
+            </WithDebugLog>
+          )}
+          {activeTab === 'daily' && (
+            <WithDebugLog name="DailyView">
+              <DailyView />
+            </WithDebugLog>
+          )}
           {activeTab === 'options' && (
-            <OptionsView
-              layoutVersion={layoutVersion}
-              setLayoutVersion={setLayoutVersion}
-              themeView={themeView}
-              setThemeView={setThemeView}
-              rightOffset={rightOffset}
-              setRightOffset={setRightOffset}
-            />
+            <WithDebugLog name="OptionsView">
+              <OptionsView
+                layoutVersion={layoutVersion}
+                setLayoutVersion={setLayoutVersion}
+                themeView={themeView}
+                setThemeView={setThemeView}
+                rightOffset={rightOffset}
+                setRightOffset={setRightOffset}
+              />
+            </WithDebugLog>
           )}
         </main>
       </div>
     </PacesProvider>
   );
 }
- 
-// Helper style for clean dropdown option buttons
+
 const dropdownBtnStyle = (themeView) => ({
   background: 'none',
   border: 'none',
