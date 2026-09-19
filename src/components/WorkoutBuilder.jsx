@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import WorkoutChart from './WorkoutChart';
 import './WorkoutBuilder.css';
 
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
@@ -1033,10 +1034,10 @@ ${zwoSteps}
           </div>
 
           <div className="chart-card">
-          <div className="chart-header">
-              <span className="chart-title">WorkoutChart POC</span>
-              <button className="btn-zoom" onClick={() => setIsZoomOpen(true)}>🔍 Zoom Chart</button>
-            </div>
+            <div className="chart-header">
+                <span className="chart-title">WorkoutChart POC</span>
+                <button className="btn-zoom" onClick={() => setIsZoomOpen(true)}>🔍 Zoom Chart</button>
+             </div>
             <WorkoutChart
               workout={JSON.stringify([workoutPayloadObject], null, 2)}
               chartHeight="140px"
