@@ -617,8 +617,10 @@ export default function DailyView() {
       </div>
 
         {/* ---------------------------------------------------------------------------------------------------------- */}
-        <div>
+        <div className="daily-view-container">
+            <label>
             First day workouts (Read-Only)
+            </label>
           <textarea
             readOnly
             value={selectedDayWorkouts}
