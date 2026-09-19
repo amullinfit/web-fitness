@@ -5,6 +5,7 @@ import GeneralOverview from './components/GeneralOverview.jsx';
 //import WorkoutBuilder from './components/WorkoutBuilder.jsx';
 import GearView from './components/GearView.jsx';
 import OptionsView from './components/OptionsView.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { PacesProvider } from './utils/PacesContext.jsx';
 
 // [DEBUG Helper] Wrap components to log successful mounts and unmounts
@@ -207,7 +208,7 @@ export default function App() {
           )}
         </header>
 
-        {/* View Routing wrapped with Debug logging */}
+        {/* View Routing with Debug Logging & Error Boundaries */}
         <main
           style={{
             padding: layoutVersion === 'mobile' ? '10px' : '20px',
@@ -216,41 +217,58 @@ export default function App() {
           }}
         >
           {activeTab === 'monthly' && (
-            <WithDebugLog name="MonthlyView">
-              <MonthlyView />
-            </WithDebugLog>
+            <ErrorBoundary key="monthly" name="Monthly View">
+              <WithDebugLog name="MonthlyView">
+                <MonthlyView />
+              </WithDebugLog>
+            </ErrorBoundary>
           )}
+
           {activeTab === 'overview' && (
-            <WithDebugLog name="GeneralOverview">
-              <GeneralOverview />
-            </WithDebugLog>
+            <ErrorBoundary key="overview" name="General Overview">
+              <WithDebugLog name="GeneralOverview">
+                <GeneralOverview />
+              </WithDebugLog>
+            </ErrorBoundary>
           )}
+
           {activeTab === 'gear' && (
-            <WithDebugLog name="GearView">
-              <GearView />
-            </WithDebugLog>
+            <ErrorBoundary key="gear" name="Gear View">
+              <WithDebugLog name="GearView">
+                <GearView />
+              </WithDebugLog>
+            </ErrorBoundary>
           )}
+
           {activeTab === 'builder' && (
-            <WithDebugLog name="WorkoutBuilder">
-              <div>Workout Builder is commented out in imports</div>
-            </WithDebugLog>
+            <ErrorBoundary key="builder" name="Workout Builder">
+              <WithDebugLog name="WorkoutBuilder">
+                <div>Workout Builder is commented out in imports</div>
+              </WithDebugLog>
+            </ErrorBoundary>
           )}
+
           {activeTab === 'daily' && (
-            <WithDebugLog name="DailyView">
-              <DailyView />
-            </WithDebugLog>
+            <ErrorBoundary key="daily" name="Daily View">
+              <WithDebugLog name="DailyView">
+                <DailyView />
+              </WithDebugLog>
+            </ErrorBoundary>
           )}
+
           {activeTab === 'options' && (
-            <WithDebugLog name="OptionsView">
-              <OptionsView
-                layoutVersion={layoutVersion}
-                setLayoutVersion={setLayoutVersion}
-                themeView={themeView}
-                setThemeView={setThemeView}
-                rightOffset={rightOffset}
-                setRightOffset={setRightOffset}
-              />
-            </WithDebugLog>
+            <ErrorBoundary key="options" name="Options View">
+              <WithDebugLog name="OptionsView">
+                <OptionsView
+                  layoutVersion={layoutVersion}
+                  setLayoutVersion={setLayoutVersion}
+                  themeView={themeView}
+                  setThemeView={setThemeView}
+                  rightOffset={rightOffset}
+                  setRightOffset={setRightOffset}
+                />
+              </WithDebugLog>
+            </ErrorBoundary>
           )}
         </main>
       </div>
