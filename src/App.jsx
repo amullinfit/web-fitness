@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import DailyView from './components/DailyView.jsx';
 import MonthlyView from './components/MonthlyView.jsx';
 import GeneralOverview from './components/GeneralOverview.jsx'; 
-//import WorkoutBuilder from './components/WorkoutBuilder.jsx';
+import WorkoutBuilder from './components/WorkoutBuilder.jsx';
 import GearView from './components/GearView.jsx';
 import OptionsView from './components/OptionsView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
@@ -68,8 +68,6 @@ export default function App() {
     localStorage.setItem('wf_theme', themeView);
     localStorage.setItem('wf_offset', rightOffset);
   }, [layoutVersion, themeView, rightOffset]);
-
-console.log('XXX');
 
   // Auto-close menu timer debug
   useEffect(() => {
@@ -245,7 +243,7 @@ console.log('XXX');
           {activeTab === 'builder' && (
             <ErrorBoundary key="builder" name="Workout Builder">
               <WithDebugLog name="WorkoutBuilder">
-                <div>Workout Builder is commented out in imports</div>
+                <WorkoutBuilder />
               </WithDebugLog>
             </ErrorBoundary>
           )}
