@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import DailyView from './components/DailyView';
-import MonthlyView from './components/MonthlyView';
-import GeneralOverview from './components/GeneralOverview'; 
-import WorkoutsView from './components/WorkoutsView';
-import WorkoutBuilder from './components/WorkoutBuilder';
-import GearView from './components/GearView';
-import OptionsView from './components/OptionsView';
-import { PacesProvider } from './utils/PacesContext';
+import DailyView from './components/DailyView.jsx';
+import MonthlyView from './components/MonthlyView.jsx';
+import GeneralOverview from './components/GeneralOverview.jsx'; 
+import WorkoutsView from './components/WorkoutsView.jsx';
+import WorkoutBuilder from './components/WorkoutBuilder.jsx';
+import GearView from './components/GearView.jsx';
+import OptionsView from './components/OptionsView.jsx';
+import { PacesProvider } from './utils/PacesContext.jsx';
 
 const APP_TITLE = 'Web Fitness'; // Central title configuration
-  
+
+const START_PAGE = 'daily';
+
 export default function App() {
   // Local state per browser instance - default to 'monthly'
-  const [activeTab, setActiveTab] = useState('monthly');
+  const [activeTab, setActiveTab] = useState('daily');
   const [menuOpen, setMenuOpen] = useState(false);
   const [layoutVersion, setLayoutVersion] = useState(
     localStorage.getItem('wf_version') || 'desktop'
