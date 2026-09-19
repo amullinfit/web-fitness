@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const VAL_MY_PACES_URL = '/api/val-my-paces';
 
-const PacesContext = createContext(null);
+export const PacesContext = createContext(null);
 
 export function PacesProvider({ children }) {
   const [paces, setPaces] = useState(null);
