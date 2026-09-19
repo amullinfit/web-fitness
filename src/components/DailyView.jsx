@@ -621,7 +621,7 @@ export default function DailyView() {
             First day workouts (Read-Only)
           <textarea
             readOnly
-            value={JSON.stringify(selectedDayWorkouts), null, 2}
+            value={selectedDayWorkouts}
             rows={14}
           />
         </div>
