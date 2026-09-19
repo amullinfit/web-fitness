@@ -4,7 +4,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 const APP_TITLE = 'Web Fitness';
 
 export default function App() {
-  console.log('[App Debug] 🚀 Render cycle started.');
+  console.log('[App Debug] 🚀 Render cycle started.x');
 
   return (
     <div
