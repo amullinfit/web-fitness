@@ -34,6 +34,9 @@ const safeStringLower = (val) => {
 
 // Updated helper accepting paces context fallback
 const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
+  console.log("Workout threshold:", workout?.threshold_pace, workout?.icu_threshold_pace);
+  console.log("Context Paces object:", contextPaces);
+  
   if (!workout) return null;
 
   if (typeof workout.threshold_pace === 'number' && workout.threshold_pace > 0) {
@@ -68,7 +71,7 @@ const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
   }
 
   // Fallback to global paces context if available
-  return contextPaces?.thresholdPace || null;
+  return contextPaces?.threshold_pace || null;
 };
 
 const getLocalDateString = (dateInput) => {
