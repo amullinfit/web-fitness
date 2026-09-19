@@ -1,4 +1,5 @@
 import React, { useId, useState } from 'react';
+import { usePaces } from './PacesContext';
 import './WorkoutChart.css';
 
 // --- CHART CONFIGURATION CONSTANTS ---
@@ -9,6 +10,11 @@ const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left
 const SLOW_BUFFER_MINUTES = 1;
 const FAST_BUFFER_MINUTES = 1;
 const DEFAULT_FALLBACK_THRESHOLD_SEC = 480;
+
+// Fallback zone config if PacesContext is not available
+const DEFAULT_PACE_ZONES = [80, 92, 94.3, 100, 103.4, 111.5, 150];
+const DEFAULT_PACE_ZONE_NAMES = ["Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5a", "Zone 5b", "Zone 5c"];
+const DEFAULT_PACE_ZONE_COLORS = ["#88d8b0", "#fd7e14", "#fd7e14", "#ff6b6b", "#dc3545", "#6f42c1", "#343a40"];
 
 const formatSecPerMileToStr = (secPerMile) => {
   if (!secPerMile || secPerMile <= 0 || isNaN(secPerMile)) return "N/A";
@@ -145,16 +151,36 @@ const extractExecutedSteps = (workout) => {
   });
 };
 
-const getZoneDetails = (targetPct, stepType = '') => {
+/**
+ * Dynamically resolves zone details using PacesContext zones, names, and colors.
+ */
+const getZoneDetailsFromPaces = (targetPct, stepType = '', pacesData) => {
   const typeLower = String(stepType).toLowerCase();
 
-  if (typeLower.includes('warm') || typeLower.includes('cool') || typeLower.includes('recovery') || targetPct < 75) {
-    return { name: 'Warmup / Recovery (Z1)', color: '#6c757d' };
+  const zones = pacesData?.pace_zones || DEFAULT_PACE_ZONES;
+  const names = pacesData?.pace_zone_names || DEFAULT_PACE_ZONE_NAMES;
+  const colors = pacesData?.pace_zone_colors || DEFAULT_PACE_ZONE_COLORS;
+
+  if (typeLower.includes('warm') || typeLower.includes('cool') || typeLower.includes('recovery')) {
+    return { name: names[0] || 'Recovery (Z1)', color: colors[0] || '#88d8b0' };
   }
-  if (targetPct < 88) return { name: 'Endurance (Z2)', color: '#28a745' };
-  if (targetPct < 96) return { name: 'Tempo (Z3)', color: '#ffc107' };
-  if (targetPct <= 105) return { name: 'Threshold (Z4)', color: '#fd7e14' };
-  return { name: 'Anaerobic / VO2 Max (Z5+)', color: '#dc3545' };
+
+  // Iterate through pace zone thresholds
+  for (let i = 0; i < zones.length; i++) {
+    if (targetPct <= zones[i]) {
+      return {
+        name: names[i] || `Zone ${i + 1}`,
+        color: colors[i] || '#28a745'
+      };
+    }
+  }
+
+  // Fallback for extreme efforts above highest threshold
+  const lastIdx = zones.length - 1;
+  return {
+    name: names[lastIdx] || `Zone ${zones.length}`,
+    color: colors[lastIdx] || '#343a40'
+  };
 };
 
 const generateWavyBarPath = (topCycles = 6, amplitude = WAVE_AMPLITUDE, verticalCycles = VERTICAL_WAVE_CYCLES) => {
@@ -197,7 +223,7 @@ const generateWavyBarPath = (topCycles = 6, amplitude = WAVE_AMPLITUDE, vertical
   return d;
 };
 
-// Helper to strictly parse boolean values from props (handles "false", null, undefined, true, false)
+// Helper to strictly parse boolean values from props
 const parseBoolProp = (val, defaultValue = true) => {
   if (val === undefined) return defaultValue;
   if (typeof val === 'string') return val.toLowerCase() === 'true';
@@ -217,6 +243,7 @@ export default function WorkoutChart({
   showHoverDetails = true
 }) {
   const clipId = useId();
+  const { pacesData } = usePaces();
   const [executedOnTop, setExecutedOnTop] = useState(true);
   const [isChartHovered, setIsChartHovered] = useState(false);
 
@@ -243,8 +270,10 @@ export default function WorkoutChart({
   const totalDurationSec = Math.max(totalPlannedSec, totalExecutedSec, 1);
   const totalDurationMins = Math.round(totalDurationSec / 60);
 
-  const thresholdSecPerMile = thresholdPace && thresholdPace > 0
-    ? (thresholdPace < 15 ? speedToPaceSeconds(thresholdPace) : thresholdPace)
+  // Prefer thresholdPace prop, fallback to pacesData context, or null
+  const effectiveThreshold = thresholdPace || pacesData?.threshold_pace || pacesData?.run_pace_sec;
+  const thresholdSecPerMile = effectiveThreshold && effectiveThreshold > 0
+    ? (effectiveThreshold < 15 ? speedToPaceSeconds(effectiveThreshold) : effectiveThreshold)
     : null;
 
   const thresholdDisplayStr = thresholdSecPerMile ? formatSecPerMileToStr(thresholdSecPerMile) : "Not Set";
@@ -406,14 +435,14 @@ export default function WorkoutChart({
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
                   const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
-                  const zoneDetails = getZoneDetails(range.rangePct.mid, rawIntensity);
+                  const zoneDetails = getZoneDetailsFromPaces(range.rangePct.mid, rawIntensity, pacesData);
 
                   const fastHeightPct = computePaceToHeightPct(range.fastSec);
                   const slowHeightPct = computePaceToHeightPct(range.slowSec);
 
                   const fastPaceStr = formatSecPerMileToStr(range.fastSec);
                   const slowPaceStr = formatSecPerMileToStr(range.slowSec);
-                  const tooltipText = `Planned Step ${idx + 1}: ${intensityFormatted} | Target Range: ${fastPaceStr} - ${slowPaceStr} | Duration: ${durationMins}m`;
+                  const tooltipText = `Planned Step ${idx + 1}: ${intensityFormatted} (${zoneDetails.name}) | Target Range: ${fastPaceStr} - ${slowPaceStr} | Duration: ${durationMins}m`;
 
                   return (
                     <div
