@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import WorkoutChart from './WorkoutChart';
 import './WorkoutBuilder.css';
+import { convertWorkoutToTargetFormat } from "../utils/workoutConverter";
 
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 const VAL_MY_PACES_URL = '/api/val-my-paces';
@@ -1013,7 +1014,7 @@ ${zwoSteps}
             </label>
             <textarea
               readOnly
-              value={JSON.stringify([workoutPayloadObject], null, 2)}
+              value={JSON.stringify(convertWorkoutToTargetFormat(workoutPayloadObject), null, 2)}
               rows={14}
               className="json-preview-textarea"
             />
