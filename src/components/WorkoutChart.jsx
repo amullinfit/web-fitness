@@ -8,7 +8,7 @@ import {
   extractExecutedSteps,
   flattenSteps,
   generateWavyBarPath,
-} from '..utils/WorkoutChartHelpers.js';
+} from '../utils/WorkoutChartHelpers.js';
 
 const SLOW_BUFFER_MINUTES = 1;
 const FAST_BUFFER_MINUTES = 1;
