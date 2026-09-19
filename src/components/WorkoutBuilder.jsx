@@ -1003,14 +1003,14 @@ ${zwoSteps}
                 <span className="chart-title">WorkoutChart POC</span>
              </div>
             <WorkoutChart
-              workout={JSON.stringify([workoutPayloadObject], null, 2)}
+              workout={JSON.stringify(convertWorkoutToTargetFormat(workoutPayloadObject), null, 2)}
               chartHeight="140px"
             />
           </div>
 
           <div className="json-preview-container">
             <label className="json-preview-label">
-              WorkoutChart JSON  (Read-Only)
+              WorkoutChart JSON 2 (Read-Only)
             </label>
             <textarea
               readOnly
