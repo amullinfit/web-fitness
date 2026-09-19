@@ -30,4 +30,10 @@ export function PacesProvider({ children }) {
   );
 }
 
-export const usePaces = () => useContext(PacesContext);
+export function usePaces() {
+  const context = useContext(PacesContext);
+  if (!context) {
+    throw new Error('usePaces must be used within a PacesProvider');
+  }
+  return context;
+}

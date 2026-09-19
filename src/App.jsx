@@ -1,8 +1,42 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
-import { PacesProvider } from './utils/PacesContext.jsx';
+import { PacesProvider, PacesContext } from './utils/PacesContext.jsx'; 
+import { usePaces } from './utils/PacesContext.jsx';
+
 
 const APP_TITLE = 'Web Fitness';
+
+// Child component so useContext can access values inside PacesProvider
+function HeaderBar() {
+
+  // Access the name from PacesContext
+  const { pacesData } = usePaces();  
+
+  const name = pacesData?.name || 'unknown'; // Fallback if name isn't set yet
+
+  return (
+    <header
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '12px 20px',
+        borderBottom: '1px solid #ccc',
+        position: 'relative',
+      }}
+    >
+      <h1 
+        style={{ 
+          margin: 0, 
+          fontSize: '20px', 
+          color: 'var(--text-h, inherit)',
+        }}
+      >
+        {APP_TITLE} {name && `- ${name}`}
+      </h1>
+    </header>
+  );
+}
 
 export default function App() {
   console.log('[App Debug] 🚀 Render cycle started.');
@@ -18,27 +52,8 @@ export default function App() {
           transition: 'all 0.2s ease',
         }}
       >
-        {/* Header Bar */}
-        <header
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '12px 20px',
-            borderBottom: '1px solid #ccc',
-            position: 'relative',
-          }}
-        >
-          <h1 
-            style={{ 
-              margin: 0, 
-              fontSize: '20px', 
-              color: 'var(--text-h, inherit)',
-            }}
-          >
-            {APP_TITLE}
-          </h1>
-        </header>
+        {/* Header Bar consuming Context */}
+        <HeaderBar />
 
         {/* Main Content Area */}
         <main
