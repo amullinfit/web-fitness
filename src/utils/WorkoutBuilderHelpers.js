@@ -1,10 +1,39 @@
-// Declare your API endpoints here
-const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
-const VAL_MY_PACES_URL = '/api/val-my-paces';
-export const DEFAULT_THRESHOLD = 480; // 8:00/mi default fallback (480 seconds)
+import { useEffect, useState } from 'react';
 
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// 
+// 
+// 
+    // - Declare API endpoints
+    const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
+    const VAL_MY_PACES_URL = '/api/val-my-paces';
+
+    // - Declared constants
+    export const DEFAULT_THRESHOLD = 480; // 8:00/mi default fallback (480 seconds)
+
+    // Updated PRESET_COLORS order: Grey, Green, Cyan, Blue, Yellow, Orange, Red
+    export const PRESET_COLORS = [
+        '#6c757d', // Grey / Zone 1
+        '#28a745', // Green / Zone 2
+        '#17a2b8', // Cyan / Zone 3
+        '#007bff', // Blue / Zone 4
+        '#ffc107', // Yellow / Zone 5a
+        '#fd7e14', // Orange / Zone 5b
+        '#dc3545', // Red / Zone 5c
+    ];
+
+// 
+// 
+// 
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// 
+// 
+// 
 // --- API Functions ---
-
 export async function fetchFoldersApi() {
   const res = await fetch(`${VAL_WORKOUTBUILDER_URL}?action=get_folders`, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch folders');
@@ -62,6 +91,15 @@ export async function fetchMyPacesApi() {
   return await res.json();
 }
 
+// 
+// 
+// 
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// 
+// 
+// 
 // --- Formatting & Parsing Helpers ---
 
 export const formatTime = (totalSeconds) => {
@@ -117,19 +155,112 @@ export const formatTime = (totalSeconds) => {
   
   export const formatDistance = (miles) => (miles || 0).toFixed(2) + ' mi';
 
-  // --- Step Creation & Mapping Helpers ---
+// 
+// 
+// 
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// 
+// 
+// 
+// - Data retrieval & Parsing Helpers ---
 
-  // Updated PRESET_COLORS order: Grey, Green, Cyan, Blue, Yellow, Orange, Red
-  export const PRESET_COLORS = [
-    '#6c757d', // Grey / Zone 1
-    '#28a745', // Green / Zone 2
-    '#17a2b8', // Cyan / Zone 3
-    '#007bff', // Blue / Zone 4
-    '#ffc107', // Yellow / Zone 5a
-    '#fd7e14', // Orange / Zone 5b
-    '#dc3545', // Red / Zone 5c
-  ];
-  
+    // - Get the pace data from intervals.icu
+    export function useIcuPaces() {
+        const [icuPacesData, setIcuPacesData] = useState(null);
+        const [thresholdPaceSec, setThresholdPaceSec] = useState(DEFAULT_THRESHOLD);
+
+        useEffect(() => {
+            async function loadPaces() {
+            try {
+                const data = await fetchMyPacesApi();
+                setIcuPacesData(data);
+
+                const rawThresh = data.run_pace || data.threshold_pace || data.thresholdPace;
+                if (rawThresh) {
+                setThresholdPaceSec(convertToPaceSec(rawThresh));
+                }
+            } catch (err) {
+                console.warn('Could not fetch Intervals.icu paces, using default fallbacks:', err.message);
+            }
+            }
+            loadPaces();
+        }, []);
+
+        return { icuPacesData, thresholdPaceSec };
+        }
+
+    // Dynamically compute preset values from intervals.icu data
+    export const dynamicPresets = useMemo(() => {
+        if (!icuPacesData) {
+            // Default Fallback
+            const defaultZoneNames = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5a', 'Zone 5b', 'Zone 5c'];
+            const defaultPaces = [619, 538, 525, DEFAULT_THRESHOLD, 479, 444, 50];
+
+            return defaultZoneNames.map((name, idx) => ({
+            label: name,
+            displayPace: formatMMSS(defaultPaces[idx]),
+            targetPaceSec: defaultPaces[idx],
+            color: PRESET_COLORS[idx % PRESET_COLORS.length],
+            }));
+        }
+
+        const zoneNames = icuPacesData.pace_zone_names || [];
+        const paceValueStr = icuPacesData.pace_value_str || [];
+        const paceValueNum = icuPacesData.pace_value_num || [];
+        const pacePercentages = icuPacesData.pace_zones || [];
+
+        // Length derived from names or string array
+        const itemCount = Math.max(zoneNames.length, paceValueStr.length, paceValueNum.length);
+        const presetsList = [];
+
+        for (let i = 0; i < itemCount; i++) {
+            const label = zoneNames[i] || `Zone ${i + 1}`;
+            const color = PRESET_COLORS[i % PRESET_COLORS.length];
+
+            // Convert from human string "10:19/mi" or numeric m/s speed
+            let paceSec = 0;
+            if (paceValueStr[i]) {
+            paceSec = parseMMSS(paceValueStr[i]);
+            } else if (paceValueNum[i]) {
+            paceSec = convertToPaceSec(paceValueNum[i]);
+            } else {
+            paceSec = thresholdPaceSec;
+            }
+
+            let displayPace = formatMMSS(paceSec);
+            if (paceMethod === 'Threshold %') {
+            const pct = pacePercentages[i] || Math.round((thresholdPaceSec / paceSec) * 100);
+            displayPace = `${pct}%`;
+            } else if (paceMethod.includes('Range')) {
+            const lowPace = Math.round(paceSec * 0.97);
+            const highPace = Math.round(paceSec * 1.03);
+            displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
+            }
+
+            presetsList.push({
+            label,
+            displayPace,
+            targetPaceSec: paceSec,
+            color,
+            });
+        }
+
+        return presetsList;
+    }, [icuPacesData, thresholdPaceSec, paceMethod]);
+
+// 
+// 
+// 
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// 
+// 
+// 
+// --- Step Creation & Mapping Helpers ---
+
   export const createStep = (type, mode = 'time') => {
     const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
     const durationSec = mode === 'time' ? 600 : 0;
@@ -212,4 +343,3 @@ export const formatTime = (totalSeconds) => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-  

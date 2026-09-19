@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import WorkoutChart from './WorkoutChart';
 import '../CSS/WorkoutBuilder.css';
+import {OptionsMenu, ControlBar} from '../utils/WorkoutBuilderMenus';
 import { convertWorkoutToTargetFormat } from "../utils/WorkoutConverter.js";
 import { usePaces } from '../utils/PacesContext.jsx';
 
@@ -15,11 +16,11 @@ import {
   parseMMSS,
   convertToPaceSec,
   formatDistance,
-  PRESET_COLORS,
   createStep,
   createDefaultSteps,
   mapIcuDocToSteps,
   downloadFile,
+  PRESET_COLORS,
   DEFAULT_THRESHOLD
 } from '../utils/WorkoutBuilderHelpers.js';
 
@@ -64,82 +65,10 @@ export default function WorkoutBuilder() {
   const [draggedItem, setDraggedItem] = useState(null);
 
   // Fetch Intervals.icu paces on initial mount
-  useEffect(() => {
-    async function loadPaces() {
-      try {
-        const data = await fetchMyPacesApi();
-        setIcuPacesData(data);
-
-        // Priority 1: run_pace string ("8:15/mi"), Priority 2: numeric threshold_pace (m/s)
-        const rawThresh = data.run_pace || data.threshold_pace || data.thresholdPace;
-        if (rawThresh) {
-          setThresholdPaceSec(convertToPaceSec(rawThresh));
-        }
-      } catch (err) {
-        console.warn('Could not fetch Intervals.icu paces, using default fallbacks:', err.message);
-      }
-    }
-    loadPaces();
-  }, []);
-
+  const { icuPacesData, thresholdPaceSec } = useIcuPaces();
+  
   // Dynamically compute preset values from intervals.icu data
-  const dynamicPresets = useMemo(() => {
-    if (!icuPacesData) {
-      // Default Fallback
-      const defaultZoneNames = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5a', 'Zone 5b', 'Zone 5c'];
-      const defaultPaces = [619, 538, 525, DEFAULT_THRESHOLD, 479, 444, 50];
-
-      return defaultZoneNames.map((name, idx) => ({
-        label: name,
-        displayPace: formatMMSS(defaultPaces[idx]),
-        targetPaceSec: defaultPaces[idx],
-        color: PRESET_COLORS[idx % PRESET_COLORS.length],
-      }));
-    }
-
-    const zoneNames = icuPacesData.pace_zone_names || [];
-    const paceValueStr = icuPacesData.pace_value_str || [];
-    const paceValueNum = icuPacesData.pace_value_num || [];
-    const pacePercentages = icuPacesData.pace_zones || [];
-
-    // Length derived from names or string array
-    const itemCount = Math.max(zoneNames.length, paceValueStr.length, paceValueNum.length);
-    const presetsList = [];
-
-    for (let i = 0; i < itemCount; i++) {
-      const label = zoneNames[i] || `Zone ${i + 1}`;
-      const color = PRESET_COLORS[i % PRESET_COLORS.length];
-
-      // Convert from human string "10:19/mi" or numeric m/s speed
-      let paceSec = 0;
-      if (paceValueStr[i]) {
-        paceSec = parseMMSS(paceValueStr[i]);
-      } else if (paceValueNum[i]) {
-        paceSec = convertToPaceSec(paceValueNum[i]);
-      } else {
-        paceSec = thresholdPaceSec;
-      }
-
-      let displayPace = formatMMSS(paceSec);
-      if (paceMethod === 'Threshold %') {
-        const pct = pacePercentages[i] || Math.round((thresholdPaceSec / paceSec) * 100);
-        displayPace = `${pct}%`;
-      } else if (paceMethod.includes('Range')) {
-        const lowPace = Math.round(paceSec * 0.97);
-        const highPace = Math.round(paceSec * 1.03);
-        displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
-      }
-
-      presetsList.push({
-        label,
-        displayPace,
-        targetPaceSec: paceSec,
-        color,
-      });
-    }
-
-    return presetsList;
-  }, [icuPacesData, thresholdPaceSec, paceMethod]);
+  const dynamicPresets = useDynamicPresets(icuPacesData, thresholdPaceSec, paceMethod);
 
   const loadFolders = async () => {
     try {
@@ -644,75 +573,23 @@ ${zwoSteps}
       <div className="builder-header-bar">
         <h1 className="builder-header-title">Workout Builder</h1>
 
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
-            className="options-menu-btn"
-          >
-            ⚙️ Options ▾
-          </button>
+        <OptionsMenu
+          isOpen={isOptionsMenuOpen}
+          onToggleOpen={() => setIsOptionsMenuOpen((prev) => !prev)}
+          mode={mode}
+          menuButtonStyle={menuButtonStyle}
+          onStartCreateNew={handleStartCreateNew}
+          onOpenEditModal={handleOpenEditModal}
+          onOpenCreateFolderModal={handleOpenCreateFolderModal}
+          onOpenSaveModal={handleOpenSaveModal}
+          onDuplicateWorkout={handleDuplicateWorkout}
+          onCopyWorkoutText={handleCopyWorkoutText}
+          onDownloadIcu={handleDownloadIcu}
+          onDownloadZwo={handleDownloadZwo}
+          onCancelEdits={handleCancelEdits}
+          onCloseWorkout={handleCloseWorkout}
+        />
 
-          {isOptionsMenuOpen && (
-            <div className="options-menu-dropdown">
-              <button style={menuButtonStyle} onClick={handleStartCreateNew}>
-                ➕ Create New Workout
-              </button>
-              <button style={menuButtonStyle} onClick={handleOpenEditModal}>
-                ✏️ Edit Existing Workout
-              </button>
-              <button style={menuButtonStyle} onClick={handleOpenCreateFolderModal}>
-                📁 Create New Folder
-              </button>
-
-              {(mode === 'CREATING' || mode === 'EDITING') && <div className="menu-divider" />}
-
-              {(mode === 'CREATING' || mode === 'EDITING') && (
-                <button style={menuButtonStyle} onClick={() => handleOpenSaveModal(false)}>
-                  💾 Save Workout
-                </button>
-              )}
-              {mode === 'EDITING' && (
-                <button style={menuButtonStyle} onClick={() => handleOpenSaveModal(true)}>
-                  📋 Save As New Workout
-                </button>
-              )}
-              {(mode === 'CREATING' || mode === 'EDITING') && (
-                <button style={menuButtonStyle} onClick={handleDuplicateWorkout}>
-                  📄 Duplicate Workout
-                </button>
-              )}
-
-              {(mode === 'CREATING' || mode === 'EDITING') && <div className="menu-divider" />}
-
-              {(mode === 'CREATING' || mode === 'EDITING') && (
-                <>
-                  <button style={menuButtonStyle} onClick={handleCopyWorkoutText}>
-                    📋 Copy Workout Text
-                  </button>
-                  <button style={menuButtonStyle} onClick={handleDownloadIcu}>
-                    ⬇️ Download .icu File
-                  </button>
-                  <button style={menuButtonStyle} onClick={handleDownloadZwo}>
-                    ⚡ Download .zwo File
-                  </button>
-                </>
-              )}
-
-              {(mode === 'CREATING' || mode === 'EDITING') && <div className="menu-divider" />}
-
-              {mode === 'EDITING' && (
-                <button style={{ ...menuButtonStyle, color: '#dc3545' }} onClick={handleCancelEdits}>
-                  ↩️ Cancel Edits
-                </button>
-              )}
-              {(mode === 'CREATING' || mode === 'EDITING') && (
-                <button style={{ ...menuButtonStyle, color: '#6c757d' }} onClick={handleCloseWorkout}>
-                  ✖️ Close Workout
-                </button>
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
       {statusMessage && (
@@ -731,45 +608,13 @@ ${zwoSteps}
       {(mode === 'CREATING' || mode === 'EDITING') && (
         <div>
           {/* Controls Bar: Time/Distance Toggle, Threshold Display & Pace Method Dropdown */}
-          <div className="builder-controls-bar">
-            <div className="mode-toggle-group">
-              <span className="control-label">Build By:</span>
-              <button
-                type="button"
-                className={`toggle-btn ${workoutMode === 'time' ? 'active' : ''}`}
-                onClick={() => setWorkoutMode('time')}
-              >
-                ⏱️ Time
-              </button>
-              <button
-                type="button"
-                className={`toggle-btn ${workoutMode === 'distance' ? 'active' : ''}`}
-                onClick={() => setWorkoutMode('distance')}
-              >
-                📏 Distance
-              </button>
-
-              <span style={{ marginLeft: '12px', fontSize: '13px', fontWeight: '600', color: '#495057' }}>
-                Threshold Pace: <span style={{ color: '#007bff' }}>{formatMMSS(thresholdPaceSec)}</span> /mi
-              </span>
-            </div>
-
-            <div className="pace-method-group">
-              <span className="control-label">Pace Method:</span>
-              <select
-                value={paceMethod}
-                onChange={(e) => setPaceMethod(e.target.value)}
-                className="pace-method-select"
-              >
-                <option value="Pace">Pace</option>
-                <option value="Pace Range">Pace Range</option>
-                <option value="Zone">Zone</option>
-                <option value="Zone Range">Zone Range</option>
-                <option value="Threshold %">Threshold %</option>
-                <option value="Theshold % Range">Threshold % Range</option>
-              </select>
-            </div>
-          </div>
+          <ControlBar
+            workoutMode={workoutMode}
+            setWorkoutMode={setWorkoutMode}
+            thresholdPaceSec={thresholdPaceSec}
+            paceMethod={paceMethod}
+            setPaceMethod={setPaceMethod}
+          />
 
           <div className="builder-header">
             <input
