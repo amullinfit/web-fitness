@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import WorkoutChart from './WorkoutChart';
 import WorkoutTextSection from '../utils/WorkoutTextSection';
 import '../CSS/DailyView.css';
+import { usePaces } from '../utils/PacesContext.jsx'; // 1. Import Context Hook
 
 const VAL_WORKOUTS_URL = "/api/val-workouts";
 const HISTORICAL_URL = "/api/val-historical";
@@ -31,7 +32,8 @@ const safeStringLower = (val) => {
   return String(val.id || val.type || val.name || val).toLowerCase();
 };
 
-const getThresholdPaceForSport = (workout, sportSettings) => {
+// Updated helper accepting paces context fallback
+const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
   if (!workout) return null;
 
   if (typeof workout.threshold_pace === 'number' && workout.threshold_pace > 0) {
@@ -45,21 +47,28 @@ const getThresholdPaceForSport = (workout, sportSettings) => {
   }
 
   const sportType = safeStringLower(workout.type || workout.sport);
-  if (!sportType || !Array.isArray(sportSettings)) return null;
+  if (!sportType) return contextPaces?.thresholdPace || null;
 
-  const match = sportSettings.find((s) => {
-    if (!s) return false;
-    const settingType = safeStringLower(s.type || s.id || s.sport);
-    let typesList = Array.isArray(s.types) ? s.types.map((t) => safeStringLower(t)) : [];
-    
-    return (
-      settingType === sportType ||
-      typesList.includes(sportType) ||
-      typesList.some((t) => sportType.includes(t) || t.includes(sportType))
-    );
-  });
+  if (Array.isArray(sportSettings)) {
+    const match = sportSettings.find((s) => {
+      if (!s) return false;
+      const settingType = safeStringLower(s.type || s.id || s.sport);
+      let typesList = Array.isArray(s.types) ? s.types.map((t) => safeStringLower(t)) : [];
+      
+      return (
+        settingType === sportType ||
+        typesList.includes(sportType) ||
+        typesList.some((t) => sportType.includes(t) || t.includes(sportType))
+      );
+    });
 
-  return match?.threshold_pace || match?.pace_threshold || null;
+    if (match?.threshold_pace || match?.pace_threshold) {
+      return match.threshold_pace || match.pace_threshold;
+    }
+  }
+
+  // Fallback to global paces context if available
+  return contextPaces?.thresholdPace || null;
 };
 
 const getLocalDateString = (dateInput) => {
@@ -117,6 +126,9 @@ const sortByDistanceDesc = (items) => {
 };
 
 export default function DailyView() {
+  // 2. Consume Paces Context
+  const { paces, loading: pacesLoading } = usePaces();
+
   const [workouts, setWorkouts] = useState([]);
   const [sportSettings, setSportSettings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -475,7 +487,7 @@ export default function DailyView() {
   };
 
   const renderWorkoutCard = (workout, index, isSelectedDate) => {
-    const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings);
+    const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings, paces);
     const workoutDateStr = getLocalDateString(
       workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date
     );
@@ -501,7 +513,8 @@ export default function DailyView() {
     const chartDataDebug = {
       workout: workout,
       thresholdPace: thresholdPaceMps,
-      chartHeight: isMobile ? "110px" : "140px"
+      chartHeight: isMobile ? "110px" : "140px",
+      pacesContextData: paces || null
     };
 
     return (
