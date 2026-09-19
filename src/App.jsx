@@ -1,23 +1,23 @@
 import React, { useEffect } from 'react';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
-import { PacesProvider, usePaces } from './utils/PacesContext.jsx'; // Using the custom hook pattern
+import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
 
 const APP_TITLE = 'Web Fitness';
 
 function HeaderBar() {
-  const { pacesData } = usePaces();
+  // Destructure `paces` and `loading` matching your PacesContext exports
+  const { paces, loading } = usePaces();
 
-  // Log pacesData whenever it changes or updates
+  // Debug logging
   useEffect(() => {
-    if (pacesData) {
-      console.log('[HeaderBar Debug] 📊 PacesData retrieved:', pacesData);
-      
-      // Example: Logging specific properties
-      console.log(`[HeaderBar Debug] User Name: ${pacesData.name}`);
+    if (loading) {
+      console.log('[HeaderBar Debug] ⏳ Pace data is currently loading...');
+    } else if (paces) {
+      console.log('[HeaderBar Debug] 📊 Pace data loaded successfully:', paces);
     } else {
-      console.log('[HeaderBar Debug] ⚠️ PacesData is empty or undefined');
+      console.log('[HeaderBar Debug] ⚠️ Pace data failed to load or is empty.');
     }
-  }, [pacesData]);
+  }, [paces, loading]);
 
   return (
     <header
@@ -37,7 +37,9 @@ function HeaderBar() {
           color: 'var(--text-h, inherit)',
         }}
       >
-        {APP_TITLE} {pacesData?.name ? `- ${pacesData.name}` : ''}
+        {APP_TITLE}
+        {loading && ' (Loading...)'}
+        {!loading && paces?.name && ` - ${paces.name}`}
       </h1>
     </header>
   );
