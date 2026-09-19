@@ -4,6 +4,8 @@ import { usePaces } from '../utils//PacesContext';
 import {
   formatIntensityTitleCase,
   parseBoolProp,
+  speedToPaceSeconds,
+  formatSecPerMileToStr,
   extractPlannedSteps,
   extractExecutedSteps,
   flattenSteps,
@@ -18,19 +20,6 @@ const DEFAULT_FALLBACK_THRESHOLD_SEC = 480;
 const DEFAULT_PACE_ZONES = [80, 92, 94.3, 100, 103.4, 111.5, 150];
 const DEFAULT_PACE_ZONE_NAMES = ["Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5a", "Zone 5b", "Zone 5c"];
 const DEFAULT_PACE_ZONE_COLORS = ["#88d8b0", "#fd7e14", "#fd7e14", "#ff6b6b", "#dc3545", "#6f42c1", "#343a40"];
-
-const formatSecPerMileToStr = (secPerMile) => {
-  if (!secPerMile || secPerMile <= 0 || isNaN(secPerMile)) return "N/A";
-  const totalSecs = Math.round(secPerMile);
-  const mins = Math.floor(totalSecs / 60);
-  const secs = totalSecs % 60;
-  return `${mins}:${String(secs).padStart(2, '0')} /mi`;
-};
-
-const speedToPaceSeconds = (speedMps) => {
-  if (typeof speedMps !== 'number' || speedMps <= 0 || isNaN(speedMps)) return null;
-  return 1609.344 / speedMps;
-};
 
 const extractPaceRangePct = (step) => {
   if (!step) return { start: 100, end: 100, mid: 100 };

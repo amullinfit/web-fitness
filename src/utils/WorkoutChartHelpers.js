@@ -17,6 +17,21 @@ const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left
         return Boolean(val);
     };
 
+    // -- Convert m/s to pace (example: 3.25120 m/s => 495)
+    export const speedToPaceSeconds = (speedMps) => {
+        if (typeof speedMps !== 'number' || speedMps <= 0 || isNaN(speedMps)) return null;
+        return 1609.344 / speedMps;
+      };
+        
+    // - Convert s/mi to pace (example: 495 s/mi => "8:15 mi")
+    export const formatSecPerMileToStr = (secPerMile) => {
+        if (!secPerMile || secPerMile <= 0 || isNaN(secPerMile)) return "N/A";
+        const totalSecs = Math.round(secPerMile);
+        const mins = Math.floor(totalSecs / 60);
+        const secs = totalSecs % 60;
+        return `${mins}:${String(secs).padStart(2, '0')} /mi`;
+    };
+      
     // -- Helper to generate the wavy bars for executed plans
     export const generateWavyBarPath = (durationMinutes = 1) => {
 
