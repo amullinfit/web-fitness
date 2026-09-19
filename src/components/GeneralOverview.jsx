@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import './GeneralOverview.css';
+import '../CSS/GeneralOverview.css';
 
 const VAL_OVERVIEW_URL = "/api/val-overview";
 

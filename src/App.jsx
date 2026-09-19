@@ -6,7 +6,7 @@ import WorkoutsView from './components/WorkoutsView';
 import WorkoutBuilder from './components/WorkoutBuilder';
 import GearView from './components/GearView';
 import OptionsView from './components/OptionsView';
-import { PacesProvider } from './components/PacesContext';
+import { PacesProvider } from './utils/PacesContext';
 
 const APP_TITLE = 'Web Fitness'; // Central title configuration
   

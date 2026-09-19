@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import WorkoutChart from './WorkoutChart';
-import './MonthlyView.css';
+import '../CSS/MonthlyView.css';
 
 const VAL_WORKOUTS_URL = "/api/val-workouts";
 const HISTORICAL_URL = "/api/val-historical";

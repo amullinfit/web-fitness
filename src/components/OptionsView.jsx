@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import './OptionsView.css';
+import '../CSS/OptionsView.css';
 import { usePaces } from './PacesContext'; 
 
 export default function OptionsView({ 

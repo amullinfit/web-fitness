@@ -1,6 +1,6 @@
 import React, { useId, useState } from 'react';
-import { usePaces } from './PacesContext';
-import './WorkoutChart.css';
+import { usePaces } from '../utils//PacesContext';
+import '../CSS/WorkoutChart.css';
 
 // --- CHART CONFIGURATION CONSTANTS ---
 const WAVES_PER_MINUTE = 3; // Number of wave cycles per minute across the top

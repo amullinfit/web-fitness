@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import WorkoutChart from './WorkoutChart';
-import './WorkoutBuilder.css';
+import '../CSS/WorkoutBuilder.css';
 import { convertWorkoutToTargetFormat } from "../utils/workoutConverter";
+import { usePaces } from '../utils//PacesContext';
 
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 const VAL_MY_PACES_URL = '/api/val-my-paces';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import './GearView.css';
+import '../CSS/GearView.css';
 
 const GEAR_URL = "/api/val-gear";
 const DEFAULT_MAX_SHOE_MILES = 400;
