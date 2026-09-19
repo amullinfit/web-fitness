@@ -995,16 +995,31 @@ ${zwoSteps}
             <RenderWorkoutChart steps={steps} height={120} workoutMode={workoutMode} presets={dynamicPresets} />
           </div>
 
+          {/* ---------------------------------------------------------------------------------------------------------- */}
+          {/* POC to see if we can get WorkoutChart working before removing the chart code from WorkoutBuilder */}
           <div className="chart-card">
             <div className="chart-header">
                 <span className="chart-title">WorkoutChart POC</span>
-                <button className="btn-zoom" onClick={() => setIsZoomOpen(true)}>🔍 Zoom Chart</button>
              </div>
             <WorkoutChart
               workout={JSON.stringify([workoutPayloadObject], null, 2)}
               chartHeight="140px"
             />
           </div>
+
+          <div className="json-preview-container">
+            <label className="json-preview-label">
+              WorkoutChart JSON  (Read-Only)
+            </label>
+            <textarea
+              readOnly
+              value={JSON.stringify([workoutPayloadObject], null, 2)}
+              rows={14}
+              className="json-preview-textarea"
+            />
+          </div>
+
+          {/* ---------------------------------------------------------------------------------------------------------- */}
 
           <div className="action-bar">
             <button className="btn-add-step" onClick={() => addStep('warmup')}>+ Warmup</button>
