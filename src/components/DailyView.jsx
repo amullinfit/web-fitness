@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import DailyView from './components/DailyView.jsx';
 import OptionsView from './components/OptionsView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
-import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
+import { PacesProvider, usePaces } from '../utils/PacesContext.jsx';
 
 // [DEBUG Helper] Wrap components to log successful mounts and unmounts
 const WithDebugLog = ({ name, children }) => {
