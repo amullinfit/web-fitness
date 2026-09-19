@@ -12,6 +12,8 @@ function HeaderBar() {
   // Access the name from PacesContext
   const { pacesData } = usePaces();  
 
+  console.log('App Debug:', pacesData);
+
   const name = pacesData?.name || 'unknown'; // Fallback if name isn't set yet
 
   return (
