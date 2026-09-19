@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../CSS/OptionsView.css';
-import { usePaces } from './PacesContext'; 
+import { usePaces } from '../utils/PacesContext.jsx'; 
 
 export default function OptionsView({ 
   rightOffset, 
