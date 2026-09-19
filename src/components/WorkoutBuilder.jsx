@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import WorkoutChart from './WorkoutChart';
 import '../CSS/WorkoutBuilder.css';
-import {OptionsMenu, ControlBar} from '../utils/WorkoutBuilderMenus';
+import { OptionsMenu, ControlBar } from '../utils/WorkoutBuilderMenus';
 import { convertWorkoutToTargetFormat } from "../utils/WorkoutConverter.js";
 import { usePaces } from '../utils/PacesContext.jsx';
 
