@@ -1,46 +1,31 @@
+// ✅ FIXED (PacesContext.jsx)
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-const PacesContext = createContext({
-  pacesData: null,
-  loading: true,
-  error: null,
-});
+const PacesContext = createContext(null);
 
 export function PacesProvider({ children }) {
-  const [pacesData, setPacesData] = useState(null);
+  const [paces, setPaces] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const VAL_MY_PACES_URL = '/api/val-my-paces';
 
   useEffect(() => {
-    async function fetchPaces() {
-      try {
-        setLoading(true);
-        const response = await fetch(VAL_MY_PACES_URL);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setPacesData(data);
-      } catch (err) {
-        setError(err.message || 'Error fetching paces data');
-      } finally {
+    // Fetch from your endpoint
+    fetch(VAL_MY_PACES_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        setPaces(data);
         setLoading(false);
-      }
-    }
-
-    fetchPaces();
+      })
+      .catch((err) => {
+        console.error("Failed to load pace data:", err);
+        setLoading(false);
+      });
   }, []);
 
   return (
-    <PacesContext.Provider value={{ pacesData, loading, error }}>
+    <PacesContext.Provider value={{ paces, setPaces, loading }}>
       {children}
     </PacesContext.Provider>
   );
 }
 
-// Custom Hook to consume the context easily in any component
-export function usePaces() {
-  return useContext(PacesContext);
-}
+export const usePaces = () => useContext(PacesContext);
