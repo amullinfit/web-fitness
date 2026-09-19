@@ -1,6 +1,6 @@
 import React, { useId, useState } from 'react';
 import '../CSS/WorkoutChart.css';
-import { usePaces } from '../utils//PacesContext';
+import { usePaces } from '../utils/PacesContext';
 import {
   formatIntensityTitleCase,
   parseBoolProp,
