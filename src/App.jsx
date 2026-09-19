@@ -3,7 +3,7 @@ import DailyView from './components/DailyView.jsx';
 import MonthlyView from './components/MonthlyView.jsx';
 import GeneralOverview from './components/GeneralOverview.jsx'; 
 import WorkoutsView from './components/WorkoutsView.jsx';
-import WorkoutBuilder from './components/WorkoutBuilder.jsx';
+//import WorkoutBuilder from './components/WorkoutBuilder.jsx';
 import GearView from './components/GearView.jsx';
 import OptionsView from './components/OptionsView.jsx';
 import { PacesProvider } from './utils/PacesContext.jsx';
@@ -183,7 +183,7 @@ export default function App() {
           {activeTab === 'monthly' && <MonthlyView />}
           {activeTab === 'overview' && <GeneralOverview />}
           {activeTab === 'gear' && <GearView />}
-          {activeTab === 'builder' && <WorkoutBuilder />}
+{/*          {activeTab === 'builder' && <WorkoutBuilder />} */}
           {activeTab === 'daily' && <DailyView />}
           {activeTab === 'workouts' && <WorkoutsView />}
           {activeTab === 'options' && (
