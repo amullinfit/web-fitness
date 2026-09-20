@@ -57,22 +57,21 @@
         const names  = paces?.pace_zone_names  || DEFAULT_PACE_ZONE_NAMES;
         const colors = paces?.pace_zone_colors || DEFAULT_PACE_ZONE_COLORS;
 
-        // Iterate through pace zone thresholds
-        for (let i = 0; i < zones.length; i++) {
-            if (targetPace > zones[i]) {
-            return {
-                name:  names[i]  || `Zone ${i + 1}`,
-                color: colors[i] || '#28a745'
-            };
-            }
+        if (targetZone > zones.length) {
+            const lastIdx = zones.length - 1;
+            return {name:  names[lastIdx], 
+                    color: colors[lastIdx], 
+                    sec:   zones[lastIdx]};
+        } else if (targetzone < 0) {
+            return {name:  names[0], 
+                    color: colors[0], 
+                    sec:   zones[0]};
+        } else {
+            return {name:  names[targetZone], 
+                    color: colors[targetZone], 
+                    sec:   zones[targetZone]};
         }
 
-        // Fallback for extreme efforts above highest threshold
-        const lastIdx = zones.length - 1;
-        return {
-            name: names[lastIdx] || `Zone ${zones.length}`,
-            color: colors[lastIdx] || '#343a40'
-        };
     };
 
 // -- Helper to make titles look nice
@@ -263,8 +262,12 @@
       
         const rangePct = extractPaceRange(step);
 
+        const zone1 = getZoneDetailsFromZoneNumber(1, paces)
+        console.log("[App Debug] WO-CH: zone 1:", zone1);
+
           // Assuming variables: pace, refThresholdSec, rangePct, zoneService
         const handlers = {
+            // rangePct.XX has the sec/mi (495 = 8:15)
             sec: () => ({
               fastSec: rangePct.end,
               slowSec: rangePct.start,
@@ -272,6 +275,7 @@
               rangePct
             }),
           
+            // rangePct.XX has the % of threshold
             '%pace': () => ({
               fastSec: rangePct.end   > 0 ? refThresholdSec / (rangePct.end / 100)   : refThresholdSec,
               slowSec: rangePct.start > 0 ? refThresholdSec / (rangePct.start / 100) : refThresholdSec,
@@ -279,6 +283,7 @@
               rangePct
             }),
 
+            // rangePct.XX has the zone #
             pace_zone: () => {
               const zone = PACE_ZONES[step.pace?.value] || PACE_ZONES[4];
               const sec = zone.targetPct > 0 ? refThresholdSec / (zone.targetPct / 100) : refThresholdSec;
