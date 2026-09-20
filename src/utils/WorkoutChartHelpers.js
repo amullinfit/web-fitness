@@ -275,7 +275,7 @@
           // Assuming variables: pace, refThresholdSec, rangePct, zoneService
         const handlers = {
             // rangePct.XX has the sec/mi (495 = 8:15)
-            sec: () => ({
+            'secs': () => ({
                 slowSec: rangePct.start,
                 midSec:  rangePct.mid,
                 fastSec: rangePct.end,
@@ -291,7 +291,7 @@
             }),
 
             // rangePct.XX has the zone #
-            pace_zone: () => {
+            'pace_zone': () => {
               const zone = PACE_ZONES[step.pace?.value] || PACE_ZONES[4];
               const sec = zone.targetPct > 0 ? refThresholdSec / (zone.targetPct / 100) : refThresholdSec;
               return {
