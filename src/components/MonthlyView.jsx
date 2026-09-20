@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import WorkoutChart from './WorkoutChart';
+import WorkoutTextSection from '../utils/WorkoutTextSection';
 import '../CSS/MonthlyView.css';
 import { usePaces } from '../utils/PacesContext.jsx'; 
 
@@ -826,7 +827,7 @@ export default function MonthlyView() {
               <div className="monthly-zoom-chart-container">
                 <WorkoutChart
                   workout={selectedWorkout}
-                  thresholdPace={getThresholdPaceForSport(selectedWorkout, sportSettings)}
+                  thresholdPace={getThresholdPaceForSport(selectedWorkout, sportSettings, paces)}
                   chartHeight="220px"
                   showWorkoutName={true}
                   showThresholdPace={true}
@@ -836,6 +837,9 @@ export default function MonthlyView() {
                   showHoverDetails={true}
                 />
               </div>
+
+              <WorkoutTextSection workout={selectedWorkout} sportSettings={sportSettings} />
+
 
               {/* Text Description & Notes */}
               <div className="monthly-zoom-description-section">
