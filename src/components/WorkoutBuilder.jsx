@@ -67,7 +67,7 @@ export default function WorkoutBuilder() {
   console.log('[App debug] paces2:', paces2);
   
   // Compute preset values dynamically using useMemo inside the component
-  const presets = useMemo(() => {
+  const dynamicPresets = useMemo(() => {
     return calculateDynamicPresets(paces2, 495, paceMethod);
   }, [paces2, paceMethod]);
 
