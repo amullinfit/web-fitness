@@ -135,13 +135,15 @@ export default function WorkoutChart({
   showHoverDetails = true
 }) {
 
+  const clipId = useId();
+
   // 2. Consume Paces Context
   const { paces, loading: pacesLoading } = usePaces();
   console.log("[App Debug] WO-C: paces:", paces);
   
-
-  const clipId = useId();
   const { pacesData } = usePaces();
+  console.log("[App Debug] WO-C: pacesData:", pacesData);
+
   const [executedOnTop, setExecutedOnTop] = useState(true);
   const [isChartHovered, setIsChartHovered] = useState(false);
 
