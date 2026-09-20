@@ -169,7 +169,7 @@ export const formatTime = (totalSeconds) => {
 
     // Dynamically compute preset values from intervals.icu data
     export const dynamicPresets = useMemo(() => {
-        if (!icuPacesData) {
+        if (!paces) {
             // Default Fallback
             const defaultZoneNames = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5a', 'Zone 5b', 'Zone 5c'];
             const defaultPaces = [619, 538, 525, DEFAULT_THRESHOLD, 479, 444, 50];
@@ -182,10 +182,10 @@ export const formatTime = (totalSeconds) => {
             }));
         }
 
-        const zoneNames = icuPacesData.pace_zone_names || [];
-        const paceValueStr = icuPacesData.pace_value_str || [];
-        const paceValueNum = icuPacesData.pace_value_num || [];
-        const pacePercentages = icuPacesData.pace_zones || [];
+        const zoneNames = paces.pace_zone_names || [];
+        const paceValueStr = paces.pace_value_str || [];
+        const paceValueNum = paces.pace_value_num || [];
+        const pacePercentages = paces.pace_zones || [];
 
         // Length derived from names or string array
         const itemCount = Math.max(zoneNames.length, paceValueStr.length, paceValueNum.length);
@@ -224,7 +224,7 @@ export const formatTime = (totalSeconds) => {
         }
 
         return presetsList;
-    }, [icuPacesData, thresholdPaceSec, paceMethod]);
+    }, [paces, thresholdPaceSec, paceMethod]);
 
 // 
 // 
