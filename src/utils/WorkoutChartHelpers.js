@@ -170,6 +170,7 @@ const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left
       };
       
       // thresholdSecPerMile is the # of seconds to run a mile at threshold (495 for 8:15 pace)
+      // output of this is the fast, slow and mid speed (as sec/mi aka 495 for 8:15) and % ranges
       export const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
         if (!step) return null;
       
@@ -187,6 +188,7 @@ const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left
           return { fastSec: sec, slowSec: sec, midSec: sec, rangePct: { start: 100, end: 100, mid: 100 } };
         }
       
+        // if step.pace is a number, if it is m/s (3.25150) it will be converted to s/mi (495) for 8:15 pace
         if (typeof step.pace === 'number' && step.pace > 0) {
           const sec = step.pace < 15 ? speedToPaceSeconds(step.pace) : step.pace;
           return { fastSec: sec, slowSec: sec, midSec: sec, rangePct: { start: 100, end: 100, mid: 100 } };

@@ -18,24 +18,25 @@ const FAST_BUFFER_MINUTES = 1;
 const DEFAULT_FALLBACK_THRESHOLD_SEC = 480;
 
 // Fallback zone config if PacesContext is not available
-const DEFAULT_PACE_ZONES = [80, 92, 94.3, 100, 103.4, 111.5, 150];
-const DEFAULT_PACE_ZONE_NAMES = ["Zone_1", "Zone_2", "Zone_3", "Zone_4", "Zone_5a", "Zone_5b", "Zone_5c"];
+const DEFAULT_PACE_ZONES       = [80,   92, 94.3, 100, 103.4, 111.5, 150];
+const DEFAULT_PACE_VAL_SEC     = [619, 538,  525, 495,   479,   444, 330];
+const DEFAULT_PACE_ZONE_NAMES  = ["Zone_1", "Zone_2", "Zone_3", "Zone_4", "Zone_5a", "Zone_5b", "Zone_5c"];
 const DEFAULT_PACE_ZONE_COLORS = ["#88d8b0", "#fd7e14", "#fd7e14", "#ff6b6b", "#dc3545", "#6f42c1", "#343a40"];
 
 /**
  * Dynamically resolves zone details using PacesContext zones, names, and colors.
  */
-const getZoneDetailsFromPaces = (targetPct, paces) => {
+const getZoneDetailsFromPaces = (targetPace, paces) => {
 
-  const zones  = paces?.pace_zones       || DEFAULT_PACE_ZONES;
+  const zones  = paces?.pace_val_sec     || DEFAULT_PACE_VAL_SEC;
   const names  = paces?.pace_zone_names  || DEFAULT_PACE_ZONE_NAMES;
   const colors = paces?.pace_zone_colors || DEFAULT_PACE_ZONE_COLORS;
 
   // Iterate through pace zone thresholds
   for (let i = 0; i < zones.length; i++) {
-    if (targetPct <= zones[i]) {
+    if (targetPace > zones[i]) {
       return {
-        name: names[i] || `Zone ${i + 1}`,
+        name:  names[i]  || `Zone ${i + 1}`,
         color: colors[i] || '#28a745'
       };
     }
@@ -281,7 +282,8 @@ export default function WorkoutChart({
                   console.log("[App Debug] WO-C: step:", step);
                   console.log("[App Debug] WO-C: range:", range);
 
-                  const zoneDetails = getZoneDetailsFromPaces(range.rangePct.mid, paces);
+                  // zoneDetails (name and color) are derived from the mid pace of the step
+                  const zoneDetails = getZoneDetailsFromPaces(range.midSec, paces);
 
                   const fastHeightPct = computePaceToHeightPct(range.fastSec);
                   const slowHeightPct = computePaceToHeightPct(range.slowSec);
