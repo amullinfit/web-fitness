@@ -27,7 +27,7 @@ import {
 } from '../utils/WorkoutBuilderHelpers.js';
 
 export default function WorkoutBuilder() {
-  const { paces, loading: pacesLoading } = usePaces();
+  const { paces2, loading: pacesLoading } = usePaces();
 
   const [mode, setMode] = useState('EMPTY');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
@@ -66,7 +66,7 @@ export default function WorkoutBuilder() {
   
   console.log('[App debug] paces', paces);
   // Dynamically compute preset values from intervals.icu data
-  const dynamicPresets = dynamicPresets(paces, thresholdPaceSec, paceMethod);
+  const dynamicPresets = dynamicPresets(paces2, 495, paceMethod);
 
   const loadFolders = async () => {
     try {
