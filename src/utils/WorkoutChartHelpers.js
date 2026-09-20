@@ -169,11 +169,20 @@ const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left
         return { start: 100, end: 100, mid: 100 };
       };
       
+      // thresholdSecPerMile is the # of seconds to run a mile at threshold (495 for 8:15 pace)
       export const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
         if (!step) return null;
       
+        // it if is an executed step vs planned and a bike ride, it will have step.weighted_average_watts
+        const rawWatts = parseFloat(step.average_watts ?? step.weighted_average_watts);
+        if (!isNaN(rawWatts) && rawWatts > 0) {
+          return { fastSec: rawWatts, slowSec: rawWatts, midSec: rawWatts, rangePct: { start: 100, end: 100, mid: 100 } };
+        }
+      
+        // it if is an executed step vs planned, it will have step.average_speed as m/s (3.25150 for 8:15 pace)
         const rawSpeed = parseFloat(step.average_speed ?? step.speed);
         if (!isNaN(rawSpeed) && rawSpeed > 0) {
+            // convert 3.25150 to 495 for 8:15 pace
           const sec = speedToPaceSeconds(rawSpeed);
           return { fastSec: sec, slowSec: sec, midSec: sec, rangePct: { start: 100, end: 100, mid: 100 } };
         }
