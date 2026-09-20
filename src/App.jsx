@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DailyView from './components/DailyView.jsx';
+import MonthlyView from './components/MonthlyView.jsx';
 import OptionsView from './components/OptionsView.jsx';
 import GeneralOverview from './components/GeneralOverview.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
@@ -109,6 +110,12 @@ function HeaderBar({
             Daily View
           </button>
           <button
+            onClick={() => handleSelectTab('monthly')}
+            style={dropdownBtnStyle(themeView)}
+          >
+            Monthly View
+          </button>
+          <button
             onClick={() => handleSelectTab('overview')}
             style={dropdownBtnStyle(themeView)}
           >
@@ -203,6 +210,14 @@ export default function App() {
             <ErrorBoundary key="daily" name="Daily View">
               <WithDebugLog name="DailyView">
                 <DailyView />
+              </WithDebugLog>
+            </ErrorBoundary>
+          )}
+
+          {activeTab === 'monthly' && (
+            <ErrorBoundary key="monthly" name="Monthly View">
+              <WithDebugLog name="MonthlyView">
+                <MonthlyView />
               </WithDebugLog>
             </ErrorBoundary>
           )}
