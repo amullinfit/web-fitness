@@ -216,15 +216,15 @@
     };
 
     const extractPaceRange = (step) => {
-        if (!step) return { start: 100, end: 100, mid: 100 };
+        if (!step) return { start: 100, mid: 100, end: 100 };
       
         if (step.pace && typeof step.pace === 'object') {
           const start = step.pace.start ?? step.pace.value ?? 100;
           const end = step.pace.end ?? start;
           return {
             start: Math.min(start, end),
-            end: Math.max(start, end),
-            mid: (start + end) / 2
+            mid: (start + end) / 2,
+            end: Math.max(start, end)
           };
         }
       
@@ -244,7 +244,7 @@
         // if it is an executed step vs planned and a ride, it will have step.weighted_average_watts
         const rawWatts = parseFloat(step.average_watts ?? step.weighted_average_watts);
         if (!isNaN(rawWatts) && rawWatts > 0) {
-          return { fastSec: rawWatts, slowSec: rawWatts, midSec: rawWatts, rangePct: { start: 100, end: 100, mid: 100 } };
+          return { slowSec: rawWatts, midSec: rawWatts, fastSec: rawWatts, rangePct: { start: 100, mid: 100, end: 100 } };
         }
       
         // it if is an executed step vs planned but not a ride, it will have step.average_speed as m/s (3.25150 for 8:15 pace)
@@ -252,14 +252,14 @@
         if (!isNaN(rawSpeed) && rawSpeed > 0) {
             // convert 3.25150 to 495 for 8:15 pace
           const sec = speedToPaceSeconds(rawSpeed);
-          return { fastSec: sec, slowSec: sec, midSec: sec, rangePct: { start: 100, end: 100, mid: 100 } };
+          return { slowSec: sec, midSec: sec, fastSec: sec, rangePct: { start: 100, mid: 100, end: 100 } };
         }
       
         // if step.pace is a number, if it is m/s (3.25150) it will be converted to s/mi (495) for 8:15 pace
         // I don't think this happens as pace is a collection of elements, not one itself
         if (typeof step.pace === 'number' && step.pace > 0) {
           const sec = step.pace < 15 ? speedToPaceSeconds(step.pace) : step.pace;
-          return { fastSec: sec, slowSec: sec, midSec: sec, rangePct: { start: 100, end: 100, mid: 100 } };
+          return { slowSec: sec, midSec: sec, fastSec: sec, rangePct: { start: 100, mid: 100, end: 100 } };
         }
       
         const refThresholdSec = (thresholdSecPerMile && thresholdSecPerMile > 0)
@@ -268,29 +268,22 @@
       
         const rangePct = extractPaceRange(step);
 
-        const zone0 = getZoneDetailsFromZoneNumber(0, paces)
-        console.log("[App Debug] WO-CH: zone 0:", zone0);
-        const zone1 = getZoneDetailsFromZoneNumber(1, paces)
-        console.log("[App Debug] WO-CH: zone 1:", zone1);
-        const zone3 = getZoneDetailsFromZoneNumber(3, paces)
-        console.log("[App Debug] WO-CH: zone 3:", zone3);
-
           // Assuming variables: pace, refThresholdSec, rangePct, zoneService
         const handlers = {
             // rangePct.XX has the sec/mi (495 = 8:15)
             sec: () => ({
-              fastSec: rangePct.end,
-              slowSec: rangePct.start,
-              midSec:  rangePct.mid,
-              rangePct
+                slowSec: rangePct.start,
+                midSec:  rangePct.mid,
+                fastSec: rangePct.end,
+                rangePct
             }),
           
             // rangePct.XX has the % of threshold
             '%pace': () => ({
-              fastSec: rangePct.end   > 0 ? refThresholdSec / (rangePct.end / 100)   : refThresholdSec,
-              slowSec: rangePct.start > 0 ? refThresholdSec / (rangePct.start / 100) : refThresholdSec,
-              midSec:  rangePct.mid   > 0 ? refThresholdSec / (rangePct.mid / 100)   : refThresholdSec,
-              rangePct
+                slowSec: rangePct.start > 0 ? refThresholdSec / (rangePct.start / 100) : refThresholdSec,
+                midSec:  rangePct.mid   > 0 ? refThresholdSec / (rangePct.mid / 100)   : refThresholdSec,
+                fastSec: rangePct.end   > 0 ? refThresholdSec / (rangePct.end / 100)   : refThresholdSec,
+                rangePct
             }),
 
             // rangePct.XX has the zone #
@@ -298,8 +291,10 @@
               const zone = PACE_ZONES[step.pace?.value] || PACE_ZONES[4];
               const sec = zone.targetPct > 0 ? refThresholdSec / (zone.targetPct / 100) : refThresholdSec;
               return {
-                fastSec: sec, midSec: sec, slowSec: sec,
-                rangePct: { start: zone.targetPct, end: zone.targetPct, mid: zone.targetPct }
+                slowSec: getZoneDetailsFromZoneNumber(rangePct.start, paces),
+                midSec:  getZoneDetailsFromZoneNumber(rangePct.mid, paces),
+                fastSec: getZoneDetailsFromZoneNumber(rangePct.end, paces),
+                rangePct
               };
             }
 
