@@ -305,6 +305,32 @@ const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayClick }) 
 };
 
 /**
+ * Isolated Content Wrapper: Remounting this component on tab switch
+ * resets internal states like open/close toggles in WorkoutTextSection.
+ */
+function WorkoutZoomContent({ workout, sportSettings, paces }) {
+  return (
+    <div className="monthly-zoom-body">
+      <div className="monthly-zoom-chart-container">
+        <WorkoutChart
+          workout={workout}
+          thresholdPace={getThresholdPaceForSport(workout, sportSettings, paces)}
+          chartHeight="220px"
+          showWorkoutName={true}
+          showThresholdPace={true}
+          showYAxisLabels={true}
+          showLegend={true}
+          minimalXAxis={false}
+          showHoverDetails={true}
+        />
+      </div>
+
+      <WorkoutTextSection workout={workout} sportSettings={sportSettings} />
+    </div>
+  );
+}
+
+/**
  * Full-Width Workout Zoom Modal (Supports multiple workouts with tab navigation)
  */
 function WorkoutZoomModal({ workouts, onClose, sportSettings, paces }) {
@@ -313,6 +339,7 @@ function WorkoutZoomModal({ workouts, onClose, sportSettings, paces }) {
   if (!workouts || workouts.length === 0) return null;
 
   const activeWorkout = workouts[activeWorkoutIndex] || workouts[0];
+  const workoutKey = activeWorkout.id || activeWorkoutIndex;
 
   return (
     <div className="monthly-zoom-overlay" onClick={onClose}>
@@ -361,32 +388,20 @@ function WorkoutZoomModal({ workouts, onClose, sportSettings, paces }) {
           </div>
         )}
 
-        <div className="monthly-zoom-body">
-          {/* Expanded Full-Width Workout Chart */}
-          <div className="monthly-zoom-chart-container">
-            <WorkoutChart
-              key={activeWorkout.id || activeWorkoutIndex}
-              workout={activeWorkout}
-              thresholdPace={getThresholdPaceForSport(activeWorkout, sportSettings, paces)}
-              chartHeight="220px"
-              showWorkoutName={true}
-              showThresholdPace={true}
-              showYAxisLabels={true}
-              showLegend={true}
-              minimalXAxis={false}
-              showHoverDetails={true}
-            />
-          </div>
-
-          <WorkoutTextSection workout={activeWorkout} sportSettings={sportSettings} />
-        </div>
+        {/* Using key={workoutKey} ensures WorkoutTextSection collapses on tab change */}
+        <WorkoutZoomContent
+          key={workoutKey}
+          workout={activeWorkout}
+          sportSettings={sportSettings}
+          paces={paces}
+        />
       </div>
     </div>
   );
 }
 
 export default function MonthlyView() {
-  const { paces, loading: pacesLoading } = usePaces();
+  const { paces } = usePaces();
 
   const [workouts, setWorkouts] = useState([]);
   const [sportSettings, setSportSettings] = useState([]);
