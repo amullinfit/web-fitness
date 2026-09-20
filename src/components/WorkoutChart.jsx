@@ -134,6 +134,12 @@ export default function WorkoutChart({
   minimalXAxis = false,
   showHoverDetails = true
 }) {
+
+  // 2. Consume Paces Context
+  const { paces, loading: pacesLoading } = usePaces();
+  console.log("[App Debug] WO-C: paces:", paces);
+  
+
   const clipId = useId();
   const { pacesData } = usePaces();
   const [executedOnTop, setExecutedOnTop] = useState(true);
