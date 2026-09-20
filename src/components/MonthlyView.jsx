@@ -840,36 +840,6 @@ export default function MonthlyView() {
 
               <WorkoutTextSection workout={selectedWorkout} sportSettings={sportSettings} />
 
-
-              {/* Text Description & Notes */}
-              <div className="monthly-zoom-description-section">
-                <h3>Workout Description</h3>
-                <div className="monthly-zoom-text-content">
-                  {selectedWorkout.description || selectedWorkout.notes ? (
-                    <p className="monthly-zoom-notes">{selectedWorkout.description || selectedWorkout.notes}</p>
-                  ) : (
-                    <p className="monthly-zoom-empty">No detailed text description available for this workout.</p>
-                  )}
-                </div>
-
-                {/* Structured Steps Breakdown */}
-                {selectedWorkout.workout_doc?.steps && (
-                  <div className="monthly-zoom-steps-block">
-                    <h4>Structured Intervals</h4>
-                    <ul className="monthly-zoom-steps-list">
-                      {selectedWorkout.workout_doc.steps.map((step, idx) => (
-                        <li key={idx} className="monthly-zoom-step-item">
-                          <span className="step-type">{step.type || 'Step'}:</span>
-                          <span className="step-detail">
-                            {step.duration ? `${Math.round(step.duration / 60)} min` : `${step.distance}m`}
-                            {step.pace?.start ? ` @ ${step.pace.start}% Pace` : step.intensity ? ` @ ${step.intensity}%` : ''}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
