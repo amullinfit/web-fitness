@@ -3,6 +3,7 @@ import DailyView from './components/DailyView.jsx';
 import MonthlyView from './components/MonthlyView.jsx';
 import OptionsView from './components/OptionsView.jsx';
 import GeneralOverview from './components/GeneralOverview.jsx';
+import GearView from './components/GearView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
 
@@ -122,6 +123,12 @@ function HeaderBar({
             General Overview
           </button>
           <button
+            onClick={() => handleSelectTab('gear')}
+            style={dropdownBtnStyle(themeView)}
+          >
+            Gear
+          </button>
+          <button
             onClick={() => handleSelectTab('options')}
             style={dropdownBtnStyle(themeView)}
           >
@@ -226,6 +233,14 @@ export default function App() {
             <ErrorBoundary key="overview" name="General Overview">
               <WithDebugLog name="GeneralOverview">
                 <GeneralOverview />
+              </WithDebugLog>
+            </ErrorBoundary>
+          )}
+
+          {activeTab === 'gear' && (
+            <ErrorBoundary key="gear" name="Gear View">
+              <WithDebugLog name="GearView">
+                <GearView />
               </WithDebugLog>
             </ErrorBoundary>
           )}
