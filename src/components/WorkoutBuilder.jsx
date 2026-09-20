@@ -28,8 +28,6 @@ import {
 
 export default function WorkoutBuilder() {
   const { paces, loading: pacesLoading } = usePaces();
-  console.log('[App debug] paces:', paces);
-  
 
   const [mode, setMode] = useState('EMPTY');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
@@ -605,8 +603,8 @@ export default function WorkoutBuilder() {
 
           {/* ---------------------------------------------------------------------------------------------------------- */}
           {/* POC to see if we can get WorkoutChart working before removing the chart code from WorkoutBuilder */}
-          {console.error('[App Debug] WO-B: workoutPayload: ', workoutPayloadObject)}
-          {console.error('[App Debug] WO-B: converted-WOPL: ', convertWorkoutToTargetFormat(workoutPayloadObject))}
+          {console.log('[App Debug] WO-B: workoutPayload: ', workoutPayloadObject)}
+          {console.log('[App Debug] WO-B: converted-WOPL: ', convertWorkoutToTargetFormat(workoutPayloadObject))}
 
           <div className="chart-card">
             <div className="chart-header">

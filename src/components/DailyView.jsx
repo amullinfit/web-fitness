@@ -562,6 +562,7 @@ export default function DailyView() {
           </div>
         )}
 
+        {console.log("[App Debug] DV: workout: ", workout)}
         {(workout.workout_doc || workout.intervals) && (
           <WorkoutChart
             workout={workout}
