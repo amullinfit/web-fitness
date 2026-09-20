@@ -81,12 +81,12 @@ const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
 /**
  * Dynamically resolves zone details using PacesContext zones, names, and colors.
  */
-const getZoneDetailsFromPaces = (targetPct, stepType = '', pacesData) => {
+const getZoneDetailsFromPaces = (targetPct, stepType = '', paces) => {
   const typeLower = String(stepType).toLowerCase();
 
-  const zones = pacesData?.pace_zones || DEFAULT_PACE_ZONES;
-  const names = pacesData?.pace_zone_names || DEFAULT_PACE_ZONE_NAMES;
-  const colors = pacesData?.pace_zone_colors || DEFAULT_PACE_ZONE_COLORS;
+  const zones  = paces?.pace_zones       || DEFAULT_PACE_ZONES;
+  const names  = paces?.pace_zone_names  || DEFAULT_PACE_ZONE_NAMES;
+  const colors = paces?.pace_zone_colors || DEFAULT_PACE_ZONE_COLORS;
 
   if (typeLower.includes('warm') || typeLower.includes('cool') || typeLower.includes('recovery')) {
     return { name: names[0] || 'Recovery (Z1)', color: colors[0] || '#88d8b0' };
@@ -141,10 +141,6 @@ export default function WorkoutChart({
   const { paces, loading: pacesLoading } = usePaces();
   console.log("[App Debug] WO-C: paces:", paces);
   
-  const { pacesData } = usePaces();
-  console.log("[App Debug] WO-C: pacesData:", pacesData);
-  console.log("[App Debug] WO-C: pacesData:", pacesData?.threshold_pace);
-
   const [executedOnTop, setExecutedOnTop] = useState(true);
   const [isChartHovered, setIsChartHovered] = useState(false);
 
@@ -171,8 +167,8 @@ export default function WorkoutChart({
   const totalDurationSec = Math.max(totalPlannedSec, totalExecutedSec, 1);
   const totalDurationMins = Math.round(totalDurationSec / 60);
 
-  // Retrieve threshold pace directly from pacesData context
-  const effectiveThreshold = pacesData?.threshold_pace || pacesData?.run_pace_sec;
+  // Retrieve threshold pace directly from paces context
+  const effectiveThreshold = paces?.threshold_pace || paces?.run_pace_sec;
   const thresholdSecPerMile = effectiveThreshold && effectiveThreshold > 0
     ? (effectiveThreshold < 15 ? speedToPaceSeconds(effectiveThreshold) : effectiveThreshold)
     : null;
@@ -338,7 +334,7 @@ export default function WorkoutChart({
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
                   const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
-                  const zoneDetails = getZoneDetailsFromPaces(range.rangePct.mid, rawIntensity, pacesData);
+                  const zoneDetails = getZoneDetailsFromPaces(range.rangePct.mid, rawIntensity, paces);
 
                   const fastHeightPct = computePaceToHeightPct(range.fastSec);
                   const slowHeightPct = computePaceToHeightPct(range.slowSec);
