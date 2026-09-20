@@ -64,6 +64,7 @@ export default function WorkoutBuilder() {
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
   
+  console.log('[App debug] paces', paces);
   // Dynamically compute preset values from intervals.icu data
   const dynamicPresets = dynamicPresets(paces, thresholdPaceSec, paceMethod);
 
