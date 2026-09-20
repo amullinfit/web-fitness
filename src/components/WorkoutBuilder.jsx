@@ -611,7 +611,7 @@ export default function WorkoutBuilder() {
                 <span className="chart-title">WorkoutChart POC</span>
              </div>
             <WorkoutChart
-              workout={JSON.stringify(convertWorkoutToTargetFormat(workoutPayloadObject), null, 2)}
+              workout={convertWorkoutToTargetFormat(workoutPayloadObject)}
               chartHeight="140px"
             />
           </div>
