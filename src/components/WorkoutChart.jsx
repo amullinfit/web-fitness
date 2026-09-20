@@ -66,6 +66,9 @@ export default function WorkoutChart({
   const plannedList = extractPlannedSteps(workout);
   const executedList = extractExecutedSteps(workout);
 
+  console.log('[App Debug] WOC: planned: ', plannedList);
+  console.log('[App Debug] WOC: execute: ', executedList);
+  
   if (!plannedList.length && !executedList.length) return null;
 
   const totalPlannedSec = plannedList.reduce((sum, s) => sum + (s.duration || 0), 0);
