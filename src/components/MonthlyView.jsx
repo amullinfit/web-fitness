@@ -37,11 +37,8 @@ const getSportCategory = (workout) => {
   return 'Other';
 };
 
-// Updated helper accepting paces context fallback
 const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
-  
   return contextPaces?.threshold_pace || null;
-
 };
 
 const getLocalDateString = (dateInput) => {
@@ -88,16 +85,6 @@ const getFourWeeksDates = (startMonday) => {
     dates.push(date);
   }
   return dates;
-};
-
-const formatDuration = (totalSeconds) => {
-  if (!totalSeconds || totalSeconds <= 0) return '0m';
-  const hrs = Math.floor(totalSeconds / 3600);
-  const mins = Math.floor((totalSeconds % 3600) / 60);
-  if (hrs > 0) {
-    return `${hrs}h ${mins}m`;
-  }
-  return `${mins}m`;
 };
 
 const metersToMilesNum = (meters) => {
@@ -161,9 +148,9 @@ const getDayZoneStyle = (workoutsList) => {
 };
 
 /**
- * SVG Bar Chart with Enclosing Weekly Frame and Hover Tooltips
+ * SVG Bar Chart with Enclosing Weekly Frame, Hover Tooltips, and Click Interactivity
  */
-const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType }) => {
+const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayClick }) => {
   const [hoveredDayIndex, setHoveredDayIndex] = useState(null);
 
   const daysData = useMemo(() => {
@@ -178,13 +165,15 @@ const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType }) => {
 
       return {
         dayIndex: idx,
+        dateObj,
+        dateStr,
         dayName,
         fullDateStr,
         miles: style.miles,
         color: style.color,
         borderColor: style.borderColor,
         zoneLabel: style.zoneLabel,
-        count: sportWorkouts.length
+        sportWorkouts
       };
     });
   }, [weekDates, workoutsByDate, sportType]);
@@ -231,13 +220,20 @@ const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType }) => {
             const x = startX + i * (barWidth + gap);
             const y = chartHeight - barH + 2;
             const isHovered = hoveredDayIndex === i;
+            const hasWorkouts = d.sportWorkouts.length > 0;
 
             return (
               <g
                 key={i}
                 onMouseEnter={() => setHoveredDayIndex(i)}
                 onMouseLeave={() => setHoveredDayIndex(null)}
-                className="monthly-chart-bar-group"
+                onClick={() => {
+                  if (hasWorkouts && onDayClick) {
+                    onDayClick(d.sportWorkouts, d.dateStr, sportType);
+                  }
+                }}
+                className={`monthly-chart-bar-group ${hasWorkouts ? 'monthly-clickable-bar' : ''}`}
+                style={{ cursor: hasWorkouts ? 'pointer' : 'default' }}
               >
                 {/* Hit target background line */}
                 <rect
@@ -294,6 +290,9 @@ const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType }) => {
                 {daysData[hoveredDayIndex].miles > 8.0 && (
                   <div className="tooltip-long-run">★ Long Run (&gt;8 mi)</div>
                 )}
+                <div className="tooltip-click-hint" style={{ fontSize: '10px', marginTop: '4px', opacity: 0.8 }}>
+                  Click to view workout details
+                </div>
               </>
             ) : (
               <div className="tooltip-zone tooltip-rest">No activity</div>
@@ -304,6 +303,87 @@ const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType }) => {
     </div>
   );
 };
+
+/**
+ * Full-Width Workout Zoom Modal (Supports multiple workouts with tab navigation)
+ */
+function WorkoutZoomModal({ workouts, onClose, sportSettings, paces }) {
+  const [activeWorkoutIndex, setActiveWorkoutIndex] = useState(0);
+
+  if (!workouts || workouts.length === 0) return null;
+
+  const activeWorkout = workouts[activeWorkoutIndex] || workouts[0];
+
+  return (
+    <div className="monthly-zoom-overlay" onClick={onClose}>
+      <div className="monthly-zoom-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="monthly-zoom-header">
+          <div className="monthly-zoom-title-group">
+            <span className="monthly-zoom-sport-tag">
+              {activeWorkout.type || activeWorkout.sport || 'Workout'}
+            </span>
+            <h2>{activeWorkout.name || activeWorkout.title || 'Workout Details'}</h2>
+          </div>
+          <button className="monthly-zoom-close" onClick={onClose}>✕</button>
+        </div>
+
+        {/* Multi-Workout Navigation Bar inside Modal */}
+        {workouts.length > 1 && (
+          <div 
+            className="monthly-zoom-tabs-bar"
+            style={{
+              display: 'flex',
+              gap: '8px',
+              padding: '10px 20px 0 20px',
+              borderBottom: '1px solid #E5E7EB',
+              overflowX: 'auto'
+            }}
+          >
+            {workouts.map((w, idx) => (
+              <button
+                key={w.id || idx}
+                type="button"
+                onClick={() => setActiveWorkoutIndex(idx)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px 6px 0 0',
+                  border: '1px solid #E5E7EB',
+                  borderBottom: activeWorkoutIndex === idx ? '2px solid #3B82F6' : '1px solid #E5E7EB',
+                  backgroundColor: activeWorkoutIndex === idx ? '#FFFFFF' : '#F3F4F6',
+                  fontWeight: activeWorkoutIndex === idx ? 'bold' : 'normal',
+                  cursor: 'pointer',
+                  fontSize: '13px'
+                }}
+              >
+                {w.name || w.type || `Workout ${idx + 1}`}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="monthly-zoom-body">
+          {/* Expanded Full-Width Workout Chart */}
+          <div className="monthly-zoom-chart-container">
+            <WorkoutChart
+              key={activeWorkout.id || activeWorkoutIndex}
+              workout={activeWorkout}
+              thresholdPace={getThresholdPaceForSport(activeWorkout, sportSettings, paces)}
+              chartHeight="220px"
+              showWorkoutName={true}
+              showThresholdPace={true}
+              showYAxisLabels={true}
+              showLegend={true}
+              minimalXAxis={false}
+              showHoverDetails={true}
+            />
+          </div>
+
+          <WorkoutTextSection workout={activeWorkout} sportSettings={sportSettings} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function MonthlyView() {
   const { paces, loading: pacesLoading } = usePaces();
@@ -318,8 +398,8 @@ export default function MonthlyView() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [tempFilters, setTempFilters] = useState([]);
 
-  // State for Zoomed Workout Modal
-  const [selectedWorkout, setSelectedWorkout] = useState(null);
+  // State for Zoomed Workout Modal (Holds array of workouts for selected day)
+  const [zoomWorkouts, setZoomWorkouts] = useState(null);
 
   const isMobile = useIsMobile(768);
 
@@ -447,7 +527,7 @@ export default function MonthlyView() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        setSelectedWorkout(null);
+        setZoomWorkouts(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -544,6 +624,15 @@ export default function MonthlyView() {
     setIsFilterOpen(false);
   };
 
+  // Open zoom modal for a single workout or list of workouts
+  const handleOpenZoomModal = (workoutOrList) => {
+    if (Array.isArray(workoutOrList)) {
+      if (workoutOrList.length > 0) setZoomWorkouts(workoutOrList);
+    } else if (workoutOrList) {
+      setZoomWorkouts([workoutOrList]);
+    }
+  };
+
   if (loading) return <div className="monthly-view-loading">Loading Monthly Workouts & Activities...</div>;
 
   const formatHeaderDate = (dateObj) => {
@@ -591,7 +680,7 @@ export default function MonthlyView() {
                 <div 
                   key={workout.id || idx} 
                   className={`monthly-workout-item monthly-clickable ${completed ? 'monthly-completed' : ''} ${isMissed ? 'monthly-missed' : ''}`}
-                  onClick={() => setSelectedWorkout(workout)}
+                  onClick={() => handleOpenZoomModal(workoutList)}
                 >
                   <div className="monthly-workout-type">
                     {workout.name || workout.type || workout.sport || 'Activity'}
@@ -769,6 +858,7 @@ export default function MonthlyView() {
                     weekDates={weekDates}
                     workoutsByDate={workoutsByDate}
                     sportType={sport}
+                    onDayClick={(sportWorkouts) => handleOpenZoomModal(sportWorkouts)}
                   />
                 ))}
               </div>
@@ -793,6 +883,7 @@ export default function MonthlyView() {
                       weekDates={weekDates}
                       workoutsByDate={workoutsByDate}
                       sportType={sport}
+                      onDayClick={(sportWorkouts) => handleOpenZoomModal(sportWorkouts)}
                     />
                   ))}
                 </div>
@@ -810,39 +901,14 @@ export default function MonthlyView() {
         })}
       </div>
 
-      {/* FULL-WIDTH WORKOUT ZOOM MODAL */}
-      {selectedWorkout && (
-        <div className="monthly-zoom-overlay" onClick={() => setSelectedWorkout(null)}>
-          <div className="monthly-zoom-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="monthly-zoom-header">
-              <div className="monthly-zoom-title-group">
-                <span className="monthly-zoom-sport-tag">{selectedWorkout.type || selectedWorkout.sport || 'Workout'}</span>
-                <h2>{selectedWorkout.name || selectedWorkout.title || 'Workout Details'}</h2>
-              </div>
-              <button className="monthly-zoom-close" onClick={() => setSelectedWorkout(null)}>✕</button>
-            </div>
-
-            <div className="monthly-zoom-body">
-              {/* Expanded Full-Width Workout Chart */}
-              <div className="monthly-zoom-chart-container">
-                <WorkoutChart
-                  workout={selectedWorkout}
-                  thresholdPace={getThresholdPaceForSport(selectedWorkout, sportSettings, paces)}
-                  chartHeight="220px"
-                  showWorkoutName={true}
-                  showThresholdPace={true}
-                  showYAxisLabels={true}
-                  showLegend={true}
-                  minimalXAxis={false}
-                  showHoverDetails={true}
-                />
-              </div>
-
-              <WorkoutTextSection workout={selectedWorkout} sportSettings={sportSettings} />
-
-            </div>
-          </div>
-        </div>
+      {/* REUSABLE FULL-WIDTH WORKOUT ZOOM MODAL */}
+      {zoomWorkouts && (
+        <WorkoutZoomModal
+          workouts={zoomWorkouts}
+          onClose={() => setZoomWorkouts(null)}
+          sportSettings={sportSettings}
+          paces={paces}
+        />
       )}
     </div>
   );
