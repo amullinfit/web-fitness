@@ -9,10 +9,27 @@
 export function convertWorkoutToTargetFormat(workoutPayload, options = {}) {
     if (!workoutPayload) return null;
   
+    // Unroll repeated step groups (e.g., 3x interval blocks) into flat steps
+    const flattenSteps = (steps = []) => {
+      return steps.flatMap((step) => {
+        if (step.steps && Array.isArray(step.steps)) {
+          const reps = step.reps || 1;
+          const nested = flattenSteps(step.steps);
+          const unrolled = [];
+          for (let i = 0; i < reps; i++) {
+            unrolled.push(...nested.map((s) => ({ ...s })));
+          }
+          return unrolled;
+        }
+        return [step];
+      });
+    };
+  
     const doc = workoutPayload.workout_doc || {};
-    const processedSteps = doc.steps || [];
+    const processedSteps = doc.steps ? flattenSteps(doc.steps) : [];
   
     return {
+      workout: {
         id: workoutPayload.id ?? null,
         start_date_local: options.startDateLocal ?? null,
         icu_training_load: workoutPayload.icu_training_load ?? null,
@@ -81,6 +98,9 @@ export function convertWorkoutToTargetFormat(workoutPayload, options = {}) {
         strain_score: null,
         plan_name: null,
         paired_activity_id: null,
-        feedSource: "WORKOUTS"
+        feedSource: "WORKOUTS",
+      },
+      thresholdPace: options.thresholdPace ?? 3.2511919,
+      chartHeight: options.chartHeight ?? "140px",
     };
   }
