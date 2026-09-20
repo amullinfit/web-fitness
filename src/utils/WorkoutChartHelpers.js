@@ -192,24 +192,24 @@
           // Assuming variables: pace, refThresholdSec, rangePct, zoneService
         const handlers = {
             sec: () => ({
-              fastSec1: rangePct.end,
+              fastSec: rangePct.end,
               slowSec: rangePct.start,
               midSec:  rangePct.mid,
               rangePct
             }),
           
             '%pace': () => ({
-              fastSec2: rangePct.end   > 0 ? refThresholdSec / (rangePct.end / 100)   : refThresholdSec,
+              fastSec: rangePct.end   > 0 ? refThresholdSec / (rangePct.end / 100)   : refThresholdSec,
               slowSec: rangePct.start > 0 ? refThresholdSec / (rangePct.start / 100) : refThresholdSec,
               midSec:  rangePct.mid   > 0 ? refThresholdSec / (rangePct.mid / 100)   : refThresholdSec,
               rangePct
             }),
 
             pace_zone: () => {
-              const zone = PACE_ZONES[pace.value] || PACE_ZONES[4];
+              const zone = PACE_ZONES[step.pace?.value] || PACE_ZONES[4];
               const sec = zone.targetPct > 0 ? refThresholdSec / (zone.targetPct / 100) : refThresholdSec;
               return {
-                fastSec3: sec, midSec: sec, slowSec: sec,
+                fastSec: sec, midSec: sec, slowSec: sec,
                 rangePct: { start: zone.targetPct, end: zone.targetPct, mid: zone.targetPct }
               };
             }
@@ -218,15 +218,13 @@
           
           // Execute handler or run default if unit is missing/unrecognized
           const handler = handlers[step.pace?.units] || (() => ({
-            fastSec4: refThresholdSec,
+            fastSec: refThresholdSec,
             midSec: refThresholdSec,
             slowSec: refThresholdSec,
             rangePct: { start: 100, end: 100, mid: 100 }
           }));
           
-          const result = handler();
-
-        return { fastSec, slowSec, midSec, rangePct };
+        return handler();
       };
       
       
