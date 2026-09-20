@@ -1,7 +1,8 @@
-// --- CHART CONFIGURATION CONSTANTS ---
-const WAVES_PER_MINUTE = 3;     // Number of wave cycles per minute across the top
-const WAVE_AMPLITUDE = 1.5;     // Amplitude in SVG viewBox units (0-100 scale)
-const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left & right sides
+    // --- CHART CONFIGURATION CONSTANTS ---
+    const WAVES_PER_MINUTE = 3;     // Number of wave cycles per minute across the top
+    const WAVE_AMPLITUDE = 1.5;     // Amplitude in SVG viewBox units (0-100 scale)
+    const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left & right sides
+    const DEFAULT_FALLBACK_THRESHOLD_SEC = 480; // default threshold pace
 
     // -- Helper to make titles look nice
     export const formatIntensityTitleCase = (val) => {
@@ -138,7 +139,7 @@ const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left
         });
     };
 
-    const extractPaceRangePct = (step) => {
+    const extractPaceRange = (step) => {
         if (!step) return { start: 100, end: 100, mid: 100 };
       
         if (step.pace && typeof step.pace === 'object') {
@@ -151,36 +152,23 @@ const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left
           };
         }
       
-        const val = step.target ?? step.intensityPct ?? step.intensity;
-        if (typeof val === 'number' && val > 0) {
-          return { start: val, end: val, mid: val };
-        }
-      
-        if (typeof val === 'object' && val !== null) {
-          const start = val.start ?? val.value ?? 100;
-          const end = val.end ?? start;
-          return {
-            start: Math.min(start, end),
-            end: Math.max(start, end),
-            mid: (start + end) / 2
-          };
-        }
-      
         return { start: 100, end: 100, mid: 100 };
       };
       
+      //
       // thresholdSecPerMile is the # of seconds to run a mile at threshold (495 for 8:15 pace)
       // output of this is the fast, slow and mid speed (as sec/mi aka 495 for 8:15) and % ranges
+      //
       export const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
         if (!step) return null;
       
-        // it if is an executed step vs planned and a bike ride, it will have step.weighted_average_watts
+        // if it is an executed step vs planned and a ride, it will have step.weighted_average_watts
         const rawWatts = parseFloat(step.average_watts ?? step.weighted_average_watts);
         if (!isNaN(rawWatts) && rawWatts > 0) {
           return { fastSec: rawWatts, slowSec: rawWatts, midSec: rawWatts, rangePct: { start: 100, end: 100, mid: 100 } };
         }
       
-        // it if is an executed step vs planned, it will have step.average_speed as m/s (3.25150 for 8:15 pace)
+        // it if is an executed step vs planned but not a ride, it will have step.average_speed as m/s (3.25150 for 8:15 pace)
         const rawSpeed = parseFloat(step.average_speed ?? step.speed);
         if (!isNaN(rawSpeed) && rawSpeed > 0) {
             // convert 3.25150 to 495 for 8:15 pace
@@ -189,20 +177,54 @@ const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left
         }
       
         // if step.pace is a number, if it is m/s (3.25150) it will be converted to s/mi (495) for 8:15 pace
+        // I don't think this happens as pace is a collection of elements, not one itself
         if (typeof step.pace === 'number' && step.pace > 0) {
           const sec = step.pace < 15 ? speedToPaceSeconds(step.pace) : step.pace;
           return { fastSec: sec, slowSec: sec, midSec: sec, rangePct: { start: 100, end: 100, mid: 100 } };
         }
       
-        const rangePct = extractPaceRangePct(step);
         const refThresholdSec = (thresholdSecPerMile && thresholdSecPerMile > 0)
           ? thresholdSecPerMile
           : DEFAULT_FALLBACK_THRESHOLD_SEC;
       
-        const fastSec = rangePct.end > 0 ? refThresholdSec / (rangePct.end / 100) : refThresholdSec;
-        const slowSec = rangePct.start > 0 ? refThresholdSec / (rangePct.start / 100) : refThresholdSec;
-        const midSec = rangePct.mid > 0 ? refThresholdSec / (rangePct.mid / 100) : refThresholdSec;
-      
+        const rangePct = extractPaceRange(step);
+
+          // Assuming variables: pace, refThresholdSec, rangePct, zoneService
+        const handlers = {
+            sec: () => ({
+              fastSec: rangePct.end,
+              slowSec: rangePct.start,
+              midSec:  rangePct.mid,
+              rangePct
+            }),
+          
+            '%pace': () => ({
+              fastSec: rangePct.end   > 0 ? refThresholdSec / (rangePct.end / 100)   : refThresholdSec,
+              slowSec: rangePct.start > 0 ? refThresholdSec / (rangePct.start / 100) : refThresholdSec,
+              midSec:  rangePct.mid   > 0 ? refThresholdSec / (rangePct.mid / 100)   : refThresholdSec,
+              rangePct
+            }),
+          
+            pace_zone: () => {
+              const zone = PACE_ZONES[pace.value] || PACE_ZONES[4];
+              const sec = zone.targetPct > 0 ? refThresholdSec / (zone.targetPct / 100) : refThresholdSec;
+              return {
+                fastSec: sec, midSec: sec, slowSec: sec,
+                rangePct: { start: zone.targetPct, end: zone.targetPct, mid: zone.targetPct }
+              };
+            }
+          };
+          
+          // Execute handler or run default if unit is missing/unrecognized
+          const handler = handlers[pace?.units] || (() => ({
+            fastSec: refThresholdSec,
+            midSec: refThresholdSec,
+            slowSec: refThresholdSec,
+            rangePct: { start: 100, end: 100, mid: 100 }
+          }));
+          
+          const result = handler();
+
         return { fastSec, slowSec, midSec, rangePct };
       };
       
