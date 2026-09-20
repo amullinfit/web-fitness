@@ -1,5 +1,9 @@
 import React from 'react';
 
+import { 
+    formatMMSS
+  } from '../utils/WorkoutBuilderHelpers.js';
+  
     export function OptionsMenu({
         isOpen,
         onToggleOpen,
