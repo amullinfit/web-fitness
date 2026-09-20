@@ -61,24 +61,21 @@
             const lastIdx = zones.length - 1;
             return {name:  names[lastIdx], 
                     color: colors[lastIdx], 
-                    sec:   zones[lastIdx],
-                    slow:  1,
-                    mid:   2,
-                    fast:  3};
-        } else if (targetZone < 0) {
+                    slow:  zones[lastIdx-1]-1,
+                    mid:   Math.floor((zones[lastIdx-1]-1+zones[lastIdx])/2),
+                    fast:  zones[lastIdx]};
+        } else if (targetZone <= 0) {
             return {name:  names[0], 
                     color: colors[0], 
-                    sec:   zones[0],
-                    slow:  1,
-                    mid:   2,
-                    fast:  3};
+                    slow:  zones[0]+90,
+                    mid:   Math.floor((zones[0]+90+zones[0])/2),
+                    fast:  zones[0]};
         } else {
             return {name:  names[targetZone], 
                     color: colors[targetZone], 
-                    sec:   zones[targetZone],
-                    slow:  1,
-                    mid:   2,
-                    fast:  3};
+                    slow:  zones[targetZone-1]-1,
+                    mid:   Math.floor((zones[targetZone-1]-1+zones[targetZone])/2),
+                    fast:  zones[targetZone]};
         }
 
     };
@@ -276,7 +273,7 @@
         const zone1 = getZoneDetailsFromZoneNumber(1, paces)
         console.log("[App Debug] WO-CH: zone 1:", zone1);
         const zone3 = getZoneDetailsFromZoneNumber(3, paces)
-        console.log("[App Debug] WO-CH: zone 1:", zone3);
+        console.log("[App Debug] WO-CH: zone 3:", zone3);
 
           // Assuming variables: pace, refThresholdSec, rangePct, zoneService
         const handlers = {
