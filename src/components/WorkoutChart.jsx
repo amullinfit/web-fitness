@@ -42,6 +42,7 @@ export default function WorkoutChart({
   showHoverDetails = true
 }) {
 
+  console.log('[App Debug] WOC: workout: ', workout);
   const clipId = useId();
 
   // 2. Consume Paces Context
