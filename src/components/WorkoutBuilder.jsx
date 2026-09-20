@@ -4,6 +4,8 @@ import '../CSS/WorkoutBuilder.css';
 import { OptionsMenu, ControlBar } from '../utils/WorkoutBuilderMenus';
 import { convertWorkoutToTargetFormat } from "../utils/WorkoutConverter.js";
 
+import { usePaces } from '../utils/PacesContext.jsx'; 
+
 import { 
   fetchFoldersApi, 
   fetchWorkoutsApi, 
@@ -15,6 +17,7 @@ import {
   parseMMSS,
   convertToPaceSec,
   formatDistance,
+  dynamicPresets,
   createStep,
   createDefaultSteps,
   mapIcuDocToSteps,
@@ -24,6 +27,8 @@ import {
 } from '../utils/WorkoutBuilderHelpers.js';
 
 export default function WorkoutBuilder() {
+  const { paces, loading: pacesLoading } = usePaces();
+
   const [mode, setMode] = useState('EMPTY');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
 
@@ -60,7 +65,7 @@ export default function WorkoutBuilder() {
   const [draggedItem, setDraggedItem] = useState(null);
   
   // Dynamically compute preset values from intervals.icu data
-  const dynamicPresets = useDynamicPresets(icuPacesData, thresholdPaceSec, paceMethod);
+  const dynamicPresets = dynamicPresets(paces, thresholdPaceSec, paceMethod);
 
   const loadFolders = async () => {
     try {
