@@ -167,34 +167,6 @@ export const formatTime = (totalSeconds) => {
 // 
 // - Data retrieval & Parsing Helpers ---
 
-    // - Get the pace data from intervals.icu
-    export function useIcuPaces() {
-     //   const [icuPacesData, setIcuPacesData] = useState(null);
-     //   const [thresholdPaceSec, setThresholdPaceSec] = useState(DEFAULT_THRESHOLD);
-
-        // Fetch Intervals.icu paces on initial mount
-        const { icuPacesData, thresholdPaceSec } = useIcuPaces();
-
-        useEffect(() => {
-            async function loadPaces() {
-            try {
-                const data = await fetchMyPacesApi();
-                setIcuPacesData(data);
-
-                const rawThresh = data.run_pace || data.threshold_pace || data.thresholdPace;
-                if (rawThresh) {
-                setThresholdPaceSec(convertToPaceSec(rawThresh));
-                }
-            } catch (err) {
-                console.warn('Could not fetch Intervals.icu paces, using default fallbacks:', err.message);
-            }
-            }
-            loadPaces();
-        }, []);
-
-        return { icuPacesData, thresholdPaceSec };
-        }
-
     // Dynamically compute preset values from intervals.icu data
     export const dynamicPresets = useMemo(() => {
         if (!icuPacesData) {
