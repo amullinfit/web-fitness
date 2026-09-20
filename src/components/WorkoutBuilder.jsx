@@ -603,7 +603,6 @@ export default function WorkoutBuilder() {
 
           {/* ---------------------------------------------------------------------------------------------------------- */}
           {/* POC to see if we can get WorkoutChart working before removing the chart code from WorkoutBuilder */}
-          {console.log('[App Debug] WO-B: workoutPayload: ', workoutPayloadObject)}
           {console.log('[App Debug] WO-B: converted-WOPL: ', convertWorkoutToTargetFormat(workoutPayloadObject))}
 
           <div className="chart-card">
@@ -622,7 +621,7 @@ export default function WorkoutBuilder() {
             </label>
             <textarea
               readOnly
-              value={JSON.stringify(convertWorkoutToTargetFormat(workoutPayloadObject), null, 2)}
+              value={convertWorkoutToTargetFormat(workoutPayloadObject)}
               rows={14}
               className="json-preview-textarea"
             />

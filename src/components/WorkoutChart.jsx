@@ -68,7 +68,6 @@ export default function WorkoutChart({
   const executedList = extractExecutedSteps(workout);
 
   console.log('[App Debug] WOC: planned: ', plannedList);
-  console.log('[App Debug] WOC: execute: ', executedList);
   
   if (!plannedList.length && !executedList.length) return null;
 
