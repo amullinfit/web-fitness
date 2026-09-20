@@ -34,45 +34,10 @@ const safeStringLower = (val) => {
 
 // Updated helper accepting paces context fallback
 const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
-  console.log("Workout threshold:", workout);
-  console.log("SportSetting:", sportSettings);
-  console.log("Context Paces object:", contextPaces?.threshold_pace);
+  console.log("Context pace:", contextPaces?.threshold_pace);
   
-  if (!workout) return null;
-
-  if (typeof workout.threshold_pace === 'number' && workout.threshold_pace > 0) {
-    return workout.threshold_pace;
-  }
-  if (typeof workout.icu_threshold_pace === 'number' && workout.icu_threshold_pace > 0) {
-    return workout.icu_threshold_pace;
-  }
-  if (workout.sportSettings?.threshold_pace) {
-    return workout.sportSettings.threshold_pace;
-  }
-
-  const sportType = safeStringLower(workout.type || workout.sport);
-  if (!sportType) return contextPaces?.thresholdPace || null;
-
-  if (Array.isArray(sportSettings)) {
-    const match = sportSettings.find((s) => {
-      if (!s) return false;
-      const settingType = safeStringLower(s.type || s.id || s.sport);
-      let typesList = Array.isArray(s.types) ? s.types.map((t) => safeStringLower(t)) : [];
-      
-      return (
-        settingType === sportType ||
-        typesList.includes(sportType) ||
-        typesList.some((t) => sportType.includes(t) || t.includes(sportType))
-      );
-    });
-
-    if (match?.threshold_pace || match?.pace_threshold) {
-      return match.threshold_pace || match.pace_threshold;
-    }
-  }
-
-  // Fallback to global paces context if available
   return contextPaces?.threshold_pace || null;
+
 };
 
 const getLocalDateString = (dateInput) => {
