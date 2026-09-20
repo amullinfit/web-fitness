@@ -27,7 +27,9 @@ import {
 } from '../utils/WorkoutBuilderHelpers.js';
 
 export default function WorkoutBuilder() {
-  const { paces2, loading: pacesLoading } = usePaces();
+  const { paces, loading: pacesLoading } = usePaces();
+  console.log('[App debug] paces:', paces);
+  
 
   const [mode, setMode] = useState('EMPTY');
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
@@ -64,12 +66,10 @@ export default function WorkoutBuilder() {
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
   
-  console.log('[App debug] paces2:', paces2);
-  
   // Compute preset values dynamically using useMemo inside the component
   const dynamicPresets = useMemo(() => {
-    return calculateDynamicPresets(paces2, 495, paceMethod);
-  }, [paces2, paceMethod]);
+    return calculateDynamicPresets(paces, 495, paceMethod);
+  }, [paces, paceMethod]);
 
   const loadFolders = async () => {
     try {
@@ -564,7 +564,7 @@ export default function WorkoutBuilder() {
           <ControlBar
             workoutMode={workoutMode}
             setWorkoutMode={setWorkoutMode}
-            thresholdPaceSec={paces2.threshhold_pace}
+            thresholdPaceSec={paces.threshhold_pace}
             paceMethod={paceMethod}
             setPaceMethod={setPaceMethod}
           />
