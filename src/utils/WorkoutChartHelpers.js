@@ -192,7 +192,7 @@
           // Assuming variables: pace, refThresholdSec, rangePct, zoneService
         const handlers = {
             sec: () => ({
-              fastSec: rangePct.end,
+              fastSec1: rangePct.end,
               slowSec: rangePct.start,
               midSec:  rangePct.mid,
               rangePct
