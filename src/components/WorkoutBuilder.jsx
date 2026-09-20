@@ -307,57 +307,11 @@ export default function WorkoutBuilder() {
     return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   };
 
-  const generateZwoXml = () => {
-    const zwoSteps = steps.map((step) => {
-      const durSec = workoutMode === 'time'
-        ? (step.durationSec || 0)
-        : Math.round((step.distanceMiles || 0) * (step.targetPaceSec || DEFAULT_THRESHOLD));
-
-      const targetPace = step.targetPaceSec || thresholdPaceSec;
-      const powerFraction = (thresholdPaceSec / targetPace).toFixed(2);
-
-      if (step.type === 'warmup') {
-        return `    <Warmup Duration="${durSec}" PowerLow="0.50" PowerHigh="${powerFraction}"/>`;
-      } else if (step.type === 'cooldown') {
-        return `    <Cooldown Duration="${durSec}" PowerLow="${powerFraction}" PowerHigh="0.50"/>`;
-      } else {
-        return `    <SteadyState Duration="${durSec}" Power="${powerFraction}"/>`;
-      }
-    }).join('\n');
-
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<workout_file>
-  <author>Workout Builder</author>
-  <name>${workoutTitle || 'Workout'}</name>
-  <description>${workoutDescription || ''}</description>
-  <sportType>run</sportType>
-  <workout>
-${zwoSteps}
-  </workout>
-</workout_file>`;
-  };
-
   const handleCopyWorkoutText = () => {
     setIsOptionsMenuOpen(false);
     const text = generateIcuText(steps);
     navigator.clipboard.writeText(text);
     setStatusMessage('Workout text copied to clipboard!');
-  };
-
-  const handleDownloadIcu = () => {
-    setIsOptionsMenuOpen(false);
-    const text = generateIcuText(steps);
-    const filename = `${(workoutTitle || 'workout').toLowerCase().replace(/\s+/g, '_')}.icu`;
-    downloadFile(text, filename, 'text/plain;charset=utf-8');
-    setStatusMessage(`Downloaded ${filename}`);
-  };
-
-  const handleDownloadZwo = () => {
-    setIsOptionsMenuOpen(false);
-    const xml = generateZwoXml();
-    const filename = `${(workoutTitle || 'workout').toLowerCase().replace(/\s+/g, '_')}.zwo`;
-    downloadFile(xml, filename, 'application/xml;charset=utf-8');
-    setStatusMessage(`Downloaded ${filename}`);
   };
 
   const workoutPayloadObject = useMemo(() => {
@@ -585,8 +539,6 @@ ${zwoSteps}
           onOpenSaveModal={handleOpenSaveModal}
           onDuplicateWorkout={handleDuplicateWorkout}
           onCopyWorkoutText={handleCopyWorkoutText}
-          onDownloadIcu={handleDownloadIcu}
-          onDownloadZwo={handleDownloadZwo}
           onCancelEdits={handleCancelEdits}
           onCloseWorkout={handleCloseWorkout}
         />
@@ -612,7 +564,7 @@ ${zwoSteps}
           <ControlBar
             workoutMode={workoutMode}
             setWorkoutMode={setWorkoutMode}
-            thresholdPaceSec={thresholdPaceSec}
+            thresholdPaceSec={paces2.threshhold_pace}
             paceMethod={paceMethod}
             setPaceMethod={setPaceMethod}
           />
