@@ -168,63 +168,61 @@ export const formatTime = (totalSeconds) => {
 // - Data retrieval & Parsing Helpers ---
 
     // Dynamically compute preset values from intervals.icu data
-    export const dynamicPresets = useMemo(() => {
-        if (!paces) {
-            // Default Fallback
-            const defaultZoneNames = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5a', 'Zone 5b', 'Zone 5c'];
-            const defaultPaces = [619, 538, 525, DEFAULT_THRESHOLD, 479, 444, 50];
-
-            return defaultZoneNames.map((name, idx) => ({
-            label: name,
-            displayPace: formatMMSS(defaultPaces[idx]),
-            targetPaceSec: defaultPaces[idx],
-            color: PRESET_COLORS[idx % PRESET_COLORS.length],
-            }));
+    export function calculateDynamicPresets(paces, thresholdPaceSec, paceMethod) {
+      if (!paces) {
+        // Default Fallback
+        const defaultZoneNames = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5a', 'Zone 5b', 'Zone 5c'];
+        const defaultPaces = [619, 538, 525, DEFAULT_THRESHOLD, 479, 444, 50];
+    
+        return defaultZoneNames.map((name, idx) => ({
+          label: name,
+          displayPace: formatMMSS(defaultPaces[idx]),
+          targetPaceSec: defaultPaces[idx],
+          color: PRESET_COLORS[idx % PRESET_COLORS.length],
+        }));
+      }
+    
+      const zoneNames = paces.pace_zone_names || [];
+      const paceValueStr = paces.pace_value_str || [];
+      const paceValueNum = paces.pace_value_num || [];
+      const pacePercentages = paces.pace_zones || [];
+    
+      const itemCount = Math.max(zoneNames.length, paceValueStr.length, paceValueNum.length);
+      const presetsList = [];
+    
+      for (let i = 0; i < itemCount; i++) {
+        const label = zoneNames[i] || `Zone ${i + 1}`;
+        const color = PRESET_COLORS[i % PRESET_COLORS.length];
+    
+        let paceSec = 0;
+        if (paceValueStr[i]) {
+          paceSec = parseMMSS(paceValueStr[i]);
+        } else if (paceValueNum[i]) {
+          paceSec = convertToPaceSec(paceValueNum[i]);
+        } else {
+          paceSec = thresholdPaceSec;
         }
-
-        const zoneNames = paces.pace_zone_names || [];
-        const paceValueStr = paces.pace_value_str || [];
-        const paceValueNum = paces.pace_value_num || [];
-        const pacePercentages = paces.pace_zones || [];
-
-        // Length derived from names or string array
-        const itemCount = Math.max(zoneNames.length, paceValueStr.length, paceValueNum.length);
-        const presetsList = [];
-
-        for (let i = 0; i < itemCount; i++) {
-            const label = zoneNames[i] || `Zone ${i + 1}`;
-            const color = PRESET_COLORS[i % PRESET_COLORS.length];
-
-            // Convert from human string "10:19/mi" or numeric m/s speed
-            let paceSec = 0;
-            if (paceValueStr[i]) {
-            paceSec = parseMMSS(paceValueStr[i]);
-            } else if (paceValueNum[i]) {
-            paceSec = convertToPaceSec(paceValueNum[i]);
-            } else {
-            paceSec = thresholdPaceSec;
-            }
-
-            let displayPace = formatMMSS(paceSec);
-            if (paceMethod === 'Threshold %') {
-            const pct = pacePercentages[i] || Math.round((thresholdPaceSec / paceSec) * 100);
-            displayPace = `${pct}%`;
-            } else if (paceMethod.includes('Range')) {
-            const lowPace = Math.round(paceSec * 0.97);
-            const highPace = Math.round(paceSec * 1.03);
-            displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
-            }
-
-            presetsList.push({
-            label,
-            displayPace,
-            targetPaceSec: paceSec,
-            color,
-            });
+    
+        let displayPace = formatMMSS(paceSec);
+        if (paceMethod === 'Threshold %') {
+          const pct = pacePercentages[i] || Math.round((thresholdPaceSec / paceSec) * 100);
+          displayPace = `${pct}%`;
+        } else if (paceMethod?.includes('Range')) {
+          const lowPace = Math.round(paceSec * 0.97);
+          const highPace = Math.round(paceSec * 1.03);
+          displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
         }
-
-        return presetsList;
-    }, [paces, thresholdPaceSec, paceMethod]);
+    
+        presetsList.push({
+          label,
+          displayPace,
+          targetPaceSec: paceSec,
+          color,
+        });
+      }
+    
+      return presetsList;
+    }
 
 // 
 // 

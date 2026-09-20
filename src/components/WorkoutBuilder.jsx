@@ -17,7 +17,7 @@ import {
   parseMMSS,
   convertToPaceSec,
   formatDistance,
-  dynamicPresets,
+  calculateDynamicPresets,
   createStep,
   createDefaultSteps,
   mapIcuDocToSteps,
@@ -64,9 +64,12 @@ export default function WorkoutBuilder() {
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
   
-  console.log('[App debug] paces', paces);
-  // Dynamically compute preset values from intervals.icu data
-  const dynamicPresets = dynamicPresets(paces2, 495, paceMethod);
+  console.log('[App debug] paces2:', paces2);
+  
+  // Compute preset values dynamically using useMemo inside the component
+  const presets = useMemo(() => {
+    return calculateDynamicPresets(paces2, 495, paceMethod);
+  }, [paces2, paceMethod]);
 
   const loadFolders = async () => {
     try {
