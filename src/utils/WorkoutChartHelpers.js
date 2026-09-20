@@ -238,6 +238,8 @@
       export const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
         if (!step) return null;
 
+        console.log('[App Debug] WCH: range1: ', thresholdSecPerMile, step);
+
         // 1. Consume context
         const { paces, loading: pacesLoading } = usePaces();
 
@@ -262,6 +264,8 @@
           return { slowSec: sec, midSec: sec, fastSec: sec, rangePct: { start: 100, mid: 100, end: 100 } };
         }
       
+        console.log('[App Debug] WCH: range2: ', thresholdSecPerMile, step);
+
         const refThresholdSec = (thresholdSecPerMile && thresholdSecPerMile > 0)
           ? thresholdSecPerMile
           : DEFAULT_FALLBACK_THRESHOLD_SEC;

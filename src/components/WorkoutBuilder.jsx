@@ -603,7 +603,6 @@ export default function WorkoutBuilder() {
 
           {/* ---------------------------------------------------------------------------------------------------------- */}
           {/* POC to see if we can get WorkoutChart working before removing the chart code from WorkoutBuilder */}
-          {console.log('[App Debug] WO-B: converted-WOPL: ', convertWorkoutToTargetFormat(workoutPayloadObject))}
 
           <div className="chart-card">
             <div className="chart-header">
