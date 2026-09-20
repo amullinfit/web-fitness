@@ -10,6 +10,7 @@ import {
   extractExecutedSteps,
   flattenSteps,
   generateWavyBarPath,
+  extractPaceRangeInSeconds
 } from '../utils/WorkoutChartHelpers.js';
 
 const SLOW_BUFFER_MINUTES = 1;
@@ -20,63 +21,6 @@ const DEFAULT_FALLBACK_THRESHOLD_SEC = 480;
 const DEFAULT_PACE_ZONES = [80, 92, 94.3, 100, 103.4, 111.5, 150];
 const DEFAULT_PACE_ZONE_NAMES = ["Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5a", "Zone 5b", "Zone 5c"];
 const DEFAULT_PACE_ZONE_COLORS = ["#88d8b0", "#fd7e14", "#fd7e14", "#ff6b6b", "#dc3545", "#6f42c1", "#343a40"];
-
-const extractPaceRangePct = (step) => {
-  if (!step) return { start: 100, end: 100, mid: 100 };
-
-  if (step.pace && typeof step.pace === 'object') {
-    const start = step.pace.start ?? step.pace.value ?? 100;
-    const end = step.pace.end ?? start;
-    return {
-      start: Math.min(start, end),
-      end: Math.max(start, end),
-      mid: (start + end) / 2
-    };
-  }
-
-  const val = step.target ?? step.intensityPct ?? step.intensity;
-  if (typeof val === 'number' && val > 0) {
-    return { start: val, end: val, mid: val };
-  }
-
-  if (typeof val === 'object' && val !== null) {
-    const start = val.start ?? val.value ?? 100;
-    const end = val.end ?? start;
-    return {
-      start: Math.min(start, end),
-      end: Math.max(start, end),
-      mid: (start + end) / 2
-    };
-  }
-
-  return { start: 100, end: 100, mid: 100 };
-};
-
-const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
-  if (!step) return null;
-
-  const rawSpeed = parseFloat(step.average_speed ?? step.speed);
-  if (!isNaN(rawSpeed) && rawSpeed > 0) {
-    const sec = speedToPaceSeconds(rawSpeed);
-    return { fastSec: sec, slowSec: sec, midSec: sec, rangePct: { start: 100, end: 100, mid: 100 } };
-  }
-
-  if (typeof step.pace === 'number' && step.pace > 0) {
-    const sec = step.pace < 15 ? speedToPaceSeconds(step.pace) : step.pace;
-    return { fastSec: sec, slowSec: sec, midSec: sec, rangePct: { start: 100, end: 100, mid: 100 } };
-  }
-
-  const rangePct = extractPaceRangePct(step);
-  const refThresholdSec = (thresholdSecPerMile && thresholdSecPerMile > 0)
-    ? thresholdSecPerMile
-    : DEFAULT_FALLBACK_THRESHOLD_SEC;
-
-  const fastSec = rangePct.end > 0 ? refThresholdSec / (rangePct.end / 100) : refThresholdSec;
-  const slowSec = rangePct.start > 0 ? refThresholdSec / (rangePct.start / 100) : refThresholdSec;
-  const midSec = rangePct.mid > 0 ? refThresholdSec / (rangePct.mid / 100) : refThresholdSec;
-
-  return { fastSec, slowSec, midSec, rangePct };
-};
 
 /**
  * Dynamically resolves zone details using PacesContext zones, names, and colors.
@@ -334,6 +278,7 @@ export default function WorkoutChart({
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
                   const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
+                  console.log("[App Debug] WO-C: range:", range);
                   const zoneDetails = getZoneDetailsFromPaces(range.rangePct.mid, rawIntensity, paces);
 
                   const fastHeightPct = computePaceToHeightPct(range.fastSec);

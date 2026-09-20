@@ -138,3 +138,61 @@ const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left
         });
     };
 
+    const extractPaceRangePct = (step) => {
+        if (!step) return { start: 100, end: 100, mid: 100 };
+      
+        if (step.pace && typeof step.pace === 'object') {
+          const start = step.pace.start ?? step.pace.value ?? 100;
+          const end = step.pace.end ?? start;
+          return {
+            start: Math.min(start, end),
+            end: Math.max(start, end),
+            mid: (start + end) / 2
+          };
+        }
+      
+        const val = step.target ?? step.intensityPct ?? step.intensity;
+        if (typeof val === 'number' && val > 0) {
+          return { start: val, end: val, mid: val };
+        }
+      
+        if (typeof val === 'object' && val !== null) {
+          const start = val.start ?? val.value ?? 100;
+          const end = val.end ?? start;
+          return {
+            start: Math.min(start, end),
+            end: Math.max(start, end),
+            mid: (start + end) / 2
+          };
+        }
+      
+        return { start: 100, end: 100, mid: 100 };
+      };
+      
+      export const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
+        if (!step) return null;
+      
+        const rawSpeed = parseFloat(step.average_speed ?? step.speed);
+        if (!isNaN(rawSpeed) && rawSpeed > 0) {
+          const sec = speedToPaceSeconds(rawSpeed);
+          return { fastSec: sec, slowSec: sec, midSec: sec, rangePct: { start: 100, end: 100, mid: 100 } };
+        }
+      
+        if (typeof step.pace === 'number' && step.pace > 0) {
+          const sec = step.pace < 15 ? speedToPaceSeconds(step.pace) : step.pace;
+          return { fastSec: sec, slowSec: sec, midSec: sec, rangePct: { start: 100, end: 100, mid: 100 } };
+        }
+      
+        const rangePct = extractPaceRangePct(step);
+        const refThresholdSec = (thresholdSecPerMile && thresholdSecPerMile > 0)
+          ? thresholdSecPerMile
+          : DEFAULT_FALLBACK_THRESHOLD_SEC;
+      
+        const fastSec = rangePct.end > 0 ? refThresholdSec / (rangePct.end / 100) : refThresholdSec;
+        const slowSec = rangePct.start > 0 ? refThresholdSec / (rangePct.start / 100) : refThresholdSec;
+        const midSec = rangePct.mid > 0 ? refThresholdSec / (rangePct.mid / 100) : refThresholdSec;
+      
+        return { fastSec, slowSec, midSec, rangePct };
+      };
+      
+      
