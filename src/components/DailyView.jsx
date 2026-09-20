@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import WorkoutChart from './WorkoutChart';
 import WorkoutTextSection from '../utils/WorkoutTextSection';
 import '../CSS/DailyView.css';
-import { usePaces } from '../utils/PacesContext.jsx'; // 1. Import Context Hook
+import { usePaces } from '../utils/PacesContext.jsx'; 
 
 const VAL_WORKOUTS_URL = "/api/val-workouts";
 const HISTORICAL_URL = "/api/val-historical";
@@ -34,7 +34,6 @@ const safeStringLower = (val) => {
 
 // Updated helper accepting paces context fallback
 const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
-  console.log("Context pace:", contextPaces?.threshold_pace);
   
   return contextPaces?.threshold_pace || null;
 
@@ -95,7 +94,7 @@ const sortByDistanceDesc = (items) => {
 };
 
 export default function DailyView() {
-  // 2. Consume Paces Context
+
   const { paces, loading: pacesLoading } = usePaces();
 
   const [workouts, setWorkouts] = useState([]);

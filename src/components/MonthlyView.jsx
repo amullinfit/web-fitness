@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import WorkoutChart from './WorkoutChart';
 import '../CSS/MonthlyView.css';
+import { usePaces } from '../utils/PacesContext.jsx'; 
 
 const VAL_WORKOUTS_URL = "/api/val-workouts";
 const HISTORICAL_URL = "/api/val-historical";
@@ -35,35 +36,11 @@ const getSportCategory = (workout) => {
   return 'Other';
 };
 
-const getThresholdPaceForSport = (workout, sportSettings) => {
-  if (!workout) return null;
+// Updated helper accepting paces context fallback
+const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
+  
+  return contextPaces?.threshold_pace || null;
 
-  if (typeof workout.threshold_pace === 'number' && workout.threshold_pace > 0) {
-    return workout.threshold_pace;
-  }
-  if (typeof workout.icu_threshold_pace === 'number' && workout.icu_threshold_pace > 0) {
-    return workout.icu_threshold_pace;
-  }
-  if (workout.sportSettings?.threshold_pace) {
-    return workout.sportSettings.threshold_pace;
-  }
-
-  const sportType = safeStringLower(workout.type || workout.sport);
-  if (!sportType || !Array.isArray(sportSettings)) return null;
-
-  const match = sportSettings.find((s) => {
-    if (!s) return false;
-    const settingType = safeStringLower(s.type || s.id || s.sport);
-    let typesList = Array.isArray(s.types) ? s.types.map((t) => safeStringLower(t)) : [];
-    
-    return (
-      settingType === sportType ||
-      typesList.includes(sportType) ||
-      typesList.some((t) => sportType.includes(t) || t.includes(sportType))
-    );
-  });
-
-  return match?.threshold_pace || match?.pace_threshold || null;
 };
 
 const getLocalDateString = (dateInput) => {
@@ -328,6 +305,8 @@ const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType }) => {
 };
 
 export default function MonthlyView() {
+  const { paces, loading: pacesLoading } = usePaces();
+
   const [workouts, setWorkouts] = useState([]);
   const [sportSettings, setSportSettings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -602,7 +581,7 @@ export default function MonthlyView() {
             <div className="monthly-empty-day"></div>
           ) : (
             workoutList.map((workout, idx) => {
-              const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings);
+              const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings, paces);
               const completed = isWorkoutCompleted(workout);
               const isPast = dateStr < todayStr;
               const isMissed = isPast && !completed;
