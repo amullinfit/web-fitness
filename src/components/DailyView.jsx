@@ -487,6 +487,8 @@ export default function DailyView() {
       pacesContextData: paces || null
     };
 
+    console.log("[App Debug] DV: workout: ", workout)
+
     return (
       <div key={activityId || index} className="daily-workout-card">
         {/* Header Bar */}
@@ -562,7 +564,6 @@ export default function DailyView() {
           </div>
         )}
 
-        {console.log("[App Debug] DV: workout: ", workout)}
         {(workout.workout_doc || workout.intervals) && (
           <WorkoutChart
             workout={workout}
