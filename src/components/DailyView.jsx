@@ -34,7 +34,7 @@ const safeStringLower = (val) => {
 
 // Updated helper accepting paces context fallback
 const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
-  console.log("Workout threshold:", workout?.thresholdPace);
+  console.log("Workout threshold:", workout);
   console.log("Context Paces object:", contextPaces?.threshold_pace);
   
   if (!workout) return null;
