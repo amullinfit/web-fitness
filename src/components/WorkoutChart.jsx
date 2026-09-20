@@ -143,6 +143,7 @@ export default function WorkoutChart({
   
   const { pacesData } = usePaces();
   console.log("[App Debug] WO-C: pacesData:", pacesData);
+  console.log("[App Debug] WO-C: pacesData:", pacesData?.threshold_pace);
 
   const [executedOnTop, setExecutedOnTop] = useState(true);
   const [isChartHovered, setIsChartHovered] = useState(false);
@@ -178,7 +179,7 @@ export default function WorkoutChart({
 
   const thresholdDisplayStr = thresholdSecPerMile ? formatSecPerMileToStr(thresholdSecPerMile) : "Not Set";
   console.log("[App Debug] WO-C: thresholdSecPerMile:", thresholdSecPerMile);
-  console.log("[App Debug] WO-C: formatsecpermile:", formatSecPerMileToStr(thresholdSecPerMile));
+  console.log("[App Debug] WO-C: thresholdDisplayStr:", thresholdDisplayStr);
 
   const allStepsCombined = [...plannedList, ...executedList];
   const stepPacesSec = [];
