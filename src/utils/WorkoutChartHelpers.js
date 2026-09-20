@@ -262,6 +262,8 @@
       
         const rangePct = extractPaceRange(step);
 
+        const zone0 = getZoneDetailsFromZoneNumber(0, paces)
+        console.log("[App Debug] WO-CH: zone 0:", zone0);
         const zone1 = getZoneDetailsFromZoneNumber(1, paces)
         console.log("[App Debug] WO-CH: zone 1:", zone1);
 
