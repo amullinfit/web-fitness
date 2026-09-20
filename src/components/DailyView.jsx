@@ -457,6 +457,8 @@ export default function DailyView() {
 
   const renderWorkoutCard = (workout, index, isSelectedDate) => {
     const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings, paces);
+    console.log("thresholdPaceMps:", thresholdPaceMps);
+
     const workoutDateStr = getLocalDateString(
       workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date
     );

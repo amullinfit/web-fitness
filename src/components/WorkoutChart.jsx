@@ -169,6 +169,7 @@ export default function WorkoutChart({
     : null;
 
   const thresholdDisplayStr = thresholdSecPerMile ? formatSecPerMileToStr(thresholdSecPerMile) : "Not Set";
+  console.log("[App Debug] thresholdSecPerMile:", thresholdSecPerMile);
 
   const allStepsCombined = [...plannedList, ...executedList];
   const stepPacesSec = [];
