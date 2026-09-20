@@ -204,7 +204,7 @@
               midSec:  rangePct.mid   > 0 ? refThresholdSec / (rangePct.mid / 100)   : refThresholdSec,
               rangePct
             }),
-          
+
             pace_zone: () => {
               const zone = PACE_ZONES[pace.value] || PACE_ZONES[4];
               const sec = zone.targetPct > 0 ? refThresholdSec / (zone.targetPct / 100) : refThresholdSec;
@@ -213,10 +213,11 @@
                 rangePct: { start: zone.targetPct, end: zone.targetPct, mid: zone.targetPct }
               };
             }
+
           };
           
           // Execute handler or run default if unit is missing/unrecognized
-          const handler = handlers[pace?.units] || (() => ({
+          const handler = handlers[step.pace?.units] || (() => ({
             fastSec: refThresholdSec,
             midSec: refThresholdSec,
             slowSec: refThresholdSec,
