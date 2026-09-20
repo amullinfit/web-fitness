@@ -62,7 +62,7 @@
             return {name:  names[lastIdx], 
                     color: colors[lastIdx], 
                     sec:   zones[lastIdx]};
-        } else if (targetzone < 0) {
+        } else if (targetZone < 0) {
             return {name:  names[0], 
                     color: colors[0], 
                     sec:   zones[0]};
