@@ -1,10 +1,81 @@
+    import { usePaces } from '../utils/PacesContext.jsx';
+
     // --- CHART CONFIGURATION CONSTANTS ---
     const WAVES_PER_MINUTE = 3;     // Number of wave cycles per minute across the top
     const WAVE_AMPLITUDE = 1.5;     // Amplitude in SVG viewBox units (0-100 scale)
     const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left & right sides
     const DEFAULT_FALLBACK_THRESHOLD_SEC = 480; // default threshold pace
 
-    // -- Helper to make titles look nice
+    //
+    //
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    //
+    //
+    // - ZONE conversion helpers
+
+    // Fallback zone config if PacesContext is not available
+    const DEFAULT_PACE_ZONES       = [80,   92, 94.3, 100, 103.4, 111.5, 150];
+    const DEFAULT_PACE_VAL_SEC     = [619, 538,  525, 495,   479,   444, 330];
+    const DEFAULT_PACE_ZONE_NAMES  = ["Zone_1", "Zone_2", "Zone_3", "Zone_4", "Zone_5a", "Zone_5b", "Zone_5c"];
+    const DEFAULT_PACE_ZONE_COLORS = ["#88d8b0", "#fd7e14", "#fd7e14", "#ff6b6b", "#dc3545", "#6f42c1", "#343a40"];
+
+    /**
+     * Dynamically resolves zone details using PacesContext zones, names, and colors.
+     */
+    export const getZoneDetailsFromPaces = (targetPace, paces) => {
+
+        const zones  = paces?.pace_val_sec     || DEFAULT_PACE_VAL_SEC;
+        const names  = paces?.pace_zone_names  || DEFAULT_PACE_ZONE_NAMES;
+        const colors = paces?.pace_zone_colors || DEFAULT_PACE_ZONE_COLORS;
+
+        // Iterate through pace zone thresholds
+        for (let i = 0; i < zones.length; i++) {
+            if (targetPace > zones[i]) {
+            return {
+                name:  names[i]  || `Zone ${i + 1}`,
+                color: colors[i] || '#28a745'
+            };
+            }
+        }
+
+        // Fallback for extreme efforts above highest threshold
+        const lastIdx = zones.length - 1;
+        return {
+            name: names[lastIdx] || `Zone ${zones.length}`,
+            color: colors[lastIdx] || '#343a40'
+        };
+    };
+
+    /**
+     * Dynamically resolves zone details using PacesContext zones, names, and colors.
+     */
+    export const getZoneDetailsFromZoneNumber = (targetZone, paces) => {
+
+        const zones  = paces?.pace_val_sec     || DEFAULT_PACE_VAL_SEC;
+        const names  = paces?.pace_zone_names  || DEFAULT_PACE_ZONE_NAMES;
+        const colors = paces?.pace_zone_colors || DEFAULT_PACE_ZONE_COLORS;
+
+        // Iterate through pace zone thresholds
+        for (let i = 0; i < zones.length; i++) {
+            if (targetPace > zones[i]) {
+            return {
+                name:  names[i]  || `Zone ${i + 1}`,
+                color: colors[i] || '#28a745'
+            };
+            }
+        }
+
+        // Fallback for extreme efforts above highest threshold
+        const lastIdx = zones.length - 1;
+        return {
+            name: names[lastIdx] || `Zone ${zones.length}`,
+            color: colors[lastIdx] || '#343a40'
+        };
+    };
+
+// -- Helper to make titles look nice
     export const formatIntensityTitleCase = (val) => {
         if (!val) return "Active";
         const str = String(val);
@@ -161,7 +232,10 @@
       //
       export const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
         if (!step) return null;
-      
+
+        // 1. Consume context
+        const { paces, loading: pacesLoading } = usePaces();
+
         // if it is an executed step vs planned and a ride, it will have step.weighted_average_watts
         const rawWatts = parseFloat(step.average_watts ?? step.weighted_average_watts);
         if (!isNaN(rawWatts) && rawWatts > 0) {
