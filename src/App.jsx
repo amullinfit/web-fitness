@@ -44,6 +44,11 @@ function HeaderBar({
     setMenuOpen(false);
   };
 
+  const handleTitleClick = () => {
+    console.log('[App Debug] 🏠 Title clicked -> Navigating to Monthly View');
+    setActiveTab('monthly');
+  };
+
   return (
     <header
       style={{
@@ -56,11 +61,15 @@ function HeaderBar({
       }}
     >
       <h1
+        onClick={handleTitleClick}
         style={{
           margin: 0,
           fontSize: '20px',
           color: 'var(--text-h, inherit)',
+          cursor: 'pointer',
+          userSelect: 'none',
         }}
+        title="Go to Monthly View"
       >
         {APP_TITLE}
         {loading && ' (Loading...)'}
