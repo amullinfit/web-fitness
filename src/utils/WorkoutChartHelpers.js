@@ -61,15 +61,24 @@
             const lastIdx = zones.length - 1;
             return {name:  names[lastIdx], 
                     color: colors[lastIdx], 
-                    sec:   zones[lastIdx]};
+                    sec:   zones[lastIdx],
+                    slow:  1,
+                    mid:   2,
+                    fast:  3};
         } else if (targetZone < 0) {
             return {name:  names[0], 
                     color: colors[0], 
-                    sec:   zones[0]};
+                    sec:   zones[0],
+                    slow:  1,
+                    mid:   2,
+                    fast:  3};
         } else {
             return {name:  names[targetZone], 
                     color: colors[targetZone], 
-                    sec:   zones[targetZone]};
+                    sec:   zones[targetZone],
+                    slow:  1,
+                    mid:   2,
+                    fast:  3};
         }
 
     };
@@ -266,6 +275,8 @@
         console.log("[App Debug] WO-CH: zone 0:", zone0);
         const zone1 = getZoneDetailsFromZoneNumber(1, paces)
         console.log("[App Debug] WO-CH: zone 1:", zone1);
+        const zone3 = getZoneDetailsFromZoneNumber(3, paces)
+        console.log("[App Debug] WO-CH: zone 1:", zone3);
 
           // Assuming variables: pace, refThresholdSec, rangePct, zoneService
         const handlers = {
