@@ -46,7 +46,6 @@ export default function WorkoutChart({
 
   // 2. Consume Paces Context
   const { paces, loading: pacesLoading } = usePaces();
-  console.log("[App Debug] WO-C: paces:", paces);
   
   const [executedOnTop, setExecutedOnTop] = useState(true);
   const [isChartHovered, setIsChartHovered] = useState(false);
@@ -246,8 +245,6 @@ export default function WorkoutChart({
 
                   // thresholdSecPerMile is the # of seconds to run a mile at threshold (495 for 8:15 pace)
                   const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
-                  console.log("[App Debug] WO-C: step:", step);
-                  console.log("[App Debug] WO-C: range:", range);
 
                   // zoneDetails (name and color) are derived from the mid pace of the step
                   const zoneDetails = getZoneDetailsFromPaces(range.midSec, paces);
