@@ -6,10 +6,10 @@ import { convertWorkoutToTargetFormat } from "../utils/WorkoutConverter.js";
 
 import { usePaces } from '../utils/PacesContext.jsx'; 
 
-import CreateFolderModal from './modals/Modal_Folder_Create';
-import EditWorkoutModal from './modals/Modal_Workout_Edit';
-import SaveWorkoutModal from './modals/Modal_Workout_Save';
-import ZoomWorkoutModal from './modals/Modal_Workout_Zoom';
+import CreateFolderModal from '../modals/Modal_Folder_Create';
+import EditWorkoutModal from '../modals/Modal_Workout_Edit';
+import SaveWorkoutModal from '../modals/Modal_Workout_Save';
+import ZoomWorkoutModal from '../modals/Modal_Workout_Zoom';
 
 import { 
   fetchFoldersApi, 
