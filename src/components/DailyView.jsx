@@ -580,7 +580,7 @@ export default function DailyView() {
     if (isToday) {
       console.log('[App Debug] DV: ');
       console.log('[App Debug] DV: ');
-      console.log('[App Debug] DV: workout', workout);
+      console.log('[App Debug] DV: dayWorkouts: ', dayWorkouts);
       console.log('[App Debug] DV: ');
       console.log('[App Debug] DV: ');
     }
