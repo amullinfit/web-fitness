@@ -30,19 +30,11 @@ import {
   mapIcuDocToSteps 
 } from '../utils/WorkoutBuilderHelpers.js';
 
-//
-//
-//----------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------
-//
-//
-
 export default function WorkoutBuilder() {
   const { paces } = usePaces();
 
-  // --- Core State (Starts strictly on EMPTY) ---
+  // --- Core State ---
   const [mode, setMode] = useState('EMPTY'); // 'EMPTY', 'BUILDING', 'SAVED'
-  const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
 
   // Metadata
   const [workoutId, setWorkoutId] = useState(null);
@@ -50,14 +42,14 @@ export default function WorkoutBuilder() {
   const [workoutDescription, setWorkoutDescription] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState('');
 
-  // Raw unaltered document state for debugging/inspection
+  // Raw document state
   const [unalteredWorkout, setUnalteredWorkout] = useState('');
 
   // Mode Options
   const [workoutMode, setWorkoutMode] = useState('time'); // 'time' or 'distance'
   const [paceMethod, setPaceMethod] = useState('Pace'); 
 
-  // --- Custom Hook for Steps State & Recursive D&D ---
+  // --- Custom Hook for Steps State ---
   const { 
     steps, 
     setSteps, 
@@ -77,8 +69,17 @@ export default function WorkoutBuilder() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
+  const [isSaveAsMode, setIsSaveAsMode] = useState(false);
 
-  // Initial Load: Fetch folders & workouts without changing initial EMPTY state
+  // Status/Toast Message
+  const [statusMessage, setStatusMessage] = useState('');
+
+  const showToast = (msg) => {
+    setStatusMessage(msg);
+    setTimeout(() => setStatusMessage(''), 3000);
+  };
+
+  // Initial Load
   useEffect(() => {
     async function initData() {
       try {
@@ -93,12 +94,9 @@ export default function WorkoutBuilder() {
     initData();
   }, []);
 
-  // Compute dynamic pace presets based on user's pace context
-  const dynamicPresets = useMemo(() => {
-    return calculateDynamicPresets(paces);
-  }, [paces]);
+  // Presets & Totals
+  const dynamicPresets = useMemo(() => calculateDynamicPresets(paces), [paces]);
 
-  // Aggregate Stats (Total Duration & Distance)
   const totals = useMemo(() => {
     const calcTotals = (list) => {
       let timeSec = 0;
@@ -135,7 +133,9 @@ export default function WorkoutBuilder() {
     };
   }, [steps, workoutMode]);
 
-  // --- Handlers ---
+  // --- Handlers for Options Menu ---
+
+  // 1. Create New Workout
   const handleNewWorkout = () => {
     setWorkoutId(null);
     setWorkoutTitle('New Workout');
@@ -145,7 +145,7 @@ export default function WorkoutBuilder() {
     setMode('BUILDING');
   };
 
-  // RETRIEVAL LOGIC: Triggers via OptionsMenu selection
+  // 2. Select / Open Existing Workout
   const handleSelectWorkout = (id) => {
     const found = savedWorkouts.find((w) => w.id === id);
     if (found) {
@@ -154,26 +154,32 @@ export default function WorkoutBuilder() {
       setWorkoutDescription(found.description || '');
       setSelectedFolderId(found.folder_id || '');
 
-      // Store raw document (JSON or string representation)
       const rawDoc = typeof found.document === 'object' 
         ? JSON.stringify(found.document, null, 2) 
         : (found.document || '');
       
       setUnalteredWorkout(rawDoc);
-
-      // Parse document into builder UI step objects
       setSteps(mapIcuDocToSteps(found.document, workoutMode));
       setMode('BUILDING');
+      setIsEditModalOpen(false);
     }
   };
 
-  const handleSaveWorkout = async () => {
+  // 3. Save Workout / Save As New
+  const handleOpenSaveModal = (isSaveAs = false) => {
+    setIsSaveAsMode(isSaveAs);
+    setIsSaveModalOpen(true);
+  };
+
+  const handleSaveWorkout = async (overrideTitle, overrideFolderId) => {
     const icuDocument = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
+    const targetId = isSaveAsMode ? null : workoutId;
+
     const payload = {
-      id: workoutId,
-      name: workoutTitle,
+      id: targetId,
+      name: overrideTitle || workoutTitle,
       description: workoutDescription,
-      folder_id: selectedFolderId,
+      folder_id: overrideFolderId || selectedFolderId,
       document: icuDocument
     };
 
@@ -181,16 +187,63 @@ export default function WorkoutBuilder() {
       const saved = await saveWorkoutApi(payload);
       if (saved) {
         setWorkoutId(saved.id);
+        setWorkoutTitle(payload.name);
+        setSelectedFolderId(payload.folder_id);
         const updatedList = await fetchWorkoutsApi();
         setSavedWorkouts(updatedList || []);
         setIsSaveModalOpen(false);
         setMode('SAVED');
+        showToast(isSaveAsMode ? 'Workout saved as new file!' : 'Workout saved successfully!');
       }
     } catch (err) {
       console.error('Error saving workout:', err);
     }
   };
 
+  // 4. Duplicate Workout
+  const handleDuplicateWorkout = () => {
+    setWorkoutId(null);
+    setWorkoutTitle(`${workoutTitle} (Copy)`);
+    setMode('BUILDING');
+    showToast('Workout duplicated!');
+  };
+
+  // 5. Copy Workout Text to Clipboard
+  const handleCopyWorkoutText = () => {
+    const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
+    const stringified = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
+    
+    navigator.clipboard.writeText(stringified);
+    showToast('Workout plain text copied to clipboard!');
+  };
+
+  // 6 & 7. Download ICU & ZWO File Handlers
+  const triggerFileDownload = (content, fileName, mimeType) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadIcu = () => {
+    const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
+    const content = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
+    const cleanTitle = workoutTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    triggerFileDownload(content, `${cleanTitle}.icu`, 'text/plain');
+  };
+
+  const handleDownloadZwo = () => {
+    const zwoContent = convertWorkoutToTargetFormat(steps, workoutMode, 'ZWO');
+    const cleanTitle = workoutTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    triggerFileDownload(zwoContent, `${cleanTitle}.zwo`, 'application/xml');
+  };
+
+  // 8. Create Folder Handler
   const handleCreateFolder = async (folderName) => {
     try {
       const newFolder = await createFolderApi(folderName);
@@ -198,59 +251,68 @@ export default function WorkoutBuilder() {
         setFolders((prev) => [...prev, newFolder]);
         setSelectedFolderId(newFolder.id);
         setIsFolderModalOpen(false);
+        showToast(`Folder "${folderName}" created.`);
       }
     } catch (err) {
       console.error('Error creating folder:', err);
     }
   };
 
-//
-//
-//----------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------
-//
-//
+  // 9. Cancel Edits
+  const handleCancelEdits = () => {
+    if (workoutId) {
+      handleSelectWorkout(workoutId);
+      showToast('Reverted edits back to saved state.');
+    } else {
+      handleNewWorkout();
+    }
+  };
 
-return (
+  // 10. Close Workout
+  const handleCloseWorkout = () => {
+    setWorkoutId(null);
+    setMode('EMPTY');
+  };
+
+  return (
     <div className="workout-builder-container">
+      {/* Toast notification banner */}
+      {statusMessage && (
+        <div className="status-message-banner">
+          {statusMessage}
+        </div>
+      )}
 
       {/* Header Bar */}
       <div className="builder-header-bar">
         <h1 className="builder-header-title">Workout Builder</h1>
         <OptionsMenu
           mode={mode}
-          savedWorkouts={savedWorkouts}
-          onSelectWorkout={handleSelectWorkout}
           onStartCreateNew={handleNewWorkout}
-          onOpenEditModal={() => setIsEditModalOpen(true)}
+          onOpenSelectModal={() => setIsEditModalOpen(true)}
           onOpenCreateFolderModal={() => setIsFolderModalOpen(true)}
-          onOpenSaveModal={(isSaveAs) => setIsSaveModalOpen(true)}
-          onCancelEdits={() => setMode('EMPTY')}
-          onCloseWorkout={() => setMode('EMPTY')}
+          onOpenSaveModal={handleOpenSaveModal}
+          onDuplicateWorkout={handleDuplicateWorkout}
+          onCopyWorkoutText={handleCopyWorkoutText}
+          onDownloadIcu={handleDownloadIcu}
+          onDownloadZwo={handleDownloadZwo}
+          onCancelEdits={handleCancelEdits}
+          onCloseWorkout={handleCloseWorkout}
         />
       </div>
 
       {/* Main Content Area */}
       {mode === 'EMPTY' ? (
-        <div className="empty-state-card" style={{
-          textAlign: 'center',
-          padding: '48px 24px',
-          border: '2px dashed #d0d5dd',
-          borderRadius: '8px',
-          backgroundColor: '#fafafa',
-          marginTop: '20px'
-        }}>
-          <h3 style={{ margin: '0 0 8px 0', color: '#344054' }}>No Workout Selected</h3>
-          <p style={{ margin: '0 0 20px 0', color: '#667085', fontSize: '14px' }}>
-            Select an existing workout from Options or create a new one to get started.
-          </p>
+        <div className="empty-state-card">
+          <h3>No Workout Selected</h3>
+          <p>Select an existing workout from Options or create a new one to get started.</p>
           <button className="btn-primary" onClick={handleNewWorkout}>
             + Create New Workout
           </button>
         </div>
       ) : (
         <>
-          {/* Workout Header & ControlBar Menu */}
+          {/* Workout Header & ControlBar */}
           <ControlBar
             workoutMode={workoutMode}
             setWorkoutMode={setWorkoutMode}
@@ -258,7 +320,8 @@ return (
             setPaceMethod={setPaceMethod}
             thresholdPaceSec={paces?.threshold || 0} 
           />
-          {/* Unaltered Workout Raw Output Box */}
+
+          {/* Unaltered Workout Output Box */}
           <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
             <label 
               htmlFor="unaltered-workout-input" 
@@ -295,7 +358,7 @@ return (
             />
           </div>
 
-          {/* Steps Container (Recursive Drag-and-Drop) */}
+          {/* Steps Container */}
           <div 
             className="steps-list-container" 
             onDragOver={(e) => e.preventDefault()} 
@@ -347,6 +410,8 @@ return (
           description={workoutDescription}
           folderId={selectedFolderId}
           folders={folders}
+          savedWorkouts={savedWorkouts}
+          onSelectWorkout={handleSelectWorkout}
           onSave={(newTitle, newDesc, newFolder) => {
             setWorkoutTitle(newTitle);
             setWorkoutDescription(newDesc);
