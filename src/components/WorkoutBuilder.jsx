@@ -316,7 +316,7 @@ export default function WorkoutBuilder() {
           <WorkoutChart
             workout={steps}
             thresholdPace={paces.threshold}
-            chartHeight={isMobile ? "110px" : "140px"}
+            chartHeight={"140px"}
           />
 
           <div 
