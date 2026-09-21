@@ -6,6 +6,7 @@ import { useWorkoutSteps } from '../hooks/useWorkoutSteps';
 
 import RenderWorkoutChart from '../utils/RenderWorkoutChart';
 import RenderStepRow from '../utils/RenderStepRow';
+
 import { OptionsMenu, ControlBar } from '../utils/WorkoutBuilderMenus';
 import { convertWorkoutToTargetFormat } from '../utils/WorkoutConverter.js';
 
@@ -29,7 +30,7 @@ import {
 export default function WorkoutBuilder() {
   const { paces } = usePaces();
 
-  // --- Core State ---
+  // --- Core State (Starts strictly on EMPTY) ---
   const [mode, setMode] = useState('EMPTY'); // 'EMPTY', 'BUILDING', 'SAVED'
   const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
 
@@ -67,7 +68,7 @@ export default function WorkoutBuilder() {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
 
-  // Initial Load: Fetch folders & workouts
+  // Initial Load: Fetch folders & workouts without changing initial EMPTY state
   useEffect(() => {
     async function initData() {
       try {
@@ -134,9 +135,7 @@ export default function WorkoutBuilder() {
     setMode('BUILDING');
   };
 
-  // =========================================================================
-  // RETRIEVAL LOGIC: Called when a user selects a workout from OptionsMenu
-  // =========================================================================
+  // RETRIEVAL LOGIC: Triggers via OptionsMenu selection
   const handleSelectWorkout = (id) => {
     const found = savedWorkouts.find((w) => w.id === id);
     if (found) {
@@ -145,7 +144,7 @@ export default function WorkoutBuilder() {
       setWorkoutDescription(found.description || '');
       setSelectedFolderId(found.folder_id || '');
 
-      // Store raw document (formats object/JSON or string representation)
+      // Store raw document (JSON or string representation)
       const rawDoc = typeof found.document === 'object' 
         ? JSON.stringify(found.document, null, 2) 
         : (found.document || '');
@@ -197,21 +196,14 @@ export default function WorkoutBuilder() {
 
   return (
     <div className="workout-builder-container">
-      {/* Top Header / Action Bar */}
-      <div className="workout-builder-header">
-        <div className="header-titles">
-          <h2>{workoutTitle}</h2>
-          {workoutDescription && <p className="workout-desc">{workoutDescription}</p>}
-        </div>
-
-        <div className="header-controls">
-          <button className="btn-secondary" onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}>
-            Options ⚙
-          </button>
-          <button className="btn-primary" onClick={handleNewWorkout}>
-            + New Workout
-          </button>
-        </div>
+      {/* Top Options Bar Triggering OptionsMenu */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+        <button 
+          className="btn-secondary" 
+          onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
+        >
+          Options ⚙
+        </button>
       </div>
 
       {/* Flyout Options Menu */}
@@ -222,29 +214,70 @@ export default function WorkoutBuilder() {
           paceMethod={paceMethod}
           setPaceMethod={setPaceMethod}
           savedWorkouts={savedWorkouts}
-          onSelectWorkout={handleSelectWorkout}
+          onSelectWorkout={(id) => {
+            handleSelectWorkout(id);
+            setIsOptionsMenuOpen(false);
+          }}
           onClose={() => setIsOptionsMenuOpen(false)}
         />
       )}
 
       {/* Main Content Area */}
       {mode === 'EMPTY' ? (
-        <div className="empty-state">
-          <h3>No Workout Selected</h3>
-          <p>Create a new workout or choose an existing one from the Options menu.</p>
+        <div className="empty-state-card" style={{
+          textAlign: 'center',
+          padding: '48px 24px',
+          border: '2px dashed #d0d5dd',
+          borderRadius: '8px',
+          backgroundColor: '#fafafa',
+          marginTop: '20px'
+        }}>
+          <h3 style={{ margin: '0 0 8px 0', color: '#344054' }}>No Workout Selected</h3>
+          <p style={{ margin: '0 0 20px 0', color: '#667085', fontSize: '14px' }}>
+            Select an existing workout from Options or create a new one to get started.
+          </p>
           <button className="btn-primary" onClick={handleNewWorkout}>
-            Create New Workout
+            + Create New Workout
           </button>
         </div>
       ) : (
         <>
-          {/* Summary Control Bar */}
+          {/* Workout Header & ControlBar Menu */}
           <ControlBar
+            title={workoutTitle}
+            description={workoutDescription}
             totals={totals}
             onOpenSaveModal={() => setIsSaveModalOpen(true)}
             onOpenEditModal={() => setIsEditModalOpen(true)}
             onOpenZoomModal={() => setIsZoomModalOpen(true)}
           />
+
+          {/* Unaltered Workout Raw Output Box */}
+          <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
+            <label 
+              htmlFor="unaltered-workout-input" 
+              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+            >
+              Unaltered workout
+            </label>
+            <textarea
+              id="unaltered-workout-input"
+              readOnly
+              value={unalteredWorkout}
+              placeholder="No raw Intervals.icu payload available..."
+              rows={4}
+              style={{
+                width: '100%',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                padding: '8px',
+                backgroundColor: '#f4f4f6',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                resize: 'vertical'
+              }}
+            />
+          </div>
 
           {/* Interactive Visual Chart */}
           <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }} onClick={() => setIsZoomModalOpen(true)}>
@@ -307,7 +340,7 @@ export default function WorkoutBuilder() {
           </div>
 
           {/* Root Add Buttons */}
-          <div className="root-add-actions">
+          <div className="root-add-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
             <button className="btn-add-step" onClick={() => addStep('run', null)}>
               + Add Run
             </button>
@@ -321,7 +354,7 @@ export default function WorkoutBuilder() {
         </>
       )}
 
-      {/* Modals */}
+      {/* --- Modals --- */}
       {isFolderModalOpen && (
         <ModalFolderCreate
           onClose={() => setIsFolderModalOpen(false)}
