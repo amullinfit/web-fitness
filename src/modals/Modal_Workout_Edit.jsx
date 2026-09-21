@@ -2,7 +2,7 @@
 // Modal_Workout_Edit
 //
 import React, { useState, useEffect } from 'react';
-import '../modals/Modal_Workout_Edit.css';
+import '../CSS/Modal_Workout_Edit.css';
 
 export default function Modal_Workout_Edit({
   isOpen,
