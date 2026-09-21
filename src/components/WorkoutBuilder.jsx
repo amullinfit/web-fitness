@@ -313,11 +313,13 @@ export default function WorkoutBuilder() {
             />
           </div>
 
-          <WorkoutChart
-            workout={steps}
-            thresholdPace={paces.threshold}
-            chartHeight={"140px"}
-          />
+          <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }} >
+            <WorkoutChart
+              workout={steps}
+              thresholdPace={paces.threshold}
+              chartHeight={"140px"}
+            />
+          </div>
 
           <div 
             className="steps-list-container" 
