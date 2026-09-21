@@ -314,8 +314,9 @@ export default function WorkoutBuilder() {
           </div>
 
           <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }} >
+            ----XXX----
             <WorkoutChart
-              workout={steps}
+              workout={convertWorkoutToTargetFormat(steps)}
               thresholdPace={paces.threshold}
               chartHeight={"140px"}
             />
