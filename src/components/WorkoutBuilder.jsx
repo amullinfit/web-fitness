@@ -39,6 +39,9 @@ export default function WorkoutBuilder() {
   const [workoutDescription, setWorkoutDescription] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState('');
 
+  // Raw unaltered document state for debugging/inspection
+  const [unalteredWorkout, setUnalteredWorkout] = useState('');
+
   // Mode Options
   const [workoutMode, setWorkoutMode] = useState('time'); // 'time' or 'distance'
   const [paceMethod, setPaceMethod] = useState('Pace'); 
@@ -121,15 +124,19 @@ export default function WorkoutBuilder() {
     };
   }, [steps, workoutMode]);
 
-  // --- Actions & Handlers ---
+  // --- Handlers ---
   const handleNewWorkout = () => {
     setWorkoutId(null);
     setWorkoutTitle('New Workout');
     setWorkoutDescription('');
+    setUnalteredWorkout('');
     setSteps(createDefaultSteps(workoutMode));
     setMode('BUILDING');
   };
 
+  // =========================================================================
+  // RETRIEVAL LOGIC: Called when a user selects a workout from OptionsMenu
+  // =========================================================================
   const handleSelectWorkout = (id) => {
     const found = savedWorkouts.find((w) => w.id === id);
     if (found) {
@@ -137,6 +144,15 @@ export default function WorkoutBuilder() {
       setWorkoutTitle(found.name || 'Untitled');
       setWorkoutDescription(found.description || '');
       setSelectedFolderId(found.folder_id || '');
+
+      // Store raw document (formats object/JSON or string representation)
+      const rawDoc = typeof found.document === 'object' 
+        ? JSON.stringify(found.document, null, 2) 
+        : (found.document || '');
+      
+      setUnalteredWorkout(rawDoc);
+
+      // Parse document into builder UI step objects
       setSteps(mapIcuDocToSteps(found.document, workoutMode));
       setMode('BUILDING');
     }
@@ -240,6 +256,33 @@ export default function WorkoutBuilder() {
             />
           </div>
 
+          {/* Unaltered Workout Raw Output Box */}
+          <div className="unaltered-workout-container" style={{ marginBottom: '20px' }}>
+            <label 
+              htmlFor="unaltered-workout-input" 
+              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+            >
+              Unaltered workout
+            </label>
+            <textarea
+              id="unaltered-workout-input"
+              readOnly
+              value={unalteredWorkout}
+              placeholder="No raw Intervals.icu payload available..."
+              rows={5}
+              style={{
+                width: '100%',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                padding: '8px',
+                backgroundColor: '#f4f4f6',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+
           {/* Steps Container (Recursive Drag-and-Drop) */}
           <div 
             className="steps-list-container" 
@@ -278,7 +321,7 @@ export default function WorkoutBuilder() {
         </>
       )}
 
-      {/* --- Modals --- */}
+      {/* Modals */}
       {isFolderModalOpen && (
         <ModalFolderCreate
           onClose={() => setIsFolderModalOpen(false)}
