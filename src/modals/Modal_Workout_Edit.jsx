@@ -1,5 +1,5 @@
 //
-// Modal_Workout_Edit.jsx
+// Modal_Workout_Edit
 //
 import React, { useState, useEffect, useMemo } from 'react';
 
@@ -15,40 +15,36 @@ export default function Modal_Workout_Edit({
   onOpenFolderModal,
 }) {
   const [activeTab, setActiveTab] = useState('select');
-  const [editTitle, setEditTitle] = useState(title || '');
-  const [editDescription, setEditDescription] = useState(description || '');
-  const [selectedFolder, setSelectedFolder] = useState(folderId || '');
+  const [editTitle, setEditTitle] = useState(title);
+  const [editDescription, setEditDescription] = useState(description);
+  const [selectedFolder, setSelectedFolder] = useState(folderId);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Sync state when props change
+  // Synchronize internal state on initial load or explicit external prop updates
   useEffect(() => {
     setEditTitle(title || '');
     setEditDescription(description || '');
     setSelectedFolder(folderId || '');
   }, [title, description, folderId]);
 
-  useEffect(() => {
-    if (folderId) {
-      setSelectedFolder(folderId);
-    }
-  }, [folders, folderId]);
-
-  // Group workouts by folder ID
-  const groupedWorkouts = useMemo(() => {
-    const query = searchQuery.toLowerCase();
+  // Group and filter workouts by folder ID
+  const { folderMap, rootWorkouts, totalFiltered } = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    
     const filtered = savedWorkouts.filter((w) => {
-      const workoutName = w.name || w.title || 'Untitled Workout';
-      return workoutName.toLowerCase().includes(query);
+      const name = w.name || w.title || 'Untitled Workout';
+      return name.toLowerCase().includes(query);
     });
 
-    // Map folders by ID
     const folderMap = {};
     folders.forEach((f) => {
       const fId = f.id || f._id;
-      folderMap[fId] = {
-        name: f.name || f.title || f.folderName || 'Untitled Folder',
-        workouts: [],
-      };
+      if (fId) {
+        folderMap[fId] = {
+          name: f.name || f.title || f.folderName || 'Untitled Folder',
+          workouts: [],
+        };
+      }
     });
 
     const rootWorkouts = [];
@@ -62,7 +58,7 @@ export default function Modal_Workout_Edit({
       }
     });
 
-    return { folderMap, rootWorkouts };
+    return { folderMap, rootWorkouts, totalFiltered: filtered.length };
   }, [savedWorkouts, folders, searchQuery]);
 
   const handleSelect = (workout) => {
@@ -84,8 +80,8 @@ export default function Modal_Workout_Edit({
       <div style={styles.card} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div style={styles.header}>
-          <h2 style={{ margin: 0, fontSize: '18px' }}>Open Workout:</h2>
-          <button style={styles.closeBtn} onClick={onClose}>
+          <h2 style={styles.headerTitle}>Workout Options</h2>
+          <button style={styles.closeBtn} onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
@@ -97,7 +93,7 @@ export default function Modal_Workout_Edit({
             style={activeTab === 'select' ? styles.tabActive : styles.tab}
             onClick={() => setActiveTab('select')}
           >
-            📂 Open Existing ({savedWorkouts.length})
+            📂 Open Existing ({totalFiltered})
           </button>
           <button
             type="button"
@@ -122,10 +118,12 @@ export default function Modal_Workout_Edit({
             <div style={styles.workoutList}>
               {savedWorkouts.length === 0 ? (
                 <p style={styles.emptyText}>No saved workouts found.</p>
+              ) : totalFiltered === 0 ? (
+                <p style={styles.emptyText}>No workouts match "{searchQuery}"</p>
               ) : (
                 <>
-                  {/* Render Folders & Workouts inside them */}
-                  {Object.entries(groupedWorkouts.folderMap).map(([fId, folderObj]) => (
+                  {/* Folders & Workouts */}
+                  {Object.entries(folderMap).map(([fId, folderObj]) => (
                     <div key={fId} style={styles.folderGroup}>
                       <div style={styles.folderHeader}>
                         📁 {folderObj.name} ({folderObj.workouts.length})
@@ -135,7 +133,7 @@ export default function Modal_Workout_Edit({
                           <div style={styles.emptyFolderText}>No workouts in this folder</div>
                         ) : (
                           folderObj.workouts.map((workout, idx) => {
-                            const wId = workout.id || workout._id || idx;
+                            const wId = workout.id || workout._id || `w-folder-${fId}-${idx}`;
                             const wTitle = workout.name || workout.title || 'Untitled Workout';
                             return (
                               <div
@@ -155,15 +153,15 @@ export default function Modal_Workout_Edit({
                     </div>
                   ))}
 
-                  {/* Render Workouts with No Folder */}
-                  {groupedWorkouts.rootWorkouts.length > 0 && (
+                  {/* Root / Uncategorized Workouts */}
+                  {rootWorkouts.length > 0 && (
                     <div style={styles.folderGroup}>
                       <div style={styles.folderHeader}>
-                        📋 Uncategorized Workouts ({groupedWorkouts.rootWorkouts.length})
+                        📋 Uncategorized Workouts ({rootWorkouts.length})
                       </div>
                       <div style={styles.folderWorkouts}>
-                        {groupedWorkouts.rootWorkouts.map((workout, idx) => {
-                          const wId = workout.id || workout._id || idx;
+                        {rootWorkouts.map((workout, idx) => {
+                          const wId = workout.id || workout._id || `w-root-${idx}`;
                           const wTitle = workout.name || workout.title || 'Untitled Workout';
                           return (
                             <div
@@ -290,6 +288,12 @@ const styles = {
     alignItems: 'center',
     padding: '16px 20px',
     borderBottom: '1px solid #eee',
+  },
+  headerTitle: {
+    margin: 0,
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#212529',
   },
   closeBtn: {
     background: 'none',
