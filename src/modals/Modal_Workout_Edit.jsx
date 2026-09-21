@@ -1,110 +1,335 @@
-import React from 'react';
-import { modalOverlayStyle, modalContentStyle } from './modalStyles';
+//
+// Modal_Workout_Edit.jsx
+//
+import React, { useState } from 'react';
 
 export default function Modal_Workout_Edit({
-  isOpen,
+  title,
+  description,
+  folderId,
+  folders = [],
+  savedWorkouts = [],
+  onSelectWorkout,
+  onSave,
   onClose,
-  selectedEditFolderId,
-  setSelectedEditFolderId,
-  folders,
-  fetchWorkoutsApi,
-  setWorkoutsList,
-  setStatusMessage,
-  setApiLoading,
-  apiLoading,
-  workoutsList,
-  mapIcuDocToSteps,
-  calculateTotals,
-  workoutMode,
-  handleSelectWorkoutToEdit,
-  formatTime,
-  formatDistance,
-  RenderWorkoutChart,
-  dynamicPresets,
+  onOpenFolderModal,
 }) {
-  if (!isOpen) return null;
+  const [activeTab, setActiveTab] = useState(savedWorkouts.length > 0 ? 'select' : 'edit');
+  const [editTitle, setEditTitle] = useState(title || '');
+  const [editDescription, setEditDescription] = useState(description || '');
+  const [selectedFolder, setSelectedFolder] = useState(folderId || '');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const handleFolderChange = async (e) => {
-    const folderId = e.target.value;
-    setSelectedEditFolderId(folderId);
-    setApiLoading(true);
-    try {
-      const targetFolder = folders.find((f) => String(f.id) === String(folderId));
-      if (targetFolder && Array.isArray(targetFolder.children)) {
-        setWorkoutsList(targetFolder.children);
-      } else {
-        const wList = await fetchWorkoutsApi(folderId);
-        setWorkoutsList(wList);
-      }
-    } catch (err) {
-      setStatusMessage(`Failed to fetch workouts: ${err.message}`);
-    } finally {
-      setApiLoading(false);
+  // Filter workouts by search query
+  const filteredWorkouts = savedWorkouts.filter((w) =>
+    (w.name || 'Untitled').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (onSave) {
+      onSave(editTitle, editDescription, selectedFolder);
     }
   };
 
   return (
-    <div style={modalOverlayStyle}>
-      <div style={{ ...modalContentStyle, width: '720px', maxWidth: '90vw' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Select Workout to Edit</h3>
-
-        <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '13px' }}>
-          1. Select Folder:
-        </label>
-        <select
-          value={selectedEditFolderId}
-          onChange={handleFolderChange}
-          style={{ width: '100%', padding: '8px', marginBottom: '16px', borderRadius: '4px', border: '1px solid #ccc' }}
-        >
-          {folders.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
-            </option>
-          ))}
-        </select>
-
-        <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '13px' }}>
-          2. Select Workout:
-        </label>
-        <div style={{ maxHeight: '360px', overflowY: 'auto', border: '1px solid #ccc', borderRadius: '6px', marginBottom: '16px' }}>
-          {apiLoading ? (
-            <p style={{ padding: '16px', color: '#888', margin: 0, textAlign: 'center' }}>Loading workouts...</p>
-          ) : workoutsList.length === 0 ? (
-            <p style={{ padding: '16px', color: '#888', margin: 0, textAlign: 'center' }}>No workouts found in this folder.</p>
-          ) : (
-            workoutsList.map((w) => {
-              const workoutSteps = mapIcuDocToSteps(w);
-              const wTotals = calculateTotals(workoutSteps, workoutMode);
-
-              return (
-                <div key={w.id} onClick={() => handleSelectWorkoutToEdit(w)} className="workout-select-item">
-                  <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                    <div className="workout-select-title">{w.name || 'Untitled Workout'}</div>
-                  </div>
-
-                  <div className="workout-select-meta">
-                    <span>⏱️ {formatTime(w.moving_time || wTotals.totalSec)}</span>
-                    <span>📏 {formatDistance(w.distance ? w.distance / 1609.344 : wTotals.totalMiles)}</span>
-                  </div>
-
-                  <div style={{ width: '120px', flexShrink: 0, height: '40px', display: 'flex', alignItems: 'flex-end' }}>
-                    <RenderWorkoutChart steps={workoutSteps} height={40} workoutMode={workoutMode} presets={dynamicPresets} />
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            onClick={onClose}
-            style={{ padding: '6px 16px', borderRadius: '4px', border: '1px solid #ccc', cursor: 'pointer' }}
-          >
-            Cancel
+    <div className="modal-backdrop" style={styles.backdrop}>
+      <div className="modal-card" style={styles.card}>
+        {/* Header */}
+        <div style={styles.header}>
+          <h2 style={{ margin: 0, fontSize: '18px' }}>Workout Options</h2>
+          <button style={styles.closeBtn} onClick={onClose}>
+            ✕
           </button>
         </div>
+
+        {/* Tab Switcher */}
+        <div style={styles.tabBar}>
+          <button
+            type="button"
+            style={activeTab === 'select' ? styles.tabActive : styles.tab}
+            onClick={() => setActiveTab('select')}
+          >
+            📂 Open Existing ({savedWorkouts.length})
+          </button>
+          <button
+            type="button"
+            style={activeTab === 'edit' ? styles.tabActive : styles.tab}
+            onClick={() => setActiveTab('edit')}
+          >
+            ✏️ Edit Current Metadata
+          </button>
+        </div>
+
+        {/* Tab 1: Open / Select Existing Workout */}
+        {activeTab === 'select' && (
+          <div style={styles.tabContent}>
+            <input
+              type="text"
+              placeholder="🔍 Search saved workouts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={styles.searchInput}
+            />
+
+            <div style={styles.workoutList}>
+              {filteredWorkouts.length === 0 ? (
+                <p style={styles.emptyText}>No saved workouts found.</p>
+              ) : (
+                filteredWorkouts.map((workout) => (
+                  <div
+                    key={workout.id}
+                    className="workout-select-item"
+                    onClick={() => {
+                      if (onSelectWorkout) onSelectWorkout(workout.id);
+                    }}
+                  >
+                    <div className="workout-select-title">
+                      {workout.name || 'Untitled Workout'}
+                    </div>
+                    {workout.description && (
+                      <div style={styles.workoutDesc}>{workout.description}</div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Edit Metadata */}
+        {activeTab === 'edit' && (
+          <form onSubmit={handleFormSubmit} style={styles.tabContent}>
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>Workout Title</label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                style={styles.input}
+                placeholder="Enter workout title..."
+                required
+              />
+            </div>
+
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>Description</label>
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                style={styles.textarea}
+                rows={3}
+                placeholder="Optional description or notes..."
+              />
+            </div>
+
+            <div style={styles.fieldGroup}>
+              <div style={styles.labelRow}>
+                <label style={styles.label}>Folder</label>
+                {onOpenFolderModal && (
+                  <button
+                    type="button"
+                    style={styles.linkBtn}
+                    onClick={onOpenFolderModal}
+                  >
+                    + New Folder
+                  </button>
+                )}
+              </div>
+              <select
+                value={selectedFolder}
+                onChange={(e) => setSelectedFolder(e.target.value)}
+                style={styles.select}
+              >
+                <option value="">(No Folder / Root)</option>
+                {folders.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    📁 {f.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={styles.actions}>
+              <button type="button" style={styles.btnSecondary} onClick={onClose}>
+                Cancel
+              </button>
+              <button type="submit" style={styles.btnPrimary}>
+                Save Changes
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
 }
+
+// Inline Styles for modal layout
+const styles = {
+  backdrop: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: '8px',
+    width: '480px',
+    maxWidth: '90%',
+    maxHeight: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+    overflow: 'hidden',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '16px 20px',
+    borderBottom: '1px solid #eee',
+  },
+  closeBtn: {
+    background: 'none',
+    border: 'none',
+    fontSize: '18px',
+    cursor: 'pointer',
+    color: '#888',
+  },
+  tabBar: {
+    display: 'flex',
+    borderBottom: '1px solid #e0e0e0',
+    backgroundColor: '#f8f9fa',
+  },
+  tab: {
+    flex: 1,
+    padding: '10px 14px',
+    border: 'none',
+    background: 'none',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#6c757d',
+    borderBottom: '2px solid transparent',
+  },
+  tabActive: {
+    flex: 1,
+    padding: '10px 14px',
+    border: 'none',
+    background: '#ffffff',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#007bff',
+    borderBottom: '2px solid #007bff',
+  },
+  tabContent: {
+    padding: '20px',
+    overflowY: 'auto',
+  },
+  searchInput: {
+    width: '100%',
+    padding: '8px 12px',
+    borderRadius: '4px',
+    border: '1px solid #ced4da',
+    marginBottom: '12px',
+    fontSize: '13px',
+    boxSizing: 'border-box',
+  },
+  workoutList: {
+    maxHeight: '260px',
+    overflowY: 'auto',
+  },
+  workoutDesc: {
+    fontSize: '12px',
+    color: '#6c757d',
+    marginTop: '2px',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#888',
+    fontSize: '13px',
+    margin: '20px 0',
+  },
+  fieldGroup: {
+    marginBottom: '14px',
+  },
+  labelRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '4px',
+  },
+  label: {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: '#333',
+    display: 'block',
+  },
+  input: {
+    width: '100%',
+    padding: '8px 10px',
+    borderRadius: '4px',
+    border: '1px solid #ced4da',
+    fontSize: '14px',
+    boxSizing: 'border-box',
+  },
+  textarea: {
+    width: '100%',
+    padding: '8px 10px',
+    borderRadius: '4px',
+    border: '1px solid #ced4da',
+    fontSize: '13px',
+    boxSizing: 'border-box',
+    resize: 'vertical',
+  },
+  select: {
+    width: '100%',
+    padding: '8px 10px',
+    borderRadius: '4px',
+    border: '1px solid #ced4da',
+    fontSize: '13px',
+    boxSizing: 'border-box',
+  },
+  linkBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#007bff',
+    fontSize: '12px',
+    cursor: 'pointer',
+    padding: 0,
+  },
+  actions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '8px',
+    marginTop: '20px',
+  },
+  btnPrimary: {
+    padding: '8px 16px',
+    backgroundColor: '#007bff',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    fontSize: '13px',
+  },
+  btnSecondary: {
+    padding: '8px 16px',
+    backgroundColor: '#6c757d',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '13px',
+  },
+};
