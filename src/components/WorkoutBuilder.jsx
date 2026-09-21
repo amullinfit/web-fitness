@@ -6,10 +6,10 @@ import { convertWorkoutToTargetFormat } from "../utils/WorkoutConverter.js";
 
 import { usePaces } from '../utils/PacesContext.jsx'; 
 
-import CreateFolderModal from '../modals/Modal_Folder_Create';
-import EditWorkoutModal from '../modals/Modal_Workout_Edit';
-import SaveWorkoutModal from '../modals/Modal_Workout_Save';
-import ZoomWorkoutModal from '../modals/Modal_Workout_Zoom';
+import Modal_Folder_Create from '../modals/Modal_Folder_Create';
+import Modal_Workout_Edit from '../modals/Modal_Workout_Edit';
+import Modal_Workout_Save from '../modals/Modal_Workout_Save';
+import Modal_Workout_Zoom from '../modals/Modal_Workout_Zoom';
 
 import { 
   fetchFoldersApi, 
@@ -678,7 +678,7 @@ export default function WorkoutBuilder() {
       {/* --------------------------------------------------------------------------*/}
 
       {/* --- MODALS --- */}
-      <Modal_Folder_Create
+    <Modal_Folder_Create
       isOpen={isFolderModalOpen}
       onClose={() => setIsFolderModalOpen(false)}
       newFolderName={newFolderName}
