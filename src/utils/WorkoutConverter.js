@@ -2,6 +2,27 @@
  * 
  * WorkoutConverter.js 
  *
+ */
+
+export function convertStepsToWorkout(steps) {
+  if (!steps) return null;
+
+  return {
+      category: "WORKOUT",
+      name: workoutPayload.name ?? "",
+      description: workoutPayload.description ?? "",
+      updated: new Date().toISOString(),
+      workout_doc: {
+        steps: steps.map(({ id, ...rest }) => ({
+          ...rest,
+          description: "Your description here" // Replace with desired value or function logic
+        })),
+      },
+      feedSource: "Web-Fitness"
+  };
+}
+
+/*
  * Transforms a raw workoutPayloadObject (source array schema)
  * into the target wrapper JSON structure expected by the API/UI.
  * 

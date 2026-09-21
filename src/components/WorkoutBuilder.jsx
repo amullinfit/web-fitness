@@ -12,7 +12,7 @@ import RenderWorkoutChart from '../utils/RenderWorkoutChart';
 import RenderStepRow from '../utils/RenderStepRow';
 
 import { OptionsMenu, ControlBar } from '../utils/WorkoutBuilderMenus';
-import { convertWorkoutToTargetFormat } from '../utils/WorkoutConverter.js';
+import { convertStepsToWorkout, convertWorkoutToTargetFormat } from '../utils/WorkoutConverter.js';
 
 import Modal_Folder_Create from '../modals/Modal_Folder_Create';
 import Modal_Workout_Edit from '../modals/Modal_Workout_Edit';
@@ -240,7 +240,7 @@ export default function WorkoutBuilder() {
   };
 
   console.log('[App Debug] WOB: steps: ', steps);
-  console.log('[App Debug] WOB: converted(steps): ', convertWorkoutToTargetFormat(steps));
+  console.log('[App Debug] WOB: converted(steps): ', convertStepsToWorkout(steps));
   
   return (
     <div className="workout-builder-container">
@@ -319,7 +319,7 @@ export default function WorkoutBuilder() {
           <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }} >
             ----XXX----
             <WorkoutChart
-              workout={convertWorkoutToTargetFormat(steps)}
+              workout={convertStepsToWorkout(steps)}
               thresholdPace={481}
               chartHeight={"140px"}
             />
