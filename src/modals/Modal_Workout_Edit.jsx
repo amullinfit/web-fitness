@@ -67,13 +67,13 @@ export default function Modal_Workout_Edit({
           <div className="form-group">
             <label className="form-label">Switch Workout</label>
             <select
-              value={currentWorkout?.id || ''}
+              value={currentWorkout?.id !== undefined && currentWorkout?.id !== null ? String(currentWorkout.id) : ''}
               onChange={handleWorkoutSelectChange}
               className="form-select"
             >
               <option value="" disabled>Select a workout to edit...</option>
               {workouts.map((w) => (
-                <option key={w.id} value={w.id}>
+                <option key={w.id} value={String(w.id)}>
                   {w.name || w.title || `Workout ${w.id}`}
                 </option>
               ))}
