@@ -6,6 +6,11 @@ import { convertWorkoutToTargetFormat } from "../utils/WorkoutConverter.js";
 
 import { usePaces } from '../utils/PacesContext.jsx'; 
 
+import CreateFolderModal from './modals/Modal_Folder_Create';
+import EditWorkoutModal from './modals/Modal_Workout_Edit';
+import SaveWorkoutModal from './modals/Modal_Workout_Save';
+import ZoomWorkoutModal from './modals/Modal_Workout_Zoom';
+
 import { 
   fetchFoldersApi, 
   fetchWorkoutsApi, 
@@ -668,178 +673,75 @@ export default function WorkoutBuilder() {
         </div>
       )}
 
+      {/* --------------------------------------------------------------------------*/}
+      {/* --------------------------------------------------------------------------*/}
+      {/* --------------------------------------------------------------------------*/}
+
       {/* --- MODALS --- */}
-      {isFolderModalOpen && (
-        <div style={modalOverlayStyle}>
-          <div style={modalContentStyle}>
-            <h3>Create New Folder</h3>
-            <input
-              type="text"
-              placeholder="Folder Name"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              style={{ width: '100%', padding: '8px', marginBottom: '16px', boxSizing: 'border-box' }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button onClick={() => setIsFolderModalOpen(false)}>Cancel</button>
-              <button onClick={handleCreateFolderSubmit} disabled={apiLoading} style={{ backgroundColor: '#007bff', color: '#fff' }}>
-                {apiLoading ? 'Creating...' : 'Create'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal_Folder_Create
+      isOpen={isFolderModalOpen}
+      onClose={() => setIsFolderModalOpen(false)}
+      newFolderName={newFolderName}
+      setNewFolderName={setNewFolderName}
+      handleCreateFolderSubmit={handleCreateFolderSubmit}
+      apiLoading={apiLoading}
+    />
 
-      {isEditModalOpen && (
-        <div style={modalOverlayStyle}>
-          <div style={{ ...modalContentStyle, width: '720px', maxWidth: '90vw' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Select Workout to Edit</h3>
-            
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '13px' }}>
-              1. Select Folder:
-            </label>
-            <select
-              value={selectedEditFolderId}
-              onChange={async (e) => {
-                const folderId = e.target.value;
-                setSelectedEditFolderId(folderId);
-                setApiLoading(true);
-                try {
-                  const targetFolder = folders.find((f) => String(f.id) === String(folderId));
-                  if (targetFolder && Array.isArray(targetFolder.children)) {
-                    setWorkoutsList(targetFolder.children);
-                  } else {
-                    const wList = await fetchWorkoutsApi(folderId);
-                    setWorkoutsList(wList);
-                  }
-                } catch (err) {
-                  setStatusMessage(`Failed to fetch workouts: ${err.message}`);
-                } finally {
-                  setApiLoading(false);
-                }
-              }}
-              style={{ width: '100%', padding: '8px', marginBottom: '16px', borderRadius: '4px', border: '1px solid #ccc' }}
-            >
-              {folders.map((f) => (
-                <option key={f.id} value={f.id}>{f.name}</option>
-              ))}
-            </select>
+    <Modal_Workout_Edit
+      isOpen={isEditModalOpen}
+      onClose={() => setIsEditModalOpen(false)}
+      selectedEditFolderId={selectedEditFolderId}
+      setSelectedEditFolderId={setSelectedEditFolderId}
+      folders={folders}
+      fetchWorkoutsApi={fetchWorkoutsApi}
+      setWorkoutsList={setWorkoutsList}
+      setStatusMessage={setStatusMessage}
+      setApiLoading={setApiLoading}
+      apiLoading={apiLoading}
+      workoutsList={workoutsList}
+      mapIcuDocToSteps={mapIcuDocToSteps}
+      calculateTotals={calculateTotals}
+      workoutMode={workoutMode}
+      handleSelectWorkoutToEdit={handleSelectWorkoutToEdit}
+      formatTime={formatTime}
+      formatDistance={formatDistance}
+      RenderWorkoutChart={RenderWorkoutChart}
+      dynamicPresets={dynamicPresets}
+    />
 
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '13px' }}>
-              2. Select Workout:
-            </label>
-            <div style={{ maxHeight: '360px', overflowY: 'auto', border: '1px solid #ccc', borderRadius: '6px', marginBottom: '16px' }}>
-              {apiLoading ? (
-                <p style={{ padding: '16px', color: '#888', margin: 0, textAlign: 'center' }}>Loading workouts...</p>
-              ) : workoutsList.length === 0 ? (
-                <p style={{ padding: '16px', color: '#888', margin: 0, textAlign: 'center' }}>No workouts found in this folder.</p>
-              ) : (
-                workoutsList.map((w) => {
-                  const workoutSteps = mapIcuDocToSteps(w);
-                  const wTotals = calculateTotals(workoutSteps, workoutMode);
+    <Modal_Workout_Save
+      isOpen={isSaveModalOpen}
+      onClose={() => setIsSaveModalOpen(false)}
+      saveAsNew={saveAsNew}
+      saveTitle={saveTitle}
+      setSaveTitle={setSaveTitle}
+      saveFolderId={saveFolderId}
+      setSaveFolderId={setSaveFolderId}
+      folders={folders}
+      showInlineFolderInput={showInlineFolderInput}
+      setShowInlineFolderInput={setShowInlineFolderInput}
+      inlineFolderInput={inlineFolderInput}
+      setInlineFolderInput={setInlineFolderInput}
+      handleCreateInlineFolder={handleCreateInlineFolder}
+      handleConfirmSaveWorkout={handleConfirmSaveWorkout}
+      apiLoading={apiLoading}
+    />
 
-                  return (
-                    <div
-                      key={w.id}
-                      onClick={() => handleSelectWorkoutToEdit(w)}
-                      className="workout-select-item"
-                    >
-                      <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                        <div className="workout-select-title">
-                          {w.name || 'Untitled Workout'}
-                        </div>
-                      </div>
+    <Modal_Workout_Zoom
+      isOpen={isZoomOpen}
+      onClose={() => setIsZoomOpen(false)}
+      workoutTitle={workoutTitle}
+      steps={steps}
+      workoutMode={workoutMode}
+      dynamicPresets={dynamicPresets}
+      RenderWorkoutChart={RenderWorkoutChart}
+    />
 
-                      <div className="workout-select-meta">
-                        <span>⏱️ {formatTime(w.moving_time || wTotals.totalSec)}</span>
-                        <span>📏 {formatDistance(w.distance ? w.distance / 1609.344 : wTotals.totalMiles)}</span>
-                      </div>
+      {/* --------------------------------------------------------------------------*/}
+      {/* --------------------------------------------------------------------------*/}
+      {/* --------------------------------------------------------------------------*/}
 
-                      <div style={{ width: '120px', flexShrink: 0, height: '40px', display: 'flex', alignItems: 'flex-end' }}>
-                        <RenderWorkoutChart steps={workoutSteps} height={40} workoutMode={workoutMode} presets={dynamicPresets} />
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button 
-                onClick={() => setIsEditModalOpen(false)}
-                style={{ padding: '6px 16px', borderRadius: '4px', border: '1px solid #ccc', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isSaveModalOpen && (
-        <div style={modalOverlayStyle}>
-          <div style={modalContentStyle}>
-            <h3>{saveAsNew ? 'Save As New Workout' : 'Save Workout'}</h3>
-
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', fontSize: '13px' }}>Workout Name:</label>
-            <input
-              type="text"
-              value={saveTitle}
-              onChange={(e) => setSaveTitle(e.target.value)}
-              style={{ width: '100%', padding: '8px', marginBottom: '16px', boxSizing: 'border-box' }}
-            />
-
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', fontSize: '13px' }}>Select Folder:</label>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              <select
-                value={saveFolderId}
-                onChange={(e) => setSaveFolderId(e.target.value)}
-                style={{ flex: 1, padding: '8px' }}
-              >
-                {folders.map((f) => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
-              <button type="button" onClick={() => setShowInlineFolderInput(!showInlineFolderInput)}>
-                + New Folder
-              </button>
-            </div>
-
-            {showInlineFolderInput && (
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', padding: '8px', backgroundColor: '#f8f9fa' }}>
-                <input
-                  type="text"
-                  placeholder="New Folder Name"
-                  value={inlineFolderInput}
-                  onChange={(e) => setInlineFolderInput(e.target.value)}
-                  style={{ flex: 1, padding: '6px' }}
-                />
-                <button onClick={handleCreateInlineFolder} disabled={apiLoading}>Create</button>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button onClick={() => setIsSaveModalOpen(false)}>Cancel</button>
-              <button onClick={handleConfirmSaveWorkout} disabled={apiLoading} style={{ backgroundColor: '#007bff', color: '#fff' }}>
-                {apiLoading ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isZoomOpen && (
-        <div style={modalOverlayStyle} onClick={() => setIsZoomOpen(false)}>
-          <div style={{ ...modalContentStyle, width: '700px' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <h2 style={{ margin: 0 }}>{workoutTitle} - Profile View</h2>
-              <button onClick={() => setIsZoomOpen(false)}>✕</button>
-            </div>
-            <RenderWorkoutChart steps={steps} height={280} workoutMode={workoutMode} presets={dynamicPresets} />
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
   );
 }
 
