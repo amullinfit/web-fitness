@@ -196,18 +196,10 @@ export default function WorkoutBuilder() {
 
   return (
     <div className="workout-builder-container">
-      {/* Top Options Bar Triggering OptionsMenu */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
-        <button 
-          className="btn-secondary" 
-          onClick={() => setIsOptionsMenuOpen(!isOptionsMenuOpen)}
-        >
-          Options ⚙
-        </button>
-      </div>
 
-      {/* Flyout Options Menu */}
-      {isOptionsMenuOpen && (
+      {/* Header Bar */}
+      <div className="builder-header-bar">
+        <h1 className="builder-header-title">Workout Builder</h1>
         <OptionsMenu
           workoutMode={workoutMode}
           setWorkoutMode={setWorkoutMode}
@@ -220,7 +212,7 @@ export default function WorkoutBuilder() {
           }}
           onClose={() => setIsOptionsMenuOpen(false)}
         />
-      )}
+      </div>
 
       {/* Main Content Area */}
       {mode === 'EMPTY' ? (
@@ -289,33 +281,6 @@ export default function WorkoutBuilder() {
             />
           </div>
 
-          {/* Unaltered Workout Raw Output Box */}
-          <div className="unaltered-workout-container" style={{ marginBottom: '20px' }}>
-            <label 
-              htmlFor="unaltered-workout-input" 
-              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
-            >
-              Unaltered workout
-            </label>
-            <textarea
-              id="unaltered-workout-input"
-              readOnly
-              value={unalteredWorkout}
-              placeholder="No raw Intervals.icu payload available..."
-              rows={5}
-              style={{
-                width: '100%',
-                fontFamily: 'monospace',
-                fontSize: '12px',
-                padding: '8px',
-                backgroundColor: '#f4f4f6',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-
           {/* Steps Container (Recursive Drag-and-Drop) */}
           <div 
             className="steps-list-container" 
@@ -356,14 +321,14 @@ export default function WorkoutBuilder() {
 
       {/* --- Modals --- */}
       {isFolderModalOpen && (
-        <ModalFolderCreate
+        <Modal_Folder_Create
           onClose={() => setIsFolderModalOpen(false)}
           onCreate={handleCreateFolder}
         />
       )}
 
       {isEditModalOpen && (
-        <ModalWorkoutEdit
+        <Modal_Workout_Edit
           title={workoutTitle}
           description={workoutDescription}
           folderId={selectedFolderId}
@@ -380,7 +345,7 @@ export default function WorkoutBuilder() {
       )}
 
       {isSaveModalOpen && (
-        <ModalWorkoutSave
+        <Modal_Workout_Save
           title={workoutTitle}
           folders={folders}
           selectedFolderId={selectedFolderId}
@@ -390,7 +355,7 @@ export default function WorkoutBuilder() {
       )}
 
       {isZoomModalOpen && (
-        <ModalWorkoutZoom
+        <Modal_Workout_Zoom
           steps={steps}
           workoutMode={workoutMode}
           presets={dynamicPresets}

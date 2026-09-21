@@ -1,5 +1,5 @@
 import React from 'react';
-import './VolumeBarChart.css';
+import '../css/VolumeBarChart.css';
 
 /**
  * Determines intensity color based on workout steps or average pace/zone.
