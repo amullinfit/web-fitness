@@ -50,8 +50,6 @@ export async function fetchWorkoutsApi(folderId = null) {
     ? `${VAL_WORKOUTBUILDER_URL}?action=get_workouts&folder_id=${folderId}` 
     : `${VAL_WORKOUTBUILDER_URL}?action=get_workouts`;
 
-    console.log('[App Debug] WOBH: url: ', url);
-  
   const res = await fetch(url, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch workouts');
 
