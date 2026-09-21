@@ -7,6 +7,7 @@ import '../CSS/WorkoutBuilder.css';
 
 import { useWorkoutSteps } from '../hooks/useWorkoutSteps';
 
+import WorkoutChart from './WorkoutChart';
 import RenderWorkoutChart from '../utils/RenderWorkoutChart';
 import RenderStepRow from '../utils/RenderStepRow';
 
@@ -311,6 +312,12 @@ export default function WorkoutBuilder() {
               presets={dynamicPresets} 
             />
           </div>
+
+          <WorkoutChart
+            workout={steps}
+            thresholdPace={paces.threshold}
+            chartHeight={isMobile ? "110px" : "140px"}
+          />
 
           <div 
             className="steps-list-container" 
