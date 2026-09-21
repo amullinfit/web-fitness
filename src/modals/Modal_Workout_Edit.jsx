@@ -1,7 +1,7 @@
 //
 // Modal_Workout_Edit.jsx
 //
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import RenderWorkoutChart from '../utils/RenderWorkoutChart';
 import { formatTime, formatDistance, mapIcuDocToSteps } from '../utils/WorkoutBuilderHelpers.js';
 import '../CSS/Modal_Workout_Edit.css';
@@ -16,14 +16,29 @@ export default function Modal_Workout_Edit({
   workoutMode = 'time',
   presets = {}
 }) {
-  const [selectedFolderId, setSelectedFolderId] = useState(String(currentFolderId ?? ''));
+  // Find "Workouts" folder ID if currentFolderId is not explicitly provided
+  const defaultFolderId = useMemo(() => {
+    if (currentFolderId !== null && currentFolderId !== undefined && currentFolderId !== '') {
+      return String(currentFolderId);
+    }
+    const workoutsFolder = folders.find(
+      (f) => (f.name || f.title || '').trim().toLowerCase() === 'workouts'
+    );
+    return workoutsFolder ? String(workoutsFolder.id) : '';
+  }, [currentFolderId, folders]);
+
+  const [selectedFolderId, setSelectedFolderId] = useState(defaultFolderId);
+
+  // Sync state if defaultFolderId updates (e.g. when modal opens or folders load)
+  useEffect(() => {
+    setSelectedFolderId(defaultFolderId);
+  }, [defaultFolderId, isOpen]);
 
   if (!isOpen) return null;
 
   // Filter workouts belonging to the selected folder
   const filteredWorkouts = useMemo(() => {
     if (selectedFolderId === '') {
-      // Show workouts at root (folder_id is null/undefined/empty string)
       return workouts.filter((w) => !w.folder_id && !w.folderId);
     }
     return workouts.filter(
@@ -33,6 +48,9 @@ export default function Modal_Workout_Edit({
 
   // Helper to calculate totals for each workout card preview
   const getWorkoutSummary = (workout) => {
+    
+    console.log('[App Debug] MWE: workout: ', workout);
+
     const steps = mapIcuDocToSteps(workout.document, workoutMode);
 
     const calcTotals = (list) => {
@@ -59,6 +77,8 @@ export default function Modal_Workout_Edit({
           }
         }
       });
+
+      console.log('[App Debug] MWE: time/dist: ', timesec, distMiles);
 
       return [timeSec, distMiles];
     };
