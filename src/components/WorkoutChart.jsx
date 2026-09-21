@@ -45,8 +45,6 @@ export default function WorkoutChart({
   showHoverDetails = true
 }) {
 
-  console.log('[App Debug] WOC: workout: ', workout);
-
   const clipId = useId();
 
   // 2. Consume Paces Context
@@ -69,10 +67,18 @@ export default function WorkoutChart({
   const workoutTitleStr = workout?.name || workout?.title || 'Workout';
 
   const plannedList = extractPlannedSteps(workout);
+
+  console.log('[App Debug] WC:');
+  console.log('[App Debug] WC: ----------');
+  console.log('[App Debug] WC: This is what the input is:');
+  console.log('[App Debug] WC: workout: ', workout);
+  console.log('[App Debug] WC:');
+  console.log('[App Debug] WC: This is what the chart object actually needs');
+  console.log('[App debug] WC: plannedlist: ', plannedList);
+  console.log('[App Debug] WC:');
+
   const executedList = extractExecutedSteps(workout);
 
-  console.log('[App Debug] WOC: planned: ', plannedList);
-  
   if (!plannedList.length && !executedList.length) return null;
 
   const totalPlannedSec = plannedList.reduce((sum, s) => sum + (s.duration || 0), 0);

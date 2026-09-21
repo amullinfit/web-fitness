@@ -542,7 +542,7 @@ export default function DailyView() {
         {isSelectedDate && (
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#555', marginBottom: '4px' }}>
-              WorkoutChart Props (selectedDate):
+              Properties (selectedDate):
             </label>
             <textarea
               readOnly

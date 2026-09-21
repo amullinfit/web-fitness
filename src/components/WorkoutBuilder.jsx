@@ -317,7 +317,6 @@ export default function WorkoutBuilder() {
           </div>
 
           <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }} >
-            ----XXX----
             <WorkoutChart
               workout={convertStepsToWorkout(steps)}
               thresholdPace={481}
@@ -358,6 +357,19 @@ export default function WorkoutBuilder() {
               + Add Repeat Block
             </button>
           </div>
+
+          <div className="json-preview-container">
+            <label className="json-preview-label">
+              Intervals.icu JSON Representation (Read-Only)
+            </label>
+            <textarea
+              readOnly
+              value={JSON.stringify([workoutPayloadObject], null, 2)}
+              rows={14}
+              className="json-preview-textarea"
+            />
+          </div>
+
         </>
       )}
 
