@@ -55,13 +55,11 @@ export async function fetchWorkoutsApi(folderId = null) {
   const res = await fetch(url, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch workouts');
 
-  console.log('[App Debug] WOBH: res: ', res);
-  
   const data = await res.json();
 
   console.log('[App Debug] WOBH: data: ', data);
 
-  console.log('[App Debug] WOBH: children: ', data.children);
+  console.log('[App Debug] WOBH: children: ', data.0.children);
   
   if (data && Array.isArray(data.children)) return data.children;
   return Array.isArray(data) ? data : (data.workouts || []);
