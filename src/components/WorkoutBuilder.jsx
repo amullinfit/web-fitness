@@ -95,7 +95,10 @@ export default function WorkoutBuilder() {
   }, []);
 
   // Presets & Totals
-  const dynamicPresets = useMemo(() => calculateDynamicPresets(paces), [paces]);
+  const dynamicPresets = useMemo(
+    () => calculateDynamicPresets(paces, paces?.threshold || 360, paceMethod),
+    [paces, paceMethod]
+  );
 
   const totals = useMemo(() => {
     const calcTotals = (list) => {
@@ -189,8 +192,8 @@ export default function WorkoutBuilder() {
         setWorkoutId(saved.id);
         setWorkoutTitle(payload.name);
         setSelectedFolderId(payload.folder_id);
-        const updatedList = await fetchWorkoutsApi();
-        setSavedWorkouts(updatedList || []);
+        const updatedData = await fetchWorkoutsApi();
+        setSavedWorkouts(updatedData?.workouts || []);
         setIsSaveModalOpen(false);
         setMode('SAVED');
         showToast(isSaveAsMode ? 'Workout saved as new file!' : 'Workout saved successfully!');
@@ -407,23 +410,24 @@ export default function WorkoutBuilder() {
         />
       )}
 
-    {isEditModalOpen && (
-      <Modal_Workout_Edit
-        workoutData={workoutData}
-        title={workoutTitle}
-        description={workoutDescription}
-        folderId={selectedFolderId}
-        onSelectWorkout={handleSelectWorkout}
-        onSave={(newTitle, newDesc, newFolder) => {
-          setWorkoutTitle(newTitle);
-          setWorkoutDescription(newDesc);
-          setSelectedFolderId(newFolder);
-          setIsEditModalOpen(false);
-        }}
-        onClose={() => setIsEditModalOpen(false)}
-        onOpenFolderModal={() => setIsFolderModalOpen(true)}
-      />
-    )}
+      {isEditModalOpen && (
+        <Modal_Workout_Edit
+          workouts={savedWorkouts}
+          folders={folders}
+          title={workoutTitle}
+          description={workoutDescription}
+          folderId={selectedFolderId}
+          onSelectWorkout={handleSelectWorkout}
+          onSave={(newTitle, newDesc, newFolder) => {
+            setWorkoutTitle(newTitle);
+            setWorkoutDescription(newDesc);
+            setSelectedFolderId(newFolder);
+            setIsEditModalOpen(false);
+          }}
+          onClose={() => setIsEditModalOpen(false)}
+          onOpenFolderModal={() => setIsFolderModalOpen(true)}
+        />
+      )}
 
       {isSaveModalOpen && (
         <Modal_Workout_Save

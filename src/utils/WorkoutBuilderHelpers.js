@@ -1,9 +1,6 @@
 //
 // WorkoutBUilderHelpers.js
 //
-import { useEffect, useMemo, useState } from 'react';
-import { usePaces } from '../utils/PacesContext.jsx';
-
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
@@ -81,7 +78,6 @@ export async function fetchWorkoutsApi(folderId = null) {
   };
 }
 
-
 export async function createFolderApi(folderName) {
   const res = await fetch(VAL_WORKOUTBUILDER_URL, {
     method: 'POST',
@@ -101,16 +97,17 @@ export async function createFolderApi(folderName) {
   return await res.json();
 }
 
-export async function saveWorkoutApi(action, workoutId, workoutData) {
-  const method = action === 'update_workout' ? 'PUT' : 'POST';
+export async function saveWorkoutApi(payload) {
+  const action = payload.id ? 'update_workout' : 'create_workout';
+  const method = payload.id ? 'PUT' : 'POST';
   const res = await fetch(VAL_WORKOUTBUILDER_URL, {
     method,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, workoutId, workoutData }),
+    body: JSON.stringify({ action, ...payload }),
   });
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error(`Failed to ${action === 'update_workout' ? 'update' : 'create'} workout: ${errorText}`);
+    throw new Error(`Failed to save workout: ${errorText}`);
   }
   return await res.json();
 }
@@ -294,7 +291,7 @@ export const formatTime = (totalSeconds) => {
     createStep('cooldown', mode),
   ];
   
-  export const mapIcuDocToSteps = (workout) => {
+  export const mapIcuDocToSteps = (workout, mode = 'time') => {
     const stepsSource = workout?.workout_doc?.steps || workout?.steps;
     if (!Array.isArray(stepsSource) || stepsSource.length === 0) {
       return createDefaultSteps('time');

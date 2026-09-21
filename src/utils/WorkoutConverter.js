@@ -1,4 +1,7 @@
 /**
+ * 
+ * WorkoutConverter.js 
+ *
  * Transforms a raw workoutPayloadObject (source array schema)
  * into the target wrapper JSON structure expected by the API/UI.
  * 
