@@ -1,3 +1,6 @@
+//
+// WorkoutBuilder.jsx
+//
 import React, { useState, useEffect, useMemo } from 'react';
 import { usePaces } from '../utils/PacesContext.jsx'; 
 import '../CSS/WorkoutBuilder.css';
@@ -26,6 +29,13 @@ import {
   createDefaultSteps, 
   mapIcuDocToSteps 
 } from '../utils/WorkoutBuilderHelpers.js';
+
+//
+//
+//----------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------
+//
+//
 
 export default function WorkoutBuilder() {
   const { paces } = usePaces();
@@ -194,7 +204,14 @@ export default function WorkoutBuilder() {
     }
   };
 
-  return (
+//
+//
+//----------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------
+//
+//
+
+return (
     <div className="workout-builder-container">
 
       {/* Header Bar */}
@@ -236,14 +253,12 @@ export default function WorkoutBuilder() {
         <>
           {/* Workout Header & ControlBar Menu */}
           <ControlBar
-            title={workoutTitle}
-            description={workoutDescription}
-            totals={totals}
-            onOpenSaveModal={() => setIsSaveModalOpen(true)}
-            onOpenEditModal={() => setIsEditModalOpen(true)}
-            onOpenZoomModal={() => setIsZoomModalOpen(true)}
+            workoutMode={workoutMode}
+            setWorkoutMode={setWorkoutMode}
+            paceMethod={paceMethod}
+            setPaceMethod={setPaceMethod}
+            thresholdPaceSec={paces?.threshold || 0} 
           />
-
           {/* Unaltered Workout Raw Output Box */}
           <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
             <label 
