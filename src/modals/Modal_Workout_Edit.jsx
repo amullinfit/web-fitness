@@ -4,11 +4,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
 export default function Modal_Workout_Edit({
+  // Accept the new combined API response payload or fallback props
+  workoutData = null, // { folders: [...], workouts: [...] }
+  savedWorkouts: fallbackSavedWorkouts = [],
+  folders: fallbackFolders = [],
+  
+  // Active workout edit details
   title = '',
   description = '',
   folderId = '',
-  folders = [],
-  savedWorkouts = [],
+  
+  // Action Handlers
   onSelectWorkout,
   onSave,
   onClose,
@@ -20,26 +26,52 @@ export default function Modal_Workout_Edit({
   const [selectedFolder, setSelectedFolder] = useState(folderId);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Synchronize internal state on initial load or explicit external prop updates
+  // Normalize incoming folders & workouts array from either workoutData object or individual props
+  const folders = workoutData?.folders || fallbackFolders;
+  
+  // Extract workouts: use workoutData.workouts if pre-flattened, 
+  // or dynamically flatten folder.children from workoutData.folders
+  const savedWorkouts = useMemo(() => {
+    if (workoutData?.workouts && Array.isArray(workoutData.workouts)) {
+      return workoutData.workouts;
+    }
+    if (workoutData?.folders && Array.isArray(workoutData.folders)) {
+      return workoutData.folders.flatMap((folder) =>
+        Array.isArray(folder.children)
+          ? folder.children.map((w) => ({
+              ...w,
+              folderId: w.folder_id || w.folderId || folder.id,
+            }))
+          : []
+      );
+    }
+    return fallbackSavedWorkouts;
+  }, [workoutData, fallbackSavedWorkouts]);
+
+  // Synchronize internal form state when props change
   useEffect(() => {
     setEditTitle(title || '');
     setEditDescription(description || '');
-    setSelectedFolder(folderId || '');
+    setSelectedFolder(folderId ? String(folderId) : '');
   }, [title, description, folderId]);
 
-  // Group and filter workouts by folder ID
+  // Group and filter workouts by folder
   const { folderMap, rootWorkouts, totalFiltered } = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    
+
+    // Filter workouts by name or description
     const filtered = savedWorkouts.filter((w) => {
       const name = w.name || w.title || 'Untitled Workout';
       return name.toLowerCase().includes(query);
     });
 
     const folderMap = {};
+
+    // 1. Build folder lookup map (keyed by string ID)
     folders.forEach((f) => {
-      const fId = f.id || f._id;
-      if (fId) {
+      const rawFolderId = f.id ?? f._id;
+      if (rawFolderId !== undefined && rawFolderId !== null) {
+        const fId = String(rawFolderId);
         folderMap[fId] = {
           name: f.name || f.title || f.folderName || 'Untitled Folder',
           workouts: [],
@@ -49,8 +81,16 @@ export default function Modal_Workout_Edit({
 
     const rootWorkouts = [];
 
+    // 2. Assign workouts to their corresponding folder
     filtered.forEach((w) => {
-      const wFolderId = w.folderId || w.folder || w.category;
+      const rawFolderId =
+        w.folder_id ??
+        w.folderId ??
+        (typeof w.folder === 'object' ? (w.folder?.id ?? w.folder?._id) : w.folder);
+
+      const wFolderId =
+        rawFolderId !== undefined && rawFolderId !== null ? String(rawFolderId) : null;
+
       if (wFolderId && folderMap[wFolderId]) {
         folderMap[wFolderId].workouts.push(w);
       } else {
@@ -141,9 +181,17 @@ export default function Modal_Workout_Edit({
                                 style={styles.workoutCard}
                                 onClick={() => handleSelect(workout)}
                               >
-                                <div style={styles.workoutTitle}>{wTitle}</div>
+                                <div style={styles.workoutTitleRow}>
+                                  <span style={styles.workoutTitle}>{wTitle}</span>
+                                  {workout.type && (
+                                    <span style={styles.typeBadge}>{workout.type}</span>
+                                  )}
+                                </div>
                                 {workout.description && (
-                                  <div style={styles.workoutDesc}>{workout.description}</div>
+                                  <div style={styles.workoutDesc}>
+                                    {workout.description.trim().substring(0, 90)}
+                                    {workout.description.length > 90 ? '...' : ''}
+                                  </div>
                                 )}
                               </div>
                             );
@@ -169,9 +217,17 @@ export default function Modal_Workout_Edit({
                               style={styles.workoutCard}
                               onClick={() => handleSelect(workout)}
                             >
-                              <div style={styles.workoutTitle}>{wTitle}</div>
+                              <div style={styles.workoutTitleRow}>
+                                <span style={styles.workoutTitle}>{wTitle}</span>
+                                {workout.type && (
+                                  <span style={styles.typeBadge}>{workout.type}</span>
+                                )}
+                              </div>
                               {workout.description && (
-                                <div style={styles.workoutDesc}>{workout.description}</div>
+                                <div style={styles.workoutDesc}>
+                                  {workout.description.trim().substring(0, 90)}
+                                  {workout.description.length > 90 ? '...' : ''}
+                                </div>
                               )}
                             </div>
                           );
@@ -185,7 +241,7 @@ export default function Modal_Workout_Edit({
           </div>
         )}
 
-        {/* Tab 2: Edit Metadata */}
+        {/* Tab 2: Edit Details */}
         {activeTab === 'edit' && (
           <form onSubmit={handleFormSubmit} style={styles.tabContent}>
             <div style={styles.fieldGroup}>
@@ -206,8 +262,8 @@ export default function Modal_Workout_Edit({
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
                 style={styles.textarea}
-                rows={3}
-                placeholder="Optional description or notes..."
+                rows={4}
+                placeholder="Optional description or workout steps..."
               />
             </div>
 
@@ -232,7 +288,7 @@ export default function Modal_Workout_Edit({
                 <option value="">(No Folder / Root)</option>
                 {Array.isArray(folders) &&
                   folders.map((f, idx) => {
-                    const fId = f.id || f._id || idx;
+                    const fId = String(f.id ?? f._id ?? idx);
                     const fName = f.name || f.title || f.folderName || 'Untitled Folder';
                     return (
                       <option key={fId} value={fId}>
@@ -274,7 +330,7 @@ const styles = {
   card: {
     backgroundColor: '#ffffff',
     borderRadius: '8px',
-    width: '460px',
+    width: '480px',
     maxWidth: '90%',
     maxHeight: '85vh',
     display: 'flex',
@@ -343,7 +399,7 @@ const styles = {
     boxSizing: 'border-box',
   },
   workoutList: {
-    maxHeight: '300px',
+    maxHeight: '320px',
     overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
@@ -375,16 +431,33 @@ const styles = {
     border: '1px solid #dee2e6',
     backgroundColor: '#f8f9fa',
     cursor: 'pointer',
+    transition: 'background-color 0.15s ease',
+  },
+  workoutTitleRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '8px',
   },
   workoutTitle: {
     fontSize: '13px',
     fontWeight: '600',
     color: '#212529',
   },
+  typeBadge: {
+    fontSize: '10px',
+    fontWeight: 'bold',
+    backgroundColor: '#e7f5ff',
+    color: '#1c7ed6',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    textTransform: 'uppercase',
+  },
   workoutDesc: {
     fontSize: '11px',
     color: '#6c757d',
-    marginTop: '2px',
+    marginTop: '4px',
+    whiteSpace: 'pre-line',
   },
   emptyFolderText: {
     fontSize: '12px',
