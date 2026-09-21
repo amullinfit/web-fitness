@@ -78,7 +78,7 @@ export default function Modal_Workout_Edit({
         }
       });
 
-      console.log('[App Debug] MWE: time/dist: ', timesec, distMiles);
+      console.log('[App Debug] MWE: time/dist: ', timeSec, distMiles);
 
       return [timeSec, distMiles];
     };
@@ -105,6 +105,23 @@ export default function Modal_Workout_Edit({
           >
             ✕
           </button>
+        </div>
+
+        {/* Step 1: Choose Folder */}
+        <div className="form-group">
+          <label className="form-label">Folder</label>
+          <select
+            value={selectedFolderId}
+            onChange={(e) => setSelectedFolderId(e.target.value)}
+            className="form-select"
+          >
+            <option value="">(Root / No Folder)</option>
+            {folders.map((f) => (
+              <option key={f.id} value={String(f.id)}>
+                {f.name || f.title}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Step 1: Choose Folder */}
