@@ -239,6 +239,12 @@ export default function WorkoutBuilder() {
     setMode('EMPTY');
   };
 
+    // Extract props passed to WorkoutChart for inspection
+    const chartDataDebug = {
+      workout: steps,
+      pacesContextData: paces || null
+    };
+
   console.log('[App Debug] WOB: steps: ', steps);
   console.log('[App Debug] WOB: converted(steps): ', convertStepsToWorkout(steps));
   
@@ -358,15 +364,26 @@ export default function WorkoutBuilder() {
             </button>
           </div>
 
-          <div className="json-preview-container">
-            <label className="json-preview-label">
-              Intervals.icu JSON Representation (Read-Only)
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#555', marginBottom: '4px' }}>
+              Properties (selectedDate):
             </label>
             <textarea
               readOnly
-              value={JSON.stringify([workoutPayloadObject], null, 2)}
-              rows={14}
-              className="json-preview-textarea"
+              value={JSON.stringify(chartDataDebug, null, 2)}
+              rows={8}
+              style={{
+                width: '100%',
+                fontFamily: 'monospace',
+                fontSize: '11px',
+                padding: '8px',
+                backgroundColor: '#1e1e1e',
+                color: '#00ff66',
+                border: '1px solid #333',
+                borderRadius: '4px',
+                boxSizing: 'border-box',
+                resize: 'vertical'
+              }}
             />
           </div>
 
