@@ -407,24 +407,23 @@ export default function WorkoutBuilder() {
         />
       )}
 
-      {isEditModalOpen && (
-        <Modal_Workout_Edit
-          title={workoutTitle}
-          description={workoutDescription}
-          folderId={selectedFolderId}
-          folders={folders}
-          savedWorkouts={savedWorkouts}
-          onSelectWorkout={handleSelectWorkout}
-          onSave={(newTitle, newDesc, newFolder) => {
-            setWorkoutTitle(newTitle);
-            setWorkoutDescription(newDesc);
-            setSelectedFolderId(newFolder);
-            setIsEditModalOpen(false);
-          }}
-          onClose={() => setIsEditModalOpen(false)}
-          onOpenFolderModal={() => setIsFolderModalOpen(true)}
-        />
-      )}
+    {isEditModalOpen && (
+      <Modal_Workout_Edit
+        workoutData={workoutData}
+        title={workoutTitle}
+        description={workoutDescription}
+        folderId={selectedFolderId}
+        onSelectWorkout={handleSelectWorkout}
+        onSave={(newTitle, newDesc, newFolder) => {
+          setWorkoutTitle(newTitle);
+          setWorkoutDescription(newDesc);
+          setSelectedFolderId(newFolder);
+          setIsEditModalOpen(false);
+        }}
+        onClose={() => setIsEditModalOpen(false)}
+        onOpenFolderModal={() => setIsFolderModalOpen(true)}
+      />
+    )}
 
       {isSaveModalOpen && (
         <Modal_Workout_Save
