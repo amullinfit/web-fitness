@@ -1,3 +1,6 @@
+    //
+    // WorkoutChartHelpers.js
+    //
     import { usePaces } from '../utils/PacesContext.jsx';
 
     // --- CHART CONFIGURATION CONSTANTS ---

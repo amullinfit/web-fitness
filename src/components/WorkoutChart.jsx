@@ -1,3 +1,6 @@
+//
+// WorkoutChart.jsx
+//
 import React, { useId, useState } from 'react';
 import '../CSS/WorkoutChart.css';
 import { usePaces } from '../utils/PacesContext.jsx';
