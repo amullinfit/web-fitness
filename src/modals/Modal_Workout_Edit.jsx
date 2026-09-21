@@ -16,15 +16,27 @@ export default function Modal_Workout_Edit({
   workoutMode = 'time',
   presets = {}
 }) {
-  // Find "Workouts" folder ID if currentFolderId is not explicitly provided
+  // Determine default folder ID based on priority:
+  // 1. Explicit currentFolderId
+  // 2. Folder named "Workouts"
+  // 3. First available folder in list
+  // 4. Root ("") if no folders exist
   const defaultFolderId = useMemo(() => {
     if (currentFolderId !== null && currentFolderId !== undefined && currentFolderId !== '') {
       return String(currentFolderId);
     }
-    const workoutsFolder = folders.find(
-      (f) => (f.name || f.title || '').trim().toLowerCase() === 'workouts'
-    );
-    return workoutsFolder ? String(workoutsFolder.id) : '';
+
+    if (folders && folders.length > 0) {
+      const workoutsFolder = folders.find(
+        (f) => (f.name || f.title || '').trim().toLowerCase() === 'workouts'
+      );
+      if (workoutsFolder) {
+        return String(workoutsFolder.id);
+      }
+      return String(folders[0].id);
+    }
+
+    return '';
   }, [currentFolderId, folders]);
 
   const [selectedFolderId, setSelectedFolderId] = useState(defaultFolderId);
@@ -48,9 +60,6 @@ export default function Modal_Workout_Edit({
 
   // Helper to calculate totals for each workout card preview
   const getWorkoutSummary = (workout) => {
-    
-    console.log('[App Debug] MWE: workout: ', workout);
-
     const steps = mapIcuDocToSteps(workout.document, workoutMode);
 
     const calcTotals = (list) => {
@@ -77,8 +86,6 @@ export default function Modal_Workout_Edit({
           }
         }
       });
-
-      console.log('[App Debug] MWE: time/dist: ', timeSec, distMiles);
 
       return [timeSec, distMiles];
     };
@@ -107,7 +114,7 @@ export default function Modal_Workout_Edit({
           </button>
         </div>
 
-        {/* Step 1: Choose Folder */}
+        {/* Folder Selection Dropdown */}
         <div className="form-group">
           <label className="form-label">Folder</label>
           <select
@@ -115,7 +122,10 @@ export default function Modal_Workout_Edit({
             onChange={(e) => setSelectedFolderId(e.target.value)}
             className="form-select"
           >
-            <option value="">(Root / No Folder)</option>
+            {/* Show Root option only when no folders exist */}
+            {(!folders || folders.length === 0) && (
+              <option value="">(Root / No Folder)</option>
+            )}
             {folders.map((f) => (
               <option key={f.id} value={String(f.id)}>
                 {f.name || f.title}
@@ -124,24 +134,7 @@ export default function Modal_Workout_Edit({
           </select>
         </div>
 
-        {/* Step 1: Choose Folder */}
-        <div className="form-group">
-          <label className="form-label">Folder</label>
-          <select
-            value={selectedFolderId}
-            onChange={(e) => setSelectedFolderId(e.target.value)}
-            className="form-select"
-          >
-            <option value="">(Root / No Folder)</option>
-            {folders.map((f) => (
-              <option key={f.id} value={String(f.id)}>
-                {f.name || f.title}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Step 2: List Workouts in Selected Folder */}
+        {/* Workouts Grid */}
         <div className="workout-selection-list">
           <label className="form-label">Workouts ({filteredWorkouts.length})</label>
           {filteredWorkouts.length === 0 ? (
