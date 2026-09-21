@@ -86,7 +86,10 @@ export default function WorkoutBuilder() {
         const fetchedFolders = await fetchFoldersApi();
         setFolders(fetchedFolders || []);
         const fetchedWorkouts = await fetchWorkoutsApi();
-        setSavedWorkouts(fetchedWorkouts || []);
+        const workoutsArray = Array.isArray(fetchedWorkouts) 
+          ? fetchedWorkouts 
+          : (fetchedWorkouts?.workouts || []);
+        setSavedWorkouts(workoutsArray);
       } catch (err) {
         console.error('Failed to initialize workout builder data:', err);
       }
@@ -150,12 +153,13 @@ export default function WorkoutBuilder() {
 
   // 2. Select / Open Existing Workout
   const handleSelectWorkout = (id) => {
-    const found = savedWorkouts.find((w) => w.id === id);
+    // String coercion for safe comparison
+    const found = savedWorkouts.find((w) => String(w.id) === String(id));
     if (found) {
       setWorkoutId(found.id);
-      setWorkoutTitle(found.name || 'Untitled');
+      setWorkoutTitle(found.name || found.title || 'Untitled');
       setWorkoutDescription(found.description || '');
-      setSelectedFolderId(found.folder_id || '');
+      setSelectedFolderId(found.folder_id ?? found.folderId ?? '');
 
       const rawDoc = typeof found.document === 'object' 
         ? JSON.stringify(found.document, null, 2) 
@@ -193,7 +197,10 @@ export default function WorkoutBuilder() {
         setWorkoutTitle(payload.name);
         setSelectedFolderId(payload.folder_id);
         const updatedData = await fetchWorkoutsApi();
-        setSavedWorkouts(updatedData?.workouts || []);
+        const workoutsArray = Array.isArray(updatedData) 
+          ? updatedData 
+          : (updatedData?.workouts || []);
+        setSavedWorkouts(workoutsArray);
         setIsSaveModalOpen(false);
         setMode('SAVED');
         showToast(isSaveAsMode ? 'Workout saved as new file!' : 'Workout saved successfully!');
@@ -247,14 +254,13 @@ export default function WorkoutBuilder() {
   };
 
   // 8. Create Folder Handler
-  // Updated Folder Creation Handler in WorkoutBuilder.jsx
   const handleCreateFolder = async (folderName) => {
     try {
       const newFolder = await createFolderApi(folderName);
       if (newFolder) {
         const newId = newFolder.id || newFolder._id;
         setFolders((prev) => [...prev, newFolder]);
-        setSelectedFolderId(newId); // Automatically select newly created folder
+        setSelectedFolderId(newId);
         setIsFolderModalOpen(false);
         showToast(`Folder "${folderName}" created.`);
       }
@@ -278,6 +284,17 @@ export default function WorkoutBuilder() {
     setWorkoutId(null);
     setMode('EMPTY');
   };
+
+  // Prepare currentWorkout object for Modal_Workout_Edit
+  const currentWorkoutObj = useMemo(() => {
+    if (!workoutId && !workoutTitle) return null;
+    return {
+      id: workoutId,
+      name: workoutTitle,
+      description: workoutDescription,
+      folder_id: selectedFolderId
+    };
+  }, [workoutId, workoutTitle, workoutDescription, selectedFolderId]);
 
   return (
     <div className="workout-builder-container">
@@ -402,7 +419,6 @@ export default function WorkoutBuilder() {
       )}
 
       {/* --- Modals --- */}
-      {/* Render Folder Modal independently over or beside Edit Modal */}
       {isFolderModalOpen && (
         <Modal_Folder_Create
           onClose={() => setIsFolderModalOpen(false)}
@@ -412,11 +428,10 @@ export default function WorkoutBuilder() {
 
       {isEditModalOpen && (
         <Modal_Workout_Edit
+          isOpen={isEditModalOpen}
           workouts={savedWorkouts}
           folders={folders}
-          title={workoutTitle}
-          description={workoutDescription}
-          folderId={selectedFolderId}
+          currentWorkout={currentWorkoutObj}
           onSelectWorkout={handleSelectWorkout}
           onSave={(newTitle, newDesc, newFolder) => {
             setWorkoutTitle(newTitle);
