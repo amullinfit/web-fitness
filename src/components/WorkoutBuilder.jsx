@@ -241,8 +241,7 @@ export default function WorkoutBuilder() {
 
     // Extract props passed to WorkoutChart for inspection
     const chartDataDebug = {
-      workout: steps,
-      pacesContextData: paces || null
+      workout: steps
     };
 
   console.log('[App Debug] WOB: steps: ', steps);

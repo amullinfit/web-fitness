@@ -69,12 +69,18 @@ export default function WorkoutChart({
   const plannedList = extractPlannedSteps(workout);
 
   console.log('[App Debug] WC:');
+  console.log('[App Debug] WC:');
+  console.log('[App Debug] WC:');
   console.log('[App Debug] WC: ----------');
   console.log('[App Debug] WC: This is what the input is:');
   console.log('[App Debug] WC: workout: ', workout);
   console.log('[App Debug] WC:');
   console.log('[App Debug] WC: This is what the chart object actually needs');
   console.log('[App debug] WC: plannedlist: ', plannedList);
+  console.log('[App Debug] WC:');
+  console.log('[App Debug] WC: ----------');
+  console.log('[App Debug] WC:');
+  console.log('[App Debug] WC:');
   console.log('[App Debug] WC:');
 
   const executedList = extractExecutedSteps(workout);
@@ -257,9 +263,12 @@ export default function WorkoutChart({
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
                   // thresholdSecPerMile is the # of seconds to run a mile at threshold (495 for 8:15 pace)
-                  console.log('[App Debug] WC: i-step : ', step);
                   const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
-                  console.log('[App Debug] WC: o-range: ', range);
+
+                  if (idx < 3) {
+                    console.log('[App Debug] WC: i-step : ', step);
+                    console.log('[App Debug] WC: o-range: ', range);
+                  }
 
                   // zoneDetails (name and color) are derived from the mid pace of the step
                   const zoneDetails = getZoneDetailsFromPaces(range.midSec, paces);

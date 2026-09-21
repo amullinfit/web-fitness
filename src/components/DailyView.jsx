@@ -456,8 +456,7 @@ export default function DailyView() {
 
   const renderWorkoutCard = (workout, index, isSelectedDate) => {
     const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings, paces);
-    console.log("thresholdPaceMps:", thresholdPaceMps);
-
+    
     const workoutDateStr = getLocalDateString(
       workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date
     );
@@ -486,8 +485,6 @@ export default function DailyView() {
       chartHeight: isMobile ? "110px" : "140px",
       pacesContextData: paces || null
     };
-
-    console.log("[App Debug] DV: workout: ", workout)
 
     return (
       <div key={activityId || index} className="daily-workout-card">
@@ -579,6 +576,14 @@ export default function DailyView() {
 
   const renderDaySection = (dateObj, dateStr, dayWorkouts, isSelectedDate = false) => {
     const isToday = dateStr === todayStr;
+
+    if (isToday) {
+      console.log('[App Debug] DV: ');
+      console.log('[App Debug] DV: ');
+      console.log('[App Debug] DV: workout', workout);
+      console.log('[App Debug] DV: ');
+      console.log('[App Debug] DV: ');
+    }
 
     return (
       <div className="daily-day-column">
