@@ -9,10 +9,10 @@ import RenderStepRow from '../utils/RenderStepRow';
 import { OptionsMenu, ControlBar } from '../utils/WorkoutBuilderMenus';
 import { convertWorkoutToTargetFormat } from '../utils/WorkoutConverter.js';
 
-import ModalFolderCreate from './modals/Modal_Folder_Create';
-import ModalWorkoutEdit from './modals/Modal_Workout_Edit';
-import ModalWorkoutSave from './modals/Modal_Workout_Save';
-import ModalWorkoutZoom from './modals/Modal_Workout_Zoom';
+import Modal_Folder_Create from '../modals/Modal_Folder_Create';
+import Modal_Workout_Edit from '../modals/Modal_Workout_Edit';
+import Modal_Workout_Save from '../modals/Modal_Workout_Save';
+import Modal_Workout_Zoom from '../modals/Modal_Workout_Zoom';
 
 import { 
   fetchFoldersApi, 
