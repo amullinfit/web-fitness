@@ -218,16 +218,15 @@ return (
       <div className="builder-header-bar">
         <h1 className="builder-header-title">Workout Builder</h1>
         <OptionsMenu
-          workoutMode={workoutMode}
-          setWorkoutMode={setWorkoutMode}
-          paceMethod={paceMethod}
-          setPaceMethod={setPaceMethod}
+          mode={mode}
           savedWorkouts={savedWorkouts}
-          onSelectWorkout={(id) => {
-            handleSelectWorkout(id);
-            setIsOptionsMenuOpen(false);
-          }}
-          onClose={() => setIsOptionsMenuOpen(false)}
+          onSelectWorkout={handleSelectWorkout}
+          onStartCreateNew={handleNewWorkout}
+          onOpenEditModal={() => setIsEditModalOpen(true)}
+          onOpenCreateFolderModal={() => setIsFolderModalOpen(true)}
+          onOpenSaveModal={(isSaveAs) => setIsSaveModalOpen(true)}
+          onCancelEdits={() => setMode('EMPTY')}
+          onCloseWorkout={() => setMode('EMPTY')}
         />
       </div>
 

@@ -3,6 +3,8 @@
 //
 import React, { useState } from 'react';
 import { formatMMSS } from '../utils/WorkoutBuilderHelpers.js';
+import '../CSS/WorkoutBuilder.css';
+
 
 export function OptionsMenu({
   mode,
