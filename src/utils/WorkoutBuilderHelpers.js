@@ -57,11 +57,30 @@ export async function fetchWorkoutsApi(folderId = null) {
 
   console.log('[App Debug] WOBH: data: ', data);
 
-  console.log('[App Debug] WOBH: folders: ', data.children);
-  
-  if (data && Array.isArray(data.children)) return data.children;
-  return Array.isArray(data) ? data : (data.workouts || []);
+  // 1. Extract folders from root 'folders' array
+  const folders = Array.isArray(data?.folders) ? data.folders : [];
+
+  // 2. Extract all workouts nested inside each folder's 'children' array
+  const workouts = folders.flatMap((folder) =>
+    Array.isArray(folder.children)
+      ? folder.children.map((workout) => ({
+          ...workout,
+          // Guarantee folder_id is attached to every workout
+          folderId: workout.folder_id || folder.id,
+        }))
+      : []
+  );
+
+  console.log('[App Debug] WOBH extracted folders: ', folders);
+  console.log('[App Debug] WOBH extracted workouts: ', workouts);
+
+  // Return formatted payload containing both folders and extracted workouts
+  return {
+    folders,
+    workouts,
+  };
 }
+
 
 export async function createFolderApi(folderName) {
   const res = await fetch(VAL_WORKOUTBUILDER_URL, {

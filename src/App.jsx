@@ -8,6 +8,8 @@ import GearView from './components/GearView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
 
+const DEFAULT_VIEW = 'workout-builder';
+
 // [DEBUG Helper] Wrap components to log successful mounts and unmounts
 const WithDebugLog = ({ name, children }) => {
   useEffect(() => {
@@ -159,8 +161,9 @@ function HeaderBar({
 export default function App() {
   console.log('[App Debug] 🚀 Render cycle started.');
 
-  // Set 'daily' as the default starting view
-  const [activeTab, setActiveTab] = useState('daily');
+  // Set the default starting view to DEFAULT_VIEW
+  const [activeTab, setActiveTab] = useState(DEFAULT_VIEW);
+
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [layoutVersion, setLayoutVersion] = useState(
