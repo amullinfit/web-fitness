@@ -1,7 +1,7 @@
 //
 // Modal_Workout_Edit.jsx
 //
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 export default function Modal_Workout_Edit({
   title = '',
@@ -20,24 +20,50 @@ export default function Modal_Workout_Edit({
   const [selectedFolder, setSelectedFolder] = useState(folderId || '');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Sync state when workout props change
+  // Sync state when props change
   useEffect(() => {
     setEditTitle(title || '');
     setEditDescription(description || '');
     setSelectedFolder(folderId || '');
   }, [title, description, folderId]);
 
-  // Sync state when folders array changes (e.g. after creating a new folder)
   useEffect(() => {
     if (folderId) {
       setSelectedFolder(folderId);
     }
   }, [folders, folderId]);
 
-  const filteredWorkouts = savedWorkouts.filter((w) => {
-    const workoutName = w.name || w.title || 'Untitled Workout';
-    return workoutName.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  // Group workouts by folder ID
+  const groupedWorkouts = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    const filtered = savedWorkouts.filter((w) => {
+      const workoutName = w.name || w.title || 'Untitled Workout';
+      return workoutName.toLowerCase().includes(query);
+    });
+
+    // Map folders by ID
+    const folderMap = {};
+    folders.forEach((f) => {
+      const fId = f.id || f._id;
+      folderMap[fId] = {
+        name: f.name || f.title || f.folderName || 'Untitled Folder',
+        workouts: [],
+      };
+    });
+
+    const rootWorkouts = [];
+
+    filtered.forEach((w) => {
+      const wFolderId = w.folderId || w.folder || w.category;
+      if (wFolderId && folderMap[wFolderId]) {
+        folderMap[wFolderId].workouts.push(w);
+      } else {
+        rootWorkouts.push(w);
+      }
+    });
+
+    return { folderMap, rootWorkouts };
+  }, [savedWorkouts, folders, searchQuery]);
 
   const handleSelect = (workout) => {
     const wId = workout.id || workout._id;
@@ -58,13 +84,13 @@ export default function Modal_Workout_Edit({
       <div style={styles.card} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div style={styles.header}>
-          <h2 style={{ margin: 0, fontSize: '18px' }}>Workout Options</h2>
+          <h2 style={{ margin: 0, fontSize: '18px' }}>Open Workout:</h2>
           <button style={styles.closeBtn} onClick={onClose}>
             ✕
           </button>
         </div>
 
-        {/* Tab Switcher */}
+        {/* Tab Bar */}
         <div style={styles.tabBar}>
           <button
             type="button"
@@ -82,38 +108,80 @@ export default function Modal_Workout_Edit({
           </button>
         </div>
 
-        {/* Tab 1: Open Existing Workout */}
+        {/* Tab 1: Grouped Workouts List */}
         {activeTab === 'select' && (
           <div style={styles.tabContent}>
             <input
               type="text"
-              placeholder="🔍 Search saved workouts..."
+              placeholder="🔍 Search workouts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={styles.searchInput}
             />
 
             <div style={styles.workoutList}>
-              {filteredWorkouts.length === 0 ? (
+              {savedWorkouts.length === 0 ? (
                 <p style={styles.emptyText}>No saved workouts found.</p>
               ) : (
-                filteredWorkouts.map((workout, index) => {
-                  const wId = workout.id || workout._id || index;
-                  const wTitle = workout.name || workout.title || 'Untitled Workout';
-
-                  return (
-                    <div
-                      key={wId}
-                      style={styles.workoutCard}
-                      onClick={() => handleSelect(workout)}
-                    >
-                      <div style={styles.workoutTitle}>{wTitle}</div>
-                      {workout.description && (
-                        <div style={styles.workoutDesc}>{workout.description}</div>
-                      )}
+                <>
+                  {/* Render Folders & Workouts inside them */}
+                  {Object.entries(groupedWorkouts.folderMap).map(([fId, folderObj]) => (
+                    <div key={fId} style={styles.folderGroup}>
+                      <div style={styles.folderHeader}>
+                        📁 {folderObj.name} ({folderObj.workouts.length})
+                      </div>
+                      <div style={styles.folderWorkouts}>
+                        {folderObj.workouts.length === 0 ? (
+                          <div style={styles.emptyFolderText}>No workouts in this folder</div>
+                        ) : (
+                          folderObj.workouts.map((workout, idx) => {
+                            const wId = workout.id || workout._id || idx;
+                            const wTitle = workout.name || workout.title || 'Untitled Workout';
+                            return (
+                              <div
+                                key={wId}
+                                style={styles.workoutCard}
+                                onClick={() => handleSelect(workout)}
+                              >
+                                <div style={styles.workoutTitle}>{wTitle}</div>
+                                {workout.description && (
+                                  <div style={styles.workoutDesc}>{workout.description}</div>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
-                  );
-                })
+                  ))}
+
+                  {/* Render Workouts with No Folder */}
+                  {groupedWorkouts.rootWorkouts.length > 0 && (
+                    <div style={styles.folderGroup}>
+                      <div style={styles.folderHeader}>
+                        📋 Uncategorized Workouts ({groupedWorkouts.rootWorkouts.length})
+                      </div>
+                      <div style={styles.folderWorkouts}>
+                        {groupedWorkouts.rootWorkouts.map((workout, idx) => {
+                          const wId = workout.id || workout._id || idx;
+                          const wTitle = workout.name || workout.title || 'Untitled Workout';
+                          return (
+                            <div
+                              key={wId}
+                              style={styles.workoutCard}
+                              onClick={() => handleSelect(workout)}
+                            >
+                              <div style={styles.workoutTitle}>{wTitle}</div>
+                              {workout.description && (
+                                <div style={styles.workoutDesc}>{workout.description}</div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -271,28 +339,54 @@ const styles = {
     boxSizing: 'border-box',
   },
   workoutList: {
-    maxHeight: '260px',
+    maxHeight: '300px',
     overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '12px',
+  },
+  folderGroup: {
+    border: '1px solid #e9ecef',
+    borderRadius: '6px',
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+  },
+  folderHeader: {
+    backgroundColor: '#f1f3f5',
+    padding: '8px 12px',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: '#495057',
+    borderBottom: '1px solid #e9ecef',
+  },
+  folderWorkouts: {
+    padding: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
   },
   workoutCard: {
-    padding: '10px 12px',
-    borderRadius: '6px',
-    border: '1px solid #e9ecef',
+    padding: '8px 10px',
+    borderRadius: '4px',
+    border: '1px solid #dee2e6',
     backgroundColor: '#f8f9fa',
     cursor: 'pointer',
   },
   workoutTitle: {
-    fontSize: '14px',
+    fontSize: '13px',
     fontWeight: '600',
     color: '#212529',
   },
   workoutDesc: {
-    fontSize: '12px',
+    fontSize: '11px',
     color: '#6c757d',
-    marginTop: '4px',
+    marginTop: '2px',
+  },
+  emptyFolderText: {
+    fontSize: '12px',
+    color: '#adb5bd',
+    fontStyle: 'italic',
+    padding: '4px',
   },
   emptyText: {
     textAlign: 'center',
