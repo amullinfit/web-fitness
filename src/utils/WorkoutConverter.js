@@ -9,8 +9,6 @@ export function convertStepsToWorkout(steps) {
 
   return {
       category: "WORKOUT",
-      name: workoutPayload.name ?? "",
-      description: workoutPayload.description ?? "",
       updated: new Date().toISOString(),
       workout_doc: {
         steps: steps.map(({ id, ...rest }) => ({
