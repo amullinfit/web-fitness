@@ -1,58 +1,82 @@
 //
-// Modal_Workout_Edit
+// Modal_Workout_Edit.jsx
 //
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import RenderWorkoutChart from '../utils/RenderWorkoutChart';
+import { formatTime, formatDistance, mapIcuDocToSteps } from '../utils/WorkoutBuilderHelpers.js';
 import '../CSS/Modal_Workout_Edit.css';
 
 export default function Modal_Workout_Edit({
   isOpen,
   onClose,
-  onSave,
   onSelectWorkout,
-  onOpenFolderModal,
-  currentWorkout = null,
+  currentFolderId = '',
   folders = [],
   workouts = [],
+  workoutMode = 'time',
+  presets = {}
 }) {
-  const [editTitle, setEditTitle] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [selectedFolder, setSelectedFolder] = useState('');
-
-  useEffect(() => {
-    if (currentWorkout) {
-      setEditTitle(currentWorkout.name || currentWorkout.title || '');
-      setEditDescription(currentWorkout.description || '');
-      const rawFolderId = currentWorkout.folder_id ?? currentWorkout.folderId;
-      setSelectedFolder(rawFolderId !== null && rawFolderId !== undefined ? String(rawFolderId) : '');
-    } else {
-      setEditTitle('');
-      setEditDescription('');
-      setSelectedFolder('');
-    }
-  }, [currentWorkout]);
+  const [selectedFolderId, setSelectedFolderId] = useState(String(currentFolderId ?? ''));
 
   if (!isOpen) return null;
 
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    if (onSave) {
-      const parsedFolderId = selectedFolder === '' ? null : Number(selectedFolder);
-      onSave(editTitle, editDescription, parsedFolderId);
+  // Filter workouts belonging to the selected folder
+  const filteredWorkouts = useMemo(() => {
+    if (selectedFolderId === '') {
+      // Show workouts at root (folder_id is null/undefined/empty string)
+      return workouts.filter((w) => !w.folder_id && !w.folderId);
     }
-  };
+    return workouts.filter(
+      (w) => String(w.folder_id ?? w.folderId) === String(selectedFolderId)
+    );
+  }, [workouts, selectedFolderId]);
 
-  const handleWorkoutSelectChange = (e) => {
-    const workoutId = e.target.value;
-    if (workoutId && onSelectWorkout) {
-      onSelectWorkout(workoutId);
-    }
+  // Helper to calculate totals for each workout card preview
+  const getWorkoutSummary = (workout) => {
+    const steps = mapIcuDocToSteps(workout.document, workoutMode);
+
+    const calcTotals = (list) => {
+      let timeSec = 0;
+      let distMiles = 0;
+
+      list.forEach((s) => {
+        if (s.type === 'repeat') {
+          const reps = s.iterations || 1;
+          const [subTime, subDist] = calcTotals(s.steps || []);
+          timeSec += subTime * reps;
+          distMiles += subDist * reps;
+        } else {
+          if (workoutMode === 'time') {
+            const dur = s.durationSec || 0;
+            const pace = s.targetPaceSec || 0;
+            timeSec += dur;
+            distMiles += pace > 0 ? dur / pace : 0;
+          } else {
+            const dist = s.distanceMiles || 0;
+            const pace = s.targetPaceSec || 0;
+            distMiles += dist;
+            timeSec += dist * pace;
+          }
+        }
+      });
+
+      return [timeSec, distMiles];
+    };
+
+    const [totalSec, totalMiles] = calcTotals(steps);
+
+    return {
+      steps,
+      durationText: formatTime(totalSec),
+      distanceText: formatDistance(totalMiles)
+    };
   };
 
   return (
     <div className="modal-overlay">
-      <div className="modal-container">
+      <div className="modal-container modal-workout-select">
         <div className="modal-header">
-          <h2 className="modal-title">Edit Workout Details</h2>
+          <h2 className="modal-title">Select Workout</h2>
           <button
             type="button"
             onClick={onClose}
@@ -63,89 +87,67 @@ export default function Modal_Workout_Edit({
           </button>
         </div>
 
-        {workouts.length > 0 && (
-          <div className="form-group">
-            <label className="form-label">Switch Workout</label>
-            <select
-              value={currentWorkout?.id !== undefined && currentWorkout?.id !== null ? String(currentWorkout.id) : ''}
-              onChange={handleWorkoutSelectChange}
-              className="form-select"
-            >
-              <option value="" disabled>Select a workout to edit...</option>
-              {workouts.map((w) => (
-                <option key={w.id} value={String(w.id)}>
-                  {w.name || w.title || `Workout ${w.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        {/* Step 1: Choose Folder */}
+        <div className="form-group">
+          <label className="form-label">Folder</label>
+          <select
+            value={selectedFolderId}
+            onChange={(e) => setSelectedFolderId(e.target.value)}
+            className="form-select"
+          >
+            <option value="">(Root / No Folder)</option>
+            {folders.map((f) => (
+              <option key={f.id} value={String(f.id)}>
+                {f.name || f.title}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <form onSubmit={handleFormSubmit} className="modal-form">
-          <div className="form-group">
-            <label className="form-label">Title</label>
-            <input
-              type="text"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              required
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-group">
-            <div className="label-row">
-              <label className="form-label">Folder</label>
-              {onOpenFolderModal && (
-                <button
-                  type="button"
-                  onClick={onOpenFolderModal}
-                  className="link-button"
-                >
-                  + New Folder
-                </button>
-              )}
+        {/* Step 2: List Workouts in Selected Folder */}
+        <div className="workout-selection-list">
+          <label className="form-label">Workouts ({filteredWorkouts.length})</label>
+          {filteredWorkouts.length === 0 ? (
+            <p className="no-workouts-message">No workouts found in this folder.</p>
+          ) : (
+            <div className="workout-cards-grid">
+              {filteredWorkouts.map((workout) => {
+                const { steps, durationText, distanceText } = getWorkoutSummary(workout);
+                return (
+                  <div
+                    key={workout.id}
+                    className="workout-select-card"
+                    onClick={() => onSelectWorkout(workout.id)}
+                  >
+                    <div className="workout-card-header">
+                      <span className="workout-card-title">
+                        {workout.name || workout.title || `Workout ${workout.id}`}
+                      </span>
+                      <div className="workout-card-meta">
+                        <span>⏱ {durationText}</span>
+                        <span>📏 {distanceText}</span>
+                      </div>
+                    </div>
+                    <div className="workout-card-chart">
+                      <RenderWorkoutChart
+                        steps={steps}
+                        height={60}
+                        workoutMode={workoutMode}
+                        presets={presets}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <select
-              value={selectedFolder}
-              onChange={(e) => setSelectedFolder(e.target.value)}
-              className="form-select"
-            >
-              <option value="">(Root / No Folder)</option>
-              {folders.map((f) => (
-                <option key={f.id} value={String(f.id)}>
-                  {f.name || f.title}
-                </option>
-              ))}
-            </select>
-          </div>
+          )}
+        </div>
 
-          <div className="form-group">
-            <label className="form-label">Description / Notes</label>
-            <textarea
-              rows={4}
-              value={editDescription}
-              onChange={(e) => setEditDescription(e.target.value)}
-              className="form-textarea"
-            />
-          </div>
-
-          <div className="modal-actions">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-secondary"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-            >
-              Save Changes
-            </button>
-          </div>
-        </form>
+        <div className="modal-actions" style={{ marginTop: '16px' }}>
+          <button type="button" onClick={onClose} className="btn btn-secondary">
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -147,3 +147,67 @@
   .btn-primary:hover {
     background-color: #1d4ed8;
   }
+
+  .modal-workout-select {
+    max-width: 600px;
+    width: 90%;
+  }
+  
+  .workout-cards-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 380px;
+    overflow-y: auto;
+    margin-top: 8px;
+    padding-right: 4px;
+  }
+  
+  .workout-select-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px;
+    background-color: #ffffff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  
+  .workout-select-card:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  }
+  
+  .workout-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  
+  .workout-card-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #1e293b;
+  }
+  
+  .workout-card-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+  }
+  
+  .workout-card-chart {
+    background-color: #f8fafc;
+    border-radius: 4px;
+    padding: 4px;
+    border: 1px solid #f1f5f9;
+  }
+  
+  .no-workouts-message {
+    font-size: 13px;
+    color: #94a3b8;
+    font-style: italic;
+    padding: 12px 0;
+  }

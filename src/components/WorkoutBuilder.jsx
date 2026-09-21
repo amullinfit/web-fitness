@@ -103,45 +103,8 @@ export default function WorkoutBuilder() {
     [paces, paceMethod]
   );
 
-  const totals = useMemo(() => {
-    const calcTotals = (list) => {
-      let timeSec = 0;
-      let distMiles = 0;
-
-      list.forEach((s) => {
-        if (s.type === 'repeat') {
-          const reps = s.iterations || 1;
-          const [subTime, subDist] = calcTotals(s.steps || []);
-          timeSec += subTime * reps;
-          distMiles += subDist * reps;
-        } else {
-          if (workoutMode === 'time') {
-            const dur = s.durationSec || 0;
-            const pace = s.targetPaceSec || 0;
-            timeSec += dur;
-            distMiles += pace > 0 ? dur / pace : 0;
-          } else {
-            const dist = s.distanceMiles || 0;
-            const pace = s.targetPaceSec || 0;
-            distMiles += dist;
-            timeSec += dist * pace;
-          }
-        }
-      });
-
-      return [timeSec, distMiles];
-    };
-
-    const [totalTimeSec, totalDistanceMiles] = calcTotals(steps);
-    return {
-      timeFormatted: formatTime(totalTimeSec),
-      distanceFormatted: formatDistance(totalDistanceMiles)
-    };
-  }, [steps, workoutMode]);
-
   // --- Handlers for Options Menu ---
 
-  // 1. Create New Workout
   const handleNewWorkout = () => {
     setWorkoutId(null);
     setWorkoutTitle('New Workout');
@@ -151,9 +114,7 @@ export default function WorkoutBuilder() {
     setMode('BUILDING');
   };
 
-  // 2. Select / Open Existing Workout
   const handleSelectWorkout = (id) => {
-    // String coercion for safe comparison
     const found = savedWorkouts.find((w) => String(w.id) === String(id));
     if (found) {
       setWorkoutId(found.id);
@@ -172,7 +133,6 @@ export default function WorkoutBuilder() {
     }
   };
 
-  // 3. Save Workout / Save As New
   const handleOpenSaveModal = (isSaveAs = false) => {
     setIsSaveAsMode(isSaveAs);
     setIsSaveModalOpen(true);
@@ -210,7 +170,6 @@ export default function WorkoutBuilder() {
     }
   };
 
-  // 4. Duplicate Workout
   const handleDuplicateWorkout = () => {
     setWorkoutId(null);
     setWorkoutTitle(`${workoutTitle} (Copy)`);
@@ -218,16 +177,13 @@ export default function WorkoutBuilder() {
     showToast('Workout duplicated!');
   };
 
-  // 5. Copy Workout Text to Clipboard
   const handleCopyWorkoutText = () => {
     const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
     const stringified = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
-    
     navigator.clipboard.writeText(stringified);
     showToast('Workout plain text copied to clipboard!');
   };
 
-  // 6 & 7. Download ICU & ZWO File Handlers
   const triggerFileDownload = (content, fileName, mimeType) => {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
@@ -253,7 +209,6 @@ export default function WorkoutBuilder() {
     triggerFileDownload(zwoContent, `${cleanTitle}.zwo`, 'application/xml');
   };
 
-  // 8. Create Folder Handler
   const handleCreateFolder = async (folderName) => {
     try {
       const newFolder = await createFolderApi(folderName);
@@ -268,8 +223,7 @@ export default function WorkoutBuilder() {
       console.error('Error creating folder:', err);
     }
   };
-  
-  // 9. Cancel Edits
+
   const handleCancelEdits = () => {
     if (workoutId) {
       handleSelectWorkout(workoutId);
@@ -279,33 +233,15 @@ export default function WorkoutBuilder() {
     }
   };
 
-  // 10. Close Workout
   const handleCloseWorkout = () => {
     setWorkoutId(null);
     setMode('EMPTY');
   };
 
-  // Prepare currentWorkout object for Modal_Workout_Edit
-  const currentWorkoutObj = useMemo(() => {
-    if (!workoutId && !workoutTitle) return null;
-    return {
-      id: workoutId,
-      name: workoutTitle,
-      description: workoutDescription,
-      folder_id: selectedFolderId
-    };
-  }, [workoutId, workoutTitle, workoutDescription, selectedFolderId]);
-
   return (
     <div className="workout-builder-container">
-      {/* Toast notification banner */}
-      {statusMessage && (
-        <div className="status-message-banner">
-          {statusMessage}
-        </div>
-      )}
+      {statusMessage && <div className="status-message-banner">{statusMessage}</div>}
 
-      {/* Header Bar */}
       <div className="builder-header-bar">
         <h1 className="builder-header-title">Workout Builder</h1>
         <OptionsMenu
@@ -323,7 +259,6 @@ export default function WorkoutBuilder() {
         />
       </div>
 
-      {/* Main Content Area */}
       {mode === 'EMPTY' ? (
         <div className="empty-state-card">
           <h3>No Workout Selected</h3>
@@ -334,7 +269,6 @@ export default function WorkoutBuilder() {
         </div>
       ) : (
         <>
-          {/* Workout Header & ControlBar */}
           <ControlBar
             workoutMode={workoutMode}
             setWorkoutMode={setWorkoutMode}
@@ -343,7 +277,6 @@ export default function WorkoutBuilder() {
             thresholdPaceSec={paces?.threshold || 0} 
           />
 
-          {/* Unaltered Workout Output Box */}
           <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
             <label 
               htmlFor="unaltered-workout-input" 
@@ -370,7 +303,6 @@ export default function WorkoutBuilder() {
             />
           </div>
 
-          {/* Interactive Visual Chart */}
           <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }} onClick={() => setIsZoomModalOpen(true)}>
             <RenderWorkoutChart 
               steps={steps} 
@@ -380,7 +312,6 @@ export default function WorkoutBuilder() {
             />
           </div>
 
-          {/* Steps Container */}
           <div 
             className="steps-list-container" 
             onDragOver={(e) => e.preventDefault()} 
@@ -403,7 +334,6 @@ export default function WorkoutBuilder() {
             ))}
           </div>
 
-          {/* Root Add Buttons */}
           <div className="root-add-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
             <button className="btn-add-step" onClick={() => addStep('run', null)}>
               + Add Run
@@ -431,16 +361,11 @@ export default function WorkoutBuilder() {
           isOpen={isEditModalOpen}
           workouts={savedWorkouts}
           folders={folders}
-          currentWorkout={currentWorkoutObj}
+          currentFolderId={selectedFolderId}
+          workoutMode={workoutMode}
+          presets={dynamicPresets}
           onSelectWorkout={handleSelectWorkout}
-          onSave={(newTitle, newDesc, newFolder) => {
-            setWorkoutTitle(newTitle);
-            setWorkoutDescription(newDesc);
-            setSelectedFolderId(newFolder);
-            setIsEditModalOpen(false);
-          }}
           onClose={() => setIsEditModalOpen(false)}
-          onOpenFolderModal={() => setIsFolderModalOpen(true)}
         />
       )}
 
