@@ -49,9 +49,20 @@ export async function fetchWorkoutsApi(folderId = null) {
   const url = folderId 
     ? `${VAL_WORKOUTBUILDER_URL}?action=get_workouts&folder_id=${folderId}` 
     : `${VAL_WORKOUTBUILDER_URL}?action=get_workouts`;
+
+    console.log('[App Debug] WOBH: url: ', url);
+  
   const res = await fetch(url, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch workouts');
+
+  console.log('[App Debug] WOBH: res: ', res);
+  
   const data = await res.json();
+
+  console.log('[App Debug] WOBH: data: ', data);
+
+  console.log('[App Debug] WOBH: children: ', url.children);
+  
   if (data && Array.isArray(data.children)) return data.children;
   return Array.isArray(data) ? data : (data.workouts || []);
 }
