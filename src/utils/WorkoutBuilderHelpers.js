@@ -59,9 +59,9 @@ export async function fetchWorkoutsApi(folderId = null) {
 
   console.log('[App Debug] WOBH: data: ', data);
 
-  console.log('[App Debug] WOBH: children: ', data.0.children);
+  console.log('[App Debug] WOBH: children: ', data.folders.children);
   
-  if (data && Array.isArray(data.children)) return data.children;
+  if (data && Array.isArray(data.folders.children)) return data.folders.children;
   return Array.isArray(data) ? data : (data.workouts || []);
 }
 
