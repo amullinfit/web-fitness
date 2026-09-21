@@ -244,12 +244,14 @@ export default function WorkoutBuilder() {
   };
 
   // 8. Create Folder Handler
+  // Updated Folder Creation Handler in WorkoutBuilder.jsx
   const handleCreateFolder = async (folderName) => {
     try {
       const newFolder = await createFolderApi(folderName);
       if (newFolder) {
+        const newId = newFolder.id || newFolder._id;
         setFolders((prev) => [...prev, newFolder]);
-        setSelectedFolderId(newFolder.id);
+        setSelectedFolderId(newId); // Automatically select newly created folder
         setIsFolderModalOpen(false);
         showToast(`Folder "${folderName}" created.`);
       }
@@ -257,7 +259,7 @@ export default function WorkoutBuilder() {
       console.error('Error creating folder:', err);
     }
   };
-
+  
   // 9. Cancel Edits
   const handleCancelEdits = () => {
     if (workoutId) {
@@ -397,6 +399,7 @@ export default function WorkoutBuilder() {
       )}
 
       {/* --- Modals --- */}
+      {/* Render Folder Modal independently over or beside Edit Modal */}
       {isFolderModalOpen && (
         <Modal_Folder_Create
           onClose={() => setIsFolderModalOpen(false)}

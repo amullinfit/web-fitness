@@ -1,12 +1,12 @@
 //
 // Modal_Workout_Edit.jsx
 //
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function Modal_Workout_Edit({
-  title,
-  description,
-  folderId,
+  title = '',
+  description = '',
+  folderId = '',
   folders = [],
   savedWorkouts = [],
   onSelectWorkout,
@@ -14,16 +14,37 @@ export default function Modal_Workout_Edit({
   onClose,
   onOpenFolderModal,
 }) {
-  const [activeTab, setActiveTab] = useState(savedWorkouts.length > 0 ? 'select' : 'edit');
+  const [activeTab, setActiveTab] = useState('select');
   const [editTitle, setEditTitle] = useState(title || '');
   const [editDescription, setEditDescription] = useState(description || '');
   const [selectedFolder, setSelectedFolder] = useState(folderId || '');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter workouts by search query
-  const filteredWorkouts = savedWorkouts.filter((w) =>
-    (w.name || 'Untitled').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Sync state when workout props change
+  useEffect(() => {
+    setEditTitle(title || '');
+    setEditDescription(description || '');
+    setSelectedFolder(folderId || '');
+  }, [title, description, folderId]);
+
+  // Sync state when folders array changes (e.g. after creating a new folder)
+  useEffect(() => {
+    if (folderId) {
+      setSelectedFolder(folderId);
+    }
+  }, [folders, folderId]);
+
+  const filteredWorkouts = savedWorkouts.filter((w) => {
+    const workoutName = w.name || w.title || 'Untitled Workout';
+    return workoutName.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  const handleSelect = (workout) => {
+    const wId = workout.id || workout._id;
+    if (onSelectWorkout && wId) {
+      onSelectWorkout(wId);
+    }
+  };
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
@@ -33,8 +54,8 @@ export default function Modal_Workout_Edit({
   };
 
   return (
-    <div className="modal-backdrop" style={styles.backdrop}>
-      <div className="modal-card" style={styles.card}>
+    <div style={styles.backdrop} onClick={onClose}>
+      <div style={styles.card} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div style={styles.header}>
           <h2 style={{ margin: 0, fontSize: '18px' }}>Workout Options</h2>
@@ -57,11 +78,11 @@ export default function Modal_Workout_Edit({
             style={activeTab === 'edit' ? styles.tabActive : styles.tab}
             onClick={() => setActiveTab('edit')}
           >
-            ✏️ Edit Current Metadata
+            ✏️ Edit Details
           </button>
         </div>
 
-        {/* Tab 1: Open / Select Existing Workout */}
+        {/* Tab 1: Open Existing Workout */}
         {activeTab === 'select' && (
           <div style={styles.tabContent}>
             <input
@@ -76,22 +97,23 @@ export default function Modal_Workout_Edit({
               {filteredWorkouts.length === 0 ? (
                 <p style={styles.emptyText}>No saved workouts found.</p>
               ) : (
-                filteredWorkouts.map((workout) => (
-                  <div
-                    key={workout.id}
-                    className="workout-select-item"
-                    onClick={() => {
-                      if (onSelectWorkout) onSelectWorkout(workout.id);
-                    }}
-                  >
-                    <div className="workout-select-title">
-                      {workout.name || 'Untitled Workout'}
+                filteredWorkouts.map((workout, index) => {
+                  const wId = workout.id || workout._id || index;
+                  const wTitle = workout.name || workout.title || 'Untitled Workout';
+
+                  return (
+                    <div
+                      key={wId}
+                      style={styles.workoutCard}
+                      onClick={() => handleSelect(workout)}
+                    >
+                      <div style={styles.workoutTitle}>{wTitle}</div>
+                      {workout.description && (
+                        <div style={styles.workoutDesc}>{workout.description}</div>
+                      )}
                     </div>
-                    {workout.description && (
-                      <div style={styles.workoutDesc}>{workout.description}</div>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -142,11 +164,16 @@ export default function Modal_Workout_Edit({
                 style={styles.select}
               >
                 <option value="">(No Folder / Root)</option>
-                {folders.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    📁 {f.name}
-                  </option>
-                ))}
+                {Array.isArray(folders) &&
+                  folders.map((f, idx) => {
+                    const fId = f.id || f._id || idx;
+                    const fName = f.name || f.title || f.folderName || 'Untitled Folder';
+                    return (
+                      <option key={fId} value={fId}>
+                        📁 {fName}
+                      </option>
+                    );
+                  })}
               </select>
             </div>
 
@@ -165,7 +192,6 @@ export default function Modal_Workout_Edit({
   );
 }
 
-// Inline Styles for modal layout
 const styles = {
   backdrop: {
     position: 'fixed',
@@ -182,7 +208,7 @@ const styles = {
   card: {
     backgroundColor: '#ffffff',
     borderRadius: '8px',
-    width: '480px',
+    width: '460px',
     maxWidth: '90%',
     maxHeight: '85vh',
     display: 'flex',
@@ -211,7 +237,7 @@ const styles = {
   },
   tab: {
     flex: 1,
-    padding: '10px 14px',
+    padding: '10px',
     border: 'none',
     background: 'none',
     cursor: 'pointer',
@@ -222,7 +248,7 @@ const styles = {
   },
   tabActive: {
     flex: 1,
-    padding: '10px 14px',
+    padding: '10px',
     border: 'none',
     background: '#ffffff',
     cursor: 'pointer',
@@ -247,11 +273,26 @@ const styles = {
   workoutList: {
     maxHeight: '260px',
     overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  workoutCard: {
+    padding: '10px 12px',
+    borderRadius: '6px',
+    border: '1px solid #e9ecef',
+    backgroundColor: '#f8f9fa',
+    cursor: 'pointer',
+  },
+  workoutTitle: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#212529',
   },
   workoutDesc: {
     fontSize: '12px',
     color: '#6c757d',
-    marginTop: '2px',
+    marginTop: '4px',
   },
   emptyText: {
     textAlign: 'center',
