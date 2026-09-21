@@ -7,103 +7,141 @@ import '../CSS/WorkoutBuilder.css';
 
 
 export function OptionsMenu({
-  mode,
-  menuButtonStyle,
-  onStartCreateNew,
-  onOpenEditModal,
-  onOpenCreateFolderModal,
-  onOpenSaveModal,
-  onDuplicateWorkout,
-  onCopyWorkoutText,
-  onDownloadIcu,
-  onDownloadZwo,
-  onCancelEdits,
-  onCloseWorkout,
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const isEditingOrCreating = mode === 'CREATING' || mode === 'EDITING' || mode === 'BUILDING';
-
-  const handleAction = (actionFn) => {
-    if (actionFn) actionFn();
-    setIsOpen(false);
-  };
-
-  return (
-    <div style={{ position: 'relative' }}>
-      <button onClick={() => setIsOpen(!isOpen)} className="options-menu-btn">
-        ⚙️ Options ▾
-      </button>
-
-      {isOpen && (
-        <div className="options-menu-dropdown">
-          <button style={menuButtonStyle} onClick={() => handleAction(onStartCreateNew)}>
-            ➕ Create New Workout
-          </button>
-          <button style={menuButtonStyle} onClick={() => handleAction(onOpenEditModal)}>
-            ✏️ Edit Existing Workout
-          </button>
-          <button style={menuButtonStyle} onClick={() => handleAction(onOpenCreateFolderModal)}>
-            📁 Create New Folder
-          </button>
-
-          {isEditingOrCreating && <div className="menu-divider" />}
-
-          {isEditingOrCreating && (
-            <button style={menuButtonStyle} onClick={() => handleAction(() => onOpenSaveModal(false))}>
-              💾 Save Workout
-            </button>
-          )}
-          {mode === 'EDITING' && (
-            <button style={menuButtonStyle} onClick={() => handleAction(() => onOpenSaveModal(true))}>
-              📋 Save As New Workout
-            </button>
-          )}
-          {isEditingOrCreating && (
-            <button style={menuButtonStyle} onClick={() => handleAction(onDuplicateWorkout)}>
-              📄 Duplicate Workout
-            </button>
-          )}
-
-          {isEditingOrCreating && <div className="menu-divider" />}
-
-          {isEditingOrCreating && (
-            <>
-              <button style={menuButtonStyle} onClick={() => handleAction(onCopyWorkoutText)}>
-                📋 Copy Workout Text
-              </button>
-              <button style={menuButtonStyle} onClick={() => handleAction(onDownloadIcu)}>
-                ⬇️ Download .icu File
-              </button>
-              <button style={menuButtonStyle} onClick={() => handleAction(onDownloadZwo)}>
-                ⚡ Download .zwo File
-              </button>
-            </>
-          )}
-
-          {isEditingOrCreating && <div className="menu-divider" />}
-
-          {mode === 'EDITING' && (
+    mode,
+    menuButtonStyle,
+    onStartCreateNew,
+    onOpenEditModal,
+    onOpenCreateFolderModal,
+    onOpenSaveModal,
+    onDuplicateWorkout,
+    onCopyWorkoutText,
+    onDownloadIcu,
+    onDownloadZwo,
+    onCancelEdits,
+    onCloseWorkout,
+  }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const isEditingOrCreating = mode === 'CREATING' || mode === 'EDITING' || mode === 'BUILDING';
+  
+    const handleAction = (actionFn) => {
+      if (actionFn) actionFn();
+      setIsOpen(false);
+    };
+  
+    return (
+      <div style={{ position: 'relative' }}>
+        <button onClick={() => setIsOpen(!isOpen)} className="options-menu-btn">
+          ⚙️ Options ▾
+        </button>
+  
+        {isOpen && (
+          <div className="options-menu-dropdown">
             <button
-              style={{ ...menuButtonStyle, color: '#dc3545' }}
-              onClick={() => handleAction(onCancelEdits)}
+              className="options-menu-item"
+              style={menuButtonStyle}
+              onClick={() => handleAction(onStartCreateNew)}
             >
-              ↩️ Cancel Edits
+              ➕ Create New Workout
             </button>
-          )}
-          {isEditingOrCreating && (
             <button
-              style={{ ...menuButtonStyle, color: '#6c757d' }}
-              onClick={() => handleAction(onCloseWorkout)}
+              className="options-menu-item"
+              style={menuButtonStyle}
+              onClick={() => handleAction(onOpenEditModal)}
             >
-              ✖️ Close Workout
+              ✏️ Edit Existing Workout
             </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
+            <button
+              className="options-menu-item"
+              style={menuButtonStyle}
+              onClick={() => handleAction(onOpenCreateFolderModal)}
+            >
+              📁 Create New Folder
+            </button>
+  
+            {isEditingOrCreating && <div className="menu-divider" />}
+  
+            {isEditingOrCreating && (
+              <button
+                className="options-menu-item"
+                style={menuButtonStyle}
+                onClick={() => handleAction(() => onOpenSaveModal(false))}
+              >
+                💾 Save Workout
+              </button>
+            )}
+            {mode === 'EDITING' && (
+              <button
+                className="options-menu-item"
+                style={menuButtonStyle}
+                onClick={() => handleAction(() => onOpenSaveModal(true))}
+              >
+                📋 Save As New Workout
+              </button>
+            )}
+            {isEditingOrCreating && (
+              <button
+                className="options-menu-item"
+                style={menuButtonStyle}
+                onClick={() => handleAction(onDuplicateWorkout)}
+              >
+                📄 Duplicate Workout
+              </button>
+            )}
+  
+            {isEditingOrCreating && <div className="menu-divider" />}
+  
+            {isEditingOrCreating && (
+              <>
+                <button
+                  className="options-menu-item"
+                  style={menuButtonStyle}
+                  onClick={() => handleAction(onCopyWorkoutText)}
+                >
+                  📋 Copy Workout Text
+                </button>
+                <button
+                  className="options-menu-item"
+                  style={menuButtonStyle}
+                  onClick={() => handleAction(onDownloadIcu)}
+                >
+                  ⬇️ Download .icu File
+                </button>
+                <button
+                  className="options-menu-item"
+                  style={menuButtonStyle}
+                  onClick={() => handleAction(onDownloadZwo)}
+                >
+                  ⚡ Download .zwo File
+                </button>
+              </>
+            )}
+  
+            {isEditingOrCreating && <div className="menu-divider" />}
+  
+            {mode === 'EDITING' && (
+              <button
+                className="options-menu-item"
+                style={{ ...menuButtonStyle, color: '#dc3545' }}
+                onClick={() => handleAction(onCancelEdits)}
+              >
+                ↩️ Cancel Edits
+              </button>
+            )}
+            {isEditingOrCreating && (
+              <button
+                className="options-menu-item"
+                style={{ ...menuButtonStyle, color: '#6c757d' }}
+                onClick={() => handleAction(onCloseWorkout)}
+              >
+                ✖️ Close Workout
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+  
 export function ControlBar({workoutMode, setWorkoutMode, thresholdPaceSec, paceMethod, setPaceMethod}) {
     return (
         <div className="builder-controls-bar">

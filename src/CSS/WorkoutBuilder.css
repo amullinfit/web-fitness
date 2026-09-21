@@ -389,3 +389,41 @@
   flex-shrink: 0;
   line-height: 1.1;
 }
+
+/* Container dropdown fixes */
+.options-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  width: 210px;
+  background-color: #ffffff;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  z-index: 100;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  /* Add padding container box for cleaner dropdown spacing */
+  padding: 4px 0;
+}
+
+/* Individual Dropdown Menu Items */
+.options-menu-item {
+  width: 100%;
+  text-align: left;           /* Left-justify the text and icons */
+  background: transparent;     /* Remove grey background */
+  border: none;                /* Remove button border */
+  padding: 8px 14px;           /* Comfortable click padding */
+  font-size: 13px;
+  color: #333333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;                    /* Consistent spacing between emoji & text */
+  transition: background-color 0.15s ease;
+}
+
+/* Hover state for clean selection feel */
+.options-menu-item:hover {
+  background-color: #f1f3f5;
+}
