@@ -239,6 +239,9 @@ export default function WorkoutBuilder() {
     setMode('EMPTY');
   };
 
+  console.log('[App Debug] WOB: steps: ', steps);
+  console.log('[App Debug] WOB: converted(steps): ', convertWorkoutToTargetFormat(steps));
+  
   return (
     <div className="workout-builder-container">
       {statusMessage && <div className="status-message-banner">{statusMessage}</div>}
@@ -317,7 +320,7 @@ export default function WorkoutBuilder() {
             ----XXX----
             <WorkoutChart
               workout={convertWorkoutToTargetFormat(steps)}
-              thresholdPace={paces.threshold}
+              thresholdPace={481}
               chartHeight={"140px"}
             />
           </div>
