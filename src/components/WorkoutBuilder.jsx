@@ -248,7 +248,7 @@ export default function WorkoutBuilder() {
 
   const chartDataDebug = { workout: steps };
 
-  console.log('[App Debug] WB workout: ', workout);
+  console.log('[App Debug] WB steps: ', steps);
 
   return (
     <div className="workout-builder-container">
