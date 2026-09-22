@@ -2,7 +2,6 @@
 // Modal_Workout_Edit.jsx
 //
 import React, { useState, useMemo, useEffect } from 'react';
-import RenderWorkoutChart from '../utils/RenderWorkoutChart';
 import { formatTime, formatDistance, mapIcuDocToSteps } from '../utils/WorkoutBuilderHelpers.js';
 import '../CSS/Modal_Workout_Edit.css';
 
@@ -18,11 +17,6 @@ export default function Modal_Workout_Edit({
   workoutMode = 'time',
   presets = {}
 }) {
-  // Determine default folder ID based on priority:
-  // 1. Explicit currentFolderId
-  // 2. Folder named "Workouts"
-  // 3. First available folder in list
-  // 4. Root ("") if no folders exist
   const defaultFolderId = useMemo(() => {
     if (currentFolderId !== null && currentFolderId !== undefined && currentFolderId !== '') {
       return String(currentFolderId);
@@ -43,14 +37,12 @@ export default function Modal_Workout_Edit({
 
   const [selectedFolderId, setSelectedFolderId] = useState(defaultFolderId);
 
-  // Sync state if defaultFolderId updates (e.g. when modal opens or folders load)
   useEffect(() => {
     setSelectedFolderId(defaultFolderId);
   }, [defaultFolderId, isOpen]);
 
   if (!isOpen) return null;
 
-  // Filter workouts belonging to the selected folder
   const filteredWorkouts = useMemo(() => {
     if (selectedFolderId === '') {
       return workouts.filter((w) => !w.folder_id && !w.folderId);
@@ -60,13 +52,17 @@ export default function Modal_Workout_Edit({
     );
   }, [workouts, selectedFolderId]);
 
-  // Helper to calculate totals for each workout card preview
   const getWorkoutSummary = (workout) => {
-    // Extract the ICU document field using all common property aliases
     const rawDoc = workout?.workout_doc ?? workout?.document ?? workout?.icu_doc;
     
-    // Ensure stringified JSON is parsed if necessary
-    const parsedDoc = typeof rawDoc === 'string' ? JSON.parse(rawDoc) : rawDoc;
+    let parsedDoc = rawDoc;
+    if (typeof rawDoc === 'string') {
+      try {
+        parsedDoc = JSON.parse(rawDoc);
+      } catch {
+        parsedDoc = null;
+      }
+    }
 
     const steps = mapIcuDocToSteps(parsedDoc, workoutMode);
 
@@ -107,7 +103,6 @@ export default function Modal_Workout_Edit({
     };
   };
 
-
   return (
     <div className="modal-overlay">
       <div className="modal-container modal-workout-select">
@@ -123,7 +118,6 @@ export default function Modal_Workout_Edit({
           </button>
         </div>
 
-        {/* Folder Selection Dropdown */}
         <div className="form-group">
           <label className="form-label">Folder</label>
           <select
@@ -131,7 +125,6 @@ export default function Modal_Workout_Edit({
             onChange={(e) => setSelectedFolderId(e.target.value)}
             className="form-select"
           >
-            {/* Show Root option only when no folders exist */}
             {(!folders || folders.length === 0) && (
               <option value="">(Root / No Folder)</option>
             )}
@@ -143,7 +136,6 @@ export default function Modal_Workout_Edit({
           </select>
         </div>
 
-        {/* Workouts Grid */}
         <div className="workout-selection-list">
           <label className="form-label">Workouts ({filteredWorkouts.length})</label>
           {filteredWorkouts.length === 0 ? (
@@ -151,13 +143,7 @@ export default function Modal_Workout_Edit({
           ) : (
             <div className="workout-cards-grid">
               {filteredWorkouts.map((workout) => {
-
                 const { steps, durationText, distanceText } = getWorkoutSummary(workout);
-
-                console.log('[App Debug] MWE: workout: ', workout);
-                console.log('[App Debug] MWE: steps: ', steps);
-                console.log('[App Debug] MWE: duration: ', durationText);
-                console.log('[App Debug] MWE: distance: ', distanceText);
 
                 return (
                   <div
@@ -167,7 +153,7 @@ export default function Modal_Workout_Edit({
                   >
                     <div className="workout-card-header">
                       <span className="workout-card-title">
-                        {workout.name || workout.title || `Workout ${workout.id}`} - {workout.athelete_id}.{workout.id}
+                        {workout.name || workout.title || `Workout ${workout.id}`}
                       </span>
                       <div className="workout-card-meta">
                         <span>⏱ {durationText}</span>
@@ -188,8 +174,6 @@ export default function Modal_Workout_Edit({
                         showHoverDetails={false}
                       />
                     </div>
-
-
                   </div>
                 );
               })}

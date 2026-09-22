@@ -24,8 +24,6 @@ import {
   fetchWorkoutsApi, 
   createFolderApi, 
   saveWorkoutApi, 
-  formatTime, 
-  formatDistance, 
   calculateDynamicPresets, 
   createDefaultSteps, 
   mapIcuDocToSteps 
@@ -123,12 +121,18 @@ export default function WorkoutBuilder() {
       setWorkoutDescription(found.description || '');
       setSelectedFolderId(found.folder_id ?? found.folderId ?? '');
 
-      const rawDoc = typeof found.document === 'object' 
-        ? JSON.stringify(found.document, null, 2) 
-        : (found.document || '');
-      
-      setUnalteredWorkout(rawDoc);
-      setSteps(mapIcuDocToSteps(found.document, workoutMode));
+      // Check all potential object locations for the document payload
+      const rawDocObj = found.workout_doc ?? found.document ?? found.icu_doc;
+      const parsedDoc = typeof rawDocObj === 'string' 
+        ? (() => { try { return JSON.parse(rawDocObj); } catch { return null; } })() 
+        : rawDocObj;
+
+      const displayDoc = typeof rawDocObj === 'string'
+        ? rawDocObj
+        : JSON.stringify(rawDocObj || {}, null, 2);
+
+      setUnalteredWorkout(displayDoc);
+      setSteps(mapIcuDocToSteps(parsedDoc, workoutMode));
       setMode('BUILDING');
       setIsEditModalOpen(false);
     }
@@ -239,14 +243,8 @@ export default function WorkoutBuilder() {
     setMode('EMPTY');
   };
 
-    // Extract props passed to WorkoutChart for inspection
-    const chartDataDebug = {
-      workout: steps
-    };
+  const chartDataDebug = { workout: steps };
 
-  console.log('[App Debug] WOB: steps: ', steps);
-  console.log('[App Debug] WOB: converted(steps): ', convertStepsToWorkout(steps));
-  
   return (
     <div className="workout-builder-container">
       {statusMessage && <div className="status-message-banner">{statusMessage}</div>}
@@ -319,7 +317,7 @@ export default function WorkoutBuilder() {
             <textarea
               readOnly
               value={JSON.stringify(chartDataDebug, null, 2)}
-              rows={30}
+              rows={15}
               style={{
                 width: '100%',
                 fontFamily: 'monospace',
@@ -344,7 +342,7 @@ export default function WorkoutBuilder() {
             />
           </div>
 
-          <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }} >
+          <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }}>
             <WorkoutChart
               workout={convertStepsToWorkout(steps)}
               thresholdPace={481}
@@ -385,11 +383,10 @@ export default function WorkoutBuilder() {
               + Add Repeat Block
             </button>
           </div>
-
         </>
       )}
 
-      {/* --- Modals --- */}
+      {/* Modals */}
       {isFolderModalOpen && (
         <Modal_Folder_Create
           onClose={() => setIsFolderModalOpen(false)}
