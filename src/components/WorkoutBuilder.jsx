@@ -115,12 +115,6 @@ export default function WorkoutBuilder() {
 
   const handleSelectWorkout = (id) => {
     const found = savedWorkouts.find((w) => String(w.id) === String(id));
-    console.log('[App Debug] WB: -------------------------------------');
-    console.log('[App Debug] WB: handleSelectWorkout:');
-    console.log('[App Debug] WB: -------------------------------------');
-    console.log('[App Debug] WB: id: ', id);
-    console.log('[App Debug] WB: found: ', found);
-    console.log('[App Debug] WB: ');
     if (found) {
       setWorkoutId(found.id);
       setWorkoutTitle(found.name || found.title || 'Untitled');
@@ -252,8 +246,6 @@ export default function WorkoutBuilder() {
     setMode('EMPTY');
   };
 
-  console.log('[App Debug] WB steps: ', steps);
-
   return (
     <div className="workout-builder-container">
       {statusMessage && <div className="status-message-banner">{statusMessage}</div>}
@@ -314,29 +306,6 @@ export default function WorkoutBuilder() {
                 backgroundColor: '#f4f4f6',
                 border: '1px solid #ccc',
                 borderRadius: '4px',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#555', marginBottom: '4px' }}>
-              Properties (steps):
-            </label>
-            <textarea
-              readOnly
-              value={JSON.stringify(steps, null, 2)}
-              rows={15}
-              style={{
-                width: '100%',
-                fontFamily: 'monospace',
-                fontSize: '11px',
-                padding: '8px',
-                backgroundColor: '#1e1e1e',
-                color: '#00ff66',
-                border: '1px solid #333',
-                borderRadius: '4px',
-                boxSizing: 'border-box',
                 resize: 'vertical'
               }}
             />

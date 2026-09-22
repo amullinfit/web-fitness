@@ -183,13 +183,11 @@
 
     // -- Helper to get the Planned steps (if any) from the input workout
     export const extractPlannedSteps = (workout) => {
-        console.log('[App Debug] WCH-Planned: workout: ', workout);
         if (!workout?.workout_doc) return [];
         try {
             const doc = typeof workout.workout_doc === 'string' ? JSON.parse(workout.workout_doc) : workout.workout_doc;
             const rawSteps = doc?.steps || [];
             const flattened = flattenSteps(rawSteps);
-            console.log('[App Debug] WCH-Planned: flat: ', flattened);
     
             const plannedSteps = flattened.map((step) => {
                 // Destructure durationSec out so it is not included in restStep (...restStep)
@@ -202,7 +200,6 @@
                 };
             });
     
-            console.log('[App Debug] WCH-Planned: final result: ', plannedSteps);
             return plannedSteps;
         } catch (e) {
             console.error('Error parsing workout_doc:', e);

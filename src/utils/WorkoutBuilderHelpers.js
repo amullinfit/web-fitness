@@ -52,8 +52,6 @@ export async function fetchWorkoutsApi(folderId = null) {
 
   const data = await res.json();
 
-  console.log('[App Debug] WOBH: data: ', data);
-
   // 1. Extract folders from root 'folders' array
   const folders = Array.isArray(data?.folders) ? data.folders : [];
 
@@ -67,9 +65,6 @@ export async function fetchWorkoutsApi(folderId = null) {
         }))
       : []
   );
-
-  console.log('[App Debug] WOBH extracted folders: ', folders);
-  console.log('[App Debug] WOBH extracted workouts: ', workouts);
 
   // Return formatted payload containing both folders and extracted workouts
   return {
