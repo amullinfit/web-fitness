@@ -190,21 +190,20 @@
             const rawSteps = doc?.steps || [];
             const flattened = flattenSteps(rawSteps);
             console.log('[App Debug] WCH-Planned: flat: ', flattened);
-        
-            return flattened.map((step) => {
+    
+            const plannedSteps = flattened.map((step) => {
                 // Destructure durationSec out so it is not included in restStep (...restStep)
                 const { durationSec, ...restStep } = step;
-
-                console.log('[App Debug] WCH-Planned: durationSec: ', durationSec);
-                console.log('[App Debug] WCH-Planned: restStep', restStep);
-
     
                 return {
                     ...restStep,
-                    duration: step.duration || step.elapsed_time || step.durationSec || 60,
+                    duration: step.duration || step.elapsed_time || durationSec || 60,
                     type: step.type || step.text || (step.warmup ? 'Warmup' : step.cooldown ? 'Cooldown' : 'Active')
                 };
             });
+    
+            console.log('[App Debug] WCH-Planned: final result: ', plannedSteps);
+            return plannedSteps;
         } catch (e) {
             console.error('Error parsing workout_doc:', e);
             return [];
