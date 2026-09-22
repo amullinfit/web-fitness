@@ -57,9 +57,9 @@
      */
     export const getZoneDetailsFromZoneNumber = (targetZone, paces) => {
 
-        const zones  = paces?.pace_val_sec     || DEFAULT_PACE_VAL_SEC;
-        const names  = paces?.pace_zone_names  || DEFAULT_PACE_ZONE_NAMES;
-        const colors = paces?.pace_zone_colors || DEFAULT_PACE_ZONE_COLORS;
+        const zones  = paces?.pace_val_sec || DEFAULT_PACE_VAL_SEC;
+        const names  = paces?.preset_colors?.map((item) => item.zone_name) || DEFAULT_PACE_ZONE_NAMES;
+        const colors = paces?.preset_colors?.map((item) => item.color)     || DEFAULT_PACE_ZONE_COLORS;
 
         if (targetZone > zones.length) {
             const lastIdx = zones.length - 1;
