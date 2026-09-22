@@ -19,23 +19,24 @@
     // - ZONE conversion helpers
 
     // Fallback zone config if PacesContext is not available
-    const DEFAULT_PACE_ZONES       = [80,   92, 94.3, 100, 103.4, 111.5, 150];
-    const DEFAULT_PACE_VAL_SEC     = [619, 538,  525, 495,   479,   444, 330];
-    const DEFAULT_PACE_ZONE_NAMES  = ["Zone_1", "Zone_2", "Zone_3", "Zone_4", "Zone_5a", "Zone_5b", "Zone_5c"];
-    const DEFAULT_PACE_ZONE_COLORS = ["#88d8b0", "#fd7e14", "#fd7e14", "#ff6b6b", "#dc3545", "#6f42c1", "#343a40"];
+    const DEFAULT_PACE_ZONE_NAMES  = [  "Zone_1", "Zone_2", "Zone_3", "Zone_4","Zone_5a","Zone_5b","Zone_5c", "Zone 6"];
+    const DEFAULT_PACE_ZONE_COLORS = [ "#b0b0b0","#88d8b0","#28a745","#ffc107","#fd7e14","#ff6b6b","#dc3545","#6f42c1"];
+    const DEFAULT_PACE_ZONES       = [        80,       92,     94.3,      100,    103.4,    111.5,    128.9,      169];
+    const DEFAULT_PACE_VAL_SEC     = [       619,      538,      525,      495,      479,      444,      330,      293];
+    const DEFAULT_PACE_STR         = ["10:19/mi","8:58/mi","8:45/mi","8:15/mi","7:59/mi","7:24/mi","6:24/mi","4:53/mi"];
 
     /**
      * Dynamically resolves zone details using PacesContext zones, names, and colors.
      */
     export const getZoneDetailsFromPaces = (targetPace, paces) => {
 
-        const zones  = paces?.pace_val_sec     || DEFAULT_PACE_VAL_SEC;
-        const names  = paces?.pace_zone_names  || DEFAULT_PACE_ZONE_NAMES;
-        const colors = paces?.pace_zone_colors || DEFAULT_PACE_ZONE_COLORS;
-
+        const zones  = paces?.pace_val_sec || DEFAULT_PACE_VAL_SEC;
+        const names  = paces?.preset_colors?.map((item) => item.zone_name) || DEFAULT_PACE_ZONE_NAMES;
+        const colors = paces?.preset_colors?.map((item) => item.color)     || DEFAULT_PACE_ZONE_COLORS;
+        
         // Iterate through pace zone thresholds
         for (let i = 0; i < zones.length; i++) {
-            if (targetPace > zones[i]) {
+            if (targetPace < zones[i]) {
             return {
                 name:  names[i]  || `Zone ${i + 1}`,
                 color: colors[i] || '#28a745'
@@ -245,6 +246,7 @@
       // thresholdSecPerMile is the # of seconds to run a mile at threshold (495 for 8:15 pace)
       // output of this is the fast, slow and mid speed (as sec/mi aka 495 for 8:15) and % ranges
       //
+      // output is returned in sec/mi (aka 495 for 8:15 threshold)
       export const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
         if (!step) return null;
 
