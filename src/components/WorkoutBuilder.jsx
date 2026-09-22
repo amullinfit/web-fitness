@@ -24,8 +24,7 @@ import {
   createFolderApi, 
   saveWorkoutApi, 
   calculateDynamicPresets, 
-  addIdsToBaseWorkout,
-  createDefaultBaseWorkout // Ensure this helper exists or create a fallback default structure
+  addIdsToBaseWorkout
 } from '../utils/WorkoutBuilderHelpers.js';
 
 export default function WorkoutBuilder() {
