@@ -36,7 +36,7 @@ const FAST_BUFFER_MINUTES = 1;
 export default function WorkoutChart({ 
   workout, 
   chartHeight = '140px',
-  showYAxis,
+  showYAxis = true,
   showWorkoutName = true,
   showThresholdPace = true,
   showYAxisLabels = true,
