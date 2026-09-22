@@ -354,16 +354,7 @@ export default function WorkoutBuilder() {
               + Add Repeat Block
             </button>
           </div>
-
-          <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }} onClick={() => setIsZoomModalOpen(true)}>
-            <RenderWorkoutChart 
-              steps={steps} 
-              height={140} 
-              workoutMode={workoutMode} 
-              presets={dynamicPresets} 
-            />
-          </div>
-
+          
         </>
       )}
 
