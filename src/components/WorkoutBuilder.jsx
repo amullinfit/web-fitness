@@ -290,12 +290,12 @@ export default function WorkoutBuilder() {
               htmlFor="unaltered-workout-input" 
               style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
             >
-              Unaltered workout
+              Workout Data
             </label>
             <textarea
               id="unaltered-workout-input"
               readOnly
-              value={unalteredWorkout}
+              value={JSON.stringify(unalteredWorkout || {}, null, 2)}
               placeholder="No raw Intervals.icu payload available..."
               rows={4}
               style={{
