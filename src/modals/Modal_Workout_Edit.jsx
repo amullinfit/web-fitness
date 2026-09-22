@@ -6,7 +6,7 @@ import RenderWorkoutChart from '../utils/RenderWorkoutChart';
 import { formatTime, formatDistance, mapIcuDocToSteps } from '../utils/WorkoutBuilderHelpers.js';
 import '../CSS/Modal_Workout_Edit.css';
 
-import WorkoutChart from './WorkoutChart';
+import WorkoutChart from '../components/WorkoutChart';
 
 export default function Modal_Workout_Edit({
   isOpen,
