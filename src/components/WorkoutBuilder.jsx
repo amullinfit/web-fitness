@@ -122,7 +122,6 @@ export default function WorkoutBuilder() {
       setSelectedFolderId(found.folder_id ?? found.folderId ?? '');
 
       // Check all potential object locations for the document payload
-      // const rawDocObj = found.workout_doc ?? found.document ?? found.icu_doc;
       const rawDocObj = found;
       const parsedDoc = typeof rawDocObj === 'string' 
         ? (() => { try { return JSON.parse(rawDocObj); } catch { return null; } })() 
@@ -132,7 +131,6 @@ export default function WorkoutBuilder() {
         ? rawDocObj
         : JSON.stringify(rawDocObj || {}, null, 2);
 
-//        setUnalteredWorkout(displayDoc);
         setUnalteredWorkout(rawDocObj);
         setSteps(mapIcuDocToSteps(parsedDoc, workoutMode));
 
@@ -317,7 +315,7 @@ export default function WorkoutBuilder() {
               htmlFor="unaltered-workout-input" 
               style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
             >
-              Workout Data - steps
+              Workout Data - steps (changes with updates)
             </label>
             <textarea
               id="unaltered-workout-input"
@@ -339,13 +337,11 @@ export default function WorkoutBuilder() {
           </div>
 
           <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }}>
-            ---___---
             <WorkoutChart
               workout={unalteredWorkout}
               thresholdPace={400}
               chartHeight={"200px"}
             />
-            ---^^^---
           </div>
 
           <div 
