@@ -115,6 +115,8 @@ export default function WorkoutBuilder() {
 
   const handleSelectWorkout = (id) => {
     const found = savedWorkouts.find((w) => String(w.id) === String(id));
+    console.log('[App Debug] WB: id: ', id);
+    console.log('[App Debug] WB: found: ', found);
     if (found) {
       setWorkoutId(found.id);
       setWorkoutTitle(found.name || found.title || 'Untitled');
