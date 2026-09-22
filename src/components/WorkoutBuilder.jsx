@@ -246,8 +246,6 @@ export default function WorkoutBuilder() {
     setMode('EMPTY');
   };
 
-  const chartDataDebug = { workout: steps };
-
   console.log('[App Debug] WB steps: ', steps);
 
   return (
@@ -317,11 +315,11 @@ export default function WorkoutBuilder() {
 
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#555', marginBottom: '4px' }}>
-              Properties (selectedDate):
+              Properties (steps):
             </label>
             <textarea
               readOnly
-              value={JSON.stringify(chartDataDebug, null, 2)}
+              value={JSON.stringify(steps, null, 2)}
               rows={15}
               style={{
                 width: '100%',
@@ -350,7 +348,7 @@ export default function WorkoutBuilder() {
           <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }}>
             ---___---
             <WorkoutChart
-              workout={steps}
+              workout={workout}
               thresholdPace={400}
               chartHeight={"200px"}
             />

@@ -317,7 +317,7 @@ export const formatTime = (totalSeconds) => {
       if (s.pace?.value) targetPaceSec = convertToPaceSec(s.pace.value);
       else if (s.pace?.start) targetPaceSec = convertToPaceSec(s.pace.start);
   
-      const durationSec = s.duration || 300;
+      const durationSec = s.duration || s.durationSec || 300;
       const distanceMiles = s.distance ? s.distance / 1609.344 : (durationSec / targetPaceSec);
   
       return {
