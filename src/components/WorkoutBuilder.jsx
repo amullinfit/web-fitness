@@ -128,7 +128,8 @@ export default function WorkoutBuilder() {
       setSelectedFolderId(found.folder_id ?? found.folderId ?? '');
 
       // Check all potential object locations for the document payload
-      const rawDocObj = found.workout_doc ?? found.document ?? found.icu_doc;
+      // const rawDocObj = found.workout_doc ?? found.document ?? found.icu_doc;
+      const rawDocObj = found;
       const parsedDoc = typeof rawDocObj === 'string' 
         ? (() => { try { return JSON.parse(rawDocObj); } catch { return null; } })() 
         : rawDocObj;
@@ -288,7 +289,7 @@ export default function WorkoutBuilder() {
             setWorkoutMode={setWorkoutMode}
             paceMethod={paceMethod}
             setPaceMethod={setPaceMethod}
-            thresholdPaceSec={paces?.threshold_pace || 0} 
+            thresholdPaceSec={paces?..threshold || 0} 
           />
 
           <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
@@ -296,7 +297,7 @@ export default function WorkoutBuilder() {
               htmlFor="unaltered-workout-input" 
               style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
             >
-              Unaltered workout {id}
+              Unaltered workout
             </label>
             <textarea
               id="unaltered-workout-input"
