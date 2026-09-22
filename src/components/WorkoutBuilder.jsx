@@ -296,78 +296,82 @@ export default function WorkoutBuilder() {
             thresholdPaceSec={paces?.threshold_pace || 0} 
           />
 
-          {/* Side-by-Side Textarea Container */}
+          {/* Side-by-Side Resizable Textarea Container */}
           <div 
-            className="json-previews-container" 
-            style={{ 
-              display: 'flex', 
-              gap: '16px', 
-              marginTop: '16px', 
-              marginBottom: '16px' 
-            }}
-          >
-            {/* Original Unaltered Document */}
-            <div 
-              className="unaltered-workout-container" 
-              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-            >
-              <label 
-                htmlFor="unaltered-workout-input" 
-                style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
-              >
-                Workout Data - Original Unaltered Workout File
-              </label>
-              <textarea
-                id="unaltered-workout-input"
-                readOnly
-                value={JSON.stringify(unalteredWorkout || {}, null, 2)}
-                placeholder="No raw Intervals.icu payload available..."
-                rows={6}
-                style={{
-                  width: '100%',
-                  flex: 1,
-                  fontFamily: 'monospace',
-                  fontSize: '12px',
-                  padding: '8px',
-                  backgroundColor: '#f4f4f6',
-                  border: '1px solid #ccc',
-                  borderRadius: '4px',
-                  resize: 'vertical'
+                className="json-previews-container" 
+                style={{ 
+                  display: 'flex', 
+                  gap: '16px', 
+                  marginTop: '16px', 
+                  marginBottom: '16px',
+                  resize: 'vertical',
+                  overflow: 'hidden',
+                  height: '200px', // Default starting height
+                  minHeight: '100px',
+                  maxHeight: '800px',
+                  paddingBottom: '8px'
                 }}
-              />
-            </div>
+              >
+                {/* Original Unaltered Document */}
+                <div 
+                  className="unaltered-workout-container" 
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}
+                >
+                  <label 
+                    htmlFor="unaltered-workout-input" 
+                    style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+                  >
+                    Workout Data - Original Unaltered Workout File
+                  </label>
+                  <textarea
+                    id="unaltered-workout-input"
+                    readOnly
+                    value={JSON.stringify(unalteredWorkout || {}, null, 2)}
+                    placeholder="No raw Intervals.icu payload available..."
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      padding: '8px',
+                      backgroundColor: '#f4f4f6',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      resize: 'none' // Controlled by parent container
+                    }}
+                  />
+                </div>
 
-            {/* baseWorkout Live JSON View */}
-            <div 
-              className="unaltered-workout-container" 
-              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-            >
-              <label 
-                htmlFor="baseworkout-input" 
-                style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
-              >
-                Workout Data - baseWorkout (Live Updated)
-              </label>
-              <textarea
-                id="baseworkout-input"
-                readOnly
-                value={JSON.stringify(baseWorkout || {}, null, 2)}
-                placeholder="No baseWorkout payload available..."
-                rows={6}
-                style={{
-                  width: '100%',
-                  flex: 1,
-                  fontFamily: 'monospace',
-                  fontSize: '12px',
-                  padding: '8px',
-                  backgroundColor: '#f4f4f6',
-                  border: '1px solid #ccc',
-                  borderRadius: '4px',
-                  resize: 'vertical'
-                }}
-              />
-            </div>
-          </div>
+                {/* baseWorkout Live JSON View */}
+                <div 
+                  className="unaltered-workout-container" 
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}
+                >
+                  <label 
+                    htmlFor="baseworkout-input" 
+                    style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+                  >
+                    Workout Data - baseWorkout (Live Updated)
+                  </label>
+                  <textarea
+                    id="baseworkout-input"
+                    readOnly
+                    value={JSON.stringify(baseWorkout || {}, null, 2)}
+                    placeholder="No baseWorkout payload available..."
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      padding: '8px',
+                      backgroundColor: '#f4f4f6',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      resize: 'none' // Controlled by parent container
+                    }}
+                  />
+                </div>
+              </div>
 
           {/* Workout Chart connected directly to live baseWorkout */}
           <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }}>
