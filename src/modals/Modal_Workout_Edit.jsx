@@ -175,46 +175,6 @@ export default function Modal_Workout_Edit({
                       </div>
                     </div>
                     <div className="workout-card-chart">
-                      <RenderWorkoutChart
-                        steps={steps}
-                        height={60}
-                        workoutMode={workoutMode}
-                        presets={presets}
-                      />
-                    </div>
- 
-                    <div className="workout-card-header">
-                      <span className="workout-card-title">
-                        {workout.name || workout.title || `Workout ${workout.id}`}
-                      </span>
-                      <div className="workout-card-meta">
-                        <span>⏱ {durationText}</span>
-                        <span>📏 {distanceText}</span>
-                      </div>
-                      <WorkoutChart
-                        workout={workout}
-                        thresholdPace={480}
-                        chartHeight={"60px"}
-                        showYAxis={true}
-                        showWorkoutName={false}
-                        showThresholdPace={false}
-                        showYAxisLabels={true}
-                        showLegend={false}
-                        minimalXAxis={true}
-                        showHoverDetails={false}
-                      />
-                    </div>
-
-                    <div className="workout-card-header">
-                      <span className="workout-card-title">
-                        {workout.name || workout.title || `Workout ${workout.id}`}
-                      </span>
-                      <div className="workout-card-meta">
-                        <span>⏱ {durationText}</span>
-                        <span>📏 {distanceText}</span>
-                      </div>
-                    </div>
-                    <div className="workout-card-chart">
                       <WorkoutChart
                         workout={workout}
                         thresholdPace={480}
