@@ -285,6 +285,65 @@ export const formatTime = (totalSeconds) => {
     createStep('repeat', mode),
     createStep('cooldown', mode),
   ];
+
+  export const addIdsToBaseWorkout = (baseWorkout) => {
+    if (!baseWorkout?.workout_doc?.steps) return baseWorkout;
+  
+    const timestamp = new Date().toISOString().replace(/[-T:]/g, '').slice(0, 14);
+  
+    const generateStepId = (idx) => 
+      `step-loaded-${timestamp}-${idx}-${Math.random().toString(36).substring(2, 6)}`;
+  
+    const processSteps = (steps) => {
+      return steps.map((step, idx) => {
+        const updatedStep = {
+          ...step,
+          id: step.id || generateStepId(idx)
+        };
+  
+        // Recursively add IDs to nested child steps (e.g. inside repeaters)
+        if (Array.isArray(updatedStep.steps)) {
+          updatedStep.steps = processSteps(updatedStep.steps);
+        }
+  
+        return updatedStep;
+      });
+    };
+  
+    return {
+      ...baseWorkout,
+      workout_doc: {
+        ...baseWorkout.workout_doc,
+        steps: processSteps(baseWorkout.workout_doc.steps)
+      }
+    };
+  };
+    
+  export const removeIdsFromBaseWorkout = (baseWorkout) => {
+    if (!baseWorkout?.workout_doc?.steps) return baseWorkout;
+  
+    const stripStepId = (steps) => {
+      return steps.map((step) => {
+        // Destructure to separate 'id' from the rest of the step properties
+        const { id, steps: childSteps, ...cleanStep } = step;
+  
+        // Recursively strip IDs from nested child steps if present
+        if (Array.isArray(childSteps)) {
+          cleanStep.steps = stripStepId(childSteps);
+        }
+  
+        return cleanStep;
+      });
+    };
+  
+    return {
+      ...baseWorkout,
+      workout_doc: {
+        ...baseWorkout.workout_doc,
+        steps: stripStepId(baseWorkout.workout_doc.steps)
+      }
+    };
+  };
   
   export const mapIcuDocToSteps = (workout, mode = 'time') => {
     const stepsSource = workout?.workout_doc?.steps || workout?.steps;

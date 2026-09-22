@@ -26,7 +26,9 @@ import {
   saveWorkoutApi, 
   calculateDynamicPresets, 
   createDefaultSteps, 
-  mapIcuDocToSteps 
+  mapIcuDocToSteps,
+  addIdsToBaseWorkout,
+  removeIdsToBaseWorkout
 } from '../utils/WorkoutBuilderHelpers.js';
 
 export default function WorkoutBuilder() {
@@ -43,6 +45,7 @@ export default function WorkoutBuilder() {
 
   // Raw document state
   const [unalteredWorkout, setUnalteredWorkout] = useState('');
+  const [baseWorkout, setBaseWorkout] = useState('');
 
   // Mode Options
   const [workoutMode, setWorkoutMode] = useState('time'); // 'time' or 'distance'
@@ -131,6 +134,7 @@ export default function WorkoutBuilder() {
         ? rawDocObj
         : JSON.stringify(rawDocObj || {}, null, 2);
 
+        setBaseWorkout(addIdsToBaseWorkout(rawDocObj));
         setUnalteredWorkout(rawDocObj);
         setSteps(mapIcuDocToSteps(parsedDoc, workoutMode));
 
@@ -284,6 +288,13 @@ export default function WorkoutBuilder() {
           />
 
 
+
+          {/*------------------------------------------------------------------------------------------------------------------*/}
+          {/*------------------------------------------------------------------------------------------------------------------*/}
+          {/*------------------------------------------------------------------------------------------------------------------*/}
+
+
+
           <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
             <label 
               htmlFor="unaltered-workout-input" 
@@ -309,6 +320,22 @@ export default function WorkoutBuilder() {
               }}
             />
           </div>
+
+          <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }}>
+            <WorkoutChart
+              workout={unalteredWorkout}
+              thresholdPace={400}
+              chartHeight={"200px"}
+            />
+          </div>
+
+
+
+          {/*------------------------------------------------------------------------------------------------------------------*/}
+          {/*------------------------------------------------------------------------------------------------------------------*/}
+          {/*------------------------------------------------------------------------------------------------------------------*/}
+
+
 
           <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
             <label 
@@ -336,12 +363,13 @@ export default function WorkoutBuilder() {
             />
           </div>
 
-          <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }}>
-            <WorkoutChart
-              workout={unalteredWorkout}
-              thresholdPace={400}
-              chartHeight={"200px"}
-            />
+          <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
+            <label 
+              htmlFor="unaltered-workout-input" 
+              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+            >
+              RenderStepRow - Original Working Version
+            </label>
           </div>
 
           <div 
@@ -377,6 +405,78 @@ export default function WorkoutBuilder() {
               + Add Repeat Block
             </button>
           </div>
+
+
+
+          {/*------------------------------------------------------------------------------------------------------------------*/}
+          {/*------------------------------------------------------------------------------------------------------------------*/}
+          {/*------------------------------------------------------------------------------------------------------------------*/}
+
+
+
+          <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
+            <label 
+              htmlFor="unaltered-workout-input" 
+              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+            >
+              RenderStepRow - Revised to use "baseWorkout"
+            </label>
+          </div>
+
+          <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
+            <label 
+              htmlFor="unaltered-workout-input" 
+              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+            >
+              Workout Data - baseWorkout
+            </label>
+            <textarea
+              id="unaltered-workout-input"
+              readOnly
+              value={JSON.stringify(baseWorkout || {}, null, 2)}
+              placeholder="No raw Intervals.icu payload available..."
+              rows={4}
+              style={{
+                width: '100%',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                padding: '8px',
+                backgroundColor: '#f4f4f6',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+
+          <div 
+            className="steps-list-container" 
+            onDragOver={(e) => e.preventDefault()} 
+            onDrop={(e) => handleDrop(e, null, workoutData?.workout_doc?.steps?.length || 0)}
+          >
+            {baseWorkout?.workout_doc?.steps?.map((step, index) => (
+              <RenderStepRow
+                // Fallback key using index or auto-assigned id if present
+                key={step.id || `step-${index}`}
+                step={step}
+                index={index}
+                parentId={null}
+                workoutMode={workoutMode}
+                presets={dynamicPresets}
+                onRemove={removeStep}
+                onUpdate={updateStepField}
+                onAddChild={addStep}
+                onDragStart={handleDragStart}
+                onDrop={handleDrop}
+              />
+            ))}
+          </div>
+
+          {/*------------------------------------------------------------------------------------------------------------------*/}
+          {/*------------------------------------------------------------------------------------------------------------------*/}
+          {/*------------------------------------------------------------------------------------------------------------------*/}
+
+
 
         </>
       )}
