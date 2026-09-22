@@ -183,6 +183,15 @@ export default function Modal_Workout_Edit({
                       />
                     </div>
  
+                    <div className="workout-card-header">
+                      <span className="workout-card-title">
+                        {workout.name || workout.title || `Workout ${workout.id}`}
+                      </span>
+                      <div className="workout-card-meta">
+                        <span>⏱ {durationText}</span>
+                        <span>📏 {distanceText}</span>
+                      </div>
+                    </div>
                     <div className="workout-card-chart">
                       <WorkoutChart
                         workout={workout}
