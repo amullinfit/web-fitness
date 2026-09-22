@@ -128,8 +128,7 @@ export default function WorkoutBuilder() {
       setSelectedFolderId(found.folder_id ?? found.folderId ?? '');
 
       // Check all potential object locations for the document payload
-      // const rawDocObj = found.workout_doc ?? found.document ?? found.icu_doc;
-      const rawDocObj = found;
+      const rawDocObj = found.workout_doc ?? found.document ?? found.icu_doc;
       const parsedDoc = typeof rawDocObj === 'string' 
         ? (() => { try { return JSON.parse(rawDocObj); } catch { return null; } })() 
         : rawDocObj;
