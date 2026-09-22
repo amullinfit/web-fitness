@@ -290,16 +290,12 @@
             }),
 
             // rangePct.XX has the zone #
-            'pace_zonex': () => {
-              const zone = PACE_ZONES[step.pace?.value] || PACE_ZONES[4];
-              const sec = zone.targetPct > 0 ? refThresholdSec / (zone.targetPct / 100) : refThresholdSec;
-              return {
+            'pace_zone': () => ({
                 slowSec: getZoneDetailsFromZoneNumber(rangePct.start, paces),
                 midSec:  getZoneDetailsFromZoneNumber(rangePct.mid, paces),
                 fastSec: getZoneDetailsFromZoneNumber(rangePct.end, paces),
                 rangePct
-              };
-            }
+              })
 
           };
           
