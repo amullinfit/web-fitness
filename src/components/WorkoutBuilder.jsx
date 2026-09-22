@@ -296,31 +296,77 @@ export default function WorkoutBuilder() {
             thresholdPaceSec={paces?.threshold_pace || 0} 
           />
 
-          {/* Original Unaltered Document */}
-          <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
-            <label 
-              htmlFor="unaltered-workout-input" 
-              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+          {/* Side-by-Side Textarea Container */}
+          <div 
+            className="json-previews-container" 
+            style={{ 
+              display: 'flex', 
+              gap: '16px', 
+              marginTop: '16px', 
+              marginBottom: '16px' 
+            }}
+          >
+            {/* Original Unaltered Document */}
+            <div 
+              className="unaltered-workout-container" 
+              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
             >
-              Workout Data - Original Unaltered Workout File
-            </label>
-            <textarea
-              id="unaltered-workout-input"
-              readOnly
-              value={JSON.stringify(unalteredWorkout || {}, null, 2)}
-              placeholder="No raw Intervals.icu payload available..."
-              rows={4}
-              style={{
-                width: '100%',
-                fontFamily: 'monospace',
-                fontSize: '12px',
-                padding: '8px',
-                backgroundColor: '#f4f4f6',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                resize: 'vertical'
-              }}
-            />
+              <label 
+                htmlFor="unaltered-workout-input" 
+                style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+              >
+                Workout Data - Original Unaltered Workout File
+              </label>
+              <textarea
+                id="unaltered-workout-input"
+                readOnly
+                value={JSON.stringify(unalteredWorkout || {}, null, 2)}
+                placeholder="No raw Intervals.icu payload available..."
+                rows={6}
+                style={{
+                  width: '100%',
+                  flex: 1,
+                  fontFamily: 'monospace',
+                  fontSize: '12px',
+                  padding: '8px',
+                  backgroundColor: '#f4f4f6',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+
+            {/* baseWorkout Live JSON View */}
+            <div 
+              className="unaltered-workout-container" 
+              style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+            >
+              <label 
+                htmlFor="baseworkout-input" 
+                style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+              >
+                Workout Data - baseWorkout (Live Updated)
+              </label>
+              <textarea
+                id="baseworkout-input"
+                readOnly
+                value={JSON.stringify(baseWorkout || {}, null, 2)}
+                placeholder="No baseWorkout payload available..."
+                rows={6}
+                style={{
+                  width: '100%',
+                  flex: 1,
+                  fontFamily: 'monospace',
+                  fontSize: '12px',
+                  padding: '8px',
+                  backgroundColor: '#f4f4f6',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
           </div>
 
           {/* Workout Chart connected directly to live baseWorkout */}
