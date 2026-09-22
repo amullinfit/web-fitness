@@ -4,43 +4,71 @@
 import { useState } from 'react';
 import { createStep } from '../utils/WorkoutBuilderHelpers.js';
 
-export function useWorkoutSteps(initialSteps = [], workoutMode = 'time') {
-  const [steps, setSteps] = useState(initialSteps);
+export function useWorkoutSteps(baseWorkout, setBaseWorkout, workoutMode = 'time') {
   const [draggedItem, setDraggedItem] = useState(null);
+
+  // Helper to check if a step is a repeater container
+  const isRepeatBlock = (s) => s.type === 'repeat' || Boolean(s.reps) || Array.isArray(s.steps);
+
+  // Helper to safely target and update baseWorkout.workout_doc.steps
+  const updateStepsTree = (transformFn) => {
+    setBaseWorkout((prev) => {
+      if (!prev?.workout_doc?.steps) return prev;
+      return {
+        ...prev,
+        workout_doc: {
+          ...prev.workout_doc,
+          steps: transformFn(prev.workout_doc.steps)
+        }
+      };
+    });
+  };
 
   const addStep = (type, parentRepeatId = null) => {
     const newStep = createStep(type, workoutMode);
-    if (!parentRepeatId) {
-      setSteps((prev) => [...prev, newStep]);
-    } else {
+    
+    updateStepsTree((steps) => {
+      if (!parentRepeatId) {
+        return [...steps, newStep];
+      }
+      
       const addRecursive = (list) =>
         list.map((s) => {
-          if (s.id === parentRepeatId && s.type === 'repeat') {
+          if (s.id === parentRepeatId && isRepeatBlock(s)) {
             return { ...s, steps: [...(s.steps || []), newStep] };
           }
-          if (s.type === 'repeat') {
+          if (isRepeatBlock(s)) {
             return { ...s, steps: addRecursive(s.steps || []) };
           }
           return s;
         });
-      setSteps((prev) => addRecursive(prev));
-    }
+
+      return addRecursive(steps);
+    });
   };
 
   const removeStep = (id) => {
-    const filterRecursive = (list) =>
-      list.filter((s) => s.id !== id).map((s) => (s.type === 'repeat' ? { ...s, steps: filterRecursive(s.steps || []) } : s));
-    setSteps((prev) => filterRecursive(prev));
+    updateStepsTree((steps) => {
+      const filterRecursive = (list) =>
+        list
+          .filter((s) => s.id !== id)
+          .map((s) => (isRepeatBlock(s) ? { ...s, steps: filterRecursive(s.steps || []) } : s));
+
+      return filterRecursive(steps);
+    });
   };
 
   const updateStepField = (id, field, value) => {
-    const updateRecursive = (list) =>
-      list.map((s) => {
-        if (s.id === id) return { ...s, [field]: value };
-        if (s.type === 'repeat') return { ...s, steps: updateRecursive(s.steps || []) };
-        return s;
-      });
-    setSteps((prev) => updateRecursive(prev));
+    updateStepsTree((steps) => {
+      const updateRecursive = (list) =>
+        list.map((s) => {
+          if (s.id === id) return { ...s, [field]: value };
+          if (isRepeatBlock(s)) return { ...s, steps: updateRecursive(s.steps || []) };
+          return s;
+        });
+
+      return updateRecursive(steps);
+    });
   };
 
   const handleDragStart = (e, step, parentId) => {
@@ -58,10 +86,10 @@ export function useWorkoutSteps(initialSteps = [], workoutMode = 'time') {
     const removeFromTree = (list, parentId, stepId) => {
       if (!parentId) return list.filter((s) => s.id !== stepId);
       return list.map((s) => {
-        if (s.id === parentId && s.type === 'repeat') {
+        if (s.id === parentId && isRepeatBlock(s)) {
           return { ...s, steps: (s.steps || []).filter((child) => child.id !== stepId) };
         }
-        if (s.type === 'repeat') {
+        if (isRepeatBlock(s)) {
           return { ...s, steps: removeFromTree(s.steps || [], parentId, stepId) };
         }
         return s;
@@ -75,28 +103,28 @@ export function useWorkoutSteps(initialSteps = [], workoutMode = 'time') {
         return copy;
       }
       return list.map((s) => {
-        if (s.id === parentId && s.type === 'repeat') {
+        if (s.id === parentId && isRepeatBlock(s)) {
           const nextSteps = [...(s.steps || [])];
           nextSteps.splice(index, 0, item);
           return { ...s, steps: nextSteps };
         }
-        if (s.type === 'repeat') {
+        if (isRepeatBlock(s)) {
           return { ...s, steps: insertIntoTree(s.steps || [], parentId, index, item) };
         }
         return s;
       });
     };
 
-    setSteps((prevSteps) => {
+    updateStepsTree((prevSteps) => {
       const treeWithoutItem = removeFromTree(prevSteps, sourceParentId, itemToMove.id);
       return insertIntoTree(treeWithoutItem, targetParentId, targetIndex, itemToMove);
     });
+
     setDraggedItem(null);
   };
 
   return {
-    steps,
-    setSteps,
+    steps: baseWorkout?.workout_doc?.steps || [],
     addStep,
     removeStep,
     updateStepField,
