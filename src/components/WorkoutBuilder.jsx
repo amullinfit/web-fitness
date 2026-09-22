@@ -312,6 +312,29 @@ export default function WorkoutBuilder() {
             />
           </div>
 
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#555', marginBottom: '4px' }}>
+              Properties (selectedDate):
+            </label>
+            <textarea
+              readOnly
+              value={JSON.stringify(chartDataDebug, null, 2)}
+              rows={30}
+              style={{
+                width: '100%',
+                fontFamily: 'monospace',
+                fontSize: '11px',
+                padding: '8px',
+                backgroundColor: '#1e1e1e',
+                color: '#00ff66',
+                border: '1px solid #333',
+                borderRadius: '4px',
+                boxSizing: 'border-box',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+
           <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }} onClick={() => setIsZoomModalOpen(true)}>
             <RenderWorkoutChart 
               steps={steps} 
@@ -361,29 +384,6 @@ export default function WorkoutBuilder() {
             <button className="btn-add-step" onClick={() => addStep('repeat', null)}>
               + Add Repeat Block
             </button>
-          </div>
-
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#555', marginBottom: '4px' }}>
-              Properties (selectedDate):
-            </label>
-            <textarea
-              readOnly
-              value={JSON.stringify(chartDataDebug, null, 2)}
-              rows={8}
-              style={{
-                width: '100%',
-                fontFamily: 'monospace',
-                fontSize: '11px',
-                padding: '8px',
-                backgroundColor: '#1e1e1e',
-                color: '#00ff66',
-                border: '1px solid #333',
-                borderRadius: '4px',
-                boxSizing: 'border-box',
-                resize: 'vertical'
-              }}
-            />
           </div>
 
         </>

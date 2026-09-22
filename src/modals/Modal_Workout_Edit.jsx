@@ -142,7 +142,14 @@ export default function Modal_Workout_Edit({
           ) : (
             <div className="workout-cards-grid">
               {filteredWorkouts.map((workout) => {
+
                 const { steps, durationText, distanceText } = getWorkoutSummary(workout);
+
+                console.log('[App Debug] MWE: workout: ', workout);
+                console.log('[App Debug] MWE: steps: ', steps);
+                console.log('[App Debug] MWE: duration: ', durationText);
+                console.log('[App Debug] MWE: distance: ', distanceText);
+
                 return (
                   <div
                     key={workout.id}
