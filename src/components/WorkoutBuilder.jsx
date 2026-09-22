@@ -348,12 +348,13 @@ export default function WorkoutBuilder() {
           </div>
 
           <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }}>
-            ---===---
+            ---___---
             <WorkoutChart
               workout={steps}
               thresholdPace={400}
               chartHeight={"200px"}
             />
+            ---^^^---
           </div>
 
           <div 

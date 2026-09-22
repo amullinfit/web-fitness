@@ -195,7 +195,7 @@
     
                 return {
                     ...restStep,
-                    duration: step.duration || step.elapsed_time || durationSec || 60,
+                    duration: step.duration || step.elapsed_time || step.durationSec || 60,
                     type: step.type || step.text || (step.warmup ? 'Warmup' : step.cooldown ? 'Cooldown' : 'Active')
                 };
             });
@@ -204,7 +204,7 @@
             return [];
         }
     };
-            
+
     // -- Helper to get the Executed steps (if any) from the input workout
     export const extractExecutedSteps = (workout) => {
         if (!workout || !Array.isArray(workout.intervals) || workout.intervals.length === 0) return [];
