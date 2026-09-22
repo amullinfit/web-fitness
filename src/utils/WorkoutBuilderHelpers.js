@@ -188,63 +188,76 @@ export const formatTime = (totalSeconds) => {
 // 
 // - Data retrieval & Parsing Helpers ---
 
-    // Dynamically compute preset values from intervals.icu data
-    export function calculateDynamicPresets(paces, thresholdPaceSec, paceMethod) {
-      if (!paces) {
-        // Default Fallback
-        const defaultZoneNames = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5a', 'Zone 5b', 'Zone 5c'];
-        const defaultPaces = [619, 538, 525, DEFAULT_THRESHOLD, 479, 444, 50];
-    
-        return defaultZoneNames.map((name, idx) => ({
-          label: name,
-          displayPace: formatMMSS(defaultPaces[idx]),
-          targetPaceSec: defaultPaces[idx],
-          color: PRESET_COLORS[idx % PRESET_COLORS.length],
-        }));
-      }
-    
-      const zoneNames = paces.pace_zone_names || [];
-      const paceValueStr = paces.pace_value_str || [];
-      const paceValueNum = paces.pace_value_num || [];
-      const pacePercentages = paces.pace_zones || [];
-    
-      const itemCount = Math.max(zoneNames.length, paceValueStr.length, paceValueNum.length);
-      const presetsList = [];
-    
-      for (let i = 0; i < itemCount; i++) {
-        const label = zoneNames[i] || `Zone ${i + 1}`;
-        const color = PRESET_COLORS[i % PRESET_COLORS.length];
-    
-        let paceSec = 0;
-        if (paceValueStr[i]) {
-          paceSec = parseMMSS(paceValueStr[i]);
-        } else if (paceValueNum[i]) {
-          paceSec = convertToPaceSec(paceValueNum[i]);
+  // Dynamically compute preset values from intervals.icu data
+  export function calculateDynamicPresets(paces, thresholdPaceSec, paceMethod) {
+    // If paces or preset_colors array doesn't exist, use fallback logic
+    if (!paces || !Array.isArray(paces.preset_colors)) {
+
+      // Fallback zone config if PacesContext is not available
+      const DEFAULT_PACE_ZONE_NAMES  = [  "Zone_1", "Zone_2", "Zone_3", "Zone_4","Zone_5a","Zone_5b","Zone_5c", "Zone 6"];
+      const DEFAULT_PACE_ZONE_COLORS = [ "#b0b0b0","#88d8b0","#28a745","#ffc107","#fd7e14","#ff6b6b","#dc3545","#6f42c1"];
+      const DEFAULT_PACE_ZONES       = [        80,       92,     94.3,      100,    103.4,    111.5,    128.9,      169];
+      const DEFAULT_PACE_VAL_SEC     = [       619,      538,      525,      495,      479,      444,      330,      293];
+      const DEFAULT_PACE_STR         = ["10:19/mi","8:58/mi","8:45/mi","8:15/mi","7:59/mi","7:24/mi","6:24/mi","4:53/mi"];
+
+
+      const DEFAULT_PACE_ZONE_NAMES = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5a', 'Zone 5b', 'Zone 5c', 'Zone 6'];
+      const DEFAULT_PACE_VAL_SEC = [619, 538, 525, DEFAULT_THRESHOLD, 479, 444, 384, 293];
+
+      return DEFAULT_PACE_ZONE_NAMES.map((name, idx) => ({
+        label: name,
+        displayPace: formatMMSS(DEFAULT_PACE_VAL_SEC[idx]),
+        targetPaceSec: DEFAULT_PACE_VAL_SEC[idx],
+        color: DEFAULT_PACE_ZONE_COLORS[idx % DEFAULT_PACE_ZONE_COLORS.length],
+        colorLabel: '',
+      }));
+    }
+
+    return paces.preset_colors.map((preset) => {
+      // Extract properties directly from the preset_colors object
+      const label = preset.zone_name || `Zone ${preset.zone}`;
+      const color = preset.color || '#cccccc';
+      const colorLabel = preset.label || '';
+      
+      // Determine the base pace seconds (prefer pace_val_sec from JSON if present)
+      let paceSec = preset.pace_val_sec;
+      if (!paceSec) {
+        if (preset.pace_fast) {
+          paceSec = parseMMSS(preset.pace_fast);
+        } else if (preset.pace_value_num) {
+          paceSec = convertToPaceSec(preset.pace_value_num);
         } else {
           paceSec = thresholdPaceSec;
         }
-    
-        let displayPace = formatMMSS(paceSec);
-        if (paceMethod === 'Threshold %') {
-          const pct = pacePercentages[i] || Math.round((thresholdPaceSec / paceSec) * 100);
-          displayPace = `${pct}%`;
-        } else if (paceMethod?.includes('Range')) {
-          const lowPace = Math.round(paceSec * 0.97);
-          const highPace = Math.round(paceSec * 1.03);
-          displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
-        }
-    
-        presetsList.push({
-          label,
-          displayPace,
-          targetPaceSec: paceSec,
-          color,
-        });
       }
-    
-      return presetsList;
-    }
 
+      // Format display pace based on the requested paceMethod
+      let displayPace = formatMMSS(paceSec);
+      
+      if (paceMethod === 'Threshold %') {
+        const pct = preset.pace_zone_pct || Math.round((thresholdPaceSec / paceSec) * 100);
+        displayPace = `${pct}%`;
+      } else if (paceMethod?.includes('Range') && preset.pace_slow && preset.pace_fast) {
+        displayPace = `${preset.pace_slow}-${preset.pace_fast}`;
+      } else if (paceMethod?.includes('Range')) {
+        const lowPace = Math.round(paceSec * 0.97);
+        const highPace = Math.round(paceSec * 1.03);
+        displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
+      }
+
+      return {
+        zone: preset.zone_name,
+        label,
+        displayPace,
+        targetPaceSec: paceSec,
+        color,
+        colorLabel,
+        paceSlow: preset.pace_slow,
+        paceFast: preset.pace_fast,
+        pct: preset.pace_zone_pct
+      };
+    });
+  }
 // 
 // 
 // 
