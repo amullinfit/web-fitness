@@ -543,7 +543,7 @@ export default function DailyView() {
             </label>
             <textarea
               readOnly
-              value={JSON.stringify(chartDataDebug, null, 2)}
+              value={JSON.stringify(workout, null, 2)}
               rows={8}
               style={{
                 width: '100%',
