@@ -136,6 +136,11 @@ export default function WorkoutBuilder() {
 
       setUnalteredWorkout(displayDoc);
       setSteps(mapIcuDocToSteps(parsedDoc, workoutMode));
+
+      console.log('[App Debug] WB-Handle: rawDocObj:  ', rawDocObj);
+      console.log('[App Debug] WB-Handle: parsedDoc:  ', parsedDoc);
+      console.log('[App Debug] WB-Handle: displayDoc: ', displayDoc);
+
       setMode('BUILDING');
       setIsEditModalOpen(false);
     }
