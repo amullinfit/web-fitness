@@ -138,8 +138,9 @@ export default function WorkoutBuilder() {
         ? rawDocObj
         : JSON.stringify(rawDocObj || {}, null, 2);
 
-      setUnalteredWorkout(displayDoc);
-      setSteps(mapIcuDocToSteps(parsedDoc, workoutMode));
+//        setUnalteredWorkout(displayDoc);
+        setUnalteredWorkout(rawDocObj);
+        setSteps(mapIcuDocToSteps(parsedDoc, workoutMode));
 
       setMode('BUILDING');
       setIsEditModalOpen(false);
