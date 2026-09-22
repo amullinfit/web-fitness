@@ -7,23 +7,17 @@
 // 
 // 
 // 
+    // 1. Consume context
+    import { usePaces } from '../utils/PacesContext.jsx';
+
+    const { paces, loading: pacesLoading } = usePaces();
+
+    const DEFAULT_THRESHOLD = paces?.threshold_pace;
+
     // - Declare API endpoints
     const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
     const VAL_MY_PACES_URL = '/api/val-my-paces';
 
-    // - Declared constants
-    export const DEFAULT_THRESHOLD = 480; // 8:00/mi default fallback (480 seconds)
-
-    // Updated PRESET_COLORS order: Grey, Green, Cyan, Blue, Yellow, Orange, Red
-    export const PRESET_COLORS = [
-        '#6c757d', // Grey / Zone 1
-        '#28a745', // Green / Zone 2
-        '#17a2b8', // Cyan / Zone 3
-        '#007bff', // Blue / Zone 4
-        '#ffc107', // Yellow / Zone 5a
-        '#fd7e14', // Orange / Zone 5b
-        '#dc3545', // Red / Zone 5c
-    ];
 
 // 
 // 
@@ -199,10 +193,6 @@ export const formatTime = (totalSeconds) => {
       const DEFAULT_PACE_ZONES       = [        80,       92,     94.3,      100,    103.4,    111.5,    128.9,      169];
       const DEFAULT_PACE_VAL_SEC     = [       619,      538,      525,      495,      479,      444,      330,      293];
       const DEFAULT_PACE_STR         = ["10:19/mi","8:58/mi","8:45/mi","8:15/mi","7:59/mi","7:24/mi","6:24/mi","4:53/mi"];
-
-
-      const DEFAULT_PACE_ZONE_NAMES = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5a', 'Zone 5b', 'Zone 5c', 'Zone 6'];
-      const DEFAULT_PACE_VAL_SEC = [619, 538, 525, DEFAULT_THRESHOLD, 479, 444, 384, 293];
 
       return DEFAULT_PACE_ZONE_NAMES.map((name, idx) => ({
         label: name,
