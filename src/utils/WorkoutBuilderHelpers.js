@@ -293,7 +293,9 @@ export const formatTime = (totalSeconds) => {
     }
   
     const mapStep = (s, idx) => {
-      const id = `step-loaded-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
+      // step.id = date(YYYYMMSS)-idx-randomstring
+      const id = `step-loaded-${new Date().toISOString().replace(/[-T:]/g, '').slice(0, 14)}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
+
       if (s.reps && Array.isArray(s.steps)) {
         return {
           id,
