@@ -28,7 +28,7 @@ import {
   createDefaultSteps, 
   mapIcuDocToSteps,
   addIdsToBaseWorkout,
-  removeIdsToBaseWorkout
+  removeIdsFromBaseWorkout
 } from '../utils/WorkoutBuilderHelpers.js';
 
 export default function WorkoutBuilder() {
