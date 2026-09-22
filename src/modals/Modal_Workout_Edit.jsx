@@ -6,6 +6,8 @@ import RenderWorkoutChart from '../utils/RenderWorkoutChart';
 import { formatTime, formatDistance, mapIcuDocToSteps } from '../utils/WorkoutBuilderHelpers.js';
 import '../CSS/Modal_Workout_Edit.css';
 
+import WorkoutChart from './WorkoutChart';
+
 export default function Modal_Workout_Edit({
   isOpen,
   onClose,
@@ -180,6 +182,16 @@ export default function Modal_Workout_Edit({
                         presets={presets}
                       />
                     </div>
+ 
+                    <div className="workout-card-chart">
+                      <WorkoutChart
+                        workout={workout}
+                        thresholdPace={480}
+                        chartHeight={"60px"}
+                      />
+                    </div>
+
+
                   </div>
                 );
               })}
