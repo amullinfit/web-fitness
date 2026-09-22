@@ -289,7 +289,7 @@ export default function WorkoutBuilder() {
             setWorkoutMode={setWorkoutMode}
             paceMethod={paceMethod}
             setPaceMethod={setPaceMethod}
-            thresholdPaceSec={paces?..threshold || 0} 
+            thresholdPaceSec={paces?.threshold_pace || 0} 
           />
 
           <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
