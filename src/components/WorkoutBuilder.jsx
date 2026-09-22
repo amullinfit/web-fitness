@@ -285,17 +285,44 @@ export default function WorkoutBuilder() {
             thresholdPaceSec={paces?.threshold_pace || 0} 
           />
 
+
           <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
             <label 
               htmlFor="unaltered-workout-input" 
               style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
             >
-              Workout Data
+              Workout Data - Unaltered
             </label>
             <textarea
               id="unaltered-workout-input"
               readOnly
               value={JSON.stringify(unalteredWorkout || {}, null, 2)}
+              placeholder="No raw Intervals.icu payload available..."
+              rows={4}
+              style={{
+                width: '100%',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                padding: '8px',
+                backgroundColor: '#f4f4f6',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+
+          <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
+            <label 
+              htmlFor="unaltered-workout-input" 
+              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+            >
+              Workout Data - steps
+            </label>
+            <textarea
+              id="unaltered-workout-input"
+              readOnly
+              value={JSON.stringify(steps || {}, null, 2)}
               placeholder="No raw Intervals.icu payload available..."
               rows={4}
               style={{
@@ -354,7 +381,7 @@ export default function WorkoutBuilder() {
               + Add Repeat Block
             </button>
           </div>
-          
+
         </>
       )}
 
