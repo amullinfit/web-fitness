@@ -198,7 +198,7 @@ export default function Modal_Workout_Edit({
                         thresholdPace={480}
                         chartHeight={"60px"}
                         showYAxis={true}
-                        showWorkoutName={true}
+                        showWorkoutName={false}
                         showThresholdPace={false}
                         showYAxisLabels={true}
                         showLegend={false}
