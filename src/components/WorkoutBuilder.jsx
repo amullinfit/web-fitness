@@ -8,11 +8,10 @@ import '../CSS/WorkoutBuilder.css';
 import { useWorkoutSteps } from '../hooks/useWorkoutSteps';
 
 import WorkoutChart from './WorkoutChart';
-import RenderWorkoutChart from '../utils/RenderWorkoutChart';
 import RenderStepRow from '../utils/RenderStepRow';
 
 import { OptionsMenu, ControlBar } from '../utils/WorkoutBuilderMenus';
-import { convertStepsToWorkout, convertWorkoutToTargetFormat } from '../utils/WorkoutConverter.js';
+import { convertWorkoutToTargetFormat } from '../utils/WorkoutConverter.js';
 
 import Modal_Folder_Create from '../modals/Modal_Folder_Create';
 import Modal_Workout_Edit from '../modals/Modal_Workout_Edit';
@@ -25,10 +24,8 @@ import {
   createFolderApi, 
   saveWorkoutApi, 
   calculateDynamicPresets, 
-  createDefaultSteps, 
-  mapIcuDocToSteps,
   addIdsToBaseWorkout,
-  removeIdsFromBaseWorkout
+  createDefaultBaseWorkout // Ensure this helper exists or create a fallback default structure
 } from '../utils/WorkoutBuilderHelpers.js';
 
 export default function WorkoutBuilder() {
@@ -43,24 +40,24 @@ export default function WorkoutBuilder() {
   const [workoutDescription, setWorkoutDescription] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState('');
 
-  // Raw document state
+  // Raw document state (Original payload for reference)
   const [unalteredWorkout, setUnalteredWorkout] = useState('');
-  const [baseWorkout, setBaseWorkout] = useState('');
 
   // Mode Options
   const [workoutMode, setWorkoutMode] = useState('time'); // 'time' or 'distance'
   const [paceMethod, setPaceMethod] = useState('Pace'); 
 
-  // --- Custom Hook for Steps State ---
+  // --- Upgraded Custom Hook for Base Workout & Steps State ---
+  // Initialized with null / default state structure
   const { 
-    steps, 
-    setSteps, 
+    workoutData: baseWorkout, 
+    setWorkoutData: setBaseWorkout, 
     addStep, 
     removeStep, 
     updateStepField, 
     handleDragStart, 
     handleDrop 
-  } = useWorkoutSteps([], workoutMode);
+  } = useWorkoutSteps(null, workoutMode);
 
   // --- Data / Folders / Workouts State ---
   const [folders, setFolders] = useState([]);
@@ -99,7 +96,7 @@ export default function WorkoutBuilder() {
     initData();
   }, []);
 
-  // Presets & Totals
+  // Presets
   const dynamicPresets = useMemo(
     () => calculateDynamicPresets(paces, paces?.threshold || 360, paceMethod),
     [paces, paceMethod]
@@ -112,7 +109,13 @@ export default function WorkoutBuilder() {
     setWorkoutTitle('New Workout');
     setWorkoutDescription('');
     setUnalteredWorkout('');
-    setSteps(createDefaultSteps(workoutMode));
+    
+    // Initialize standard default document with IDs assigned
+    const initialWorkout = createDefaultBaseWorkout 
+      ? createDefaultBaseWorkout(workoutMode) 
+      : { workout_doc: { steps: [] } };
+      
+    setBaseWorkout(addIdsToBaseWorkout(initialWorkout));
     setMode('BUILDING');
   };
 
@@ -124,19 +127,11 @@ export default function WorkoutBuilder() {
       setWorkoutDescription(found.description || '');
       setSelectedFolderId(found.folder_id ?? found.folderId ?? '');
 
-      // Check all potential object locations for the document payload
-      const rawDocObj = found;
-      const parsedDoc = typeof rawDocObj === 'string' 
-        ? (() => { try { return JSON.parse(rawDocObj); } catch { return null; } })() 
-        : rawDocObj;
-
-      const displayDoc = typeof rawDocObj === 'string'
-        ? rawDocObj
-        : JSON.stringify(rawDocObj || {}, null, 2);
-
-        setBaseWorkout(addIdsToBaseWorkout(rawDocObj));
-        setUnalteredWorkout(rawDocObj);
-        setSteps(mapIcuDocToSteps(parsedDoc, workoutMode));
+      setUnalteredWorkout(found);
+      
+      // Assign IDs directly to the incoming document tree and load it into hook
+      const structuredDocWithIds = addIdsToBaseWorkout(found);
+      setBaseWorkout(structuredDocWithIds);
 
       setMode('BUILDING');
       setIsEditModalOpen(false);
@@ -149,7 +144,7 @@ export default function WorkoutBuilder() {
   };
 
   const handleSaveWorkout = async (overrideTitle, overrideFolderId) => {
-    const icuDocument = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
+    const icuDocument = convertWorkoutToTargetFormat(baseWorkout, workoutMode, paceMethod);
     const targetId = isSaveAsMode ? null : workoutId;
 
     const payload = {
@@ -188,7 +183,7 @@ export default function WorkoutBuilder() {
   };
 
   const handleCopyWorkoutText = () => {
-    const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
+    const textOutput = convertWorkoutToTargetFormat(baseWorkout, workoutMode, paceMethod);
     const stringified = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
     navigator.clipboard.writeText(stringified);
     showToast('Workout plain text copied to clipboard!');
@@ -207,14 +202,14 @@ export default function WorkoutBuilder() {
   };
 
   const handleDownloadIcu = () => {
-    const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
+    const textOutput = convertWorkoutToTargetFormat(baseWorkout, workoutMode, paceMethod);
     const content = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
     const cleanTitle = workoutTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     triggerFileDownload(content, `${cleanTitle}.icu`, 'text/plain');
   };
 
   const handleDownloadZwo = () => {
-    const zwoContent = convertWorkoutToTargetFormat(steps, workoutMode, 'ZWO');
+    const zwoContent = convertWorkoutToTargetFormat(baseWorkout, workoutMode, 'ZWO');
     const cleanTitle = workoutTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     triggerFileDownload(zwoContent, `${cleanTitle}.zwo`, 'application/xml');
   };
@@ -247,6 +242,9 @@ export default function WorkoutBuilder() {
     setWorkoutId(null);
     setMode('EMPTY');
   };
+
+  // Helper extractor for step list
+  const currentSteps = baseWorkout?.workout_doc?.steps || baseWorkout?.steps || [];
 
   return (
     <div className="workout-builder-container">
@@ -287,20 +285,12 @@ export default function WorkoutBuilder() {
             thresholdPaceSec={paces?.threshold_pace || 0} 
           />
 
-
-
-          {/*------------------------------------------------------------------------------------------------------------------*/}
-          {/*------------------------------------------------------------------------------------------------------------------*/}
-          {/*------------------------------------------------------------------------------------------------------------------*/}
-
-
-
           <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
             <label 
               htmlFor="unaltered-workout-input" 
               style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
             >
-              Workout Data - Unaltered
+              Workout Data - Unaltered Payload
             </label>
             <textarea
               id="unaltered-workout-input"
@@ -323,33 +313,25 @@ export default function WorkoutBuilder() {
 
           <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }}>
             <WorkoutChart
-              workout={unalteredWorkout}
+              workout={baseWorkout}
               thresholdPace={400}
               chartHeight={"200px"}
             />
           </div>
 
-
-
-          {/*------------------------------------------------------------------------------------------------------------------*/}
-          {/*------------------------------------------------------------------------------------------------------------------*/}
-          {/*------------------------------------------------------------------------------------------------------------------*/}
-
-
-
           <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
             <label 
-              htmlFor="unaltered-workout-input" 
+              htmlFor="base-workout-input" 
               style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
             >
-              Workout Data - steps (changes with updates)
+              Workout Data - baseWorkout (Active Model)
             </label>
             <textarea
-              id="unaltered-workout-input"
+              id="base-workout-input"
               readOnly
-              value={JSON.stringify(steps || {}, null, 2)}
-              placeholder="No raw Intervals.icu payload available..."
-              rows={4}
+              value={JSON.stringify(baseWorkout || {}, null, 2)}
+              placeholder="No active baseWorkout state..."
+              rows={6}
               style={{
                 width: '100%',
                 fontFamily: 'monospace',
@@ -363,23 +345,15 @@ export default function WorkoutBuilder() {
             />
           </div>
 
-          <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
-            <label 
-              htmlFor="unaltered-workout-input" 
-              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
-            >
-              RenderStepRow - Original Working Version
-            </label>
-          </div>
-
+          {/* Render Step Rows directly from baseWorkout structure */}
           <div 
             className="steps-list-container" 
             onDragOver={(e) => e.preventDefault()} 
-            onDrop={(e) => handleDrop(e, null, steps.length)}
+            onDrop={(e) => handleDrop(e, null, currentSteps.length)}
           >
-            {steps.map((step, index) => (
+            {currentSteps.map((step, index) => (
               <RenderStepRow
-                key={step.id}
+                key={step.id || `step-${index}`}
                 step={step}
                 index={index}
                 parentId={null}
@@ -405,79 +379,6 @@ export default function WorkoutBuilder() {
               + Add Repeat Block
             </button>
           </div>
-
-
-
-          {/*------------------------------------------------------------------------------------------------------------------*/}
-          {/*------------------------------------------------------------------------------------------------------------------*/}
-          {/*------------------------------------------------------------------------------------------------------------------*/}
-
-
-
-          <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
-            <label 
-              htmlFor="unaltered-workout-input" 
-              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
-            >
-              RenderStepRow - Revised to use "baseWorkout"
-            </label>
-          </div>
-
-          <div className="unaltered-workout-container" style={{ marginTop: '16px', marginBottom: '16px' }}>
-            <label 
-              htmlFor="unaltered-workout-input" 
-              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
-            >
-              Workout Data - baseWorkout
-            </label>
-            <textarea
-              id="unaltered-workout-input"
-              readOnly
-              value={JSON.stringify(baseWorkout || {}, null, 2)}
-              placeholder="No raw Intervals.icu payload available..."
-              rows={4}
-              style={{
-                width: '100%',
-                fontFamily: 'monospace',
-                fontSize: '12px',
-                padding: '8px',
-                backgroundColor: '#f4f4f6',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-
-          <div 
-            className="steps-list-container" 
-            onDragOver={(e) => e.preventDefault()} 
-            onDrop={(e) => handleDrop(e, null, workoutData?.workout_doc?.steps?.length || 0)}
-          >
-            {baseWorkout?.workout_doc?.steps?.map((step, index) => (
-              <RenderStepRow
-                // Fallback key using index or auto-assigned id if present
-                key={step.id || `step-${index}`}
-                step={step}
-                index={index}
-                parentId={null}
-                workoutMode={workoutMode}
-                presets={dynamicPresets}
-                onRemove={removeStep}
-                onUpdate={updateStepField}
-                onAddChild={addStep}
-                onDragStart={handleDragStart}
-                onDrop={handleDrop}
-              />
-            ))}
-          </div>
-
-          {/*------------------------------------------------------------------------------------------------------------------*/}
-          {/*------------------------------------------------------------------------------------------------------------------*/}
-          {/*------------------------------------------------------------------------------------------------------------------*/}
-
-
-
         </>
       )}
 
@@ -514,7 +415,7 @@ export default function WorkoutBuilder() {
 
       {isZoomModalOpen && (
         <Modal_Workout_Zoom
-          steps={steps}
+          steps={currentSteps}
           workoutMode={workoutMode}
           presets={dynamicPresets}
           onClose={() => setIsZoomModalOpen(false)}
