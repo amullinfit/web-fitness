@@ -115,6 +115,9 @@ export default function WorkoutBuilder() {
 
   const handleSelectWorkout = (id) => {
     const found = savedWorkouts.find((w) => String(w.id) === String(id));
+    console.log('[App Debug] WB: -------------------------------------');
+    console.log('[App Debug] WB: handleSelectWorkout:');
+    console.log('[App Debug] WB: -------------------------------------');
     console.log('[App Debug] WB: id: ', id);
     console.log('[App Debug] WB: found: ', found);
     console.log('[App Debug] WB: ');
