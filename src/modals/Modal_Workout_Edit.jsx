@@ -191,7 +191,20 @@ export default function Modal_Workout_Edit({
                         <span>⏱ {durationText}</span>
                         <span>📏 {distanceText}</span>
                       </div>
+                      <WorkoutChart
+                        workout={workout}
+                        thresholdPace={480}
+                        chartHeight={"60px"}
+                        showYAxis={true}
+                        showWorkoutName={false}
+                        showThresholdPace={false}
+                        showYAxisLabels={true}
+                        showLegend={false}
+                        minimalXAxis={true}
+                        showHoverDetails={false}
+                      />
                     </div>
+
                     <div className="workout-card-chart">
                       <WorkoutChart
                         workout={workout}
@@ -204,7 +217,7 @@ export default function Modal_Workout_Edit({
                         showLegend={false}
                         minimalXAxis={true}
                         showHoverDetails={false}
-                                            />
+                      />
                     </div>
 
 
