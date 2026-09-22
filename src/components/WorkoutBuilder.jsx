@@ -248,6 +248,8 @@ export default function WorkoutBuilder() {
 
   const chartDataDebug = { workout: steps };
 
+  console.log('[App Debug] WB workout: ', workout);
+
   return (
     <div className="workout-builder-container">
       {statusMessage && <div className="status-message-banner">{statusMessage}</div>}
