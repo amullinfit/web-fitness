@@ -290,7 +290,7 @@
             }),
 
             // rangePct.XX has the zone #
-            'pace_zone': () => {
+            'pace_zonex': () => {
               const zone = PACE_ZONES[step.pace?.value] || PACE_ZONES[4];
               const sec = zone.targetPct > 0 ? refThresholdSec / (zone.targetPct / 100) : refThresholdSec;
               return {
