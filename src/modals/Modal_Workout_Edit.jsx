@@ -60,13 +60,19 @@ export default function Modal_Workout_Edit({
 
   // Helper to calculate totals for each workout card preview
   const getWorkoutSummary = (workout) => {
-    const steps = mapIcuDocToSteps(workout.document, workoutMode);
+    // Extract the ICU document field using all common property aliases
+    const rawDoc = workout?.workout_doc ?? workout?.document ?? workout?.icu_doc;
+    
+    // Ensure stringified JSON is parsed if necessary
+    const parsedDoc = typeof rawDoc === 'string' ? JSON.parse(rawDoc) : rawDoc;
+
+    const steps = mapIcuDocToSteps(parsedDoc, workoutMode);
 
     const calcTotals = (list) => {
       let timeSec = 0;
       let distMiles = 0;
 
-      list.forEach((s) => {
+      (list || []).forEach((s) => {
         if (s.type === 'repeat') {
           const reps = s.iterations || 1;
           const [subTime, subDist] = calcTotals(s.steps || []);
@@ -98,6 +104,7 @@ export default function Modal_Workout_Edit({
       distanceText: formatDistance(totalMiles)
     };
   };
+
 
   return (
     <div className="modal-overlay">
