@@ -139,7 +139,6 @@ export default function WorkoutBuilder() {
 
       console.log('[App Debug] WB-Handle: rawDocObj:  ', rawDocObj);
       console.log('[App Debug] WB-Handle: parsedDoc:  ', parsedDoc);
-      console.log('[App Debug] WB-Handle: displayDoc: ', displayDoc);
 
       setMode('BUILDING');
       setIsEditModalOpen(false);
