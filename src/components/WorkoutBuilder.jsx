@@ -117,6 +117,7 @@ export default function WorkoutBuilder() {
     const found = savedWorkouts.find((w) => String(w.id) === String(id));
     console.log('[App Debug] WB: id: ', id);
     console.log('[App Debug] WB: found: ', found);
+    console.log('[App Debug] WB: ');
     if (found) {
       setWorkoutId(found.id);
       setWorkoutTitle(found.name || found.title || 'Untitled');
@@ -346,9 +347,9 @@ export default function WorkoutBuilder() {
 
           <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }}>
             <WorkoutChart
-              workout={convertStepsToWorkout(steps)}
-              thresholdPace={481}
-              chartHeight={"140px"}
+              workout={steps}
+              thresholdPace={400}
+              chartHeight={"200px"}
             />
           </div>
 

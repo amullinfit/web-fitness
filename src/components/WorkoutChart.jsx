@@ -265,9 +265,9 @@ export default function WorkoutChart({
                   // thresholdSecPerMile is the # of seconds to run a mile at threshold (495 for 8:15 pace)
                   const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
 
-                  if (idx < 3) {
-                    console.log('[App Debug] WC: i-step : ', step);
-                    console.log('[App Debug] WC: o-range: ', range);
+                  if (idx < 4) {
+                    console.log('[App Debug] WC: i-step : ', idx, step);
+                    console.log('[App Debug] WC: o-range: ', idx, range);
                   }
 
                   // zoneDetails (name and color) are derived from the mid pace of the step
