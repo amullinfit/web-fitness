@@ -562,17 +562,20 @@ export default function DailyView() {
         )}
 
         {(workout.workout_doc || workout.intervals) && (
-          <WorkoutChart
-            workout={workout}
-            thresholdPace={thresholdPaceMps}
-            chartHeight={isMobile ? "110px" : "140px"}
-          />
+          <>
+            <WorkoutChart
+              workout={workout}
+              thresholdPace={thresholdPaceMps}
+              chartHeight={isMobile ? "110px" : "140px"}
+            />
+
+            <WorkoutTextSection 
+              workout={workout} 
+              thresholdPace={thresholdPaceMps} 
+            />
+          </>
         )}
 
-        <WorkoutTextSection 
-          workout={workout} 
-          thresholdPace={thresholdPaceMps}
-          />
       </div>
     );
   };

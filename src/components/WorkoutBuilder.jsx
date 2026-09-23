@@ -311,7 +311,7 @@ export default function WorkoutBuilder() {
                 showBarPace={true}
               />
               <WorkoutTextSection 
-                workout={baseworkout}
+                workout={baseWorkout}
                 threshold={paces?.threshold_pace}
               />
             </div>
