@@ -7,17 +7,17 @@
 // 
 // 
 // 
-    // 1. Consume context
-    import { usePaces } from '../utils/PacesContext.jsx';
+import React from 'react';
+import { usePaces } from '../utils/PacesContext.jsx';
 
-    const { paces, loading: pacesLoading } = usePaces();
+// Module-level fallback constant for threshold in sec/mi
+export const FALLBACK_THRESHOLD = 540; 
 
-    const DEFAULT_THRESHOLD = paces?.threshold_pace;
+// Declare API endpoints
+const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
+const VAL_MY_PACES_URL = '/api/val-my-paces';
 
-    // - Declare API endpoints
-    const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
-    const VAL_MY_PACES_URL = '/api/val-my-paces';
-
+export const DEFAULT_THRESHOLD = (paces) => paces?.threshold_pace || FALLBACK_THRESHOLD;
 
 // 
 // 
