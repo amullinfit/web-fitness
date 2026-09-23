@@ -20,6 +20,13 @@ import {
 const SLOW_BUFFER_MINUTES = 1;
 const FAST_BUFFER_MINUTES = 1;
 
+// Helper to format total duration seconds into "#m#s" string
+const formatDurationMinsSecs = (totalSec) => {
+  const mins = Math.floor(totalSec / 60);
+  const secs = Math.round(totalSec % 60);
+  return `${mins}m${secs}s`;
+};
+
 //
 //
 //
@@ -244,8 +251,9 @@ export default function WorkoutChart({
                 style={{ zIndex: executedOnTop ? 1 : 2 }}
               >
                 {plannedList.map((step, idx) => {
-                  const durationMins = Math.round((step.duration || 60) / 60);
-                  const widthPct = ((step.duration || 60) / totalDurationSec) * 100;
+                  const durationSecs = step.duration || 60;
+                  const durationFormatted = formatDurationMinsSecs(durationSecs);
+                  const widthPct = (durationSecs / totalDurationSec) * 100;
                   const rawIntensity = step.type || 'active';
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
@@ -266,7 +274,7 @@ export default function WorkoutChart({
                     ? fastPaceStr 
                     : `${fastPaceStr} - ${slowPaceStr}`;
 
-                  const tooltipText = `${durationMins}m @ ${paceDetails}`;
+                  const tooltipText = `${durationFormatted} @ ${paceDetails}`;
 
                   return (
                     <div
@@ -328,9 +336,9 @@ export default function WorkoutChart({
                 style={{ zIndex: executedOnTop ? 2 : 1, opacity: 0.65 }}
               >
                 {executedList.map((step, idx) => {
-                  const durationSec = step.duration || 60;
-                  const durationMins = Math.round(durationSec / 60);
-                  const widthPct = (durationSec / totalDurationSec) * 100;
+                  const durationSecs = step.duration || 60;
+                  const durationFormatted = formatDurationMinsSecs(durationSecs);
+                  const widthPct = (durationSecs / totalDurationSec) * 100;
                   const rawIntensity = step.type || 'active';
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
@@ -339,9 +347,9 @@ export default function WorkoutChart({
                   const heightPct = computePaceToHeightPct(range.midSec);
 
                   const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
-                  const tooltipText = `${durationMins}m @ ${paceRangeFormatted}`;
+                  const tooltipText = `${durationFormatted} @ ${paceRangeFormatted}`;
                   
-                  const durationMinutes = durationSec / 60;
+                  const durationMinutes = durationSecs / 60;
                   const pathData = generateWavyBarPath(durationMinutes);
 
                   return (
