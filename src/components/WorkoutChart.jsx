@@ -42,7 +42,8 @@ export default function WorkoutChart({
   showYAxisLabels = true,
   showLegend = true,
   minimalXAxis = false,
-  showHoverDetails = true
+  showHoverDetails = true,
+  showBarPace = false
 }) {
 
   const clipId = useId();
@@ -59,6 +60,7 @@ export default function WorkoutChart({
   const isLegendVisible = parseBoolProp(showLegend, true);
   const isMinimalXAxis = parseBoolProp(minimalXAxis, false);
   const isHoverDetailsEnabled = parseBoolProp(showHoverDetails, true);
+  const isBarPaceVisible = parseBoolProp(showBarPace, false);
   
   const renderYAxis = showYAxis !== undefined 
     ? parseBoolProp(showYAxis, true) 
@@ -293,24 +295,26 @@ export default function WorkoutChart({
                         }}
                       />
 
-                      {/* Display target pace inside the bar */}
-                      <span
-                        className="workout-chart-bar-label"
-                        style={{
-                          position: 'absolute',
-                          bottom: '4px',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          fontSize: '10px',
-                          color: '#ffffff',
-                          fontWeight: 600,
-                          pointerEvents: 'none',
-                          whiteSpace: 'nowrap',
-                          zIndex: 3
-                        }}
-                      >
-                        {fastPaceStr}
-                      </span>
+                      {/* Optionally display target pace inside the bar */}
+                      {isBarPaceVisible && (
+                        <span
+                          className="workout-chart-bar-label"
+                          style={{
+                            position: 'absolute',
+                            bottom: '4px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            fontSize: '10px',
+                            color: '#ffffff',
+                            fontWeight: 600,
+                            pointerEvents: 'none',
+                            whiteSpace: 'nowrap',
+                            zIndex: 3
+                          }}
+                        >
+                          {fastPaceStr}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
