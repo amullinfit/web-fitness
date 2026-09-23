@@ -8,7 +8,7 @@
 // 
 // 
     // 1. Consume context
-    import { usePaces } from '../utils/PacesContext.jsx';
+    import { usePaces } from './utils/PacesContext.jsx';
 
     const { paces, loading: pacesLoading } = usePaces();
 
