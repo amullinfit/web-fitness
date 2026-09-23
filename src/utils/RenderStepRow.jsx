@@ -189,7 +189,9 @@ export default function RenderStepRow({
                 backgroundColor: isSelected ? preset.color : '#ffffff',
                 color: isSelected ? '#ffffff' : preset.color,
                 cursor: 'pointer',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
+                minWidth: '105px', // Standardizes all button widths to match the longest label
+                textAlign: 'center'
               }}
             >
               {preset.label} ({preset.displayPace})
@@ -215,7 +217,6 @@ export default function RenderStepRow({
           </div>
         );
       })()}
-
 
 
     </div>
