@@ -16,10 +16,17 @@ export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, pace
   return (
     <div 
       className="builder-controls-bar" 
-      style={{ marginTop: '8px', padding: '6px 12px', background: '#f8f9fa', borderRadius: '6px' }}
+      style={{ 
+        marginTop: '8px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '8px' 
+      }}
     >
-      <div className="mode-toggle-group">
-        <span className="control-label">Step Mode:</span>
+      <div className="mode-toggle-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <label className="input-label" style={{ paddingTop: '2px' }}>
+          Step Mode:
+        </label>
         <button
           type="button"
           className={`toggle-btn ${workoutMode === 'time' ? 'active' : ''}`}
@@ -34,15 +41,12 @@ export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, pace
         >
           📏 Distance
         </button>
-
-        {thresholdPaceSec > 0 && (
-          <span style={{ marginLeft: '12px', fontSize: '12px', fontWeight: '600', color: '#495057' }}>
-            Threshold Pace: <span style={{ color: '#007bff' }}>{formatMMSS(thresholdPaceSec)}</span> /mi
-          </span>
-        )}
       </div>
-      <div className="pace-method-group">
-        <span className="control-label">Pace Method:</span>
+
+      <div className="pace-method-group" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <label className="input-label">
+          Pace Method:
+        </label>
         <select
           value={paceMethod}
           onChange={(e) => setPaceMethod(e.target.value)}
@@ -60,7 +64,7 @@ export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, pace
   );
 }
 
-// Sub-component to render preset buttons neatly
+// Dynamic Preset buttons 
 function StepPresets({ presets, targetPaceSec, onSelectPace }) {
   const presetList = presets || [];
   if (presetList.length === 0) return null;
