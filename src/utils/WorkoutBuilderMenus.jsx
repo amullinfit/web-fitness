@@ -107,9 +107,9 @@ export function OptionsMenu({
 
 export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, paceMethod, setPaceMethod }) {
   return (
-    <div className="builder-controls-bar">
+    <div className="builder-controls-bar" style={{ marginBottom: '8px', padding: '6px 12px', background: '#f8f9fa', borderRadius: '6px' }}>
       <div className="mode-toggle-group">
-        <span className="control-label">Build By:</span>
+        <span className="control-label">Step Mode:</span>
         <button
           type="button"
           className={`toggle-btn ${workoutMode === 'time' ? 'active' : ''}`}
@@ -125,9 +125,11 @@ export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, pace
           📏 Distance
         </button>
 
-        <span style={{ marginLeft: '12px', fontSize: '13px', fontWeight: '600', color: '#495057' }}>
-          Threshold Pace: <span style={{ color: '#007bff' }}>{formatMMSS(thresholdPaceSec)}</span> /mi
-        </span>
+        {thresholdPaceSec > 0 && (
+          <span style={{ marginLeft: '12px', fontSize: '12px', fontWeight: '600', color: '#495057' }}>
+            Threshold Pace: <span style={{ color: '#007bff' }}>{formatMMSS(thresholdPaceSec)}</span> /mi
+          </span>
+        )}
       </div>
       <div className="pace-method-group">
         <span className="control-label">Pace Method:</span>

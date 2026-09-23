@@ -3,13 +3,22 @@
 //
 import React from 'react';
 import MMSSInput from './MMSSInput';
-import { formatDistance, formatTime } from './WorkoutBuilderHelpers.js';
+import { formatTime } from './WorkoutBuilderHelpers.js';
+import { ControlBar } from './WorkoutBuilderMenus';
+
+// Helper function to guarantee strictly 2 decimal places (#.00)
+const formatDistanceFixed = (miles) => {
+  const val = Number(miles) || 0;
+  return `${val.toFixed(2)} mi`;
+};
 
 export default function RenderStepRow({
   step,
   index,
   parentId,
-  workoutMode,
+  globalWorkoutMode,
+  globalPaceMethod,
+  thresholdPaceSec,
   presets,
   onRemove,
   onUpdate,
@@ -19,7 +28,18 @@ export default function RenderStepRow({
 }) {
   if (!step) return null;
 
-  // Determine if this is a repeat block (Intervals.icu uses `reps` or nested `steps`)
+  // Local step modes fallback to step-level property or global parent defaults
+  const stepMode = step.stepMode || globalWorkoutMode || 'time';
+  const paceMethod = step.paceMethod || globalPaceMethod || 'Pace';
+
+  const setStepMode = (newMode) => {
+    onUpdate(step.id, 'stepMode', newMode);
+  };
+
+  const setPaceMethod = (newMethod) => {
+    onUpdate(step.id, 'paceMethod', newMethod);
+  };
+
   const isRepeat = step.type === 'repeat' || Boolean(step.reps) || Array.isArray(step.steps);
 
   if (isRepeat) {
@@ -62,7 +82,9 @@ export default function RenderStepRow({
               step={childStep}
               index={childIdx}
               parentId={step.id}
-              workoutMode={workoutMode}
+              globalWorkoutMode={globalWorkoutMode}
+              globalPaceMethod={globalPaceMethod}
+              thresholdPaceSec={thresholdPaceSec}
               presets={presets}
               onRemove={onRemove}
               onUpdate={onUpdate}
@@ -85,10 +107,9 @@ export default function RenderStepRow({
     );
   }
 
-  // Leaf Step values (normalize between JSON schema and state helpers)
+  // Leaf Step values
   const durationSec = step.duration ?? step.durationSec ?? 0;
   
-  // Pace extraction
   let targetPaceSec = 0;
   if (typeof step.pace === 'object' && step.pace !== null) {
     targetPaceSec = step.pace.value ?? step.pace.start ?? 0;
@@ -98,7 +119,6 @@ export default function RenderStepRow({
 
   const distanceMiles = step.distanceMiles ?? (targetPaceSec > 0 ? durationSec / targetPaceSec : 0);
 
-  // Handlers for step updating
   const handleDurationChange = (newSec) => {
     onUpdate(step.id, 'duration', newSec);
     onUpdate(step.id, 'durationSec', newSec);
@@ -116,7 +136,6 @@ export default function RenderStepRow({
     }
   };
 
-  // Distance / Time calculations
   const calculatedMiles = targetPaceSec > 0 ? durationSec / targetPaceSec : 0;
   const calculatedTimeSec = distanceMiles * targetPaceSec;
 
@@ -127,12 +146,22 @@ export default function RenderStepRow({
       onDragStart={(e) => onDragStart && onDragStart(e, step, parentId)}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => onDrop && onDrop(e, parentId, index)}
+      style={{ marginBottom: '12px', border: '1px solid #e0e0e0', padding: '10px', borderRadius: '8px' }}
     >
-      <div className="step-row-inputs">
+      {/* Individual Step ControlBar */}
+      <ControlBar
+        workoutMode={stepMode}
+        setWorkoutMode={setStepMode}
+        paceMethod={paceMethod}
+        setPaceMethod={setPaceMethod}
+        thresholdPaceSec={thresholdPaceSec}
+      />
+
+      <div className="step-row-inputs" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
         <span className="drag-handle">⣿</span>
         <span className="step-type-label">{step.intensity || step.type || 'step'}</span>
 
-        {workoutMode === 'time' ? (
+        {stepMode === 'time' ? (
           <label className="input-label">
             Time:{' '}
             <MMSSInput valueSec={durationSec} onChange={handleDurationChange} />
@@ -144,10 +173,10 @@ export default function RenderStepRow({
               type="number"
               step="0.01"
               min="0"
-              value={distanceMiles}
+              value={Number(distanceMiles).toFixed(2)}
               onChange={(e) => onUpdate(step.id, 'distanceMiles', parseFloat(e.target.value) || 0)}
               className="time-pace-input"
-              style={{ width: '60px' }}
+              style={{ width: '68px', padding: '2px 4px' }}
             />
             mi
           </label>
@@ -159,8 +188,8 @@ export default function RenderStepRow({
         </label>
 
         <span className="dist-display">
-          {workoutMode === 'time'
-            ? `Dist: ${formatDistance(calculatedMiles)}`
+          {stepMode === 'time'
+            ? `Dist: ${formatDistanceFixed(calculatedMiles)}`
             : `Time: ${formatTime(calculatedTimeSec)}`}
         </span>
 
@@ -190,9 +219,9 @@ export default function RenderStepRow({
                 color: isSelected ? '#ffffff' : preset.color,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
-                whiteSpace: 'nowrap', // Prevents button text from breaking onto a second line
+                whiteSpace: 'nowrap',
                 textAlign: 'center',
-                width: '100%'        // Expands to fill grid column fully
+                width: '100%'
               }}
             >
               {preset.label} ({preset.displayPace})
@@ -205,12 +234,10 @@ export default function RenderStepRow({
             <span style={{ fontSize: '11px', color: '#6c757d', fontWeight: 'bold', paddingTop: '2px' }}>
               Presets:
             </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {/* Row 1: 4 equal grid columns */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
                 {row1.map(renderButton)}
               </div>
-              {/* Row 2: 4 equal grid columns */}
               {row2.length > 0 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
                   {row2.map(renderButton)}
@@ -220,7 +247,6 @@ export default function RenderStepRow({
           </div>
         );
       })()}
-
     </div>
   );
 }
