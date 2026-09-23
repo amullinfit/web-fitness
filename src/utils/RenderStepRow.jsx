@@ -3,14 +3,116 @@
 //
 import React from 'react';
 import MMSSInput from './MMSSInput';
-import { formatTime } from './WorkoutBuilderHelpers.js';
-import { ControlBar } from './WorkoutBuilderMenus';
+import { formatTime, formatMMSS } from './WorkoutBuilderHelpers.js';
 
 // Helper function to guarantee strictly 2 decimal places (#.00)
 const formatDistanceFixed = (miles) => {
   const val = Number(miles) || 0;
   return `${val.toFixed(2)} mi`;
 };
+
+// ControlBar Component
+export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, paceMethod, setPaceMethod }) {
+  return (
+    <div 
+      className="builder-controls-bar" 
+      style={{ marginTop: '8px', padding: '6px 12px', background: '#f8f9fa', borderRadius: '6px' }}
+    >
+      <div className="mode-toggle-group">
+        <span className="control-label">Step Mode:</span>
+        <button
+          type="button"
+          className={`toggle-btn ${workoutMode === 'time' ? 'active' : ''}`}
+          onClick={() => setWorkoutMode('time')}
+        >
+          ⏱️ Time
+        </button>
+        <button
+          type="button"
+          className={`toggle-btn ${workoutMode === 'distance' ? 'active' : ''}`}
+          onClick={() => setWorkoutMode('distance')}
+        >
+          📏 Distance
+        </button>
+
+        {thresholdPaceSec > 0 && (
+          <span style={{ marginLeft: '12px', fontSize: '12px', fontWeight: '600', color: '#495057' }}>
+            Threshold Pace: <span style={{ color: '#007bff' }}>{formatMMSS(thresholdPaceSec)}</span> /mi
+          </span>
+        )}
+      </div>
+      <div className="pace-method-group">
+        <span className="control-label">Pace Method:</span>
+        <select
+          value={paceMethod}
+          onChange={(e) => setPaceMethod(e.target.value)}
+          className="pace-method-select"
+        >
+          <option value="Pace">Pace</option>
+          <option value="Pace Range">Pace Range</option>
+          <option value="Zone">Zone</option>
+          <option value="Zone Range">Zone Range</option>
+          <option value="Threshold %">Threshold %</option>
+          <option value="Threshold % Range">Threshold % Range</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+
+// Sub-component to render preset buttons neatly
+function StepPresets({ presets, targetPaceSec, onSelectPace }) {
+  const presetList = presets || [];
+  if (presetList.length === 0) return null;
+
+  const row1 = presetList.slice(0, 4);
+  const row2 = presetList.slice(4);
+
+  const renderButton = (preset) => {
+    const isSelected = Math.abs(targetPaceSec - preset.targetPaceSec) < 3;
+    return (
+      <button
+        key={preset.label}
+        type="button"
+        onClick={() => onSelectPace(preset.targetPaceSec)}
+        style={{
+          padding: '2px 8px',
+          fontSize: '11px',
+          fontWeight: '600',
+          borderRadius: '12px',
+          border: `1px solid ${preset.color}`,
+          backgroundColor: isSelected ? preset.color : '#ffffff',
+          color: isSelected ? '#ffffff' : preset.color,
+          cursor: 'pointer',
+          transition: 'all 0.15s ease',
+          whiteSpace: 'nowrap',
+          textAlign: 'center',
+          width: '100%'
+        }}
+      >
+        {preset.label} ({preset.displayPace})
+      </button>
+    );
+  };
+
+  return (
+    <div className="step-presets-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '4px' }}>
+      <span style={{ fontSize: '11px', color: '#6c757d', fontWeight: 'bold', paddingTop: '2px' }}>
+        Presets:
+      </span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+          {row1.map(renderButton)}
+        </div>
+        {row2.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+            {row2.map(renderButton)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function RenderStepRow({
   step,
@@ -148,15 +250,7 @@ export default function RenderStepRow({
       onDrop={(e) => onDrop && onDrop(e, parentId, index)}
       style={{ marginBottom: '12px', border: '1px solid #e0e0e0', padding: '10px', borderRadius: '8px' }}
     >
-      {/* Individual Step ControlBar */}
-      <ControlBar
-        workoutMode={stepMode}
-        setWorkoutMode={setStepMode}
-        paceMethod={paceMethod}
-        setPaceMethod={setPaceMethod}
-        thresholdPaceSec={thresholdPaceSec}
-      />
-
+      {/* Step Inputs */}
       <div className="step-row-inputs" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
         <span className="drag-handle">⣿</span>
         <span className="step-type-label">{step.intensity || step.type || 'step'}</span>
@@ -197,56 +291,20 @@ export default function RenderStepRow({
       </div>
 
       {/* Dynamic Presets */}
-      {(() => {
-        const presetList = presets || [];
-        const row1 = presetList.slice(0, 4);
-        const row2 = presetList.slice(4);
+      <StepPresets
+        presets={presets}
+        targetPaceSec={targetPaceSec}
+        onSelectPace={handlePaceChange}
+      />
 
-        const renderButton = (preset) => {
-          const isSelected = Math.abs(targetPaceSec - preset.targetPaceSec) < 3;
-          return (
-            <button
-              key={preset.label}
-              type="button"
-              onClick={() => handlePaceChange(preset.targetPaceSec)}
-              style={{
-                padding: '2px 8px',
-                fontSize: '11px',
-                fontWeight: '600',
-                borderRadius: '12px',
-                border: `1px solid ${preset.color}`,
-                backgroundColor: isSelected ? preset.color : '#ffffff',
-                color: isSelected ? '#ffffff' : preset.color,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                whiteSpace: 'nowrap',
-                textAlign: 'center',
-                width: '100%'
-              }}
-            >
-              {preset.label} ({preset.displayPace})
-            </button>
-          );
-        };
-
-        return (
-          <div className="step-presets-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <span style={{ fontSize: '11px', color: '#6c757d', fontWeight: 'bold', paddingTop: '2px' }}>
-              Presets:
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-                {row1.map(renderButton)}
-              </div>
-              {row2.length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-                  {row2.map(renderButton)}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
+      {/* ControlBar positioned below presets */}
+      <ControlBar
+        workoutMode={stepMode}
+        setWorkoutMode={setStepMode}
+        paceMethod={paceMethod}
+        setPaceMethod={setPaceMethod}
+        thresholdPaceSec={thresholdPaceSec}
+      />
     </div>
   );
 }

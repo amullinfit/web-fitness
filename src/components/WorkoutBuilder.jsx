@@ -263,8 +263,6 @@ export default function WorkoutBuilder() {
     <div className="workout-builder-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       {statusMessage && <div className="status-message-banner">{statusMessage}</div>}
 
-      // ... inside WorkoutBuilder component JSX ...
-
       {/* --- FIXED / STICKY TOP HEADER & CHART SECTION --- */}
       <div 
         className="builder-fixed-header-section" 
