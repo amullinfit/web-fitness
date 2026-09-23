@@ -168,11 +168,13 @@ export default function RenderStepRow({
       </div>
 
       {/* Dynamic Presets */}
-      <div className="step-presets-row">
-        <span style={{ fontSize: '11px', color: '#6c757d', fontWeight: 'bold' }}>Presets:</span>
-        {(presets || []).map((preset) => {
-          const isSelected = Math.abs(targetPaceSec - preset.targetPaceSec) < 3;
+      {(() => {
+        const presetList = presets || [];
+        const row1 = presetList.slice(0, 4);
+        const row2 = presetList.slice(4);
 
+        const renderButton = (preset) => {
+          const isSelected = Math.abs(targetPaceSec - preset.targetPaceSec) < 3;
           return (
             <button
               key={preset.label}
@@ -193,8 +195,29 @@ export default function RenderStepRow({
               {preset.label} ({preset.displayPace})
             </button>
           );
-        })}
-      </div>
+        };
+
+        return (
+          <div className="step-presets-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+            <span style={{ fontSize: '11px', color: '#6c757d', fontWeight: 'bold', paddingTop: '2px' }}>
+              Presets:
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {row1.map(renderButton)}
+              </div>
+              {row2.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {row2.map(renderButton)}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+
+
     </div>
   );
 }
