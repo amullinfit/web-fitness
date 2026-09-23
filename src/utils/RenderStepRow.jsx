@@ -14,15 +14,7 @@ const formatDistanceFixed = (miles) => {
 // ControlBar Component
 export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, paceMethod, setPaceMethod }) {
   return (
-    <div 
-      className="builder-controls-bar" 
-      style={{ 
-        marginTop: '8px', 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '8px' 
-      }}
-    >
+    <div className="step-presets-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '4px' }}>
       <div className="mode-toggle-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <label className="input-label" style={{ paddingTop: '2px' }}>
           Step Mode:
