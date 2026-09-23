@@ -27,7 +27,7 @@ const detectPaceMethod = (stepPace, fallbackMethod) => {
   const unit = stepPace.unit;
   const isRange = 'start' in stepPace || 'end' in stepPace;
 
-  if (unit === 'sec') {
+  if (unit === 'secs') {
     return isRange ? 'Pace Range' : 'Pace';
   } else if (unit === '%pace') {
     return isRange ? 'Threshold % Range' : 'Threshold %';
@@ -149,9 +149,6 @@ export default function RenderStepRow({
   // Convert threshold pace from meters/sec to sec/mile
   const thresholdSecPerMile = getThresholdSecPerMile(thresholdPaceSec);
 
-  console.log('[App Debug] RSR: ');
-  console.log('[App Debug] RSR: ');
-  console.log('[App Debug] RSR: ');
   console.log('[App Debug] RSR: step: ', step);
   console.log('[App Debug] RSR: threshold (m/s): ', thresholdPaceSec);
   console.log('[App Debug] RSR: threshold (sec/mi): ', thresholdSecPerMile);
@@ -523,14 +520,53 @@ export default function RenderStepRow({
         presets={presets}
         targetPaceSec={targetPaceSec}
         onSelectPace={(newSec) => {
-          if (paceMethod === 'Pace' || paceMethod === 'Pace Range') {
-            onUpdate(step.id, 'pace', { unit: 'secs', value: newSec });
-          } else if (paceMethod.includes('Threshold')) {
-            const pct = thresholdSecPerMile > 0 ? Math.round((thresholdSecPerMile / newSec) * 100) : 100;
+          if (paceMethod === 'Pace' || paceMethod === 'Pace Range') 
+            { onUpdate(step.id, 'pace', { units: 'secs', value: newSec });
+            } 
+          else if (paceMethod.includes('Threshold')) 
+            {const pct = thresholdSecPerMile > 0 ? Math.round((thresholdSecPerMile / newSec) * 100) : 100;
             onUpdate(step.id, 'pace', { unit: '%pace', value: pct });
-          }
+            }
         }}
       />
+
+      {/* Dynamic Presets */}
+      <StepPresets
+        presets={presets}
+        targetPaceSec={targetPaceSec}
+        onSelectPace={(newSec) => {
+          const method = (paceMethod || '').toLowerCase();
+
+          if (method.includes('pace')) {
+            onUpdate(step.id, 'pace', { units: 'secs', value: newSec });
+          } 
+          
+          else if (method.includes('threshold')) {
+            const pct = thresholdSecPerMile > 0 ? Math.round((thresholdSecPerMile / newSec) * 100) : 100;
+            onUpdate(step.id, 'pace', { unit: '%pace', value: pct });
+          } 
+          
+          else if (method.includes('zone')) {
+            // Find matching zone key (e.g. "Z1", "Z2") based on selected pace
+            // Assumes `zones` or `presets` provides min/max or target paces per zone
+            const matchedZoneKey = Object.keys(zones || {}).find((key) => {
+              const z = zones[key];
+              // If zone has range bounds (minSec and maxSec)
+              if (z?.minSec && z?.maxSec) {
+                return newSec <= z.minSec && newSec >= z.maxSec; // faster pace = lower sec count
+              }
+              return false;
+            }) || 'Z2'; // Default fallback zone if out of bounds
+
+            onUpdate(step.id, 'pace', { 
+              unit: 'zone', 
+              value: matchedZoneKey 
+            });
+          }
+
+        }}
+      />
+
 
       {/* ControlBar positioned below presets */}
       <ControlBar
