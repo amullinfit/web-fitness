@@ -149,10 +149,20 @@ export default function RenderStepRow({
   // Convert threshold pace from meters/sec to sec/mile
   const thresholdSecPerMile = getThresholdSecPerMile(thresholdPaceSec);
 
+  console.log('[App Debug] RSR: ');
+  console.log('[App Debug] RSR: ');
+  console.log('[App Debug] RSR: ');
+  console.log('[App Debug] RSR: step: ', step);
+  console.log('[App Debug] RSR: threshold (m/s): ', thresholdPaceSec);
+  console.log('[App Debug] RSR: threshold (sec/mi): ', thresholdSecPerMile);
+
   // Default to 'time' and 'Pace' if unspecified
   const stepMode = step.stepMode || 'time';
   const paceMethod = step.paceMethod || detectPaceMethod(step.pace, 'Pace');
 
+  console.log('[App Debug] RSR: step.stepMode: ', stepMode);
+  console.log('[App Debug] RSR: step.paceMethod: ', paceMethod);
+  
   const setStepMode = (newMode) => {
     onUpdate(step.id, 'stepMode', newMode);
   };
