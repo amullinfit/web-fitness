@@ -24,7 +24,7 @@ export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, pace
           onChange={(e) => setWorkoutMode(e.target.value)}
           className="pace-method-select"
         >
-          <option value="time">⏱ Time</option>
+          <option value="time">⏱️ Time</option>
           <option value="distance">📏 Distance</option>
         </select>
       </div>
@@ -38,12 +38,12 @@ export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, pace
           onChange={(e) => setPaceMethod(e.target.value)}
           className="pace-method-select"
         >
-          <option value="Pace">Pace</option>
-          <option value="Pace Range">Pace Range</option>
-          <option value="Zone">Zone</option>
-          <option value="Zone Range">Zone Range</option>
-          <option value="Threshold %">Threshold %</option>
-          <option value="Threshold % Range">Threshold % Range</option>
+          <option value="Pace">⏱️ Pace</option>
+          <option value="Pace Range">⏱️ Pace Range</option>
+          <option value="Zone">📶 Zone</option>
+          <option value="Zone Range">📶 Zone Range</option>
+          <option value="Threshold %">🎯 Threshold %</option>
+          <option value="Threshold % Range">🎯 Threshold % Range</option>
         </select>
       </div>
     </div>
