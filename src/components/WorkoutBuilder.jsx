@@ -258,19 +258,39 @@ export default function WorkoutBuilder() {
   };
 
   return (
-    <div className="workout-builder-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <div 
+      className="workout-builder-container" 
+      style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        height: '100vh', 
+        maxHeight: '100vh',
+        width: '100vw',
+        overflow: 'hidden',
+        boxSizing: 'border-box'
+      }}
+    >
+      {/* Dynamic Reset to handle root/body scrollbars */}
+      <style>{`
+        html, body {
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          height: 100%;
+        }
+      `}</style>
+
       {statusMessage && <div className="status-message-banner">{statusMessage}</div>}
 
-      {/* --- FIXED / STICKY TOP HEADER & CHART SECTION --- */}
+      {/* --- LOCKED TOP HEADER & PREVIEW CHART --- */}
       <div 
         className="builder-fixed-header-section" 
         style={{ 
-          position: 'sticky', 
-          top: 0, 
-          zIndex: 10, 
+          flexShrink: 0, 
           backgroundColor: '#fff', 
           boxShadow: '0px 2px 5px rgba(0,0,0,0.05)',
-          paddingBottom: '8px'
+          paddingBottom: '8px',
+          zIndex: 10
         }}
       >
         <div className="builder-header-bar">
@@ -300,7 +320,6 @@ export default function WorkoutBuilder() {
               thresholdPaceSec={paces?.threshold_pace || 0} 
             />
 
-            {/* Workout Chart stuck in position */}
             <div className="chart-preview-container" style={{ margin: '8px 0', cursor: 'pointer' }}>
               <WorkoutChart
                 workout={baseWorkout}
@@ -312,7 +331,7 @@ export default function WorkoutBuilder() {
         )}
       </div>
 
-      {/* --- SCROLLABLE BODY SECTION --- */}
+      {/* --- SCROLLABLE BODY (SOLE SCROLL CONTAINER) --- */}
       <div 
         className="builder-scrollable-content" 
         style={{ 
@@ -331,7 +350,7 @@ export default function WorkoutBuilder() {
           </div>
         ) : (
           <>
-            {/* Render Step Rows */}
+            {/* Step Rows */}
             <div 
               className="steps-list-container" 
               onDragOver={(e) => e.preventDefault()} 
@@ -366,7 +385,7 @@ export default function WorkoutBuilder() {
               </button>
             </div>
 
-            {/* Side-by-Side Resizable Textarea Container */}
+            {/* Resizable Textarea JSON Views */}
             <div 
               className="json-previews-container" 
               style={{ 
@@ -376,13 +395,13 @@ export default function WorkoutBuilder() {
                 marginBottom: '16px',
                 resize: 'vertical',
                 overflow: 'hidden',
-                height: '200px', // Default starting height
+                height: '200px',
                 minHeight: '100px',
                 maxHeight: '800px',
                 paddingBottom: '8px'
               }}
             >
-              {/* Original Unaltered Document */}
+              {/* Unaltered Workout Document */}
               <div 
                 className="unaltered-workout-container" 
                 style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}
@@ -412,7 +431,7 @@ export default function WorkoutBuilder() {
                 />
               </div>
 
-              {/* baseWorkout Live JSON View */}
+              {/* Base Workout JSON View */}
               <div 
                 className="unaltered-workout-container" 
                 style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}
