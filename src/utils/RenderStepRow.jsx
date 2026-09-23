@@ -97,9 +97,9 @@ function StepPresets({ presets, targetPaceSec, onSelectPace }) {
 
   return (
     <div className="step-presets-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '4px' }}>
-      <span style={{ fontSize: '11px', color: '#6c757d', fontWeight: 'bold', paddingTop: '2px' }}>
+      <label className="input-label" style={{ paddingTop: '2px' }}>
         Presets:
-      </span>
+      </label>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
           {row1.map(renderButton)}
@@ -262,7 +262,7 @@ export default function RenderStepRow({
           </label>
         ) : (
           <label className="input-label">
-            Dist:
+            Dist:{' '}
             <input
               type="number"
               step="0.01"
