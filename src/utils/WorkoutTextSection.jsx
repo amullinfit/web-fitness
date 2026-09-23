@@ -1,3 +1,6 @@
+//
+// WorkoutTextSection.jsx
+//
 import React, { useState } from 'react';
 import './WorkoutTextSection.css';
 
@@ -19,28 +22,10 @@ const metersPerSecondToPaceStr = (mps) => {
   return `${mins}:${String(secs).padStart(2, '0')} /mi`;
 };
 
-const safeStringLower = (val) => {
-  if (!val) return "";
-  if (typeof val === 'string') return val.toLowerCase();
-  return String(val.id || val.type || val.name || val).toLowerCase();
-};
-
 const formatIntensityTitleCase = (val) => {
   if (!val) return "N/A";
   const str = String(val);
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-};
-
-const getThresholdPaceForSport = (sportType, sportSettings) => {
-  if (!sportType || !Array.isArray(sportSettings)) return null;
-  const normalizedSport = safeStringLower(sportType);
-  const match = sportSettings.find((s) => {
-    if (!s) return false;
-    const settingType = safeStringLower(s.type || s.id || s.sport);
-    let typesList = Array.isArray(s.types) ? s.types.map((t) => safeStringLower(t)) : [];
-    return settingType === normalizedSport || typesList.includes(normalizedSport);
-  });
-  return match?.threshold_pace || match?.pace_threshold || null;
 };
 
 const formatPaceString = (s, thresholdPaceMps) => {
@@ -151,7 +136,7 @@ const RenderStepCard = ({ step }) => {
   );
 };
 
-export default function WorkoutTextSection({ workout, sportSettings = [] }) {
+export default function WorkoutTextSection({ workout, thresholdPace = null }) {
   const [isOpen, setIsOpen] = useState(false);
 
   if (!workout) return null;
@@ -166,7 +151,12 @@ export default function WorkoutTextSection({ workout, sportSettings = [] }) {
     }
   }
 
-  const thresholdPaceMps = getThresholdPaceForSport(workout.type, sportSettings);
+  // Resolve numeric threshold pace value directly (handles raw numbers or simple pace objects)
+  // thresholdPace passes as sec/mi
+  const thresholdPaceMps = typeof thresholdPace === 'number'
+    ? thresholdPace
+    : thresholdPace?.threshold_pace || thresholdPace?.run_pace_sec || null;
+
   const debugSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps);
 
   // Calculate Total Overall Workout Duration

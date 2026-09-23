@@ -8,6 +8,8 @@ import '../CSS/WorkoutBuilder.css';
 import { useWorkoutSteps } from '../hooks/useWorkoutSteps';
 
 import WorkoutChart from './WorkoutChart';
+import WorkoutTextSection from '../utils/WorkoutTextSection';
+
 import RenderStepRow from '../utils/RenderStepRow';
 
 import { OptionsMenu, ControlBar } from '../utils/WorkoutBuilderMenus';
@@ -307,6 +309,10 @@ export default function WorkoutBuilder() {
                 thresholdPace={paces?.threshold_pace || 400}
                 chartHeight={"200px"}
                 showBarPace={true}
+              />
+              <WorkoutTextSection 
+                workout={baseworkout}
+                threshold={paces?.threshold_pace}
               />
             </div>
           </>

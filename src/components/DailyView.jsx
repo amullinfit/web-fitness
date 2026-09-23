@@ -569,7 +569,10 @@ export default function DailyView() {
           />
         )}
 
-        <WorkoutTextSection workout={workout} sportSettings={sportSettings} />
+        <WorkoutTextSection 
+          workout={workout} 
+          thresholdPace={thresholdPaceMps}
+          />
       </div>
     );
   };
