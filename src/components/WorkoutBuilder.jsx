@@ -276,149 +276,115 @@ export default function WorkoutBuilder() {
         }}
       >
 
-      <div className="builder-header-bar">
-        <h1 className="builder-header-title">Workout Builder</h1>
-        <OptionsMenu
-          mode={mode}
-          onStartCreateNew={handleNewWorkout}
-          onOpenSelectModal={() => setIsEditModalOpen(true)}
-          onOpenCreateFolderModal={() => setIsFolderModalOpen(true)}
-          onOpenSaveModal={handleOpenSaveModal}
-          onDuplicateWorkout={handleDuplicateWorkout}
-          onCopyWorkoutText={handleCopyWorkoutText}
-          onDownloadIcu={handleDownloadIcu}
-          onDownloadZwo={handleDownloadZwo}
-          onCancelEdits={handleCancelEdits}
-          onCloseWorkout={handleCloseWorkout}
-        />
-      </div>
-
-      {mode !== 'EMPTY' && (
-        <div className="chart-preview-container" style={{ margin: '8px 0', cursor: 'pointer' }}>
-          <WorkoutChart
-            workout={baseWorkout}
-            thresholdPace={paces?.threshold_pace || 400}
-            chartHeight={"200px"}
-            showBarPace={true}
-          />
-          <WorkoutTextSection 
-            workout={baseWorkout}
-            threshold={paces?.threshold_pace}
+        <div className="builder-header-bar">
+          <h1 className="builder-header-title">Workout Builder</h1>
+          <OptionsMenu
+            mode={mode}
+            onStartCreateNew={handleNewWorkout}
+            onOpenSelectModal={() => setIsEditModalOpen(true)}
+            onOpenCreateFolderModal={() => setIsFolderModalOpen(true)}
+            onOpenSaveModal={handleOpenSaveModal}
+            onDuplicateWorkout={handleDuplicateWorkout}
+            onCopyWorkoutText={handleCopyWorkoutText}
+            onDownloadIcu={handleDownloadIcu}
+            onDownloadZwo={handleDownloadZwo}
+            onCancelEdits={handleCancelEdits}
+            onCloseWorkout={handleCloseWorkout}
           />
         </div>
-      )}
-    </div>
 
-    {/* --- SCROLLABLE BODY SECTION --- */}
-    <div 
-      className="builder-scrollable-content" 
-      style={{ 
-        flex: 1, 
-        overflowY: 'auto', 
-        padding: '16px' 
-      }}
-    >
-    
-    {mode === 'EMPTY' ? (
-      <div className="empty-state-card">
-        <h3>No Workout Selected</h3>
-        <p>Select an existing workout from Options or create a new one to get started.</p>
-        <button className="btn-primary" onClick={handleNewWorkout}>
-          + Create New Workout
-        </button>
-      </div>
-    ) : (
-      <>
-        <div 
-          className="steps-list-container" 
-          onDragOver={(e) => e.preventDefault()} 
-          onDrop={(e) => handleDrop(e, null, baseWorkout?.workout_doc?.steps?.length || 0)}
-        >
-          {baseWorkout?.workout_doc?.steps?.map((step, index) => (
-            <RenderStepRow
-              key={step.id || `step-${index}`}
-              step={step}
-              index={index}
-              parentId={null}
-              thresholdPaceSec={paces?.threshold_pace || 0}
-              presets={dynamicPresets}
-              onRemove={removeStep}
-              onUpdate={updateStepField}
-              onAddChild={addStep}
-              onDragStart={handleDragStart}
-              onDrop={handleDrop}
+        {mode !== 'EMPTY' && (
+          <div className="chart-preview-container" style={{ margin: '8px 0', cursor: 'pointer' }}>
+            <WorkoutChart
+              workout={baseWorkout}
+              thresholdPace={paces?.threshold_pace || 400}
+              chartHeight={"200px"}
+              showBarPace={true}
             />
-          ))}
-        </div>
-
-        <div className="root-add-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-          <button className="btn-add-step" onClick={() => addStep('run', null)}>
-            + Add Run
-          </button>
-          <button className="btn-add-step" onClick={() => addStep('recovery', null)}>
-            + Add Recovery
-          </button>
-          <button className="btn-add-step" onClick={() => addStep('repeat', null)}>
-            + Add Repeat Block
-          </button>
-        </div>
-
-        {/* Side-by-Side Resizable Textarea Container */}
-        <div 
-          className="json-previews-container" 
-          style={{ 
-            display: 'flex', 
-            gap: '16px', 
-            marginTop: '16px', 
-            marginBottom: '16px',
-            resize: 'vertical',
-            overflow: 'hidden',
-            height: '200px', // Default starting height
-            minHeight: '100px',
-            maxHeight: '800px',
-            paddingBottom: '8px'
-          }}
-        >
-          {/* Original Unaltered Document */}
-          <div 
-            className="unaltered-workout-container" 
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}
-          >
-            <label 
-              htmlFor="unaltered-workout-input" 
-              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
-            >
-              Workout Data - Original Unaltered Workout File
-            </label>
-            <textarea
-              id="unaltered-workout-input"
-              readOnly
-              value={JSON.stringify(unalteredWorkout || {}, null, 2)}
-              placeholder="No raw Intervals.icu payload available..."
-              style={{
-                width: '100%',
-                height: '100%',
-                fontFamily: 'monospace',
-                fontSize: '12px',
-                padding: '8px',
-                backgroundColor: '#f4f4f6',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                resize: 'none'
-              }}
+            <WorkoutTextSection 
+              workout={baseWorkout}
+              threshold={paces?.threshold_pace}
             />
           </div>
+        )}
+      </div>
 
-          {/* baseWorkout Live JSON View */}
+      {/* --- SCROLLABLE BODY SECTION --- */}
+      <div 
+        className="builder-scrollable-content" 
+        style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          padding: '16px' 
+        }}
+      >
+      
+      {mode === 'EMPTY' ? (
+        <div className="empty-state-card">
+          <h3>No Workout Selected</h3>
+          <p>Select an existing workout from Options or create a new one to get started.</p>
+          <button className="btn-primary" onClick={handleNewWorkout}>
+            + Create New Workout
+          </button>
+        </div>
+      ) : (
+        /* TWO-COLUMN LAYOUT CONTAINER */
+        <div style={{ display: 'flex', gap: '16px', minHeight: '100%' }}>
+          
+          {/* LEFT COLUMN: Steps List and Controls */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div 
+              className="steps-list-container" 
+              onDragOver={(e) => e.preventDefault()} 
+              onDrop={(e) => handleDrop(e, null, baseWorkout?.workout_doc?.steps?.length || 0)}
+            >
+              {baseWorkout?.workout_doc?.steps?.map((step, index) => (
+                <RenderStepRow
+                  key={step.id || `step-${index}`}
+                  step={step}
+                  index={index}
+                  parentId={null}
+                  thresholdPaceSec={paces?.threshold_pace || 0}
+                  presets={dynamicPresets}
+                  onRemove={removeStep}
+                  onUpdate={updateStepField}
+                  onAddChild={addStep}
+                  onDragStart={handleDragStart}
+                  onDrop={handleDrop}
+                />
+              ))}
+            </div>
+
+            <div className="root-add-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+              <button className="btn-add-step" onClick={() => addStep('run', null)}>
+                + Add Run
+              </button>
+              <button className="btn-add-step" onClick={() => addStep('recovery', null)}>
+                + Add Recovery
+              </button>
+              <button className="btn-add-step" onClick={() => addStep('repeat', null)}>
+                + Add Repeat Block
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Live baseWorkout Debug Viewer */}
           <div 
-            className="unaltered-workout-container" 
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}
+            className="baseworkout-column-container" 
+            style={{ 
+              width: '380px', 
+              display: 'flex', 
+              flexDirection: 'column',
+              backgroundColor: '#fafafa',
+              borderLeft: '1px solid #e0e0e0',
+              paddingLeft: '16px'
+            }}
           >
             <label 
               htmlFor="baseworkout-input" 
               style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
             >
-              Workout Data - baseWorkout (Live Updated)
+              Updated Live
             </label>
             <textarea
               id="baseworkout-input"
@@ -427,8 +393,8 @@ export default function WorkoutBuilder() {
               placeholder="No baseWorkout payload available..."
               style={{
                 width: '100%',
-                flex: 1,           /* Dynamically take remaining flex space */
-                minHeight: 0,      /* Prevents flex child from expanding past container */
+                flex: 1,
+                minHeight: '300px',
                 fontFamily: 'monospace',
                 fontSize: '12px',
                 padding: '8px',
@@ -436,14 +402,13 @@ export default function WorkoutBuilder() {
                 border: '1px solid #ccc',
                 borderRadius: '4px',
                 resize: 'none',
-                overflowY: 'auto' /* Force consistent scrollbar behavior */
+                overflowY: 'auto'
               }}
             />
           </div>
 
         </div>
-          </>
-        )}
+      )}
       </div>
 
       {/* Modals */}
