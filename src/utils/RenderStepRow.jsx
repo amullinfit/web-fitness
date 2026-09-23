@@ -11,6 +11,24 @@ const formatDistanceFixed = (miles) => {
   return `${val.toFixed(2)} mi`;
 };
 
+// Helper to determine Pace Method from step.pace schema
+const detectPaceMethod = (stepPace, fallbackMethod) => {
+  if (!stepPace || typeof stepPace !== 'object') return fallbackMethod || 'Pace';
+
+  const unit = stepPace.unit;
+  const isRange = 'start' in stepPace || 'end' in stepPace;
+
+  if (unit === 'sec') {
+    return isRange ? 'Pace Range' : 'Pace';
+  } else if (unit === '%pace') {
+    return isRange ? 'Threshold % Range' : 'Threshold %';
+  } else if (unit === 'pace_zone') {
+    return isRange ? 'Zone Range' : 'Zone';
+  }
+
+  return fallbackMethod || 'Pace';
+};
+
 // ControlBar Component
 export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, paceMethod, setPaceMethod }) {
   return (
@@ -70,9 +88,9 @@ function StepPresets({ presets, targetPaceSec, onSelectPace }) {
           fontSize: '11px',
           fontWeight: '600',
           borderRadius: '12px',
-          border: `1px solid ${preset.color}`,
+          border: `1px solid ${preset.color || '#ced4da'}`,
           backgroundColor: isSelected ? preset.color : '#ffffff',
-          color: isSelected ? '#ffffff' : preset.color,
+          color: isSelected ? '#ffffff' : (preset.color || '#333'),
           cursor: 'pointer',
           transition: 'all 0.15s ease',
           whiteSpace: 'nowrap',
@@ -80,7 +98,7 @@ function StepPresets({ presets, targetPaceSec, onSelectPace }) {
           width: '100%'
         }}
       >
-        {preset.label} ({preset.displayPace})
+        {preset.label} ({preset.displayPace || formatMMSS(preset.targetPaceSec)})
       </button>
     );
   };
@@ -112,6 +130,7 @@ export default function RenderStepRow({
   globalPaceMethod,
   thresholdPaceSec,
   presets,
+  zones, // Passed from Intervals.icu zone data
   onRemove,
   onUpdate,
   onAddChild,
@@ -120,16 +139,55 @@ export default function RenderStepRow({
 }) {
   if (!step) return null;
 
-  // Local step modes fallback to step-level property or global parent defaults
+  // Local step modes fallback to step-level property or detected from step.pace
   const stepMode = step.stepMode || globalWorkoutMode || 'time';
-  const paceMethod = step.paceMethod || globalPaceMethod || 'Pace';
+  const paceMethod = step.paceMethod || detectPaceMethod(step.pace, globalPaceMethod);
 
   const setStepMode = (newMode) => {
     onUpdate(step.id, 'stepMode', newMode);
   };
 
+  // Convert step values appropriately when pace method changes
   const setPaceMethod = (newMethod) => {
     onUpdate(step.id, 'paceMethod', newMethod);
+    let currentSec = 0;
+    
+    if (typeof step.pace === 'object' && step.pace !== null) {
+      currentSec = step.pace.value ?? step.pace.start ?? 0;
+    } else {
+      currentSec = step.targetPaceSec ?? 0;
+    }
+
+    let newPaceObj = {};
+
+    switch (newMethod) {
+      case 'Pace':
+        newPaceObj = { unit: 'sec', value: currentSec || 480 };
+        break;
+      case 'Pace Range':
+        newPaceObj = { unit: 'sec', start: currentSec || 480, end: (currentSec || 480) + 15 };
+        break;
+      case 'Threshold %': {
+        const pct = thresholdPaceSec > 0 && currentSec > 0 ? Math.round((thresholdPaceSec / currentSec) * 100) : 100;
+        newPaceObj = { unit: '%pace', value: pct };
+        break;
+      }
+      case 'Threshold % Range': {
+        const pct = thresholdPaceSec > 0 && currentSec > 0 ? Math.round((thresholdPaceSec / currentSec) * 100) : 100;
+        newPaceObj = { unit: '%pace', start: pct - 5, end: pct + 5 };
+        break;
+      }
+      case 'Zone':
+        newPaceObj = { unit: 'pace_zone', value: step.pace?.value || 'Z1' };
+        break;
+      case 'Zone Range':
+        newPaceObj = { unit: 'pace_zone', start: step.pace?.start || 'Z1', end: step.pace?.end || 'Z2' };
+        break;
+      default:
+        newPaceObj = { unit: 'sec', value: currentSec || 480 };
+    }
+
+    onUpdate(step.id, 'pace', newPaceObj);
   };
 
   const isRepeat = step.type === 'repeat' || Boolean(step.reps) || Array.isArray(step.steps);
@@ -178,6 +236,7 @@ export default function RenderStepRow({
               globalPaceMethod={globalPaceMethod}
               thresholdPaceSec={thresholdPaceSec}
               presets={presets}
+              zones={zones}
               onRemove={onRemove}
               onUpdate={onUpdate}
               onAddChild={onAddChild}
@@ -201,10 +260,16 @@ export default function RenderStepRow({
 
   // Leaf Step values
   const durationSec = step.duration ?? step.durationSec ?? 0;
-  
+
+  // Extract primary seconds calculation for distance/time estimation
   let targetPaceSec = 0;
   if (typeof step.pace === 'object' && step.pace !== null) {
-    targetPaceSec = step.pace.value ?? step.pace.start ?? 0;
+    if (step.pace.unit === '%pace' && thresholdPaceSec > 0) {
+      const pct = step.pace.value ?? step.pace.start ?? 100;
+      targetPaceSec = Math.round(thresholdPaceSec / (pct / 100));
+    } else {
+      targetPaceSec = step.pace.value ?? step.pace.start ?? 0;
+    }
   } else {
     targetPaceSec = step.targetPaceSec ?? (typeof step.pace === 'number' ? step.pace : 0);
   }
@@ -216,20 +281,173 @@ export default function RenderStepRow({
     onUpdate(step.id, 'durationSec', newSec);
   };
 
-  const handlePaceChange = (newSec) => {
-    if (typeof step.pace === 'object' && step.pace !== null) {
-      if ('value' in step.pace) {
-        onUpdate(step.id, 'pace.value', newSec);
-      } else {
-        onUpdate(step.id, 'pace.start', newSec);
-      }
-    } else {
-      onUpdate(step.id, 'targetPaceSec', newSec);
-    }
-  };
-
   const calculatedMiles = targetPaceSec > 0 ? durationSec / targetPaceSec : 0;
   const calculatedTimeSec = distanceMiles * targetPaceSec;
+
+  // Render pace controls based on Method
+  const zoneList = zones || presets || [];
+
+  const renderPaceInputControls = () => {
+    const isRange = paceMethod.includes('Range');
+
+    // 1. Pace or Pace Range (MMSSInput free-form)
+    if (paceMethod === 'Pace' || paceMethod === 'Pace Range') {
+      if (!isRange) {
+        const valSec = typeof step.pace === 'object' ? (step.pace.value ?? 0) : targetPaceSec;
+        return (
+          <label className="input-label">
+            Pace:{' '}
+            <MMSSInput 
+              valueSec={valSec} 
+              onChange={(newSec) => onUpdate(step.id, 'pace', { unit: 'sec', value: newSec })} 
+            />
+          </label>
+        );
+      }
+      const startSec = typeof step.pace === 'object' ? (step.pace.start ?? 0) : targetPaceSec;
+      const endSec = typeof step.pace === 'object' ? (step.pace.end ?? 0) : targetPaceSec + 15;
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <label className="input-label">
+            Fast:{' '}
+            <MMSSInput 
+              valueSec={startSec} 
+              onChange={(newSec) => onUpdate(step.id, 'pace', { ...step.pace, unit: 'sec', start: newSec })} 
+            />
+          </label>
+          <label className="input-label">
+            Slow:{' '}
+            <MMSSInput 
+              valueSec={endSec} 
+              onChange={(newSec) => onUpdate(step.id, 'pace', { ...step.pace, unit: 'sec', end: newSec })} 
+            />
+          </label>
+        </div>
+      );
+    }
+
+    // 2. Threshold % or Threshold % Range
+    if (paceMethod === 'Threshold %' || paceMethod === 'Threshold % Range') {
+      if (!isRange) {
+        const valPct = typeof step.pace === 'object' ? (step.pace.value ?? 100) : 100;
+        const calcPace = thresholdPaceSec > 0 ? formatMMSS(Math.round(thresholdPaceSec / (valPct / 100))) : '--:--';
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label className="input-label">
+              Pace %:{' '}
+              <input
+                type="number"
+                min="50"
+                max="200"
+                value={valPct}
+                onChange={(e) => onUpdate(step.id, 'pace', { unit: '%pace', value: parseFloat(e.target.value) || 0 })}
+                className="time-pace-input"
+                style={{ width: '50px', padding: '2px 4px' }}
+              />
+              %
+            </label>
+            <span style={{ fontSize: '12px', color: '#6c757d' }}>({calcPace} /mi)</span>
+          </div>
+        );
+      }
+
+      const startPct = typeof step.pace === 'object' ? (step.pace.start ?? 95) : 95;
+      const endPct = typeof step.pace === 'object' ? (step.pace.end ?? 105) : 105;
+      const calcFastPace = thresholdPaceSec > 0 ? formatMMSS(Math.round(thresholdPaceSec / (startPct / 100))) : '--:--';
+      const calcSlowPace = thresholdPaceSec > 0 ? formatMMSS(Math.round(thresholdPaceSec / (endPct / 100))) : '--:--';
+
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <label className="input-label">
+            Fast %:{' '}
+            <input
+              type="number"
+              min="50"
+              max="200"
+              value={startPct}
+              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, unit: '%pace', start: parseFloat(e.target.value) || 0 })}
+              className="time-pace-input"
+              style={{ width: '48px', padding: '2px 4px' }}
+            />
+            %
+          </label>
+          <label className="input-label">
+            Slow %:{' '}
+            <input
+              type="number"
+              min="50"
+              max="200"
+              value={endPct}
+              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, unit: '%pace', end: parseFloat(e.target.value) || 0 })}
+              className="time-pace-input"
+              style={{ width: '48px', padding: '2px 4px' }}
+            />
+            %
+          </label>
+          <span style={{ fontSize: '12px', color: '#6c757d' }}>({calcFastPace} - {calcSlowPace} /mi)</span>
+        </div>
+      );
+    }
+
+    // 3. Zone or Zone Range (Dropdown selects from intervals.icu zones)
+    if (paceMethod === 'Zone' || paceMethod === 'Zone Range') {
+      const renderZoneOption = (z) => {
+        const displayPace = z.displayPace || (z.targetPaceSec ? formatMMSS(z.targetPaceSec) : '');
+        const labelText = `${z.name || z.label}${displayPace ? ` (${displayPace})` : ''}`;
+        return (
+          <option key={z.id || z.name || z.label} value={z.name || z.label} style={{ backgroundColor: z.color || '#fff' }}>
+            {labelText}
+          </option>
+        );
+      };
+
+      if (!isRange) {
+        const currentZone = typeof step.pace === 'object' ? (step.pace.value || 'Z1') : 'Z1';
+        return (
+          <label className="input-label">
+            Zone:{' '}
+            <select
+              value={currentZone}
+              onChange={(e) => onUpdate(step.id, 'pace', { unit: 'pace_zone', value: e.target.value })}
+              className="pace-method-select"
+            >
+              {zoneList.map(renderZoneOption)}
+            </select>
+          </label>
+        );
+      }
+
+      const startZone = typeof step.pace === 'object' ? (step.pace.start || 'Z1') : 'Z1';
+      const endZone = typeof step.pace === 'object' ? (step.pace.end || 'Z2') : 'Z2';
+
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <label className="input-label">
+            Fast Zone:{' '}
+            <select
+              value={startZone}
+              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, unit: 'pace_zone', start: e.target.value })}
+              className="pace-method-select"
+            >
+              {zoneList.map(renderZoneOption)}
+            </select>
+          </label>
+          <label className="input-label">
+            Slow Zone:{' '}
+            <select
+              value={endZone}
+              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, unit: 'pace_zone', end: e.target.value })}
+              className="pace-method-select"
+            >
+              {zoneList.map(renderZoneOption)}
+            </select>
+          </label>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div
@@ -241,7 +459,7 @@ export default function RenderStepRow({
       style={{ marginBottom: '12px', border: '1px solid #e0e0e0', padding: '10px', borderRadius: '8px' }}
     >
       {/* Step Inputs */}
-      <div className="step-row-inputs" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+      <div className="step-row-inputs" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
         <span className="drag-handle">⣿</span>
         <span className="step-type-label">{step.intensity || step.type || 'step'}</span>
 
@@ -266,12 +484,10 @@ export default function RenderStepRow({
           </label>
         )}
 
-        <label className="input-label">
-          Pace:{' '}
-          <MMSSInput valueSec={targetPaceSec} onChange={handlePaceChange} />
-        </label>
+        {/* Dynamic Pace Input Controls based on Pace Method */}
+        {renderPaceInputControls()}
 
-        <span className="dist-display">
+        <span className="dist-display" style={{ marginLeft: 'auto' }}>
           {stepMode === 'time'
             ? `Dist: ${formatDistanceFixed(calculatedMiles)}`
             : `Time: ${formatTime(calculatedTimeSec)}`}
@@ -284,7 +500,14 @@ export default function RenderStepRow({
       <StepPresets
         presets={presets}
         targetPaceSec={targetPaceSec}
-        onSelectPace={handlePaceChange}
+        onSelectPace={(newSec) => {
+          if (paceMethod === 'Pace' || paceMethod === 'Pace Range') {
+            onUpdate(step.id, 'pace', { unit: 'sec', value: newSec });
+          } else if (paceMethod.includes('Threshold')) {
+            const pct = thresholdPaceSec > 0 ? Math.round((thresholdPaceSec / newSec) * 100) : 100;
+            onUpdate(step.id, 'pace', { unit: '%pace', value: pct });
+          }
+        }}
       />
 
       {/* ControlBar positioned below presets */}

@@ -429,17 +429,20 @@ export default function WorkoutBuilder() {
               placeholder="No baseWorkout payload available..."
               style={{
                 width: '100%',
-                height: '100%',
+                flex: 1,           /* Dynamically take remaining flex space */
+                minHeight: 0,      /* Prevents flex child from expanding past container */
                 fontFamily: 'monospace',
                 fontSize: '12px',
                 padding: '8px',
                 backgroundColor: '#f4f4f6',
                 border: '1px solid #ccc',
                 borderRadius: '4px',
-                resize: 'none'
+                resize: 'none',
+                overflowY: 'auto' /* Force consistent scrollbar behavior */
               }}
             />
           </div>
+
         </div>
           </>
         )}
