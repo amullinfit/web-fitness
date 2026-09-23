@@ -14,7 +14,7 @@ const formatDistanceFixed = (miles) => {
 // ControlBar Component
 export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, paceMethod, setPaceMethod }) {
   return (
-    <div className="builder-controls-bar" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '4px' }}>
+    <div className="step-controls-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '4px' }}>
       <div className="mode-toggle-group" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         <label className="input-label">
           Step Mode:
@@ -24,7 +24,7 @@ export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, pace
           onChange={(e) => setWorkoutMode(e.target.value)}
           className="pace-method-select"
         >
-          <option value="time">⏱️ Time</option>
+          <option value="time">⏱ Time</option>
           <option value="distance">📏 Distance</option>
         </select>
       </div>

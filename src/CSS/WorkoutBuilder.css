@@ -68,14 +68,37 @@
   color: #6c757d;
 }
 
-/* Controls Bar */
+/* Controls Bar (Mode & Pace Method) */
 .builder-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Preset buttons indentation aligned past drag handle + step name */
+.step-presets-row {
   display: flex;
   align-items: center;
   gap: 6px;
   padding-left: 140px;
   flex-wrap: wrap;
 }
+
+.step-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 140px;
+  flex-wrap: wrap;
+}
+
 
 .control-label {
   font-size: 13px;
