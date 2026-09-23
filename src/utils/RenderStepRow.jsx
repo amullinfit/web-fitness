@@ -190,8 +190,9 @@ export default function RenderStepRow({
                 color: isSelected ? '#ffffff' : preset.color,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
-                minWidth: '105px', // Standardizes all button widths to match the longest label
-                textAlign: 'center'
+                whiteSpace: 'nowrap', // Prevents button text from breaking onto a second line
+                textAlign: 'center',
+                width: '100%'        // Expands to fill grid column fully
               }}
             >
               {preset.label} ({preset.displayPace})
@@ -205,11 +206,13 @@ export default function RenderStepRow({
               Presets:
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {/* Row 1: 4 equal grid columns */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
                 {row1.map(renderButton)}
               </div>
+              {/* Row 2: 4 equal grid columns */}
               {row2.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
                   {row2.map(renderButton)}
                 </div>
               )}
@@ -217,7 +220,6 @@ export default function RenderStepRow({
           </div>
         );
       })()}
-
 
     </div>
   );
