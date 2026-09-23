@@ -12,7 +12,7 @@ import WorkoutTextSection from '../utils/WorkoutTextSection';
 
 import RenderStepRow from '../utils/RenderStepRow';
 
-import { OptionsMenu, ControlBar } from '../utils/WorkoutBuilderMenus';
+import { OptionsMenu } from '../utils/WorkoutBuilderMenus';
 import { convertWorkoutToTargetFormat } from '../utils/WorkoutConverter.js';
 
 import Modal_Folder_Create from '../modals/Modal_Folder_Create';
