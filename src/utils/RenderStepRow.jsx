@@ -524,7 +524,7 @@ export default function RenderStepRow({
         targetPaceSec={targetPaceSec}
         onSelectPace={(newSec) => {
           if (paceMethod === 'Pace' || paceMethod === 'Pace Range') {
-            onUpdate(step.id, 'pace', { unit: 'sec', value: newSec });
+            onUpdate(step.id, 'pace', { unit: 'secs', value: newSec });
           } else if (paceMethod.includes('Threshold')) {
             const pct = thresholdSecPerMile > 0 ? Math.round((thresholdSecPerMile / newSec) * 100) : 100;
             onUpdate(step.id, 'pace', { unit: '%pace', value: pct });
