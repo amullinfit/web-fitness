@@ -5,10 +5,19 @@ import React from 'react';
 import MMSSInput from './MMSSInput';
 import { formatTime, formatMMSS } from './WorkoutBuilderHelpers.js';
 
+const METERS_PER_MILE = 1609.344;
+
 // Helper function to guarantee strictly 2 decimal places (#.00)
 const formatDistanceFixed = (miles) => {
   const val = Number(miles) || 0;
   return `${val.toFixed(2)} mi`;
+};
+
+// Helper to convert m/s threshold pace to sec/mi
+const getThresholdSecPerMile = (thresholdPaceMetersPerSec) => {
+  const mPerSec = Number(thresholdPaceMetersPerSec);
+  if (!mPerSec || mPerSec <= 0) return 0;
+  return METERS_PER_MILE / mPerSec;
 };
 
 // Helper to determine Pace Method from step.pace schema
@@ -126,7 +135,7 @@ export default function RenderStepRow({
   step,
   index,
   parentId,
-  thresholdPaceSec,
+  thresholdPaceSec, // Passed as meters/sec from API
   presets,
   zones, 
   onRemove,
@@ -137,18 +146,12 @@ export default function RenderStepRow({
 }) {
   if (!step) return null;
 
-  console.log('[App Debug] RSR: ');
-  console.log('[App Debug] RSR: ');
-  console.log('[App Debug] RSR: ');
-  console.log('[App Debug] RSR: step: ', step);
-  console.log('[App Debug] RSR: threshold: ', thresholdPaceSec);
+  // Convert threshold pace from meters/sec to sec/mile
+  const thresholdSecPerMile = getThresholdSecPerMile(thresholdPaceSec);
 
-  // Local step modes fallback to step-level property or detected from step.pace
+  // Default to 'time' and 'Pace' if unspecified
   const stepMode = step.stepMode || 'time';
-  const paceMethod = step.paceMethod || 'pace';
-
-  console.log('[App Debug] RSR: step.stepMode: ', stepMode);
-  console.log('[App Debug] RSR: step.paceMethod: ', paceMethod);
+  const paceMethod = step.paceMethod || detectPaceMethod(step.pace, 'Pace');
 
   const setStepMode = (newMode) => {
     onUpdate(step.id, 'stepMode', newMode);
@@ -175,12 +178,16 @@ export default function RenderStepRow({
         newPaceObj = { unit: 'sec', start: currentSec || 480, end: (currentSec || 480) + 15 };
         break;
       case 'Threshold %': {
-        const pct = thresholdPaceSec > 0 && currentSec > 0 ? Math.round((thresholdPaceSec / currentSec) * 100) : 100;
+        const pct = thresholdSecPerMile > 0 && currentSec > 0 
+          ? Math.round((thresholdSecPerMile / currentSec) * 100) 
+          : 100;
         newPaceObj = { unit: '%pace', value: pct };
         break;
       }
       case 'Threshold % Range': {
-        const pct = thresholdPaceSec > 0 && currentSec > 0 ? Math.round((thresholdPaceSec / currentSec) * 100) : 100;
+        const pct = thresholdSecPerMile > 0 && currentSec > 0 
+          ? Math.round((thresholdSecPerMile / currentSec) * 100) 
+          : 100;
         newPaceObj = { unit: '%pace', start: pct - 5, end: pct + 5 };
         break;
       }
@@ -266,12 +273,12 @@ export default function RenderStepRow({
   // Leaf Step values
   const durationSec = step.duration ?? step.durationSec ?? 0;
 
-  // Extract primary seconds calculation for distance/time estimation
+  // Extract primary seconds calculation for distance/time estimation (in sec/mile)
   let targetPaceSec = 0;
   if (typeof step.pace === 'object' && step.pace !== null) {
-    if (step.pace.unit === '%pace' && thresholdPaceSec > 0) {
+    if (step.pace.unit === '%pace' && thresholdSecPerMile > 0) {
       const pct = step.pace.value ?? step.pace.start ?? 100;
-      targetPaceSec = Math.round(thresholdPaceSec / (pct / 100));
+      targetPaceSec = Math.round(thresholdSecPerMile / (pct / 100));
     } else {
       targetPaceSec = step.pace.value ?? step.pace.start ?? 0;
     }
@@ -335,7 +342,7 @@ export default function RenderStepRow({
     if (paceMethod === 'Threshold %' || paceMethod === 'Threshold % Range') {
       if (!isRange) {
         const valPct = typeof step.pace === 'object' ? (step.pace.value ?? 100) : 100;
-        const calcPace = thresholdPaceSec > 0 ? formatMMSS(Math.round(thresholdPaceSec / (valPct / 100))) : '--:--';
+        const calcPace = thresholdSecPerMile > 0 ? formatMMSS(Math.round(thresholdSecPerMile / (valPct / 100))) : '--:--';
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <label className="input-label">
@@ -358,8 +365,8 @@ export default function RenderStepRow({
 
       const startPct = typeof step.pace === 'object' ? (step.pace.start ?? 95) : 95;
       const endPct = typeof step.pace === 'object' ? (step.pace.end ?? 105) : 105;
-      const calcFastPace = thresholdPaceSec > 0 ? formatMMSS(Math.round(thresholdPaceSec / (startPct / 100))) : '--:--';
-      const calcSlowPace = thresholdPaceSec > 0 ? formatMMSS(Math.round(thresholdPaceSec / (endPct / 100))) : '--:--';
+      const calcFastPace = thresholdSecPerMile > 0 ? formatMMSS(Math.round(thresholdSecPerMile / (startPct / 100))) : '--:--';
+      const calcSlowPace = thresholdSecPerMile > 0 ? formatMMSS(Math.round(thresholdSecPerMile / (endPct / 100))) : '--:--';
 
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -509,7 +516,7 @@ export default function RenderStepRow({
           if (paceMethod === 'Pace' || paceMethod === 'Pace Range') {
             onUpdate(step.id, 'pace', { unit: 'sec', value: newSec });
           } else if (paceMethod.includes('Threshold')) {
-            const pct = thresholdPaceSec > 0 ? Math.round((thresholdPaceSec / newSec) * 100) : 100;
+            const pct = thresholdSecPerMile > 0 ? Math.round((thresholdSecPerMile / newSec) * 100) : 100;
             onUpdate(step.id, 'pace', { unit: '%pace', value: pct });
           }
         }}
@@ -526,3 +533,6 @@ export default function RenderStepRow({
     </div>
   );
 }
+//
+// RenderStepRow.jsx
+//
