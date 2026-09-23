@@ -258,14 +258,20 @@ export default function WorkoutChart({
 
                   const fastPaceStr = formatSecPerMileToStr(range.fastSec);
                   const slowPaceStr = formatSecPerMileToStr(range.slowSec);
-                  const tooltipText = `Planned Step ${idx + 1}: ${intensityFormatted} (${zoneDetails.name}) | Target Range: ${fastPaceStr} - ${slowPaceStr} | Duration: ${durationMins}m`;
+                  
+                  // Construct pace details: collapse to single value if identical
+                  const paceDetails = fastPaceStr === slowPaceStr 
+                    ? fastPaceStr 
+                    : `${fastPaceStr} - ${slowPaceStr}`;
+
+                  const tooltipText = `${durationMins}m @ ${paceDetails}`;
 
                   return (
                     <div
                       key={`plan-${idx}`}
                       title={tooltipText}
                       className="workout-chart-bar-container"
-                      style={{ width: `${widthPct}%` }}
+                      style={{ width: `${widthPct}%`, position: 'relative' }}
                     >
                       {fastHeightPct > slowHeightPct && (
                         <div
@@ -286,6 +292,25 @@ export default function WorkoutChart({
                           backgroundColor: zoneDetails.color
                         }}
                       />
+
+                      {/* Display target pace inside the bar */}
+                      <span
+                        className="workout-chart-bar-label"
+                        style={{
+                          position: 'absolute',
+                          bottom: '4px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          fontSize: '10px',
+                          color: '#ffffff',
+                          fontWeight: 600,
+                          pointerEvents: 'none',
+                          whiteSpace: 'nowrap',
+                          zIndex: 3
+                        }}
+                      >
+                        {fastPaceStr}
+                      </span>
                     </div>
                   );
                 })}
@@ -310,7 +335,7 @@ export default function WorkoutChart({
                   const heightPct = computePaceToHeightPct(range.midSec);
 
                   const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
-                  const tooltipText = `Executed Interval ${idx + 1}: ${intensityFormatted} | Avg Pace: ${paceRangeFormatted} | Duration: ${durationMins}m`;
+                  const tooltipText = `${durationMins}m @ ${paceRangeFormatted}`;
                   
                   const durationMinutes = durationSec / 60;
                   const pathData = generateWavyBarPath(durationMinutes);
