@@ -23,11 +23,9 @@ const FAST_BUFFER_MINUTES = 1;
 // Helper to format total duration seconds into "#m#s" string
 const formatDurationMinsSecs = (totalSec) => {
   const mins = Math.floor(totalSec / 60);
-  const secs = Math.round(totalSec % 60);
-  return `${mins}m${secs}s`;
-};
-
-//
+  const secs = Math.floor(totalSec % 60);
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+};//
 //
 //
 // ---------------------------------------------------------------------------------------------------------------------
