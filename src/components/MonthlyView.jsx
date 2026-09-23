@@ -707,6 +707,7 @@ export default function MonthlyView() {
                       chartHeight={isMobile ? "35px" : "55px"}
                       showWorkoutName={false}
                       showThresholdPace={false}
+                      showYAxis={false} 
                       showYAxisLabels={false}
                       showLegend={false}
                       minimalXAxis={true}
