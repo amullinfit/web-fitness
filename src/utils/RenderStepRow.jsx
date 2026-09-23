@@ -35,6 +35,11 @@ export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, pace
           📏 Distance
         </button>
 
+        {thresholdPaceSec > 0 && (
+          <span style={{ marginLeft: '12px', fontSize: '12px', fontWeight: '600', color: '#495057' }}>
+            Threshold Pace: <span style={{ color: '#007bff' }}>{formatMMSS(thresholdPaceSec)}</span> /mi
+          </span>
+        )}
       </div>
       <div className="pace-method-group">
         <span className="control-label">Pace Method:</span>
@@ -276,7 +281,7 @@ export default function RenderStepRow({
           <MMSSInput valueSec={targetPaceSec} onChange={handlePaceChange} />
         </label>
 
-        <span className="input-label">
+        <span className="dist-display">
           {stepMode === 'time'
             ? `Dist: ${formatDistanceFixed(calculatedMiles)}`
             : `Time: ${formatTime(calculatedTimeSec)}`}
