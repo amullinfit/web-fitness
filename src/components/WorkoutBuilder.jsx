@@ -258,168 +258,193 @@ export default function WorkoutBuilder() {
   };
 
   return (
-    <div className="workout-builder-container">
+    <div className="workout-builder-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       {statusMessage && <div className="status-message-banner">{statusMessage}</div>}
 
-      <div className="builder-header-bar">
-        <h1 className="builder-header-title">Workout Builder</h1>
-        <OptionsMenu
-          mode={mode}
-          onStartCreateNew={handleNewWorkout}
-          onOpenSelectModal={() => setIsEditModalOpen(true)}
-          onOpenCreateFolderModal={() => setIsFolderModalOpen(true)}
-          onOpenSaveModal={handleOpenSaveModal}
-          onDuplicateWorkout={handleDuplicateWorkout}
-          onCopyWorkoutText={handleCopyWorkoutText}
-          onDownloadIcu={handleDownloadIcu}
-          onDownloadZwo={handleDownloadZwo}
-          onCancelEdits={handleCancelEdits}
-          onCloseWorkout={handleCloseWorkout}
-        />
+      {/* --- FIXED / STICKY TOP HEADER & CHART SECTION --- */}
+      <div 
+        className="builder-fixed-header-section" 
+        style={{ 
+          position: 'sticky', 
+          top: 0, 
+          zIndex: 10, 
+          backgroundColor: '#fff', 
+          boxShadow: '0px 2px 5px rgba(0,0,0,0.05)',
+          paddingBottom: '8px'
+        }}
+      >
+        <div className="builder-header-bar">
+          <h1 className="builder-header-title">Workout Builder</h1>
+          <OptionsMenu
+            mode={mode}
+            onStartCreateNew={handleNewWorkout}
+            onOpenSelectModal={() => setIsEditModalOpen(true)}
+            onOpenCreateFolderModal={() => setIsFolderModalOpen(true)}
+            onOpenSaveModal={handleOpenSaveModal}
+            onDuplicateWorkout={handleDuplicateWorkout}
+            onCopyWorkoutText={handleCopyWorkoutText}
+            onDownloadIcu={handleDownloadIcu}
+            onDownloadZwo={handleDownloadZwo}
+            onCancelEdits={handleCancelEdits}
+            onCloseWorkout={handleCloseWorkout}
+          />
+        </div>
+
+        {mode !== 'EMPTY' && (
+          <>
+            <ControlBar
+              workoutMode={workoutMode}
+              setWorkoutMode={setWorkoutMode}
+              paceMethod={paceMethod}
+              setPaceMethod={setPaceMethod}
+              thresholdPaceSec={paces?.threshold_pace || 0} 
+            />
+
+            {/* Workout Chart stuck in position */}
+            <div className="chart-preview-container" style={{ margin: '8px 0', cursor: 'pointer' }}>
+              <WorkoutChart
+                workout={baseWorkout}
+                thresholdPace={paces?.threshold_pace || 400}
+                chartHeight={"200px"}
+              />
+            </div>
+          </>
+        )}
       </div>
 
-      {mode === 'EMPTY' ? (
-        <div className="empty-state-card">
-          <h3>No Workout Selected</h3>
-          <p>Select an existing workout from Options or create a new one to get started.</p>
-          <button className="btn-primary" onClick={handleNewWorkout}>
-            + Create New Workout
-          </button>
-        </div>
-      ) : (
-        <>
-          <ControlBar
-            workoutMode={workoutMode}
-            setWorkoutMode={setWorkoutMode}
-            paceMethod={paceMethod}
-            setPaceMethod={setPaceMethod}
-            thresholdPaceSec={paces?.threshold_pace || 0} 
-          />
-
-          {/* Workout Chart connected directly to live baseWorkout */}
-          <div className="chart-preview-container" style={{ margin: '16px 0', cursor: 'pointer' }}>
-            <WorkoutChart
-              workout={baseWorkout}
-              thresholdPace={paces?.threshold_pace || 400}
-              chartHeight={"200px"}
-            />
-          </div>
-
-          <div className="root-add-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-            <button className="btn-add-step" onClick={() => addStep('run', null)}>
-              + Add Run
-            </button>
-            <button className="btn-add-step" onClick={() => addStep('recovery', null)}>
-              + Add Recovery
-            </button>
-            <button className="btn-add-step" onClick={() => addStep('repeat', null)}>
-              + Add Repeat Block
+      {/* --- SCROLLABLE BODY SECTION --- */}
+      <div 
+        className="builder-scrollable-content" 
+        style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          padding: '16px' 
+        }}
+      >
+        {mode === 'EMPTY' ? (
+          <div className="empty-state-card">
+            <h3>No Workout Selected</h3>
+            <p>Select an existing workout from Options or create a new one to get started.</p>
+            <button className="btn-primary" onClick={handleNewWorkout}>
+              + Create New Workout
             </button>
           </div>
+        ) : (
+          <>
+            {/* Render Step Rows */}
+            <div 
+              className="steps-list-container" 
+              onDragOver={(e) => e.preventDefault()} 
+              onDrop={(e) => handleDrop(e, null, baseWorkout?.workout_doc?.steps?.length || 0)}
+            >
+              {baseWorkout?.workout_doc?.steps?.map((step, index) => (
+                <RenderStepRow
+                  key={step.id || `step-${index}`}
+                  step={step}
+                  index={index}
+                  parentId={null}
+                  workoutMode={workoutMode}
+                  presets={dynamicPresets}
+                  onRemove={removeStep}
+                  onUpdate={updateStepField}
+                  onAddChild={addStep}
+                  onDragStart={handleDragStart}
+                  onDrop={handleDrop}
+                />
+              ))}
+            </div>
 
-          {/* Render Step Rows */}
-          <div 
-            className="steps-list-container" 
-            onDragOver={(e) => e.preventDefault()} 
-            onDrop={(e) => handleDrop(e, null, baseWorkout?.workout_doc?.steps?.length || 0)}
-          >
-            {baseWorkout?.workout_doc?.steps?.map((step, index) => (
-              <RenderStepRow
-                key={step.id || `step-${index}`}
-                step={step}
-                index={index}
-                parentId={null}
-                workoutMode={workoutMode}
-                presets={dynamicPresets}
-                onRemove={removeStep}
-                onUpdate={updateStepField}
-                onAddChild={addStep}
-                onDragStart={handleDragStart}
-                onDrop={handleDrop}
-              />
-            ))}
-          </div>
+            <div className="root-add-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+              <button className="btn-add-step" onClick={() => addStep('run', null)}>
+                + Add Run
+              </button>
+              <button className="btn-add-step" onClick={() => addStep('recovery', null)}>
+                + Add Recovery
+              </button>
+              <button className="btn-add-step" onClick={() => addStep('repeat', null)}>
+                + Add Repeat Block
+              </button>
+            </div>
 
-          {/* Side-by-Side Resizable Textarea Container */}
-          <div 
-                className="json-previews-container" 
-                style={{ 
-                  display: 'flex', 
-                  gap: '16px', 
-                  marginTop: '16px', 
-                  marginBottom: '16px',
-                  resize: 'vertical',
-                  overflow: 'hidden',
-                  height: '200px', // Default starting height
-                  minHeight: '100px',
-                  maxHeight: '800px',
-                  paddingBottom: '8px'
-                }}
+            {/* Side-by-Side Resizable Textarea Container */}
+            <div 
+              className="json-previews-container" 
+              style={{ 
+                display: 'flex', 
+                gap: '16px', 
+                marginTop: '16px', 
+                marginBottom: '16px',
+                resize: 'vertical',
+                overflow: 'hidden',
+                height: '200px', // Default starting height
+                minHeight: '100px',
+                maxHeight: '800px',
+                paddingBottom: '8px'
+              }}
+            >
+              {/* Original Unaltered Document */}
+              <div 
+                className="unaltered-workout-container" 
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}
               >
-                
-          {/* Original Unaltered Document */}
-          <div 
-            className="unaltered-workout-container" 
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}
-          >
-            <label 
-              htmlFor="unaltered-workout-input" 
-              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
-            >
-              Workout Data - Original Unaltered Workout File
-            </label>
-            <textarea
-              id="unaltered-workout-input"
-              readOnly
-              value={JSON.stringify(unalteredWorkout || {}, null, 2)}
-              placeholder="No raw Intervals.icu payload available..."
-              style={{
-                width: '100%',
-                height: '100%',
-                fontFamily: 'monospace',
-                fontSize: '12px',
-                padding: '8px',
-                backgroundColor: '#f4f4f6',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                resize: 'none' // Controlled by parent container
-              }}
-            />
-          </div>
+                <label 
+                  htmlFor="unaltered-workout-input" 
+                  style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+                >
+                  Workout Data - Original Unaltered Workout File
+                </label>
+                <textarea
+                  id="unaltered-workout-input"
+                  readOnly
+                  value={JSON.stringify(unalteredWorkout || {}, null, 2)}
+                  placeholder="No raw Intervals.icu payload available..."
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    fontFamily: 'monospace',
+                    fontSize: '12px',
+                    padding: '8px',
+                    backgroundColor: '#f4f4f6',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    resize: 'none'
+                  }}
+                />
+              </div>
 
-          {/* baseWorkout Live JSON View */}
-          <div 
-            className="unaltered-workout-container" 
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}
-          >
-            <label 
-              htmlFor="baseworkout-input" 
-              style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
-            >
-              Workout Data - baseWorkout (Live Updated)
-            </label>
-            <textarea
-              id="baseworkout-input"
-              readOnly
-              value={JSON.stringify(baseWorkout || {}, null, 2)}
-              placeholder="No baseWorkout payload available..."
-              style={{
-                width: '100%',
-                height: '100%',
-                fontFamily: 'monospace',
-                fontSize: '12px',
-                padding: '8px',
-                backgroundColor: '#f4f4f6',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                resize: 'none' // Controlled by parent container
-              }}
-            />
-          </div>
-        </div>
-
-        </>
-      )}
+              {/* baseWorkout Live JSON View */}
+              <div 
+                className="unaltered-workout-container" 
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}
+              >
+                <label 
+                  htmlFor="baseworkout-input" 
+                  style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', fontSize: '13px' }}
+                >
+                  Workout Data - baseWorkout (Live Updated)
+                </label>
+                <textarea
+                  id="baseworkout-input"
+                  readOnly
+                  value={JSON.stringify(baseWorkout || {}, null, 2)}
+                  placeholder="No baseWorkout payload available..."
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    fontFamily: 'monospace',
+                    fontSize: '12px',
+                    padding: '8px',
+                    backgroundColor: '#f4f4f6',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    resize: 'none'
+                  }}
+                />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Modals */}
       {isFolderModalOpen && (
