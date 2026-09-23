@@ -14,25 +14,19 @@ const formatDistanceFixed = (miles) => {
 // ControlBar Component
 export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, paceMethod, setPaceMethod }) {
   return (
-    <div className="step-presets-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '4px' }}>
-      <div className="mode-toggle-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <label className="input-label" style={{ paddingTop: '2px' }}>
+    <div className="builder-controls-bar" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '4px' }}>
+      <div className="mode-toggle-group" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <label className="input-label">
           Step Mode:
         </label>
-        <button
-          type="button"
-          className={`toggle-btn ${workoutMode === 'time' ? 'active' : ''}`}
-          onClick={() => setWorkoutMode('time')}
+        <select
+          value={workoutMode}
+          onChange={(e) => setWorkoutMode(e.target.value)}
+          className="pace-method-select"
         >
-          ⏱️ Time
-        </button>
-        <button
-          type="button"
-          className={`toggle-btn ${workoutMode === 'distance' ? 'active' : ''}`}
-          onClick={() => setWorkoutMode('distance')}
-        >
-          📏 Distance
-        </button>
+          <option value="time">⏱️ Time</option>
+          <option value="distance">📏 Distance</option>
+        </select>
       </div>
 
       <div className="pace-method-group" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
