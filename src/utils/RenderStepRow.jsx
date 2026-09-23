@@ -281,7 +281,7 @@ export default function RenderStepRow({
           <MMSSInput valueSec={targetPaceSec} onChange={handlePaceChange} />
         </label>
 
-        <span className="dist-display">
+        <span className="input-label">
           {stepMode === 'time'
             ? `Dist: ${formatDistanceFixed(calculatedMiles)}`
             : `Time: ${formatTime(calculatedTimeSec)}`}
