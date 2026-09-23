@@ -36,7 +36,7 @@
         
         // Iterate through pace zone thresholds
         for (let i = 0; i < zones.length; i++) {
-            if (targetPace > zones[i]) {
+            if (targetPace >= zones[i]) {
             return {
                 name:  names[i]  || `Zone ${i + 1}`,
                 color: colors[i] || '#28a745'
