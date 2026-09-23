@@ -340,8 +340,6 @@ export default function WorkoutBuilder() {
               step={step}
               index={index}
               parentId={null}
-              globalWorkoutMode={workoutMode}
-              globalPaceMethod={paceMethod}
               thresholdPaceSec={paces?.threshold_pace || 0}
               presets={dynamicPresets}
               onRemove={removeStep}

@@ -126,11 +126,9 @@ export default function RenderStepRow({
   step,
   index,
   parentId,
-  globalWorkoutMode,
-  globalPaceMethod,
   thresholdPaceSec,
   presets,
-  zones, // Passed from Intervals.icu zone data
+  zones, 
   onRemove,
   onUpdate,
   onAddChild,
@@ -139,9 +137,18 @@ export default function RenderStepRow({
 }) {
   if (!step) return null;
 
+  console.log('[App Debug] RSR: ');
+  console.log('[App Debug] RSR: ');
+  console.log('[App Debug] RSR: ');
+  console.log('[App Debug] RSR: step: ', step);
+  console.log('[App Debug] RSR: threshold: ', thresholdPaceSec);
+
   // Local step modes fallback to step-level property or detected from step.pace
-  const stepMode = step.stepMode || globalWorkoutMode || 'time';
-  const paceMethod = step.paceMethod || detectPaceMethod(step.pace, globalPaceMethod);
+  const stepMode = step.stepMode || 'time';
+  const paceMethod = step.paceMethod || 'pace';
+
+  console.log('[App Debug] RSR: step.stepMode: ', stepMode);
+  console.log('[App Debug] RSR: step.paceMethod: ', paceMethod);
 
   const setStepMode = (newMode) => {
     onUpdate(step.id, 'stepMode', newMode);
@@ -232,8 +239,6 @@ export default function RenderStepRow({
               step={childStep}
               index={childIdx}
               parentId={step.id}
-              globalWorkoutMode={globalWorkoutMode}
-              globalPaceMethod={globalPaceMethod}
               thresholdPaceSec={thresholdPaceSec}
               presets={presets}
               zones={zones}
