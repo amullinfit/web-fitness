@@ -300,9 +300,9 @@ export default function WorkoutChart({
 
                   if (workout.id = 138589939 && [61, 121, 181].includes(durationSecs) ) {
                     switch (durationSecs){
-                      case 61:  console.log('[App Debug] ------ Pace ------'); break;
-                      case 121: console.log('[App Debug] ------ Zone ------'); break;
-                      case 181: console.log('[App Debug] ------ %Pct ------'); break;
+                      case 61:  console.log('[App Debug] ------------ Pace ------------'); break;
+                      case 121: console.log('[App Debug] ------------ Zone ------------'); break;
+                      case 181: console.log('[App Debug] ------------ %Pct ------------'); break;
                     }
                     console.log('[App Debug] step:  ', step.duration, step);
                     console.log('[App Debug] range: ', step.duration, range);

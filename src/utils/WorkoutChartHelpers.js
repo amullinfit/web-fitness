@@ -7,7 +7,7 @@
     const WAVES_PER_MINUTE = 3;     // Number of wave cycles per minute across the top
     const WAVE_AMPLITUDE = 1.5;     // Amplitude in SVG viewBox units (0-100 scale)
     const VERTICAL_WAVE_CYCLES = 4; // Number of vertical wave cycles along the left & right sides
-    const DEFAULT_FALLBACK_THRESHOLD_SEC = 480; // default threshold pace
+    const DEFAULT_FALLBACK_THRESHOLD_SEC = 360; // default threshold pace
 
     //
     //
@@ -273,7 +273,6 @@
         
         const rangePct = extractPaceRange(step);
 
-            // Assuming variables: pace, refThresholdSec, rangePct, zoneService
         const handlers = {
             // rangePct.XX has the sec/mi (495 = 8:15)
             'secs': () => ({
@@ -292,14 +291,18 @@
             }),
 
             // rangePct.XX has the zone #
-            'pace_zone': () => ({
-                slowSec: getZoneDetailsFromZoneNumber(rangePct.start, paces),
-                midSec:  getZoneDetailsFromZoneNumber(rangePct.mid, paces),
-                fastSec: getZoneDetailsFromZoneNumber(rangePct.end, paces),
-                rangePct
-                })
-
-            };
+            'pace_zone': () => {
+                const slowDetails = getZoneDetailsFromZoneNumber(rangePct.start, paces);
+                const midDetails  = getZoneDetailsFromZoneNumber(rangePct.mid,   paces);
+                const fastDetails = getZoneDetailsFromZoneNumber(rangePct.end,   paces);
+            
+                return {
+                    slowSec: slowDetails?.slow,
+                    midSec:  midDetails?.mid,
+                    fastSec: fastDetails?.fast,
+                    rangePct
+                };}
+        };
             
             // Execute handler or run default if unit is missing/unrecognized
             const handler = handlers[step.pace?.units] || (() => ({
@@ -311,5 +314,3 @@
 
         return handler();
     };
-    
-    
