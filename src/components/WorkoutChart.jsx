@@ -106,7 +106,7 @@ export default function WorkoutChart({
       if (parsed.fastSec) stepPacesSec.push(parsed.fastSec);
       if (parsed.slowSec) stepPacesSec.push(parsed.slowSec);
     }
-    if (workout.id = 138589939 ) {
+    if (workout.id = 138589939 && [61, 121, 181].includes(s.duration) ) {
       console.log('[App Debug] s: ', s, parsed);
     }
     });
@@ -298,10 +298,10 @@ export default function WorkoutChart({
 
                   const tooltipText = `${durationFormatted} @ ${paceDetails}`;
 
-                  if (workout.id = 138589939 ) {
-                    console.log('[App Debug] step:  ', step);
-                    console.log('[App Debug] range: ', range);
-                    console.log('[App Debug] zDetails: ', zoneDetails);
+                  if (workout.id = 138589939 && [61, 121, 181].includes(durationSecs) ) {
+                    console.log('[App Debug] step:  ', step.duration, step);
+                    console.log('[App Debug] range: ', step.duration, range);
+                    console.log('[App Debug] zDetails: ', step.duration, zoneDetails);
                     console.log('[App Debug] :');
                   }
               
