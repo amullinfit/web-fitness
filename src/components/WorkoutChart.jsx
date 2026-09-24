@@ -28,11 +28,11 @@ const formatDurationMinsSecs = (totalSec) => {
 };//
 //
 //
-// ---------------------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------
 //
 //
 //
@@ -107,7 +107,7 @@ export default function WorkoutChart({
       if (parsed.slowSec) stepPacesSec.push(parsed.slowSec);
     }
     if (workout.id = 138589939 ) {
-      console.log('[App Debug] s: ', workout.id, s.idx, s.duration, s.pace, parsed);
+      console.log('[App Debug] s: ', s, parsed);
     }
     });
 
@@ -170,7 +170,11 @@ export default function WorkoutChart({
       onMouseLeave={() => setIsChartHovered(false)}
       onTouchStart={() => setIsChartHovered(true)}
     >
+
+      {/* ------------------------------------------------------------------------------------------------ */}
       {/* Top Header Row */}
+      {/* ------------------------------------------------------------------------------------------------ */}
+
       {showTopBar && (
         <div className="workout-chart-top-bar">
           {isWorkoutNameVisible && (
@@ -228,7 +232,18 @@ export default function WorkoutChart({
         </div>
       )}
 
+
+      {/* ------------------------------------------------------------------------------------------------ */}
+      {/* MAIN CHART AREA */}
+      {/* ------------------------------------------------------------------------------------------------ */}
+
+
       <div className="workout-chart-wrapper">
+
+        {/* -------------------------------------------------------------------------------------- */}
+        {/* Y-AXIS LABELS */}
+        {/* -------------------------------------------------------------------------------------- */}
+
         {renderYAxis && (
           <div className="workout-chart-yaxis" style={{ height: chartHeight }}>
             {yTicks.map((tick, idx) => (
@@ -245,7 +260,13 @@ export default function WorkoutChart({
 
         <div className="workout-chart-main">
           <div className="workout-chart-tracks" style={{ height: chartHeight }}>
-            {/* PLANNED BARS LAYER */}
+
+
+            {/* -------------------------------------------------------------------------------------- */}
+            {/* PLANNED WORKOUT PRESENTATION */}
+            {/* -------------------------------------------------------------------------------------- */}
+
+
             {plannedList.length > 0 && (
               <div 
                 className="workout-chart-bars track-planned" 
@@ -277,6 +298,13 @@ export default function WorkoutChart({
 
                   const tooltipText = `${durationFormatted} @ ${paceDetails}`;
 
+                  if (workout.id = 138589939 ) {
+                    console.log('[App Debug] step:  ', step);
+                    console.log('[App Debug] range: ', range);
+                    console.log('[App Debug] zDetails: ', zoneDetails);
+                    console.log('[App Debug] :');
+                  }
+              
                   return (
                     <div
                       key={`plan-${idx}`}
@@ -330,7 +358,12 @@ export default function WorkoutChart({
               </div>
             )}
 
-            {/* EXECUTED BARS LAYER */}
+
+            {/* -------------------------------------------------------------------------------------- */}
+            {/* EXECUTED WORKOUT PRESENTATION */}
+            {/* -------------------------------------------------------------------------------------- */}
+
+
             {executedList.length > 0 && (
               <div 
                 className="workout-chart-bars track-executed" 
@@ -382,7 +415,11 @@ export default function WorkoutChart({
             )}
           </div>
 
-          <div className="workout-chart-xaxis">
+            {/* -------------------------------------------------------------------------------------- */}
+            {/* X-AXIS LABELS */}
+            {/* -------------------------------------------------------------------------------------- */}
+
+            <div className="workout-chart-xaxis">
             {isMinimalXAxis ? (
               <>
                 <span>0m</span>
@@ -400,7 +437,10 @@ export default function WorkoutChart({
         </div>
       </div>
 
-      {/* Hover tooltip for hidden fields */}
+      {/* -------------------------------------------------------------------------------------- */}
+      {/* HOVER TOOLTIPS */}
+      {/* -------------------------------------------------------------------------------------- */}
+
       {isHoverDetailsEnabled && hasHiddenDetails && isChartHovered && (
         <div 
           className="workout-chart-hover-tooltip"
