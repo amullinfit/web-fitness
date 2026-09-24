@@ -56,9 +56,11 @@ export default function WorkoutChart({
   // 2. Consume Paces Context
   const { paces, loading: pacesLoading } = usePaces();
 
-  if (workout.start_date_local.split('T')[0] >= '2026-10-08') {
+  if (workout.start_date_local.split('T')[0] = '2026-10-08') {
+    console.log('[App Debug] : ');
     console.log('[App Debug] workout: ', workout);
     console.log('[App Debug] paces: ', paces);
+    console.log('[App Debug] : ');
   }
 
   const [executedOnTop, setExecutedOnTop] = useState(true);
@@ -89,17 +91,8 @@ export default function WorkoutChart({
   const totalDurationSec = Math.max(totalPlannedSec, totalExecutedSec, 1);
   const totalDurationMins = Math.round(totalDurationSec / 60);
 
-  // Retrieve threshold pace directly from paces context
-  // threshold_pace is in m/s (3.25150) for 8:15 pace
-  // run_pace_sec is in seconds (495) for 8:15 pace
-  // effectivethreshold will be one of these
-  const effectiveThreshold = paces?.threshold_pace || paces?.run_pace_sec;
-
   // thresholdSecPerMile will result in 495 for 8:15 pace.
-  // effectiveThreshold will either be 3.25150 or will already be 495
-  const thresholdSecPerMile = effectiveThreshold && effectiveThreshold > 0
-    ? (effectiveThreshold < 15 ? speedToPaceSeconds(effectiveThreshold) : effectiveThreshold)
-    : null;
+  const thresholdSecPerMile = paces?.run_pace_sec;
 
   const thresholdDisplayStr = thresholdSecPerMile ? formatSecPerMileToStr(thresholdSecPerMile) : "Not Set";
 
@@ -112,7 +105,11 @@ export default function WorkoutChart({
       if (parsed.fastSec) stepPacesSec.push(parsed.fastSec);
       if (parsed.slowSec) stepPacesSec.push(parsed.slowSec);
     }
-  });
+    if (workout.start_date_local.split('T')[0] = '2026-10-08') {
+      console.log('[App Debug] s: ', s.idx, s.duration, s.pace, parsed);
+    }
+    });
+
 
   let yTicks = [];
   let yFastestSec = 0;
