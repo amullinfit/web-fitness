@@ -520,21 +520,6 @@ export default function RenderStepRow({
         presets={presets}
         targetPaceSec={targetPaceSec}
         onSelectPace={(newSec) => {
-          if (paceMethod === 'Pace' || paceMethod === 'Pace Range') 
-            { onUpdate(step.id, 'pace', { units: 'secs', value: newSec });
-            } 
-          else if (paceMethod.includes('Threshold')) 
-            {const pct = thresholdSecPerMile > 0 ? Math.round((thresholdSecPerMile / newSec) * 100) : 100;
-            onUpdate(step.id, 'pace', { unit: '%pace', value: pct });
-            }
-        }}
-      />
-
-      {/* Dynamic Presets */}
-      <StepPresets
-        presets={presets}
-        targetPaceSec={targetPaceSec}
-        onSelectPace={(newSec) => {
           const method = (paceMethod || '').toLowerCase();
 
           if (method.includes('pace')) {
