@@ -38,132 +38,6 @@ const detectPaceMethod = (stepPace, fallbackMethod) => {
   return fallbackMethod || 'Pace';
 };
 
-// ControlBar Component
-export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, paceMethod, setPaceMethod }) {
-  return (
-    <div className="step-controls-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '4px' }}>
-      <div className="mode-toggle-group" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <label className="input-label">
-          Step Mode:
-        </label>
-        <select
-          value={workoutMode}
-          onChange={(e) => setWorkoutMode(e.target.value)}
-          className="pace-method-select"
-        >
-          <option value="time">⏱️ Time</option>
-          <option value="distance">📏 Distance</option>
-        </select>
-      </div>
-
-      <div className="pace-method-group" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <label className="input-label">
-          Pace Method:
-        </label>
-        <select
-          value={paceMethod}
-          onChange={(e) => setPaceMethod(e.target.value)}
-          className="pace-method-select"
-        >
-          <option value="Pace">⏱️ Pace</option>
-          <option value="Pace Range">⏱️ Pace Range</option>
-          <option value="Zone">📶 Zone</option>
-          <option value="Zone Range">📶 Zone Range</option>
-          <option value="Threshold %">🎯 Threshold %</option>
-          <option value="Threshold % Range">🎯 Threshold % Range</option>
-        </select>
-      </div>
-    </div>
-  );
-}
-
-// Dynamic Preset buttons 
-function StepPresets({
-  presets,
-  targetPaceSec,
-  paceMethod,
-  stepId,
-  thresholdSecPerMile,
-  zones,
-  onUpdate
-}) {
-  const presetList = presets || [];
-  if (presetList.length === 0) return null;
-
-  const handleSelectPace = (newSec) => {
-    const method = (paceMethod || '').toLowerCase();
-
-    if (method.includes('pace')) {
-      onUpdate(stepId, 'pace', { units: 'secs', value: newSec });
-    } else if (method.includes('threshold')) {
-      const pct = thresholdSecPerMile > 0 ? Math.round((thresholdSecPerMile / newSec) * 100) : 100;
-      onUpdate(stepId, 'pace', { unit: '%pace', value: pct });
-    } else if (method.includes('zone')) {
-      // Find matching zone key (e.g. "Z1", "Z2") based on selected pace
-      const matchedZoneKey = Object.keys(zones || {}).find((key) => {
-        const z = zones[key];
-        if (z?.minSec && z?.maxSec) {
-          return newSec <= z.minSec && newSec >= z.maxSec; // faster pace = lower sec count
-        }
-        return false;
-      }) || 'Z2';
-
-      onUpdate(stepId, 'pace', {
-        unit: 'zone',
-        value: matchedZoneKey
-      });
-    }
-  };
-
-  const row1 = presetList.slice(0, 4);
-  const row2 = presetList.slice(4);
-
-  const renderButton = (preset) => {
-    const isSelected = Math.abs(targetPaceSec - preset.targetPaceSec) < 3;
-    return (
-      <button
-        key={preset.label}
-        type="button"
-        onClick={() => handleSelectPace(preset.targetPaceSec)}
-        style={{
-          padding: '2px 8px',
-          fontSize: '11px',
-          fontWeight: '600',
-          borderRadius: '12px',
-          border: `1px solid ${preset.color || '#ced4da'}`,
-          backgroundColor: isSelected ? preset.color : '#ffffff',
-          color: isSelected ? '#ffffff' : (preset.color || '#333'),
-          cursor: 'pointer',
-          transition: 'all 0.15s ease',
-          whiteSpace: 'nowrap',
-          textAlign: 'center',
-          width: '100%'
-        }}
-      >
-        {preset.label} ({preset.displayPace || formatMMSS(preset.targetPaceSec)})
-      </button>
-    );
-  };
-
-  return (
-    <div className="step-presets-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '4px' }}>
-      <label className="input-label" style={{ paddingTop: '2px' }}>
-        Presets:
-      </label>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-          {row1.map(renderButton)}
-        </div>
-        {row2.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-            {row2.map(renderButton)}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function RenderStepRow({
   step,
   index,
@@ -182,16 +56,9 @@ export default function RenderStepRow({
   // Convert threshold pace from meters/sec to sec/mile
   const thresholdSecPerMile = getThresholdSecPerMile(thresholdPaceSec);
 
-  console.log('[App Debug] RSR: step: ', step);
-  console.log('[App Debug] RSR: threshold (m/s): ', thresholdPaceSec);
-  console.log('[App Debug] RSR: threshold (sec/mi): ', thresholdSecPerMile);
-
   // Default to 'time' and 'Pace' if unspecified
   const stepMode = step.stepMode || 'time';
   const paceMethod = step.paceMethod || detectPaceMethod(step.pace, 'Pace');
-
-  console.log('[App Debug] RSR: step.stepMode: ', stepMode);
-  console.log('[App Debug] RSR: step.paceMethod: ', paceMethod);
 
   const setStepMode = (newMode) => {
     onUpdate(step.id, 'stepMode', newMode);
@@ -335,10 +202,9 @@ export default function RenderStepRow({
 
   const calculatedMiles = targetPaceSec > 0 ? durationSec / targetPaceSec : 0;
   const calculatedTimeSec = distanceMiles * targetPaceSec;
-
-  // Render pace controls based on Method
   const zoneList = zones || presets || [];
 
+  // Render pace controls based on Method
   const renderPaceInputControls = () => {
     const isRange = paceMethod.includes('Range');
 
@@ -501,7 +367,7 @@ export default function RenderStepRow({
     return null;
   };
 
-  // Helper function for rendering step row top inputs
+  // Inline helper: Step inputs row
   const renderStepInputs = () => {
     return (
       <div className="step-row-inputs" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
@@ -543,6 +409,123 @@ export default function RenderStepRow({
     );
   };
 
+  // Inline helper: Step preset buttons
+  const renderStepPresets = () => {
+    const presetList = presets || [];
+    if (presetList.length === 0) return null;
+
+    const handleSelectPace = (newSec) => {
+      const method = (paceMethod || '').toLowerCase();
+
+      if (method.includes('pace')) {
+        onUpdate(step.id, 'pace', { units: 'secs', value: newSec });
+      } else if (method.includes('threshold')) {
+        const pct = thresholdSecPerMile > 0 ? Math.round((thresholdSecPerMile / newSec) * 100) : 100;
+        onUpdate(step.id, 'pace', { unit: '%pace', value: pct });
+      } else if (method.includes('zone')) {
+        const matchedZoneKey = Object.keys(zones || {}).find((key) => {
+          const z = zones[key];
+          if (z?.minSec && z?.maxSec) {
+            return newSec <= z.minSec && newSec >= z.maxSec;
+          }
+          return false;
+        }) || 'Z2';
+
+        onUpdate(step.id, 'pace', {
+          unit: 'zone',
+          value: matchedZoneKey
+        });
+      }
+    };
+
+    const row1 = presetList.slice(0, 4);
+    const row2 = presetList.slice(4);
+
+    const renderButton = (preset) => {
+      const isSelected = Math.abs(targetPaceSec - preset.targetPaceSec) < 3;
+      return (
+        <button
+          key={preset.label}
+          type="button"
+          onClick={() => handleSelectPace(preset.targetPaceSec)}
+          style={{
+            padding: '2px 8px',
+            fontSize: '11px',
+            fontWeight: '600',
+            borderRadius: '12px',
+            border: `1px solid ${preset.color || '#ced4da'}`,
+            backgroundColor: isSelected ? preset.color : '#ffffff',
+            color: isSelected ? '#ffffff' : (preset.color || '#333'),
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
+            textAlign: 'center',
+            width: '100%'
+          }}
+        >
+          {preset.label} ({preset.displayPace || formatMMSS(preset.targetPaceSec)})
+        </button>
+      );
+    };
+
+    return (
+      <div className="step-presets-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '4px' }}>
+        <label className="input-label" style={{ paddingTop: '2px' }}>
+          Presets:
+        </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+            {row1.map(renderButton)}
+          </div>
+          {row2.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+              {row2.map(renderButton)}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Inline helper: Mode and Pace Method selector bar
+  const renderControlBar = () => {
+    return (
+      <div className="step-controls-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '4px' }}>
+        <div className="mode-toggle-group" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <label className="input-label">
+            Step Mode:
+          </label>
+          <select
+            value={stepMode}
+            onChange={(e) => setStepMode(e.target.value)}
+            className="pace-method-select"
+          >
+            <option value="time">⏱️ Time</option>
+            <option value="distance">📏 Distance</option>
+          </select>
+        </div>
+
+        <div className="pace-method-group" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <label className="input-label">
+            Pace Method:
+          </label>
+          <select
+            value={paceMethod}
+            onChange={(e) => setPaceMethod(e.target.value)}
+            className="pace-method-select"
+          >
+            <option value="Pace">⏱️ Pace</option>
+            <option value="Pace Range">⏱️ Pace Range</option>
+            <option value="Zone">📶 Zone</option>
+            <option value="Zone Range">📶 Zone Range</option>
+            <option value="Threshold %">🎯 Threshold %</option>
+            <option value="Threshold % Range">🎯 Threshold % Range</option>
+          </select>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       className="step-row-container"
@@ -556,24 +539,10 @@ export default function RenderStepRow({
       {renderStepInputs()}
 
       {/* Dynamic Presets */}
-      <StepPresets
-        presets={presets}
-        targetPaceSec={targetPaceSec}
-        paceMethod={paceMethod}
-        stepId={step.id}
-        thresholdSecPerMile={thresholdSecPerMile}
-        zones={zones}
-        onUpdate={onUpdate}
-      />
+      {renderStepPresets()}
 
-      {/* ControlBar positioned below presets */}
-      <ControlBar
-        workoutMode={stepMode}
-        setWorkoutMode={setStepMode}
-        paceMethod={paceMethod}
-        setPaceMethod={setPaceMethod}
-        thresholdPaceSec={thresholdPaceSec}
-      />
+      {/* Mode & Pace Method Controls */}
+      {renderControlBar()}
     </div>
   );
 }
