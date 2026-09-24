@@ -51,6 +51,8 @@ export default function WorkoutChart({
   showBarPace = false
 }) {
 
+  console.log('[App Debug] Chart: ', workout);
+  
   const clipId = useId();
 
   // 2. Consume Paces Context

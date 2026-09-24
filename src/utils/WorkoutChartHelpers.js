@@ -309,9 +309,6 @@
             rangePct: { start: 100, end: 100, mid: 100 }
             }));
 
-            console.log('[App Debug] WCH-ExtractPaceRangeInSeconds: ', 
-                        step, rangePct, handler());
-
         return handler();
     };
     
