@@ -3,7 +3,7 @@
 //
 import React from 'react';
 import MMSSInput from './MMSSInput';
-import { formatTime, formatMMSS,   calculateDynamicPreset } from './WorkoutBuilderHelpers.js';
+import { formatTime, formatMMSS,   calculateDynamicPresets } from './WorkoutBuilderHelpers.js';
 
 const METERS_PER_MILE = 1609.344;
 
