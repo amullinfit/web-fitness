@@ -56,7 +56,7 @@ export default function WorkoutChart({
   // 2. Consume Paces Context
   const { paces, loading: pacesLoading } = usePaces();
 
-  if (workout.start_date_local.split('T')[0] = '2026-10-08') {
+  if (workout.id = 138589939 ) {
     console.log('[App Debug] : ');
     console.log('[App Debug] workout: ', workout);
     console.log('[App Debug] paces: ', paces);
