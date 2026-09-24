@@ -56,8 +56,8 @@ export default function RenderStepRow({
 
   // Zones and colors
   const dynamicPresets = useMemo(
-    () => calculateDynamicPresets(paces, paces?.threshold_pace || 360, paceMethod),
-    [paces, paceMethod]
+    () => calculateDynamicPresets(paceDetails, paceDetails?.threshold_pace || 360, paceMethod),
+    [paceDetails, paceMethod]
   );
 
   const setStepMode = (newMode) => {
