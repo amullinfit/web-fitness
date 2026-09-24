@@ -116,7 +116,7 @@ export default function WorkoutBuilder() {
 
   // Presets & Totals
   const dynamicPresets = useMemo(
-    () => calculateDynamicPresets(paces, paces?.threshold || 360, paceMethod),
+    () => calculateDynamicPresets(paces, paces?.threshold_pace || 360, paceMethod),
     [paces, paceMethod]
   );
 
@@ -346,8 +346,7 @@ export default function WorkoutBuilder() {
                       step={step}
                       index={index}
                       parentId={null}
-                      thresholdPaceSec={paces?.threshold_pace || 0}
-                      presets={dynamicPresets}
+                      paceDetails={paces}
                       onRemove={removeStep}
                       onUpdate={updateStepField}
                       onAddChild={addStep}

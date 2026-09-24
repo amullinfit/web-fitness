@@ -128,6 +128,7 @@ export const formatTime = (totalSeconds) => {
   };
   
   export const formatMMSS = (totalSeconds) => {
+    // sec/mi -> mm:ss  (ie, 495 -> 8:15)
     const sec = Math.max(0, Math.round(totalSeconds || 0));
     const mins = Math.floor(sec / 60);
     const secs = sec % 60;
@@ -135,6 +136,7 @@ export const formatTime = (totalSeconds) => {
   };
   
   export const parseMMSS = (str) => {
+    // mm:ss -> sec/mi (ie, 8:15 -> 495)
     if (!str) return 0;
     let cleanStr = String(str).trim().replace(/\/mi|\/km/g, '');
     if (cleanStr.includes(':')) {
@@ -152,8 +154,12 @@ export const formatTime = (totalSeconds) => {
     return mins * 60 + Math.min(secs, 59);
   };
   
-  // Converts string "8:15/mi" or numeric m/s to total seconds per mile
   export const convertToPaceSec = (val) => {
+    // Converts pace to sec/mi (495)
+    // (ie, 8:15 -> 495)
+    // (ie, 3.2512 - > 495)
+    // (ie, 495 -> 495)
+    // (ie w)
     if (!val) return DEFAULT_THRESHOLD;
     if (typeof val === 'string') {
       return parseMMSS(val);
@@ -203,19 +209,19 @@ export const formatTime = (totalSeconds) => {
       }));
     }
 
-    return paces.preset_colors.map((preset) => {
+    return paces.preset_colors.map((p) => {
       // Extract properties directly from the preset_colors object
-      const label = preset.zone_name || `Zone ${preset.zone}`;
-      const color = preset.color || '#cccccc';
-      const colorLabel = preset.label || '';
+      const label = p.zone_name || `Zone ${p.zone}`;
+      const color = p.color || '#cccccc';
+      const colorLabel = p.label || 'n/a';
       
       // Determine the base pace seconds (prefer pace_val_sec from JSON if present)
-      let paceSec = preset.pace_val_sec;
+      let paceSec = p.pace_val_sec;
       if (!paceSec) {
-        if (preset.pace_fast) {
-          paceSec = parseMMSS(preset.pace_fast);
-        } else if (preset.pace_value_num) {
-          paceSec = convertToPaceSec(preset.pace_value_num);
+        if (p.pace_fast) {
+          paceSec = parseMMSS(p.pace_fast);
+        } else if (p.pace_value_num) {
+          paceSec = convertToPaceSec(p.pace_value_num);
         } else {
           paceSec = thresholdPaceSec;
         }
@@ -225,10 +231,10 @@ export const formatTime = (totalSeconds) => {
       let displayPace = formatMMSS(paceSec);
       
       if (paceMethod === 'Threshold %') {
-        const pct = preset.pace_zone_pct || Math.round((thresholdPaceSec / paceSec) * 100);
+        const pct = p.pace_zone_pct || Math.round((thresholdPaceSec / paceSec) * 100);
         displayPace = `${pct}%`;
-      } else if (paceMethod?.includes('Range') && preset.pace_slow && preset.pace_fast) {
-        displayPace = `${preset.pace_slow}-${preset.pace_fast}`;
+      } else if (paceMethod?.includes('Range') && p.pace_slow && p.pace_fast) {
+        displayPace = `${p.pace_slow}-${p.pace_fast}`;
       } else if (paceMethod?.includes('Range')) {
         const lowPace = Math.round(paceSec * 0.97);
         const highPace = Math.round(paceSec * 1.03);
@@ -236,15 +242,15 @@ export const formatTime = (totalSeconds) => {
       }
 
       return {
-        zone: preset.zone_name,
+        zone: p.zone_name,
         label,
         displayPace,
         targetPaceSec: paceSec,
         color,
         colorLabel,
-        paceSlow: preset.pace_slow,
-        paceFast: preset.pace_fast,
-        pct: preset.pace_zone_pct
+        paceSlow: p.pace_slow,
+        paceFast: p.pace_fast,
+        pct: p.pace_zone_pct
       };
     });
   }

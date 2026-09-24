@@ -3,7 +3,7 @@
 //
 import React from 'react';
 import MMSSInput from './MMSSInput';
-import { formatTime, formatMMSS } from './WorkoutBuilderHelpers.js';
+import { formatTime, formatMMSS,   calculateDynamicPreset } from './WorkoutBuilderHelpers.js';
 
 const METERS_PER_MILE = 1609.344;
 
@@ -13,12 +13,6 @@ const formatDistanceFixed = (miles) => {
   return `${val.toFixed(2)} mi`;
 };
 
-// Helper to convert m/s threshold pace to sec/mi
-const getThresholdSecPerMile = (thresholdPaceMetersPerSec) => {
-  const mPerSec = Number(thresholdPaceMetersPerSec);
-  if (!mPerSec || mPerSec <= 0) return 0;
-  return METERS_PER_MILE / mPerSec;
-};
 
 // Helper to determine Pace Method from step.pace schema
 const detectPaceMethod = (stepPace, fallbackMethod) => {
@@ -42,9 +36,7 @@ export default function RenderStepRow({
   step,
   index,
   parentId,
-  thresholdPaceSec, // Passed as meters/sec from API
-  presets,
-  zones, 
+  paceDetails,
   onRemove,
   onUpdate,
   onAddChild,
@@ -53,20 +45,28 @@ export default function RenderStepRow({
 }) {
   if (!step) return null;
 
-  // Convert threshold pace from meters/sec to sec/mile
-  const thresholdSecPerMile = getThresholdSecPerMile(thresholdPaceSec);
+  // Save thresholdpace as sec/mile (495)
+  const thresholdSecPerMile = paceDetails?.run_pace_sec;
 
   // Default to 'time' and 'Pace' if unspecified
   const stepMode = step.stepMode || 'time';
   const paceMethod = step.paceMethod || detectPaceMethod(step.pace, 'Pace');
+
+  const zoneList = paceDetails?.preset_colors;
+
+  // Zones and colors
+  const dynamicPresets = useMemo(
+    () => calculateDynamicPresets(paces, paces?.threshold_pace || 360, paceMethod),
+    [paces, paceMethod]
+  );
 
   const setStepMode = (newMode) => {
     onUpdate(step.id, 'stepMode', newMode);
   };
 
   // Convert step values appropriately when pace method changes
-  const setPaceMethod = (newMethod) => {
-    onUpdate(step.id, 'paceMethod', newMethod);
+  const setPaceMethod = (newPaceMethod) => {
+    onUpdate(step.id, 'paceMethod', newPaceMethod);
     let currentSec = 0;
 
     if (typeof step.pace === 'object' && step.pace !== null) {
@@ -77,7 +77,7 @@ export default function RenderStepRow({
 
     let newPaceObj = {};
 
-    switch (newMethod) {
+    switch (newPaceMethod) {
       case 'Pace':
         newPaceObj = { unit: 'sec', value: currentSec || 480 };
         break;
@@ -153,9 +153,7 @@ export default function RenderStepRow({
               step={childStep}
               index={childIdx}
               parentId={step.id}
-              thresholdPaceSec={thresholdPaceSec}
-              presets={presets}
-              zones={zones}
+              paceDetails={paceDetails}
               onRemove={onRemove}
               onUpdate={onUpdate}
               onAddChild={onAddChild}
@@ -202,7 +200,6 @@ export default function RenderStepRow({
 
   const calculatedMiles = targetPaceSec > 0 ? durationSec / targetPaceSec : 0;
   const calculatedTimeSec = distanceMiles * targetPaceSec;
-  const zoneList = zones || presets || [];
 
   // Render pace controls based on Method
   const renderPaceInputControls = () => {
@@ -307,7 +304,7 @@ export default function RenderStepRow({
       );
     }
 
-    // 3. Zone or Zone Range (Dropdown selects from intervals.icu zones)
+    // 3. Zone or Zone Range 
     if (paceMethod === 'Zone' || paceMethod === 'Zone Range') {
       const renderZoneOption = (z) => {
         const displayPace = z.displayPace || (z.targetPaceSec ? formatMMSS(z.targetPaceSec) : '');
@@ -411,7 +408,7 @@ export default function RenderStepRow({
 
   // Inline helper: Step preset buttons
   const renderStepPresets = () => {
-    const presetList = presets || [];
+    const presetList = dynamicPresets || [];
     if (presetList.length === 0) return null;
 
     const handleSelectPace = (newSec) => {
@@ -419,10 +416,12 @@ export default function RenderStepRow({
 
       if (method.includes('pace')) {
         onUpdate(step.id, 'pace', { units: 'secs', value: newSec });
-      } else if (method.includes('threshold')) {
+      } 
+      else if (method.includes('threshold')) {
         const pct = thresholdSecPerMile > 0 ? Math.round((thresholdSecPerMile / newSec) * 100) : 100;
         onUpdate(step.id, 'pace', { unit: '%pace', value: pct });
-      } else if (method.includes('zone')) {
+      } 
+      else if (method.includes('zone')) {
         const matchedZoneKey = Object.keys(zones || {}).find((key) => {
           const z = zones[key];
           if (z?.minSec && z?.maxSec) {
@@ -430,7 +429,6 @@ export default function RenderStepRow({
           }
           return false;
         }) || 'Z2';
-
         onUpdate(step.id, 'pace', {
           unit: 'zone',
           value: matchedZoneKey
