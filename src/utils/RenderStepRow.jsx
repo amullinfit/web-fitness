@@ -192,7 +192,7 @@ export default function RenderStepRow({
 
   console.log('[App Debug] RSR: step.stepMode: ', stepMode);
   console.log('[App Debug] RSR: step.paceMethod: ', paceMethod);
-  
+
   const setStepMode = (newMode) => {
     onUpdate(step.id, 'stepMode', newMode);
   };
@@ -201,7 +201,7 @@ export default function RenderStepRow({
   const setPaceMethod = (newMethod) => {
     onUpdate(step.id, 'paceMethod', newMethod);
     let currentSec = 0;
-    
+
     if (typeof step.pace === 'object' && step.pace !== null) {
       currentSec = step.pace.value ?? step.pace.start ?? 0;
     } else {
@@ -501,16 +501,9 @@ export default function RenderStepRow({
     return null;
   };
 
-  return (
-    <div
-      className="step-row-container"
-      draggable
-      onDragStart={(e) => onDragStart && onDragStart(e, step, parentId)}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => onDrop && onDrop(e, parentId, index)}
-      style={{ marginBottom: '12px', border: '1px solid #e0e0e0', padding: '10px', borderRadius: '8px' }}
-    >
-      {/* Step Inputs */}
+  // Helper function for rendering step row top inputs
+  const renderStepInputs = () => {
+    return (
       <div className="step-row-inputs" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
         <span className="drag-handle">⣿</span>
         <span className="step-type-label">{step.intensity || step.type || 'step'}</span>
@@ -547,6 +540,20 @@ export default function RenderStepRow({
 
         <button onClick={() => onRemove(step.id)} className="btn-remove">✕</button>
       </div>
+    );
+  };
+
+  return (
+    <div
+      className="step-row-container"
+      draggable
+      onDragStart={(e) => onDragStart && onDragStart(e, step, parentId)}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => onDrop && onDrop(e, parentId, index)}
+      style={{ marginBottom: '12px', border: '1px solid #e0e0e0', padding: '10px', borderRadius: '8px' }}
+    >
+      {/* Step Inputs */}
+      {renderStepInputs()}
 
       {/* Dynamic Presets */}
       <StepPresets
@@ -570,6 +577,3 @@ export default function RenderStepRow({
     </div>
   );
 }
-//
-// RenderStepRow.jsx
-//
