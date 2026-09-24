@@ -298,7 +298,7 @@ export default function WorkoutChart({
 
                   const tooltipText = `${durationFormatted} @ ${paceDetails}`;
 
-                  if (workout.id = 138589939 && [61, 121, 181].includes(durationSecs) ) {
+                  if (workout.id = 138589939 && 60, [61, 121, 181].includes(durationSecs) ) {
                     switch (durationSecs){
                       case 61:  console.log('[App Debug] ------------ Pace ------------'); break;
                       case 121: console.log('[App Debug] ------------ Zone ------------'); break;
