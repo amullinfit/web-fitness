@@ -106,7 +106,7 @@ export default function WorkoutChart({
       if (parsed.fastSec) stepPacesSec.push(parsed.fastSec);
       if (parsed.slowSec) stepPacesSec.push(parsed.slowSec);
     }
-    if (workout.id = 138589939 && [61, 121, 181].includes(s.duration) ) {
+    if (workout.id = 138589939 && [60, 61, 121, 181].includes(s.duration) ) {
       console.log('[App Debug] s: ', s, parsed);
     }
     });
