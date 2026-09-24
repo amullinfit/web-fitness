@@ -58,8 +58,9 @@ export default function WorkoutChart({
 
   if (workout.id = 138589939 ) {
     console.log('[App Debug] : ');
-    console.log('[App Debug] workout: ', workout);
-    console.log('[App Debug] paces: ', paces);
+    console.log('[App Debug] : id: ', workout.id);
+    console.log('[App Debug] workout: ', workout.id, workout);
+    console.log('[App Debug] paces: ', workout.id, paces);
     console.log('[App Debug] : ');
   }
 
@@ -105,8 +106,8 @@ export default function WorkoutChart({
       if (parsed.fastSec) stepPacesSec.push(parsed.fastSec);
       if (parsed.slowSec) stepPacesSec.push(parsed.slowSec);
     }
-    if (workout.start_date_local.split('T')[0] = '2026-10-08') {
-      console.log('[App Debug] s: ', s.idx, s.duration, s.pace, parsed);
+    if (workout.id = 138589939 ) {
+      console.log('[App Debug] s: ', workout.id, s.idx, s.duration, s.pace, parsed);
     }
     });
 
