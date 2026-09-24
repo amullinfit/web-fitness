@@ -240,14 +240,14 @@
         }
       
         return { start: 100, end: 100, mid: 100 };
-      };
+    };
       
-      //
-      // thresholdSecPerMile is the # of seconds to run a mile at threshold (495 for 8:15 pace)
-      // output of this is the fast, slow and mid speed (as sec/mi aka 495 for 8:15) and % ranges
-      //
-      // output is returned in sec/mi (aka 495 for 8:15 threshold)
-      export const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
+    //
+    // thresholdSecPerMile is the # of seconds to run a mile at threshold (495 for 8:15 pace)
+    // output of this is the fast, slow and mid speed (as sec/mi aka 495 for 8:15) and % ranges
+    //
+    // output is returned in sec/mi (aka 495 for 8:15 threshold)
+    export const extractPaceRangeInSeconds = (step, thresholdSecPerMile) => {
         if (!step) return null;
 
         // 1. Consume context
@@ -256,31 +256,24 @@
         // if it is an executed step vs planned and a ride, it will have step.weighted_average_watts
         const rawWatts = parseFloat(step.average_watts ?? step.weighted_average_watts);
         if (!isNaN(rawWatts) && rawWatts > 0) {
-          return { slowSec: rawWatts, midSec: rawWatts, fastSec: rawWatts, rangePct: { start: 100, mid: 100, end: 100 } };
+            return { slowSec: rawWatts, midSec: rawWatts, fastSec: rawWatts, rangePct: { start: 100, mid: 100, end: 100 } };
         }
-      
+        
         // it if is an executed step vs planned but not a ride, it will have step.average_speed as m/s (3.25150 for 8:15 pace)
         const rawSpeed = parseFloat(step.average_speed ?? step.speed);
         if (!isNaN(rawSpeed) && rawSpeed > 0) {
             // convert 3.25150 to 495 for 8:15 pace
-          const sec = speedToPaceSeconds(rawSpeed);
-          return { slowSec: sec, midSec: sec, fastSec: sec, rangePct: { start: 100, mid: 100, end: 100 } };
+            const sec = speedToPaceSeconds(rawSpeed);
+            return { slowSec: sec, midSec: sec, fastSec: sec, rangePct: { start: 100, mid: 100, end: 100 } };
         }
-      
-        // if step.pace is a number, if it is m/s (3.25150) it will be converted to s/mi (495) for 8:15 pace
-        // I don't think this happens as pace is a collection of elements, not one itself
-        if (typeof step.pace === 'number' && step.pace > 0) {
-          const sec = step.pace < 15 ? speedToPaceSeconds(step.pace) : step.pace;
-          return { slowSec: sec, midSec: sec, fastSec: sec, rangePct: { start: 100, mid: 100, end: 100 } };
-        }
-      
+        
         const refThresholdSec = (thresholdSecPerMile && thresholdSecPerMile > 0)
-          ? thresholdSecPerMile
-          : DEFAULT_FALLBACK_THRESHOLD_SEC;
-      
+            ? thresholdSecPerMile
+            : DEFAULT_FALLBACK_THRESHOLD_SEC;
+        
         const rangePct = extractPaceRange(step);
 
-          // Assuming variables: pace, refThresholdSec, rangePct, zoneService
+            // Assuming variables: pace, refThresholdSec, rangePct, zoneService
         const handlers = {
             // rangePct.XX has the sec/mi (495 = 8:15)
             'secs': () => ({
@@ -289,7 +282,7 @@
                 fastSec: rangePct.end,
                 rangePct
             }),
-          
+            
             // rangePct.XX has the % of threshold
             '%pace': () => ({
                 slowSec: rangePct.start > 0 ? refThresholdSec / (rangePct.start / 100) : refThresholdSec,
@@ -304,19 +297,22 @@
                 midSec:  getZoneDetailsFromZoneNumber(rangePct.mid, paces),
                 fastSec: getZoneDetailsFromZoneNumber(rangePct.end, paces),
                 rangePct
-              })
+                })
 
-          };
-          
-          // Execute handler or run default if unit is missing/unrecognized
-          const handler = handlers[step.pace?.units] || (() => ({
+            };
+            
+            // Execute handler or run default if unit is missing/unrecognized
+            const handler = handlers[step.pace?.units] || (() => ({
             fastSec: refThresholdSec,
             midSec: refThresholdSec,
             slowSec: refThresholdSec,
             rangePct: { start: 100, end: 100, mid: 100 }
-          }));
-          
+            }));
+
+            console.log('[App Debug] WCH-ExtractPaceRangeInSeconds: ', 
+                        step, rangePct, handler());
+
         return handler();
-      };
-      
-      
+    };
+    
+    

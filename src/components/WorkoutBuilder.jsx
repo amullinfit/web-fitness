@@ -36,6 +36,9 @@ export default function WorkoutBuilder() {
   // --- Core State ---
   const [mode, setMode] = useState('EMPTY'); // 'EMPTY', 'BUILDING', 'SAVED'
 
+  // Panel collapse state
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+
   // Metadata
   const [workoutId, setWorkoutId] = useState(null);
   const [workoutTitle, setWorkoutTitle] = useState('New Workout');
@@ -371,42 +374,68 @@ export default function WorkoutBuilder() {
 
         </div>
 
-        {/* RIGHT PANEL: Full-Height "Updated Live" View */}
+        {/* RIGHT PANEL: Full-Height "Updated Live" View (Collapsible) */}
         <div 
           className="baseworkout-column-container" 
           style={{ 
-            width: '400px', 
+            width: isRightPanelCollapsed ? '40px' : '400px', 
             display: 'flex', 
             flexDirection: 'column',
             backgroundColor: '#fafafa',
             borderLeft: '1px solid #e0e0e0',
-            padding: '16px'
+            padding: isRightPanelCollapsed ? '16px 8px' : '16px',
+            transition: 'width 0.2s ease-in-out',
+            overflow: 'hidden'
           }}
         >
-          <label 
-            htmlFor="baseworkout-input" 
-            style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', fontSize: '14px' }}
-          >
-            Updated Live
-          </label>
-          <textarea
-            id="baseworkout-input"
-            readOnly
-            value={JSON.stringify(baseWorkout || {}, null, 2)}
-            placeholder="No baseWorkout payload available..."
-            style={{
-              width: '100%',
-              flex: 1,
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              padding: '12px',
-              backgroundColor: '#f4f4f6',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              resize: 'none',
-              overflowY: 'auto'
-            }}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isRightPanelCollapsed ? '0px' : '8px' }}>
+            {!isRightPanelCollapsed && (
+              <label 
+                htmlFor="baseworkout-input" 
+                style={{ fontWeight: 'bold', fontSize: '14px', whiteSpace: 'nowrap' }}
+              >
+                Updated Live
+              </label>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsRightPanelCollapsed((prev) => !prev)}
+              title={isRightPanelCollapsed ? 'Expand Panel' : 'Collapse Panel'}
+              style={{
+                background: 'none',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                padding: '2px 6px',
+                fontSize: '12px',
+                marginLeft: isRightPanelCollapsed ? 'auto' : '0',
+                marginRight: isRightPanelCollapsed ? 'auto' : '0'
+              }}
+            >
+              {isRightPanelCollapsed ? '◀' : '▶'}
+            </button>
+          </div>
+
+          {!isRightPanelCollapsed && (
+            <textarea
+              id="baseworkout-input"
+              readOnly
+              value={JSON.stringify(baseWorkout || {}, null, 2)}
+              placeholder="No baseWorkout payload available..."
+              style={{
+                width: '100%',
+                flex: 1,
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                padding: '12px',
+                backgroundColor: '#f4f4f6',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                resize: 'none',
+                overflowY: 'auto'
+              }}
+            />
+          )}
         </div>
 
       </div>

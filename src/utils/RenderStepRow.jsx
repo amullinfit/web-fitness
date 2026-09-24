@@ -78,9 +78,42 @@ export function ControlBar({ workoutMode, setWorkoutMode, thresholdPaceSec, pace
 }
 
 // Dynamic Preset buttons 
-function StepPresets({ presets, targetPaceSec, onSelectPace }) {
+function StepPresets({
+  presets,
+  targetPaceSec,
+  paceMethod,
+  stepId,
+  thresholdSecPerMile,
+  zones,
+  onUpdate
+}) {
   const presetList = presets || [];
   if (presetList.length === 0) return null;
+
+  const handleSelectPace = (newSec) => {
+    const method = (paceMethod || '').toLowerCase();
+
+    if (method.includes('pace')) {
+      onUpdate(stepId, 'pace', { units: 'secs', value: newSec });
+    } else if (method.includes('threshold')) {
+      const pct = thresholdSecPerMile > 0 ? Math.round((thresholdSecPerMile / newSec) * 100) : 100;
+      onUpdate(stepId, 'pace', { unit: '%pace', value: pct });
+    } else if (method.includes('zone')) {
+      // Find matching zone key (e.g. "Z1", "Z2") based on selected pace
+      const matchedZoneKey = Object.keys(zones || {}).find((key) => {
+        const z = zones[key];
+        if (z?.minSec && z?.maxSec) {
+          return newSec <= z.minSec && newSec >= z.maxSec; // faster pace = lower sec count
+        }
+        return false;
+      }) || 'Z2';
+
+      onUpdate(stepId, 'pace', {
+        unit: 'zone',
+        value: matchedZoneKey
+      });
+    }
+  };
 
   const row1 = presetList.slice(0, 4);
   const row2 = presetList.slice(4);
@@ -91,7 +124,7 @@ function StepPresets({ presets, targetPaceSec, onSelectPace }) {
       <button
         key={preset.label}
         type="button"
-        onClick={() => onSelectPace(preset.targetPaceSec)}
+        onClick={() => handleSelectPace(preset.targetPaceSec)}
         style={{
           padding: '2px 8px',
           fontSize: '11px',
@@ -519,39 +552,12 @@ export default function RenderStepRow({
       <StepPresets
         presets={presets}
         targetPaceSec={targetPaceSec}
-        onSelectPace={(newSec) => {
-          const method = (paceMethod || '').toLowerCase();
-
-          if (method.includes('pace')) {
-            onUpdate(step.id, 'pace', { units: 'secs', value: newSec });
-          } 
-          
-          else if (method.includes('threshold')) {
-            const pct = thresholdSecPerMile > 0 ? Math.round((thresholdSecPerMile / newSec) * 100) : 100;
-            onUpdate(step.id, 'pace', { unit: '%pace', value: pct });
-          } 
-          
-          else if (method.includes('zone')) {
-            // Find matching zone key (e.g. "Z1", "Z2") based on selected pace
-            // Assumes `zones` or `presets` provides min/max or target paces per zone
-            const matchedZoneKey = Object.keys(zones || {}).find((key) => {
-              const z = zones[key];
-              // If zone has range bounds (minSec and maxSec)
-              if (z?.minSec && z?.maxSec) {
-                return newSec <= z.minSec && newSec >= z.maxSec; // faster pace = lower sec count
-              }
-              return false;
-            }) || 'Z2'; // Default fallback zone if out of bounds
-
-            onUpdate(step.id, 'pace', { 
-              unit: 'zone', 
-              value: matchedZoneKey 
-            });
-          }
-
-        }}
+        paceMethod={paceMethod}
+        stepId={step.id}
+        thresholdSecPerMile={thresholdSecPerMile}
+        zones={zones}
+        onUpdate={onUpdate}
       />
-
 
       {/* ControlBar positioned below presets */}
       <ControlBar
