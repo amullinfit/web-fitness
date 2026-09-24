@@ -1,7 +1,7 @@
 //
 // RenderStepRow.jsx
 //
-import React from 'react';
+import React, { useMemo } from 'react';
 import MMSSInput from './MMSSInput';
 import { formatTime, formatMMSS,   calculateDynamicPresets } from './WorkoutBuilderHelpers.js';
 
