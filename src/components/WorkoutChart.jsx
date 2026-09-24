@@ -51,13 +51,16 @@ export default function WorkoutChart({
   showBarPace = false
 }) {
 
-  console.log('[App Debug] Chart: ', workout);
-  
   const clipId = useId();
 
   // 2. Consume Paces Context
   const { paces, loading: pacesLoading } = usePaces();
-  
+
+  if (workout.start_date_local.split('T')[0] >= '2026-10-08') {
+    console.log('[App Debug] workout: ', workout);
+    console.log('[App Debug] paces: ', paces);
+  }
+
   const [executedOnTop, setExecutedOnTop] = useState(true);
   const [isChartHovered, setIsChartHovered] = useState(false);
 
