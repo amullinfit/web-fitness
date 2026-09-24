@@ -22,8 +22,8 @@
     const DEFAULT_PACE_ZONE_NAMES  = [  "Zone_1", "Zone_2", "Zone_3", "Zone_4","Zone_5a","Zone_5b","Zone_5c", "Zone 6"];
     const DEFAULT_PACE_ZONE_COLORS = [ "#b0b0b0","#88d8b0","#28a745","#ffc107","#fd7e14","#ff6b6b","#dc3545","#6f42c1"];
     const DEFAULT_PACE_ZONES       = [        80,       92,     94.3,      100,    103.4,    111.5,    128.9,      169];
-    const DEFAULT_PACE_VAL_SEC     = [       619,      538,      525,      495,      479,      444,      330,      293];
-    const DEFAULT_PACE_STR         = ["10:19/mi","8:58/mi","8:45/mi","8:15/mi","7:59/mi","7:24/mi","6:24/mi","4:53/mi"];
+    const DEFAULT_PACE_VAL_SEC     = [       620,      540,      525,      495,      480,      445,      330,      295];
+    const DEFAULT_PACE_STR         = ["10:20/mi","9:00/mi","8:45/mi","8:15/mi","8:00/mi","7:25/mi","6:25/mi","4:55/mi"];
 
     /**
      * Dynamically resolves zone details using PacesContext zones, names, and colors.
