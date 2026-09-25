@@ -112,14 +112,14 @@ const parseSingleStep = (s, idx, thresholdPaceMps, zoneList) => {
   };
 };
 
-const parseWorkoutSteps = (stepList, thresholdPaceMps) => {
+const parseWorkoutSteps = (stepList, thresholdPaceMps, zonelist) => {
   if (!Array.isArray(stepList)) return [];
 
   return stepList.map((s, idx) => {
     // Handle Repeat Blocks
     if (Array.isArray(s.steps) && s.steps.length > 0) {
       const reps = s.reps && Number.isInteger(s.reps) && s.reps > 0 ? s.reps : 1;
-      const innerSteps = parseWorkoutSteps(s.steps, thresholdPaceMps);
+      const innerSteps = parseWorkoutSteps(s.steps, thresholdPaceMps, zonelist);
       
       const singleCycleDuration = innerSteps.reduce((sum, inner) => sum + inner.durationSec, 0);
       const totalRepeatDuration = singleCycleDuration * reps;
@@ -135,7 +135,7 @@ const parseWorkoutSteps = (stepList, thresholdPaceMps) => {
     }
 
     // Handle Standard Steps
-    return parseSingleStep(s, idx, thresholdPaceMps);
+    return parseSingleStep(s, idx, thresholdPaceMps, zonelist);
   });
 };
 
