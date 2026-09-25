@@ -74,14 +74,11 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
     // -------------------------------------------------------------------
     case '%pace': {
       if (isSingle) {
-        paceStr = metersPerSecondToPaceStr(thresholdPaceMps ?? 0) * (val / 100);
-        
-        pacestr = thresholdPaceMps;
-        
+        paceStr = metersPerSecondToPaceStr(t(hresholdPaceMps ?? 0) * (val / 100));
         paceMethodStr = `${val}% pace`;
       } else {
-        const startPaceStr = metersPerSecondToPaceStr(thresholdPaceMps ?? 0) * (start / 100);
-        const endPaceStr  = metersPerSecondToPaceStr(thresholdPaceMps ?? 0) * (end   / 100);
+        const startPaceStr = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (start / 100));
+        const endPaceStr  = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (end   / 100));
         paceStr = `${startPaceStr} - ${endPaceStr}`;
         paceMethodStr = `(${start}-${end}% pace)`;
       }
@@ -99,8 +96,8 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
       } else {
         const startZone = zoneList?.preset_colors?.find((z) => z.zone === Number(start));
         const endZone = zoneList?.preset_colors?.find((z) => z.zone === Number(end));
-        const slowPace = zoneMatch?.pace_slow ?? start;
-        const fastPace = zoneMatch?.pace_fast ?? end;
+        const slowPace = startZone?.pace_slow ?? start;
+        const fastPace = endZone?.pace_fast ?? end;
         paceStr = `${slowPace} - ${fastPace}`;
         paceMethodStr = `(Zone ${start} - Zone ${end})`
       }
