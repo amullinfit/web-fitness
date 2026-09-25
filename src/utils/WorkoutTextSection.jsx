@@ -42,8 +42,8 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
   const isSingle = pace.value != null;
   const val = isSingle ? pace.value : null;
 
-  const start = Math.min(pace.start ?? 0, pace.end ?? 0);
-  const end = Math.max(pace.start ?? 0, pace.end ?? 0);
+  const start = Math.max(pace.start ?? 0, pace.end ?? 0);
+  const end = Math.min(pace.start ?? 0, pace.end ?? 0);
 
   let paceStr = 'N/A';
   let paceMethodStr = null;

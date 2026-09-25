@@ -535,32 +535,6 @@ export default function DailyView() {
           {workout.name || workout.title || `${workout.type || 'Workout'}`}
         </h3>
 
-        {/* Selected Date Debug Data Display */}
-        {isSelectedDate && (
-          <div style={{ marginBottom: '12px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#555', marginBottom: '4px' }}>
-              Properties (workout):
-            </label>
-            <textarea
-              readOnly
-              value={JSON.stringify(workout, null, 2)}
-              rows={8}
-              style={{
-                width: '100%',
-                fontFamily: 'monospace',
-                fontSize: '11px',
-                padding: '8px',
-                backgroundColor: '#1e1e1e',
-                color: '#00ff66',
-                border: '1px solid #333',
-                borderRadius: '4px',
-                boxSizing: 'border-box',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-        )}
-
         {(workout.workout_doc || workout.intervals) && (
           <>
             <WorkoutChart
@@ -583,14 +557,6 @@ export default function DailyView() {
 
   const renderDaySection = (dateObj, dateStr, dayWorkouts, isSelectedDate = false) => {
     const isToday = dateStr === todayStr;
-
-    if (isToday) {
-      console.log('[App Debug] DV: ');
-      console.log('[App Debug] DV: ');
-      console.log('[App Debug] DV: dayWorkouts: ', dayWorkouts);
-      console.log('[App Debug] DV: ');
-      console.log('[App Debug] DV: ');
-    }
 
     return (
       <div className="daily-day-column">
