@@ -41,21 +41,22 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
   // Determine if single value vs range
   const isSingle = pace.value != null;
   const val = isSingle ? pace.value : null;
-  const start = pace.start ?? 0;
-  const end = pace.end ?? 0;
 
-  let paceRangeStr = "N/A";
-  let calcPaceMps = null;
+  const start = Math.min(pace.start ?? 0, pace.end ?? 0);
+  const end = Math.max(pace.start ?? 0, pace.end ?? 0);
 
+  let paceStr = 'N/A';
+  let paceMethodStr = null;
+  
   switch (units) {
     // -------------------------------------------------------------------
     // 1. SECONDS PER MILE (Direct Seconds)
     // -------------------------------------------------------------------
     case 'secs':{
       if (isSingle) {
-        paceRangeStr = secondsToPaceStr(val);
+        paceStr = secondsToPaceStr(val);
       } else {
-        paceRangeStr = `${secondsToPaceStr(start)} - ${secondsToPaceStr(end)}`;
+        paceStr = `${secondsToPaceStr(start)} - ${secondsToPaceStr(end)}`;
       }
       break;
     }
@@ -65,14 +66,13 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
     // -------------------------------------------------------------------
     case '%pace': {
       if (isSingle) {
-        paceRangeStr = `${val}% pace`;
-        if (thresholdPaceMps) calcPaceMps = thresholdPaceMps * (val / 100);
+        paceStr = metersPerSecondToPaceStr(thresholdPaceMps ?? 0) * (val / 100);
+        paceMethodStr = `${val}% pace`;
       } else {
-        paceRangeStr = `${start}-${end}% pace`;
-        if (thresholdPaceMps) {
-          const avgPct = (start + end) / 2;
-          calcPaceMps = thresholdPaceMps * (avgPct / 100);
-        }
+        const startPaceStr = metersPerSecondToPaceStr(thresholdPaceMps ?? 0) * (start / 100);
+        const endPaceStr  = metersPerSecondToPaceStr(thresholdPaceMps ?? 0) * (end   / 100);
+        paceStr = `${startPaceStr} - ${endPaceStr}`
+        paceMethodStr = `${start}-${end}% pace`;
       }
       break;
     }
@@ -83,41 +83,21 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
     case 'pace_zone': {
       if (isSingle) {
         const zoneMatch = zoneList?.preset_colors?.find((z) => z.zone === Number(val));
-        paceRangeStr = zoneMatch?.zone_name || `Zone ${val}`;
-        
-        if (zoneMatch) {
-          calcPaceMps = zoneMatch.pace_value_num;
-        }
+        paceStr = zoneMatch?.pace_fast ?? "";
+        paceMethodStr = zoneMatch?.zone_name || `Zone_${val}?`;      
       } else {
         const startZone = zoneList?.preset_colors?.find((z) => z.zone === Number(start));
         const endZone = zoneList?.preset_colors?.find((z) => z.zone === Number(end));
-
-        if (startZone && endZone) {
-          // Pulls "10:19/mi - 9:00/mi (Zone 2 - Zone 4)" directly from preset values
-          const slowPace = startZone.pace_slow || '';
-          const fastPace = endZone.pace_fast || '';
-          const zoneLabel = `Zone ${start} - Zone ${end}`;
-
-          return `${slowPace} - ${fastPace} (${zoneLabel})`;
-        }
-
-        // Fallback if zones aren't found in list
-        paceRangeStr = `Zone ${start} - Zone ${end}`;
+        const slowPace = zoneMatch?.pace_slow ?? start;
+        const fastPace = zoneMatch?.pace_fast ?? end;
+        paceStr = `${slowPace} - ${fastPace}`;
+        paceMethodStr = `Zone ${start} - Zone ${end}`
       }
       break;
     }
-
-    default:
-      paceRangeStr = "N/A";
   }
 
-  // Append calculated speed string "8:15/mi" if available (for %pace or zone modes)
-  if (calcPaceMps && units !== 'secs' && units !== 'sec') {
-    const calculatedPaceStr = metersPerSecondToPaceStr(calcPaceMps);
-    return `${calculatedPaceStr} (${paceRangeStr})`;
-  }
-
-  return paceRangeStr;
+  return paceStr + (paceMethodStr ? ` (${paceMethodStr})` : '');
 };
 
 const parseSingleStep = (s, idx, thresholdPaceMps, zoneList) => {

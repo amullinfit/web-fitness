@@ -252,7 +252,7 @@ export const metersPerSecondToPaceStr = (mps) => {
   const roundedSecPerMile = Math.round(secPerMile / 5) * 5;
   const mins = Math.floor(roundedSecPerMile / 60);
   const secs = roundedSecPerMile % 60;
-  return `${mins}:${String(secs).padStart(2, '0')} /mi`;
+  return `${mins}:${String(secs).padStart(2, '0')}/mi`;
 };
 
 // Helper to convert seconds per mile directly to mm:ss string
@@ -261,6 +261,6 @@ export const secondsToPaceStr = (secPerMile) => {
   const roundedSec = Math.round(secPerMile / 5) * 5;
   const mins = Math.floor(roundedSec / 60);
   const secs = roundedSec % 60;
-  return `${mins}:${String(secs).padStart(2, '0')} /mi`;
+  return `${mins}:${String(secs).padStart(2, '0')}/mi`;
 };
 
