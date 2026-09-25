@@ -75,6 +75,9 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
     case '%pace': {
       if (isSingle) {
         paceStr = metersPerSecondToPaceStr(thresholdPaceMps ?? 0) * (val / 100);
+        
+        pacestr = thresholdPaceMps;
+        
         paceMethodStr = `${val}% pace`;
       } else {
         const startPaceStr = metersPerSecondToPaceStr(thresholdPaceMps ?? 0) * (start / 100);
