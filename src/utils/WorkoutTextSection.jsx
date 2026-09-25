@@ -47,7 +47,15 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
 
   let paceStr = 'N/A';
   let paceMethodStr = null;
-  
+  let debugStr = null;
+
+  if (isSingle) {
+    debugStr = `${thresholdPaceMps} / ${val}`;
+  } else {
+    debugStr = `${thresholdPaceMps} / ${start} / ${end}`;
+  }
+
+
   switch (units) {
     // -------------------------------------------------------------------
     // 1. SECONDS PER MILE (Direct Seconds)
@@ -71,8 +79,8 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
       } else {
         const startPaceStr = metersPerSecondToPaceStr(thresholdPaceMps ?? 0) * (start / 100);
         const endPaceStr  = metersPerSecondToPaceStr(thresholdPaceMps ?? 0) * (end   / 100);
-        paceStr = `${startPaceStr} - ${endPaceStr}`
-        paceMethodStr = `${start}-${end}% pace`;
+        paceStr = `${startPaceStr} - ${endPaceStr}`;
+        paceMethodStr = `(${start}-${end}% pace)`;
       }
       break;
     }
@@ -91,13 +99,13 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
         const slowPace = zoneMatch?.pace_slow ?? start;
         const fastPace = zoneMatch?.pace_fast ?? end;
         paceStr = `${slowPace} - ${fastPace}`;
-        paceMethodStr = `Zone ${start} - Zone ${end}`
+        paceMethodStr = `(Zone ${start} - Zone ${end})`
       }
       break;
     }
   }
 
-  return paceStr + (paceMethodStr ? ` (${paceMethodStr})` : '');
+  return paceStr + (paceMethodStr ? ` ${paceMethodStr}` : '') + (debugStr ? ` ${debugStr}` : '');
 };
 
 const parseSingleStep = (s, idx, thresholdPaceMps, zoneList) => {
@@ -214,7 +222,7 @@ const RenderStepCard = ({ step }) => {
   }
 
   // thresholdPace passes as sec/mi (3.2512 for 8:15/mi pace)
-  const thresholdPaceMps = thresholdPace
+  const thresholdPaceMps = thresholdPace;
 
   const zoneList = paceDetails?.preset_colors;
 
