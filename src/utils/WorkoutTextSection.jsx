@@ -216,12 +216,12 @@ const RenderStepCard = ({ step }) => {
   // --------------------------------------------------------------------- //
   //
   //
-  export default function WorkoutTextSection({ workout, thresholdPace = null, paces }) {
+  export default function WorkoutTextSection({ workout, thresholdPace = null, paceDetails }) {
   const [isOpen, setIsOpen] = useState(false);
 
   if (!workout) return null;
 
-  console.log('[App Debug] paces: ', paces)
+  console.log('[App Debug] paces: ', paceDetails)
 
   let rawSteps = [];
   if (workout.workout_doc) {
