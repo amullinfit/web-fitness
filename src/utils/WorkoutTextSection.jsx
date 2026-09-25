@@ -112,7 +112,7 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
   }
 
   // Append calculated speed string "8:15/mi" if available (for %pace or zone modes)
-  if (calcPaceMps && unit !== 'secs' && unit !== 'sec') {
+  if (calcPaceMps && units !== 'secs' && units !== 'sec') {
     const calculatedPaceStr = metersPerSecondToPaceStr(calcPaceMps);
     return `${calculatedPaceStr} (${paceRangeStr})`;
   }
