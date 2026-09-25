@@ -47,14 +47,6 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
 
   let paceStr = 'N/A';
   let paceMethodStr = null;
-  let debugStr = null;
-
-  if (isSingle) {
-    debugStr = `${thresholdPaceMps} / ${val}`;
-  } else {
-    debugStr = `${thresholdPaceMps} / ${start} / ${end}`;
-  }
-
 
   switch (units) {
     // -------------------------------------------------------------------
@@ -79,7 +71,7 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
       } else {
         const startPaceStr = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (start / 100));
         const endPaceStr  = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (end   / 100));
-        paceStr = `${startPaceStr} - ${endPaceStr}`;
+        paceStr = `${startPaceStr}-${endPaceStr}`;
         paceMethodStr = `(${start}-${end}% pace)`;
       }
       break;
@@ -90,22 +82,28 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
     // -------------------------------------------------------------------
     case 'pace_zone': {
       if (isSingle) {
-        const zoneMatch = zoneList?.preset_colors?.find((z) => z.zone === Number(val));
-        paceStr = zoneMatch?.pace_fast ?? "";
-        paceMethodStr = zoneMatch?.zone_name || `Zone_${val}?`;      
+        // Look up directly in zoneList array
+        const zoneMatch = zoneList?.find((z) => z.zone === Number(val));
+        
+        // Convert the zone's target seconds (pace_val_sec) to a formatted pace
+        paceStr = zoneMatch?.pace_val_sec ? secondsToPaceStr(zoneMatch.pace_val_sec) : "?";
+        paceMethodStr = zoneMatch?.zone_name || `Zone ${val}`;
       } else {
-        const startZone = zoneList?.preset_colors?.find((z) => z.zone === Number(start));
-        const endZone = zoneList?.preset_colors?.find((z) => z.zone === Number(end));
-        const slowPace = startZone?.pace_slow ?? start;
-        const fastPace = endZone?.pace_fast ?? end;
+        const startZone = zoneList?.find((z) => z.zone === Number(start));
+        const endZone = zoneList?.find((z) => z.zone === Number(end));
+
+        // Pull pace_slow from lower zone and pace_fast from upper zone
+        const slowPace = startZone?.pace_slow ?? `Zone ${start}`;
+        const fastPace = endZone?.pace_fast ?? `Zone ${end}`;
+
         paceStr = `${slowPace} - ${fastPace}`;
-        paceMethodStr = `(Zone ${start} - Zone ${end})`
+        paceMethodStr = `(Zone ${start} - Zone ${end})`;
       }
       break;
     }
   }
 
-  return paceStr + (paceMethodStr ? ` ${paceMethodStr}` : '') + (debugStr ? ` ${debugStr}` : '');
+  return paceStr + (paceMethodStr ? ` ${paceMethodStr}` : '');
 };
 
 const parseSingleStep = (s, idx, thresholdPaceMps, zoneList) => {
