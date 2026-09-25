@@ -56,14 +56,6 @@ export default function WorkoutChart({
   // 2. Consume Paces Context
   const { paces, loading: pacesLoading } = usePaces();
 
-  if (workout.id = 138589939 ) {
-    console.log('[App Debug] : ');
-    console.log('[App Debug] : id: ', workout.id);
-    console.log('[App Debug] workout: ', workout.id, workout);
-    console.log('[App Debug] paces: ', workout.id, paces);
-    console.log('[App Debug] : ');
-  }
-
   const [executedOnTop, setExecutedOnTop] = useState(true);
   const [isChartHovered, setIsChartHovered] = useState(false);
 
@@ -105,9 +97,6 @@ export default function WorkoutChart({
     if (parsed) {
       if (parsed.fastSec) stepPacesSec.push(parsed.fastSec);
       if (parsed.slowSec) stepPacesSec.push(parsed.slowSec);
-    }
-    if (workout.id = 138589939 && [60, 61, 121, 181].includes(s.duration) ) {
-      console.log('[App Debug] s: ', s, parsed);
     }
     });
 
@@ -298,18 +287,6 @@ export default function WorkoutChart({
 
                   const tooltipText = `${durationFormatted} @ ${paceDetails}`;
 
-                  if (workout.id = 138589939 && 60, [61, 121, 181].includes(durationSecs) ) {
-                    switch (durationSecs){
-                      case 61:  console.log('[App Debug] ------------ Pace ------------'); break;
-                      case 121: console.log('[App Debug] ------------ Zone ------------'); break;
-                      case 181: console.log('[App Debug] ------------ %Pct ------------'); break;
-                    }
-                    console.log('[App Debug] step:  ', step.duration, step);
-                    console.log('[App Debug] range: ', step.duration, range);
-                    console.log('[App Debug] zDetails: ', step.duration, zoneDetails);
-                    console.log('[App Debug] :');
-                  }
-              
                   return (
                     <div
                       key={`plan-${idx}`}

@@ -67,7 +67,7 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
     case '%pace': {
       if (isSingle) {
         paceStr = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (val / 100));
-        paceMethodStr = `${val}% pace`;
+        paceMethodStr = `(${val}% pace)`;
       } else {
         const startPaceStr = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (start / 100));
         const endPaceStr  = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (end   / 100));
@@ -97,7 +97,7 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
         const fastPace = endZone?.pace_fast ?? `Zone ${end}`;
 
         paceStr = `${slowPace} - ${fastPace}`;
-        paceMethodStr = `(Zone ${start} - Zone ${end})`;
+        paceMethodStr = `(Zone ${start}-${end})`;
       }
       break;
     }

@@ -413,9 +413,9 @@ export default function MonthlyView() {
   const [currentWeekMonday, setCurrentWeekMonday] = useState(() => getMondayOfWeek(new Date()));
   const [errorMessage, setErrorMessage] = useState(null);
 
-  const [activeFilters, setActiveFilters] = useState([]);
+  const [activeFilters, setActiveFilters] = useState(['Run']);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [tempFilters, setTempFilters] = useState([]);
+  const [tempFilters, setTempFilters] = useState(['Run']);
 
   // State for Zoomed Workout Modal (Holds array of workouts for selected day)
   const [zoomWorkouts, setZoomWorkouts] = useState(null);
@@ -616,7 +616,7 @@ export default function MonthlyView() {
   };
 
   const handleOpenFilter = () => {
-    setTempFilters([...activeFilters]);
+    setTempFilters(activeFilters);
     setIsFilterOpen(true);
   };
 
@@ -627,7 +627,7 @@ export default function MonthlyView() {
   };
 
   const handleClearAll = () => {
-    setTempFilters([]);
+    setTempFilters(['Run']);
   };
 
   const handleCancelFilter = () => {
