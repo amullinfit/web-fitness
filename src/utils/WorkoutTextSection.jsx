@@ -220,7 +220,8 @@ const RenderStepCard = ({ step }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   if (!workout) return null;
-  if (!paces) return null;
+
+  console.log('[App Debug] paces: ', paces)
 
   let rawSteps = [];
   if (workout.workout_doc) {
