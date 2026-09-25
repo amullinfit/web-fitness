@@ -4,6 +4,18 @@
 import React, { useState } from 'react';
 import './WorkoutTextSection.css';
 
+import {
+  detectPaceMethod,
+  calculatePaceFromPct,
+  calculatePctFromPace,
+  calculateZoneFromPace,
+  calculatePaceFromZone,
+  calculateNewPaceValue,
+  metersPerSecondToPaceStr,
+  secondsToPaceStr
+} from '../utils/WorkoutConverter.js';
+
+// 125 -> 2:05
 const formatDuration = (totalSeconds) => {
   if (!totalSeconds) return "0:00";
   const hours = Math.floor(totalSeconds / 3600);
@@ -13,48 +25,109 @@ const formatDuration = (totalSeconds) => {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
 };
 
-const metersPerSecondToPaceStr = (mps) => {
-  if (!mps || mps <= 0) return "N/A";
-  const secPerMile = 1609.34 / mps;
-  const roundedSecPerMile = Math.round(secPerMile / 5) * 5;
-  const mins = Math.floor(roundedSecPerMile / 60);
-  const secs = roundedSecPerMile % 60;
-  return `${mins}:${String(secs).padStart(2, '0')} /mi`;
-};
-
 const formatIntensityTitleCase = (val) => {
   if (!val) return "N/A";
   const str = String(val);
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
 
-const formatPaceString = (s, thresholdPaceMps) => {
+// Return the formatted text describing the pace(s) for the step
+const formatPaceString = (s, thresholdPaceMps, zoneList) => {
+  if (!s?.pace) return "N/A";
+
+  const { pace } = s;
+  const units = (pace.units || '').toLowerCase().replace(/\s+|range/g, '');
+
+  // Determine if single value vs range
+  const isSingle = pace.value != null;
+  const val = isSingle ? pace.value : null;
+  const start = pace.start ?? 0;
+  const end = pace.end ?? 0;
+
   let paceRangeStr = "N/A";
   let calcPaceMps = null;
 
-  if (s.pace) {
-    const startPct = s.pace.start || 0;
-    const endPct = s.pace.end || 0;
-    paceRangeStr = `${startPct}-${endPct}% pace`;
-
-    if (thresholdPaceMps) {
-      const avgPct = (startPct + endPct) / 2;
-      calcPaceMps = thresholdPaceMps * (avgPct / 100);
+  switch (units) {
+    // -------------------------------------------------------------------
+    // 1. SECONDS PER MILE (Direct Seconds)
+    // -------------------------------------------------------------------
+    case 'secs':{
+      if (isSingle) {
+        paceRangeStr = secondsToPaceStr(val);
+      } else {
+        paceRangeStr = `${secondsToPaceStr(start)} - ${secondsToPaceStr(end)}`;
+      }
+      break;
     }
+
+    // -------------------------------------------------------------------
+    // 2. PERCENTAGE OF THRESHOLD (%pace)
+    // -------------------------------------------------------------------
+    case '%pace': {
+      if (isSingle) {
+        paceRangeStr = `${val}% pace`;
+        if (thresholdPaceMps) calcPaceMps = thresholdPaceMps * (val / 100);
+      } else {
+        paceRangeStr = `${start}-${end}% pace`;
+        if (thresholdPaceMps) {
+          const avgPct = (start + end) / 2;
+          calcPaceMps = thresholdPaceMps * (avgPct / 100);
+        }
+      }
+      break;
+    }
+
+    // -------------------------------------------------------------------
+    // 3. PACE ZONE (Numeric Zone IDs)
+    // -------------------------------------------------------------------
+    case 'pace_zone': {
+      if (isSingle) {
+        const zoneMatch = zoneList?.preset_colors?.find((z) => z.zone === Number(val));
+        paceRangeStr = zoneMatch?.zone_name || `Zone ${val}`;
+        
+        if (zoneMatch) {
+          calcPaceMps = zoneMatch.pace_value_num;
+        }
+      } else {
+        const startZone = zoneList?.preset_colors?.find((z) => z.zone === Number(start));
+        const endZone = zoneList?.preset_colors?.find((z) => z.zone === Number(end));
+
+        if (startZone && endZone) {
+          // Pulls "10:19/mi - 9:00/mi (Zone 2 - Zone 4)" directly from preset values
+          const slowPace = startZone.pace_slow || '';
+          const fastPace = endZone.pace_fast || '';
+          const zoneLabel = `Zone ${start} - Zone ${end}`;
+
+          return `${slowPace} - ${fastPace} (${zoneLabel})`;
+        }
+
+        // Fallback if zones aren't found in list
+        paceRangeStr = `Zone ${start} - Zone ${end}`;
+      }
+      break;
+    }
+
+    default:
+      paceRangeStr = "N/A";
   }
 
-  const calculatedPaceStr = calcPaceMps ? metersPerSecondToPaceStr(calcPaceMps) : null;
-  return calculatedPaceStr ? `${calculatedPaceStr} (${paceRangeStr})` : paceRangeStr;
+  // Append calculated speed string "8:15/mi" if available (for %pace or zone modes)
+  if (calcPaceMps && unit !== 'secs' && unit !== 'sec') {
+    const calculatedPaceStr = metersPerSecondToPaceStr(calcPaceMps);
+    return `${calculatedPaceStr} (${paceRangeStr})`;
+  }
+
+  return paceRangeStr;
 };
 
-const parseSingleStep = (s, idx, thresholdPaceMps) => {
+const parseSingleStep = (s, idx, thresholdPaceMps, zoneList) => {
   const rawIntensity = s.intensity || (s.warmup ? "warmup" : s.cooldown ? "cooldown" : "active");
   return {
     id: idx,
     isRepeat: false,
     durationSec: s.duration || 0,
     intensity: formatIntensityTitleCase(rawIntensity),
-    paceStr: formatPaceString(s, thresholdPaceMps),
+    paceStr: formatPaceString(s, thresholdPaceMps, zoneList),
     text: s.text || "No step text"
   };
 };
@@ -136,10 +209,18 @@ const RenderStepCard = ({ step }) => {
   );
 };
 
-export default function WorkoutTextSection({ workout, thresholdPace = null }) {
+  // 
+  //
+  // --------------------------------------------------------------------- //
+  // MAIN FUNCTION SECTION
+  // --------------------------------------------------------------------- //
+  //
+  //
+  export default function WorkoutTextSection({ workout, thresholdPace = null, paces }) {
   const [isOpen, setIsOpen] = useState(false);
 
   if (!workout) return null;
+  if (!paces) return null;
 
   let rawSteps = [];
   if (workout.workout_doc) {
@@ -151,17 +232,23 @@ export default function WorkoutTextSection({ workout, thresholdPace = null }) {
     }
   }
 
-  // Resolve numeric threshold pace value directly (handles raw numbers or simple pace objects)
-  // thresholdPace passes as sec/mi
-  const thresholdPaceMps = typeof thresholdPace === 'number'
-    ? thresholdPace
-    : thresholdPace?.threshold_pace || thresholdPace?.run_pace_sec || null;
+  // thresholdPace passes as sec/mi (3.2512 for 8:15/mi pace)
+  const thresholdPaceMps = thresholdPace
 
-  const debugSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps);
+  const zoneList = paceDetails?.preset_colors;
+
+  const parsedSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps, zoneList);
 
   // Calculate Total Overall Workout Duration
-  const totalWorkoutDurationSec = debugSteps.reduce((sum, step) => sum + step.durationSec, 0);
+  const totalWorkoutDurationSec = parsedSteps.reduce((sum, step) => sum + step.durationSec, 0);
 
+  // 
+  //
+  // --------------------------------------------------------------------- //
+  // Return the text for the WORKOUT details
+  // --------------------------------------------------------------------- //
+  //
+  //
   return (
     <div className="workout-section-container">
       <div className="workout-section-header-box">
@@ -170,7 +257,7 @@ export default function WorkoutTextSection({ workout, thresholdPace = null }) {
           className="workout-section-toggle"
         >
           <span className="workout-section-title">
-            {isOpen ? '▼' : '►'} Workout Details ({debugSteps.length} block{debugSteps.length === 1 ? '' : 's'})
+            {isOpen ? '▼' : '►'} Workout Details ({parsedSteps.length} block{parsedSteps.length === 1 ? '' : 's'})
           </span>
           <span className="workout-section-badge">
             Total Time: {formatDuration(totalWorkoutDurationSec)}
@@ -179,11 +266,11 @@ export default function WorkoutTextSection({ workout, thresholdPace = null }) {
 
         {isOpen && (
           <div className="workout-section-content">
-            {debugSteps.length === 0 ? (
+            {parsedSteps.length === 0 ? (
               <div className="workout-section-empty">No parsed step data available in workout_doc.</div>
             ) : (
               <div className="workout-steps-list">
-                {debugSteps.map((step, sIdx) => (
+                {parsedSteps.map((step, sIdx) => (
                   <RenderStepCard key={sIdx} step={step} />
                 ))}
               </div>

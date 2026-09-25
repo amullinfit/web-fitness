@@ -328,6 +328,7 @@ function WorkoutZoomContent({ workout, sportSettings, paces }) {
       <WorkoutTextSection 
         workout={workout} 
         thresholdPace={getThresholdPaceForSport(workout, sportSettings, paces)}
+        paceDetails={paces}
       />
     </div>
   );

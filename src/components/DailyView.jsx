@@ -572,7 +572,8 @@ export default function DailyView() {
             <WorkoutTextSection 
               workout={workout} 
               thresholdPace={thresholdPaceMps} 
-            />
+              paceDetails={paces}
+              />
           </>
         )}
 

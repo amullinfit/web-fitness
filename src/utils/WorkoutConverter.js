@@ -106,3 +106,161 @@ export function convertWorkoutToTargetFormat(workoutPayload, options = {}) {
         feedSource: "WORKOUTS"
     };
   }
+
+// Helper to determine Pace Method from step.pace schema
+export const detectPaceMethod = (stepPace, fallbackMethod) => {
+  if (!stepPace || typeof stepPace !== 'object') return fallbackMethod || 'Pace';
+
+  const unit = stepPace.unit;
+  const isRange = 'start' in stepPace || 'end' in stepPace;
+
+  if (unit === 'secs') {
+    return isRange ? 'Pace Range' : 'Pace';
+  } else if (unit === '%pace') {
+    return isRange ? 'Threshold % Range' : 'Threshold %';
+  } else if (unit === 'pace_zone') {
+    return isRange ? 'Zone Range' : 'Zone';
+  }
+
+  return fallbackMethod || 'Pace';
+};
+
+// Helper returns pace in seconds (converts 80% of 495 --> 619)
+export function calculatePaceFromPct(thresholdPaceSec, inputPct) {
+  if (!thresholdPaceSec || !inputPct || inputPct <= 0) return thresholdPaceSec;
+  return Math.round(thresholdPaceSec / (inputPct / 100));
+};
+
+// Helper return pace as a % of threshold (converts 495, 619 --> 80)
+export function calculatePctFromPace(thresholdPaceSec, inputPaceSec) {
+  if (!thresholdPaceSec || !inputPaceSec || inputPaceSec <= 0) return 100;
+  return Number(((thresholdPaceSec / inputPaceSec) * 100).toFixed(1));
+};
+
+
+// Helper to return zone # (converts 495 to 1 (aka zone 1))
+export function calculateZoneFromPace(zoneList, inputPaceSec) {
+  const presets = zoneList?.preset_colors;
+
+  // Safety check for empty or invalid data
+  if (!Array.isArray(presets) || presets.length === 0 || !inputPaceSec) {
+    return 1;
+  }
+
+  // Iterate top-to-bottom through zones (620s down to 295s)
+  for (let i = 0; i < presets.length; i++) {
+    const currentZone = presets[i];
+
+    // If target pace is slower than or equal to the zone threshold, it falls into this zone
+    if (inputPaceSec >= currentZone.pace_val_sec) {
+      return currentZone.zone;
+    }
+  }
+
+  // Fallback for extreme efforts faster than the highest zone (e.g. < 295s)
+  const highestZone = presets[presets.length - 1];
+  return highestZone.zone;
+}
+
+// Helper to return pace from zone (1 (aka Zone 1) -> 495)
+export function calculatePaceFromZone(zoneList, targetZoneNumber) {
+  const presets = zoneList?.preset_colors;
+
+  // Safety check for empty data or missing target
+  if (!Array.isArray(presets) || presets.length === 0 || targetZoneNumber == null) {
+    return null;
+  }
+
+  // Convert input to Number to guarantee accurate comparison
+  const searchZoneNum = Number(targetZoneNumber);
+
+  // Find exact zone matching the numeric "zone" property
+  const matchedZone = presets.find((item) => Number(item.zone) === searchZoneNum);
+
+  if (!matchedZone) {
+    return null; // Zone number not found
+  }
+
+  return matchedZone.pace_val_sec;
+}
+
+// Helper to convert value for paces
+// threshold_spm as sec/mi (ie, 495 for a 8:15 pace)
+export const calculateNewPaceValue = (oldPaceMethod, oldPaceValue, newPaceMethod, threshold_spm, zoneList) => {
+  let newPaceValue = 0;
+
+  const oldMethod = (oldPaceMethod || '')
+  .toLowerCase()
+  .replace(/\s+/g, '')       // Removes all whitespace (spaces, tabs, etc.)
+  .replace(/range/g, '');    // Removes all instances of "range"
+
+  const newMethod = (newPaceMethod || '')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/range/g, '');
+    
+  if (oldMethod === newMethod) {
+    newPaceValue = OldPaceValue;
+  }
+
+  const transitionKey = `${oldMethod}->${newMethod}`;
+  
+  switch (transitionKey) {
+    case 'pace->zone': {
+      // from 495 to Z4
+      newPaceValue = calculateZoneFromPace(zoneList, oldPaceValue);
+      break;
+    }
+
+    case 'pace->threshold%': {
+      // from 495 to 100%
+      newPaceValue = calculatePctFromPace(threshold_spm, oldPaceValue);
+      break;
+    }
+  
+    case 'zone->pace': {
+      // from Z4 to 495
+      newPaceValue = calculatePaceFromZone(zoneList, oldPaceValue);
+      break;}
+  
+    case 'zone->threshold%': {
+      // from Z4 to 100%
+      newPaceValue = calculatePctFromPace(threshold_spm, calculatePaceFromZone(zonelist, oldPaceValue));
+      break;}
+  
+    case 'threshold%->pace': {
+      // from 100% to 495
+      newPaceValue = calculatePaceFromPct(threshold_spm, oldPaceValue);
+      break;}
+  
+    case 'threshold%->zone': {
+      // from 100% to Z4
+      newPaceValue = calculateZoneFromPace(zonelist, calculatePaceFromPct(threshold_spm, oldPaceValue));
+      break;}
+  
+    default:
+      break;
+  }
+
+  return newPaceValue;
+};
+
+// 3.2512 -> "8:15/mi"
+export const metersPerSecondToPaceStr = (mps) => {
+  if (!mps || mps <= 0) return "N/A";
+  const secPerMile = 1609.34 / mps;
+  const roundedSecPerMile = Math.round(secPerMile / 5) * 5;
+  const mins = Math.floor(roundedSecPerMile / 60);
+  const secs = roundedSecPerMile % 60;
+  return `${mins}:${String(secs).padStart(2, '0')} /mi`;
+};
+
+// Helper to convert seconds per mile directly to mm:ss string
+export const secondsToPaceStr = (secPerMile) => {
+  if (!secPerMile || secPerMile <= 0) return "N/A";
+  const roundedSec = Math.round(secPerMile / 5) * 5;
+  const mins = Math.floor(roundedSec / 60);
+  const secs = roundedSec % 60;
+  return `${mins}:${String(secs).padStart(2, '0')} /mi`;
+};
+

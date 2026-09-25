@@ -311,7 +311,8 @@ export default function WorkoutBuilder() {
                 <WorkoutTextSection 
                   workout={baseWorkout}
                   threshold={paces?.threshold_pace}
-                />
+                  paceDetails={paces}
+                  />
               </div>
             )}
           </div>

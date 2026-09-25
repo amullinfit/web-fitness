@@ -5,150 +5,21 @@ import React, { useMemo } from 'react';
 import MMSSInput from './MMSSInput';
 import { formatTime, formatMMSS,   calculateDynamicPresets } from './WorkoutBuilderHelpers.js';
 
+import {
+  detectPaceMethod,
+  calculatePaceFromPct,
+  calculatePctFromPace,
+  calculateZoneFromPace,
+  calculatePaceFromZone,
+  calculateNewPaceValue
+} from '../utils/WorkoutConverter.js';
+
 const METERS_PER_MILE = 1609.344;
 
 // Helper function to guarantee strictly 2 decimal places (#.00)
 const formatDistanceFixed = (miles) => {
   const val = Number(miles) || 0;
   return `${val.toFixed(2)} mi`;
-};
-
-// Helper to determine Pace Method from step.pace schema
-const detectPaceMethod = (stepPace, fallbackMethod) => {
-  if (!stepPace || typeof stepPace !== 'object') return fallbackMethod || 'Pace';
-
-  const unit = stepPace.unit;
-  const isRange = 'start' in stepPace || 'end' in stepPace;
-
-  if (unit === 'secs') {
-    return isRange ? 'Pace Range' : 'Pace';
-  } else if (unit === '%pace') {
-    return isRange ? 'Threshold % Range' : 'Threshold %';
-  } else if (unit === 'pace_zone') {
-    return isRange ? 'Zone Range' : 'Zone';
-  }
-
-  return fallbackMethod || 'Pace';
-};
-
-// Helper returns pace in seconds (converts 80% of 495 --> 619)
-function calculatePaceFromPct(thresholdPaceSec, inputPct) {
-  if (!thresholdPaceSec || !inputPct || inputPct <= 0) return thresholdPaceSec;
-  return Math.round(thresholdPaceSec / (inputPct / 100));
-};
-
-// Helper return pace as a % of threshold (converts 495, 619 --> 80)
-function calculatePctFromPace(thresholdPaceSec, inputPaceSec) {
-  if (!thresholdPaceSec || !inputPaceSec || inputPaceSec <= 0) return 100;
-  return Number(((thresholdPaceSec / inputPaceSec) * 100).toFixed(1));
-};
-
-
-// Helper to return zone # (converts 495 to 1 (aka zone 1))
-function calculateZoneFromPace(zoneList, inputPaceSec) {
-  const presets = zoneList?.preset_colors;
-
-  // Safety check for empty or invalid data
-  if (!Array.isArray(presets) || presets.length === 0 || !inputPaceSec) {
-    return 1;
-  }
-
-  // Iterate top-to-bottom through zones (620s down to 295s)
-  for (let i = 0; i < presets.length; i++) {
-    const currentZone = presets[i];
-
-    // If target pace is slower than or equal to the zone threshold, it falls into this zone
-    if (inputPaceSec >= currentZone.pace_val_sec) {
-      return currentZone.zone;
-    }
-  }
-
-  // Fallback for extreme efforts faster than the highest zone (e.g. < 295s)
-  const highestZone = presets[presets.length - 1];
-  return highestZone.zone;
-}
-
-// Helper to return pace from zone (1 (aka Zone 1) -> 495)
-function calculatePaceFromZone(zoneList, targetZoneNumber) {
-  const presets = zoneList?.preset_colors;
-
-  // Safety check for empty data or missing target
-  if (!Array.isArray(presets) || presets.length === 0 || targetZoneNumber == null) {
-    return null;
-  }
-
-  // Convert input to Number to guarantee accurate comparison
-  const searchZoneNum = Number(targetZoneNumber);
-
-  // Find exact zone matching the numeric "zone" property
-  const matchedZone = presets.find((item) => Number(item.zone) === searchZoneNum);
-
-  if (!matchedZone) {
-    return null; // Zone number not found
-  }
-
-  return matchedZone.pace_val_sec;
-}
-
-// Helper to convert value for paces
-// threshold_spm as sec/mi (ie, 495 for a 8:15 pace)
-const calculateNewPaceValue = (oldPaceMethod, oldPaceValue, newPaceMethod, threshold_spm, zoneList) => {
-  let newPaceValue = 0;
-
-  const oldMethod = (oldPaceMethod || '')
-  .toLowerCase()
-  .replace(/\s+/g, '')       // Removes all whitespace (spaces, tabs, etc.)
-  .replace(/range/g, '');    // Removes all instances of "range"
-
-  const newMethod = (newPaceMethod || '')
-    .toLowerCase()
-    .replace(/\s+/g, '')
-    .replace(/range/g, '');
-    
-  if (oldMethod === newMethod) {
-    newPaceValue = OldPaceValue;
-  }
-
-  const transitionKey = `${oldMethod}->${newMethod}`;
-  
-  switch (transitionKey) {
-    case 'pace->zone': {
-      // from 495 to Z4
-      newPaceValue = calculateZoneFromPace(zoneList, oldPaceValue);
-      break;
-    }
-
-    case 'pace->threshold%': {
-      // from 495 to 100%
-      newPaceValue = calculatePctFromPace(threshold_spm, oldPaceValue);
-      break;
-    }
-  
-    case 'zone->pace': {
-      // from Z4 to 495
-      newPaceValue = calculatePaceFromZone(zoneList, oldPaceValue);
-      break;}
-  
-    case 'zone->threshold%': {
-      // from Z4 to 100%
-      newPaceValue = calculatePctFromPace(threshold_spm, calculatePaceFromZone(zonelist, oldPaceValue));
-      break;}
-  
-    case 'threshold%->pace': {
-      // from 100% to 495
-      newPaceValue = calculatePaceFromPct(threshold_spm, oldPaceValue);
-      break;}
-  
-    case 'threshold%->zone': {
-      // from 100% to Z4
-      newPaceValue = calculateZoneFromPace(zonelist, calculatePaceFromPct(threshold_spm, oldPaceValue));
-      break;}
-  
-    default:
-      break;
-  }
-
-  return newPaceValue;
 };
 
 export default function RenderStepRow({
@@ -182,8 +53,6 @@ export default function RenderStepRow({
   const setStepMode = (newMode) => {
     onUpdate(step.id, 'stepMode', newMode);
   };
-
-
 
   // Convert step values appropriately when pace method changes
   const setPaceMethod = (newPaceMethod) => {

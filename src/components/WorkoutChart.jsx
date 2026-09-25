@@ -279,7 +279,7 @@ export default function WorkoutChart({
                   const rawIntensity = step.type || 'active';
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
-                  // thresholdSecPerMile is the # of seconds to run a mile at threshold (495 for 8:15 pace)
+                  // thresholdSecPerMile is the # of seconds/mile at threshold (495 for 8:15 pace)
                   const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
 
                   // zoneDetails (name and color) are derived from the mid pace of the step
