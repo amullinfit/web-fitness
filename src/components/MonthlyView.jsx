@@ -168,6 +168,22 @@ export default function MonthlyView() {
     };
   }, []);
 
+// When workouts state updates, re-sync zoomWorkouts if modal is currently open
+useEffect(() => {
+    if (zoomWorkouts && zoomWorkouts.length > 0) {
+      const activeIds = new Set(
+        zoomWorkouts.map((w) => String(w.id || w.icu_activity_id))
+      );
+      const updatedZoomList = workouts.filter((w) =>
+        activeIds.has(String(w.id || w.icu_activity_id))
+      );
+  
+      if (updatedZoomList.length > 0) {
+        setZoomWorkouts(updatedZoomList);
+      }
+    }
+  }, [workouts]);
+
   // Keyboard shortcut listener to close zoom modal on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -548,16 +564,18 @@ export default function MonthlyView() {
         })}
       </div>
 
-      {/* REUSABLE FULL-WIDTH WORKOUT ZOOM MODAL */}
-      {zoomWorkouts && (
-        <WorkoutZoomModal
-          workouts={zoomWorkouts}
-          onClose={() => setZoomWorkouts(null)}
-          sportSettings={sportSettings}
-          paces={paces}
-          isMobile={isMobile}
-        />
-      )}
+        {/* REUSABLE FULL-WIDTH WORKOUT ZOOM MODAL */}
+        {zoomWorkouts && (
+        <WorkoutZoomModal
+            workouts={zoomWorkouts}
+            setWorkouts={setWorkouts} 
+            onClose={() => setZoomWorkouts(null)}
+            sportSettings={sportSettings}
+            paces={paces}
+            isMobile={isMobile}
+        />
+        )}
+
     </div>
   );
 } 

@@ -147,14 +147,17 @@ export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMo
 
         <Modal_AddGear
           isOpen={Boolean(modalWorkoutId)}
-          onClose={() => setModalWorkoutId(null)}
+          onClose={() => {
+            setModalWorkoutId(null);
+            setSelectedGearId(null);
+          }}
           loadingGear={loadingGear}
           activeShoesList={activeShoesList}
           selectedGearId={selectedGearId}
           setSelectedGearId={setSelectedGearId}
-          onConfirmAdd={(gearId) => handleAddGear(modalWorkoutId, gearId)}
+          onConfirmAdd={() => handleAddGear(modalWorkoutId, selectedGearId)}
         />
-
+        
       </div>
     </div>
   );

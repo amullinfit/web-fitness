@@ -82,7 +82,9 @@ export function useGearManagement(workouts, setWorkouts) {
     if (setWorkouts) {
       setWorkouts((prev) =>
         prev.map((w) => {
-          const matchesId = String(w.id) === String(workoutId) || String(w.icu_activity_id) === String(workoutId);
+          const matchesId = 
+            String(w.id) === String(workoutId) || 
+            String(w.icu_activity_id) === String(workoutId);
           if (matchesId) {
             return {
               ...w,
@@ -189,7 +191,9 @@ export function useGearManagement(workouts, setWorkouts) {
       if (setWorkouts) {
         setWorkouts((prev) =>
           prev.map((w) => {
-            const matchesId = String(w.id) === String(workoutId) || String(w.icu_activity_id) === String(workoutId);
+            const matchesId = 
+                String(w.id) === String(workoutId) || 
+                String(w.icu_activity_id) === String(workoutId);
             if (matchesId) {
               const updatedGear = resData.gear
                 ? (Array.isArray(resData.gear) ? resData.gear : [resData.gear])
@@ -207,7 +211,6 @@ export function useGearManagement(workouts, setWorkouts) {
           })
         );
       }
-
       setModalWorkoutId(null);
       setSelectedGearId(null);
     } catch (err) {
