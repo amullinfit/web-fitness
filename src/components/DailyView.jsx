@@ -115,6 +115,9 @@ export default function DailyView() {
   };
 
   useEffect(() => {
+    //
+    // Get workout information (planned, unplanned, gear, etc)
+    //
     let isMounted = true;
     setLoading(true);
 
