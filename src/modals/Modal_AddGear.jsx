@@ -4,12 +4,18 @@ export default function Modal_AddGear({
   isOpen,
   onClose,
   loadingGear,
-  activeShoesList,
+  activeShoesList = [],
   selectedGearId,
   setSelectedGearId,
   onConfirmAdd,
 }) {
   if (!isOpen) return null;
+
+  const handleConfirm = () => {
+    if (!selectedGearId) return;
+    // Passes selectedGearId to parent handler in case parent expects it as an argument
+    onConfirmAdd(selectedGearId);
+  };
 
   return (
     <div
@@ -20,7 +26,7 @@ export default function Modal_AddGear({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -35,16 +41,17 @@ export default function Modal_AddGear({
           borderRadius: '8px',
           width: '90%',
           maxWidth: '400px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
         }}
       >
         <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Select Shoe to Add</h3>
+
         {loadingGear ? (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
+          <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
             Loading available shoes...
           </div>
         ) : activeShoesList.length === 0 ? (
-          <p style={{ color: '#666' }}>No active shoes available.</p>
+          <p style={{ color: '#666', margin: '20px 0' }}>No active shoes available.</p>
         ) : (
           <div
             style={{
@@ -58,7 +65,10 @@ export default function Modal_AddGear({
             {activeShoesList.map((shoe) => {
               const shoeId = shoe.id || shoe.gear_id;
               const isSelected = String(selectedGearId) === String(shoeId);
-              const dist = shoe.distance_miles ?? (shoe.distance_m ? shoe.distance_m / 1609.34 : 0);
+
+              // Standardized distance fallback
+              const meters = shoe.distance_m ?? shoe.distance;
+              const dist = shoe.distance_miles ?? (meters ? meters / 1609.34 : 0);
 
               return (
                 <div
@@ -71,14 +81,15 @@ export default function Modal_AddGear({
                     borderBottom: '1px solid #f0f0f0',
                     cursor: 'pointer',
                     backgroundColor: isSelected ? '#e8f5e9' : 'transparent',
+                    transition: 'background-color 0.15s ease',
                   }}
                 >
                   <input
                     type="radio"
                     name="selectShoeRadio"
                     checked={isSelected}
-                    onChange={() => setSelectedGearId(shoeId)}
-                    style={{ marginRight: '10px' }}
+                    readOnly
+                    style={{ marginRight: '10px', cursor: 'pointer' }}
                   />
                   <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                     <span style={{ fontWeight: '500', color: '#333' }}>{shoe.name}</span>
@@ -108,8 +119,8 @@ export default function Modal_AddGear({
               cursor: selectedGearId ? 'pointer' : 'not-allowed',
               opacity: selectedGearId ? 1 : 0.6,
             }}
-            disabled={!selectedGearId}
-            onClick={onConfirmAdd}
+            disabled={!selectedGearId || loadingGear}
+            onClick={handleConfirm}
           >
             OK
           </button>

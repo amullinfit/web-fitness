@@ -24,8 +24,8 @@ export function WorkoutZoomContent({
         <GearBadge
           workout={workout}
           removingGearId={removingGearId}
-          onRemoveGear={onRemoveGear}
-          onOpenAddGear={onOpenAddGear}
+          onRemoveGear={(gearId) => onRemoveGear(workout.id, gearId)}
+          onOpenAddGear={() => onOpenAddGear(workout.id)}
         />
       </div>
 
@@ -73,7 +73,7 @@ export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMo
   if (!workouts || workouts.length === 0) return null;
 
   const activeWorkout = workouts[activeWorkoutIndex] || workouts[0];
-  const workoutKey = activeWorkout.id || activeWorkoutIndex;
+  const workoutKey = `${activeWorkout.id || activeWorkoutIndex}-${JSON.stringify(activeWorkout.gear || [])}`;
 
   return (
     <div className="monthly-zoom-overlay" onClick={onClose}>
@@ -147,16 +147,14 @@ export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMo
 
         <Modal_AddGear
           isOpen={Boolean(modalWorkoutId)}
-          onClose={() => {
-            setModalWorkoutId(null);
-            setSelectedGearId(null);
-          }}
+          onClose={() => setModalWorkoutId(null)}
           loadingGear={loadingGear}
           activeShoesList={activeShoesList}
           selectedGearId={selectedGearId}
           setSelectedGearId={setSelectedGearId}
-          onConfirmAdd={() => handleAddGear(modalWorkoutId, selectedGearId)}
+          onConfirmAdd={(gearId) => handleAddGear(modalWorkoutId, gearId)}
         />
+
       </div>
     </div>
   );

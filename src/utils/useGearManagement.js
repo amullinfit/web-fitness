@@ -40,6 +40,7 @@ export const getGearInfo = (workout) => {
   if (!workout) return { shoeName: null, gearId: null, hasValidShoe: false };
 
   const shoeName = workout.shoe_name || workout.gear_name ||
+    (Array.isArray(workout.gear) && workout.gear.length > 0 ? workout.gear[0]?.name : null) ||
     (typeof workout.gear === 'object' && !Array.isArray(workout.gear) ? workout.gear?.name : null);
 
   const gearId = workout.gear_id ||
@@ -77,8 +78,7 @@ export function useGearManagement(workouts, setWorkouts) {
     setRemovingGearId(workoutId);
     setErrorMessage(null);
 
-    const previousWorkouts = workouts ? [...workouts] : [];
-
+    // Optimistic state update: reset all gear fields consistently
     if (setWorkouts) {
       setWorkouts((prev) =>
         prev.map((w) => {
@@ -89,7 +89,7 @@ export function useGearManagement(workouts, setWorkouts) {
               shoe_name: null,
               gear_name: null,
               gear_id: null,
-              gear: null,
+              gear: [],
             };
           }
           return w;
@@ -115,18 +115,19 @@ export function useGearManagement(workouts, setWorkouts) {
         throw new Error(msg);
       }
 
-      if (Array.isArray(resData.gear) && setWorkouts) {
+      // Sync backend gear state if explicit gear list returned
+      if (setWorkouts && resData.gear !== undefined) {
+        const normalizedGear = Array.isArray(resData.gear) ? resData.gear : (resData.gear ? [resData.gear] : []);
         setWorkouts((prev) =>
           prev.map((w) => {
             const matchesId = String(w.id) === String(workoutId) || String(w.icu_activity_id) === String(workoutId);
-            return matchesId ? { ...w, gear: resData.gear } : w;
+            return matchesId ? { ...w, gear: normalizedGear } : w;
           })
         );
       }
     } catch (err) {
-      console.error("Error executing api_gear_remove, rolling back state:", err);
-      if (setWorkouts) setWorkouts(previousWorkouts);
-      showErrorMessage(err.message || "Failed to remove gear. Restored original state.");
+      console.error("Error executing api_gear_remove:", err);
+      showErrorMessage(err.message || "Failed to remove gear.");
     } finally {
       setRemovingGearId(null);
     }
@@ -160,7 +161,6 @@ export function useGearManagement(workouts, setWorkouts) {
     }
 
     setErrorMessage(null);
-    const previousWorkouts = workouts ? [...workouts] : [];
 
     try {
       const params = new URLSearchParams({
@@ -184,19 +184,23 @@ export function useGearManagement(workouts, setWorkouts) {
       }
 
       const addedGearItem = availableGear.find((g) => String(g.id || g.gear_id) === String(gearId));
-      const newShoeName = addedGearItem ? addedGearItem.name : 'Assigned Shoe';
+      const newShoeName = addedGearItem ? addedGearItem.name : 'Assigned Gear';
 
       if (setWorkouts) {
         setWorkouts((prev) =>
           prev.map((w) => {
             const matchesId = String(w.id) === String(workoutId) || String(w.icu_activity_id) === String(workoutId);
             if (matchesId) {
+              const updatedGear = resData.gear
+                ? (Array.isArray(resData.gear) ? resData.gear : [resData.gear])
+                : (addedGearItem ? [addedGearItem] : [{ id: gearId, name: newShoeName }]);
+
               return {
                 ...w,
                 shoe_name: newShoeName,
                 gear_name: newShoeName,
                 gear_id: gearId,
-                gear: addedGearItem || gearId,
+                gear: updatedGear,
               };
             }
             return w;
@@ -207,9 +211,8 @@ export function useGearManagement(workouts, setWorkouts) {
       setModalWorkoutId(null);
       setSelectedGearId(null);
     } catch (err) {
-      console.error("Error executing api_gear_add, rolling back state:", err);
-      if (setWorkouts) setWorkouts(previousWorkouts);
-      showErrorMessage(err.message || "Failed to add gear. Restored original state.");
+      console.error("Error executing api_gear_add:", err);
+      showErrorMessage(err.message || "Failed to add gear.");
     }
   };
 
