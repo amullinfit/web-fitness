@@ -178,7 +178,7 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
                   />
                 )}
 
-                {/* Day Letter Label with optional Today highlight box */}
+                {/* Day Letter Label with Today highlight box */}
                 <g className={d.isToday ? 'weekly-today' : ''}>
                   {d.isToday && (
                     <rect
@@ -188,13 +188,13 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
                       height={18}
                       rx={4}
                       ry={4}
+                      className="weekly-today-rect"
                     />
                   )}
                   <text
                     x={x + barWidth / 2}
                     y={chartHeight + 21}
                     textAnchor="middle"
-                    fill={d.isToday ? '#e6f7ff' : undefined}
                     className={`monthly-chart-day-text ${isHovered ? 'text-hovered' : ''} ${d.isToday ? 'is-today-text' : ''}`}
                   >
                     {d.dayName}

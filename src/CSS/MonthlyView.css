@@ -618,6 +618,19 @@
   font-weight: 700;
 }
 
+/* SVG Today highlight box background & border */
+.weekly-today-rect {
+  fill: #e6f7ff;      /* Very light blue fill */
+  stroke: #1890ff;    /* Darker blue border */
+  stroke-width: 1.5px;
+}
+
+/* Today letter text color */
+.monthly-chart-day-text.is-today-text {
+  fill: #000000;      /* Dark text inside light blue box */
+  font-weight: 700;
+}
+
 /* Hover Tooltip Popup */
 .monthly-chart-tooltip {
   position: absolute;
@@ -671,21 +684,3 @@
   color: #facc15;
   margin-top: 2px;
 }
-
-/* Highlight container for today's cell */
-.weekly-today {
-  background-color: #e6f7ff; /* Very light blue */
-  border: 2px solid #1890ff;  /* Darker blue accent border */
-  border-radius: 6px;
-}
-
-/* Ensure header text inside today's cell renders in bold black */
-/*
-.monthly-day-cell.monthly-today .monthly-day-header,
-.monthly-day-cell.monthly-today .monthly-day-name,
-.monthly-day-cell.monthly-today .monthly-day-date,
-.monthly-day-cell.monthly-today .monthly-day-separator {
-  color: #000000;
-  font-weight: 700;
-}
-*/
