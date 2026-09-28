@@ -308,7 +308,7 @@ const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayClick }) 
  * Isolated Content Wrapper: Remounting this component on tab switch
  * resets internal states like open/close toggles in WorkoutTextSection.
  */
-function WorkoutZoomContent({ workout, sportSettings, paces }) {
+function WorkoutZoomContent({ workout, sportSettings, paces, isMobile }) {
   return (
     <div className="monthly-zoom-body">
       <div className="monthly-zoom-chart-container">
@@ -398,6 +398,7 @@ function WorkoutZoomModal({ workouts, onClose, sportSettings, paces }) {
           workout={activeWorkout}
           sportSettings={sportSettings}
           paces={paces}
+          isMobile={isMobile}
         />
       </div>
     </div>
