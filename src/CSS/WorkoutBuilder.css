@@ -2,10 +2,11 @@
   -- WorkoutBuilder.css
 */
 .workout-builder-container {
-  max-width: 900px;
+  /* max-width: 900px; */
+  width: 100%;
   margin: 0 auto;
   font-family: inherit;
-  padding: 20px;
+  padding: 12px;
 }
 
 .builder-header-bar {
