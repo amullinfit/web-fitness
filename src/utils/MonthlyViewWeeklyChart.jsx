@@ -194,7 +194,7 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
                     x={x + barWidth / 2}
                     y={chartHeight + 21}
                     textAnchor="middle"
-                    fill={d.isToday ? '#ffffff' : undefined}
+{/*}                    fill={d.isToday ? '#ffffff' : undefined} */}
                     className={`monthly-chart-day-text ${isHovered ? 'text-hovered' : ''} ${d.isToday ? 'is-today-text' : ''}`}
                   >
                     {d.dayName}
