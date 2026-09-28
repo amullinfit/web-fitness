@@ -188,8 +188,6 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
                       height={18}
                       rx={4}
                       ry={4}
-                      fill="#409eff"
-                      className="monthly-today-box"
                     />
                   )}
                   <text
