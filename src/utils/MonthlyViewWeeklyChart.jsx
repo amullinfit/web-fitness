@@ -179,7 +179,7 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
                 )}
 
                 {/* Day Letter Label with optional Today highlight box */}
-                <g className={d.isToday ? 'monthly-today' : ''}>
+                <g className={d.isToday ? 'monthly-day-cell monthly-today' : ''}>
                   {d.isToday && (
                     <rect
                       x={x + barWidth / 2 - 9}
