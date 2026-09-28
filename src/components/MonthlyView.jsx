@@ -18,7 +18,7 @@ import { WorkoutZoomModal } from '../modals/MonthlyModal_ZoomWorkout';
 import WorkoutChart from '../components/WorkoutChart';
 
 // CSS Import
-import '../css/MonthlyView.css';
+import '../CSS/MonthlyView.css';
 
 export default function MonthlyView({ 
   currentDate = new Date(), 
