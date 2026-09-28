@@ -1,309 +1,941 @@
-import React, { useState, useMemo } from 'react';
-
-// Helpers & Utilities
-import { 
-  useIsMobile, 
-  safeStringLower, 
-  getSportCategory, 
-  getThresholdPaceForSport, 
-  getLocalDateString, 
-  isWorkoutCompleted, 
-  getMondayOfWeek, 
-  getFourWeeksDates 
-} from '../utils/MonthlyViewHelpers';
-
-// Chart & Modal Components
-import { WeeklyFrameChart } from '../utils/MonthlyViewWeeklyChart';
-import { WorkoutZoomModal } from '../modals/MonthlyModal_ZoomWorkout';
-import WorkoutChart from '../components/WorkoutChart';
-
-// CSS Import
+//
+// MONTHLYVIEW.JSX
+//
+import React, { useState, useEffect, useMemo } from 'react';
+import WorkoutChart from './WorkoutChart';
+import WorkoutTextSection from '../utils/WorkoutTextSection';
 import '../CSS/MonthlyView.css';
+import { usePaces } from '../utils/PacesContext.jsx'; 
 
-export default function MonthlyView({ 
-  currentDate = new Date(), 
-  workouts = [], 
-  sportSettings = {}, 
-  paces = {},
-  onNavigateDate,
-  onTodayClick
-}) {
-  const isMobile = useIsMobile();
+const VAL_WORKOUTS_URL = "/api/val-workouts";
+const HISTORICAL_URL = "/api/val-historical";
 
-  // State
-  const [activeDate, setActiveDate] = useState(currentDate);
-  const [zoomWorkouts, setZoomWorkouts] = useState(null);
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [toastError, setToastError] = useState(null);
-  const [selectedSports, setSelectedSports] = useState(['Run', 'Bike', 'Swim', 'Other']);
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < breakpoint
+  );
 
-  // Date Calculations (4-Week Grid)
-  const fourWeeksDates = useMemo(() => {
-    const startMonday = getMondayOfWeek(activeDate);
-    return getFourWeeksDates(startMonday);
-  }, [activeDate]);
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handleChange = (e) => setIsMobile(e.matches);
 
-  // Group Workouts by Date string
-  const workoutsByDate = useMemo(() => {
-    const map = {};
-    (workouts || []).forEach((w) => {
-      const dateKey = getLocalDateString(w.date || w.scheduled_date || w.start_date_local);
-      if (dateKey) {
-        if (!map[dateKey]) map[dateKey] = [];
-        map[dateKey].push(w);
-      }
-    });
-    return map;
-  }, [workouts]);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [breakpoint]);
 
-  // Filtered Workouts based on user-selected sport checkboxes
-  const filteredWorkoutsByDate = useMemo(() => {
-    const map = {};
-    Object.keys(workoutsByDate).forEach((dateKey) => {
-      const dayList = workoutsByDate[dateKey] || [];
-      const filtered = dayList.filter((w) => {
-        const cat = getSportCategory(w);
-        return selectedSports.includes(cat);
-      });
-      if (filtered.length > 0) {
-        map[dateKey] = filtered;
-      }
-    });
-    return map;
-  }, [workoutsByDate, selectedSports]);
-
-  // Date Navigation Handlers
-  const handlePrevMonth = () => {
-    const newDate = new Date(activeDate);
-    newDate.setMonth(newDate.getMonth() - 1);
-    setActiveDate(newDate);
-    if (onNavigateDate) onNavigateDate(newDate);
-  };
-
-  const handleNextMonth = () => {
-    const newDate = new Date(activeDate);
-    newDate.setMonth(newDate.getMonth() + 1);
-    setActiveDate(newDate);
-    if (onNavigateDate) onNavigateDate(newDate);
-  };
-
-  const handleToday = () => {
-    const today = new Date();
-    setActiveDate(today);
-    if (onTodayClick) onTodayClick();
-    if (onNavigateDate) onNavigateDate(today);
-  };
-
-  const handleOpenZoomModal = (workoutsToZoom) => {
-    if (workoutsToZoom && workoutsToZoom.length > 0) {
-      setZoomWorkouts(workoutsToZoom);
-    }
-  };
-
-  const toggleSportFilter = (sport) => {
-    setSelectedSports((prev) =>
-      prev.includes(sport) ? prev.filter((s) => s !== sport) : [...prev, sport]
-    );
-  };
-
-  // Render Individual Workout Item inside Day Cell
-  const renderWorkoutItem = (workout, idx) => {
-    const completed = isWorkoutCompleted(workout);
-    const sportCategory = getSportCategory(workout);
-
-    return (
-      <div
-        key={workout.id || idx}
-        className={`monthly-workout-item monthly-clickable ${completed ? 'monthly-completed' : ''}`}
-        onClick={() => handleOpenZoomModal([workout])}
-      >
-        <div className="monthly-workout-type">
-          {workout.name || workout.title || sportCategory}
-        </div>
-
-        {/* Desktop Micro Workout Chart */}
-        {!isMobile && (
-          <div style={{ height: '35px', marginTop: '2px' }}>
-            <WorkoutChart
-              workout={workout}
-              thresholdPace={getThresholdPaceForSport(workout, sportSettings, paces)}
-              chartHeight="35px"
-              showWorkoutName={false}
-              showThresholdPace={false}
-              showYAxisLabels={false}
-              showLegend={false}
-              minimalXAxis={true}
-              showHoverDetails={false}
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Render Day Cell
-  const renderDayCell = (dateObj, dayWorkouts) => {
-    const dateStr = getLocalDateString(dateObj);
-    const dayNumber = dateObj.getDate();
-    const dayName = dateObj.toLocaleDateString(undefined, { weekday: 'short' });
-    const isToday = dateStr === getLocalDateString(new Date());
-
-    return (
-      <div 
-        key={dateStr} 
-        className={`monthly-day-cell ${isToday ? 'monthly-today' : ''}`}
-      >
-        <div className="monthly-day-header">
-          <span className="monthly-day-name">{dayName}</span>
-          <span className="monthly-day-separator">/</span>
-          <span className="monthly-day-date">{dayNumber}</span>
-        </div>
-
-        <div className="monthly-day-workouts">
-          {dayWorkouts.length === 0 ? (
-            <div className="monthly-empty-day" />
-          ) : (
-            dayWorkouts.map((workout, idx) => renderWorkoutItem(workout, idx))
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const startMonthName = fourWeeksDates[0]?.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
-  const endMonthName = fourWeeksDates[27]?.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
-  const dateRangeLabel = startMonthName === endMonthName ? startMonthName : `${startMonthName} - ${endMonthName}`;
-
-  return (
-    <div className="monthly-view-container">
-      {/* Toast Error Alert */}
-      {toastError && (
-        <div className="monthly-toast-error">
-          <span>{toastError}</span>
-          <button className="monthly-toast-close" onClick={() => setToastError(null)}>✕</button>
-        </div>
-      )}
-
-      {/* Navigation Bar */}
-      <div className="monthly-nav-bar">
-        <div className="monthly-nav-buttons">
-          <button className="nav-btn" onClick={handlePrevMonth}>‹ Prev</button>
-          <button className="nav-btn nav-btn-today" onClick={handleToday}>Today</button>
-          <button className="nav-btn" onClick={handleNextMonth}>Next ›</button>
-        </div>
-
-        <div className="monthly-nav-right-group">
-          <span className="monthly-week-label">{dateRangeLabel}</span>
-
-          {/* Filter Dropdown Controls */}
-          <div className="monthly-filter-container">
-            <button 
-              className={`monthly-filter-btn ${selectedSports.length < 4 ? 'active-filters' : ''}`}
-              onClick={() => setShowFilterModal(!showFilterModal)}
-            >
-              Filter ⚙
-              {selectedSports.length < 4 && (
-                <span className="monthly-filter-badge">{selectedSports.join(', ')}</span>
-              )}
-            </button>
-
-            {showFilterModal && (
-              <div className="monthly-filter-modal">
-                <div className="monthly-filter-title">Filter Sports</div>
-                <div className="monthly-filter-options">
-                  {['Run', 'Bike', 'Swim', 'Other'].map((sport) => (
-                    <label key={sport} className="monthly-filter-option">
-                      <input
-                        type="checkbox"
-                        checked={selectedSports.includes(sport)}
-                        onChange={() => toggleSportFilter(sport)}
-                      />
-                      {sport}
-                    </label>
-                  ))}
-                </div>
-                <div className="monthly-filter-actions-row">
-                  <button 
-                    className="monthly-filter-btn-sm"
-                    onClick={() => setSelectedSports(['Run', 'Bike', 'Swim', 'Other'])}
-                  >
-                    Select All
-                  </button>
-                  <button 
-                    className="monthly-filter-btn-sm monthly-filter-btn-primary"
-                    onClick={() => setShowFilterModal(false)}
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Desktop Top Weekly Summary Chart Columns */}
-      {!isMobile && (
-        <div className="monthly-desktop-top-charts">
-          {['Run', 'Bike', 'Swim'].map((sport) => (
-            <div key={sport} className="monthly-desktop-chart-column">
-              <WeeklyFrameChart
-                weekDates={fourWeeksDates.slice(0, 7)}
-                workoutsByDate={filteredWorkoutsByDate}
-                sportType={sport}
-                onDayClick={(sportWorkouts) => handleOpenZoomModal(sportWorkouts)}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* MAIN 4-WEEK CALENDAR GRID */}
-      <div className="monthly-weeks-container">
-        {[0, 1, 2, 3].map((weekIdx) => {
-          const weekDates = fourWeeksDates.slice(weekIdx * 7, (weekIdx + 1) * 7);
-
-          return (
-            <div key={weekIdx} className="monthly-week-row-wrapper">
-              {/* MOBILE INLINE CHARTS (Appears above each 7-day week row on mobile) */}
-              {isMobile && (
-                <div className="monthly-mobile-charts-block">
-                  {['Run', 'Bike', 'Swim']
-                    .filter((sport) => selectedSports.includes(sport))
-                    .map((sport) => (
-                      <WeeklyFrameChart
-                        key={sport}
-                        weekDates={weekDates}
-                        workoutsByDate={filteredWorkoutsByDate}
-                        sportType={sport}
-                        onDayClick={(sportWorkouts) => handleOpenZoomModal(sportWorkouts)}
-                      />
-                    ))}
-                </div>
-              )}
-
-              {/* 7-Day Grid Row */}
-              <div className={`monthly-grid ${isMobile ? 'monthly-grid-mobile' : 'monthly-grid-desktop'}`}>
-                {weekDates.map((date) => {
-                  const dateStr = getLocalDateString(date);
-                  return renderDayCell(date, filteredWorkoutsByDate[dateStr] || []);
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* REUSABLE FULL-WIDTH WORKOUT ZOOM MODAL */}
-      {zoomWorkouts && (
-        <WorkoutZoomModal
-          workouts={zoomWorkouts}
-          onClose={() => setZoomWorkouts(null)}
-          sportSettings={sportSettings}
-          paces={paces}
-          isMobile={isMobile}
-        />
-      )}
-    </div>
-  );
+  return isMobile;
 }
+
+const safeStringLower = (val) => {
+  if (!val) return "";
+  if (typeof val === 'string') return val.toLowerCase();
+  return String(val.id || val.type || val.name || val).toLowerCase();
+};
+
+const getSportCategory = (workout) => {
+  const type = safeStringLower(workout.type || workout.sport || '');
+  if (type.includes('swim')) return 'Swim';
+  if (type.includes('ride') || type.includes('bike') || type.includes('cycling')) return 'Bike';
+  if (type.includes('run')) return 'Run';
+  return 'Other';
+};
+
+const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
+  return contextPaces?.threshold_pace || null;
+};
+
+const getLocalDateString = (dateInput) => {
+  if (!dateInput) return '';
+
+  if (typeof dateInput === 'string') {
+    if (dateInput.includes('T')) return dateInput.split('T')[0];
+    if (dateInput.length >= 10) return dateInput.slice(0, 10);
+  }
+
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const isWorkoutCompleted = (workout) => {
+  if (workout.feedSource === 'HISTORICAL') {
+    return true;
+  }
+
+  const hasPairedEvent = workout.paired_event_id !== null && workout.paired_event_id !== undefined;
+  const hasCompliance = workout.compliance !== null && workout.compliance !== undefined;
+
+  return hasPairedEvent || hasCompliance;
+};
+
+const getMondayOfWeek = (date) => {
+  const d = new Date(date);
+  const dayOfWeek = d.getDay();
+  const diff = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+  return new Date(d.setDate(diff));
+};
+
+const getFourWeeksDates = (startMonday) => {
+  const dates = [];
+  for (let i = 0; i < 28; i++) {
+    const date = new Date(startMonday);
+    date.setDate(date.getDate() + i);
+    dates.push(date);
+  }
+  return dates;
+};
+
+const metersToMilesNum = (meters) => {
+  if (!meters) return 0;
+  return parseFloat((meters * 0.000621371).toFixed(2));
+};
+
+/**
+ * Determine daily color based on intensity zone breakdown.
+ * Red: Z5+ | Blue: Z4 | Yellow: Z3 | Grey: Z1/Z2 (Default)
+ * Border: Dark Black if total miles > 8.0
+ */
+const getDayZoneStyle = (workoutsList) => {
+  if (!workoutsList || workoutsList.length === 0) {
+    return { color: '#E5E7EB', borderColor: 'transparent', miles: 0, zoneLabel: 'Rest / None' };
+  }
+
+  let totalMeters = 0;
+  let z5Time = 0;
+  let z4Time = 0;
+  let z3Time = 0;
+
+  workoutsList.forEach((w) => {
+    totalMeters += w.distance || w.icu_distance || 0;
+
+    if (w.icu_zone_times && Array.isArray(w.icu_zone_times)) {
+      z3Time += w.icu_zone_times[2] || 0;
+      z4Time += w.icu_zone_times[3] || 0;
+      z5Time += (w.icu_zone_times[4] || 0) + (w.icu_zone_times[5] || 0);
+    } else if (w.workout_doc?.steps) {
+      w.workout_doc.steps.forEach((step) => {
+        const intensity = step.intensity || step.pace?.start || 0;
+        const duration = step.duration || 0;
+        if (intensity >= 105) z5Time += duration;
+        else if (intensity >= 95) z4Time += duration;
+        else if (intensity >= 85) z3Time += duration;
+      });
+    }
+  });
+
+  const miles = metersToMilesNum(totalMeters);
+
+  let color = '#9CA3AF'; // Grey (Easy / Z1-Z2)
+  let zoneLabel = 'Z1 / Z2 (Easy)';
+
+  if (z5Time > 60) {
+    color = '#EF4444'; // Red (Z5+)
+    zoneLabel = 'Z5+ (Sprint / Max)';
+  } else if (z4Time > 120) {
+    color = '#3B82F6'; // Blue (Z4)
+    zoneLabel = 'Z4 (Threshold)';
+  } else if (z3Time > 180) {
+    color = '#EAB308'; // Yellow (Z3)
+    zoneLabel = 'Z3 (Tempo)';
+  }
+
+  // Dark black border if > 8 miles
+  const borderColor = miles > 8.0 ? '#000000' : 'transparent';
+
+  return { color, borderColor, miles, zoneLabel };
+};
+
+/**
+ * SVG Bar Chart with Enclosing Weekly Frame, Hover Tooltips, and Click Interactivity
+ */
+const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayClick }) => {
+  const [hoveredDayIndex, setHoveredDayIndex] = useState(null);
+
+  const daysData = useMemo(() => {
+    return weekDates.map((dateObj, idx) => {
+      const dateStr = getLocalDateString(dateObj);
+      const allWorkouts = workoutsByDate[dateStr] || [];
+      const sportWorkouts = allWorkouts.filter((w) => getSportCategory(w) === sportType);
+
+      const style = getDayZoneStyle(sportWorkouts);
+      const dayName = dateObj.toLocaleDateString(undefined, { weekday: 'narrow' });
+      const fullDateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+      return {
+        dayIndex: idx,
+        dateObj,
+        dateStr,
+        dayName,
+        fullDateStr,
+        miles: style.miles,
+        color: style.color,
+        borderColor: style.borderColor,
+        zoneLabel: style.zoneLabel,
+        sportWorkouts
+      };
+    });
+  }, [weekDates, workoutsByDate, sportType]);
+
+  const totalWeeklyMiles = useMemo(() => {
+    return daysData.reduce((sum, d) => sum + d.miles, 0).toFixed(1);
+  }, [daysData]);
+
+  const maxMiles = useMemo(() => {
+    const max = Math.max(...daysData.map((d) => d.miles), 1);
+    return Math.ceil(max);
+  }, [daysData]);
+
+  const chartHeight = 70;
+  const barWidth = 14;
+  const gap = 18;
+  const startX = 16;
+  const totalWidth = startX + 7 * (barWidth + gap);
+
+  return (
+    <div className="monthly-chart-frame-box">
+      <div className="monthly-chart-frame-header">
+        <span className={`monthly-chart-sport-badge badge-${sportType.toLowerCase()}`}>
+          {sportType}
+        </span>
+        <span className="monthly-chart-weekly-total">{totalWeeklyMiles} mi total</span>
+      </div>
+
+      <div className="monthly-chart-svg-wrapper">
+        <svg viewBox={`0 0 ${totalWidth} ${chartHeight + 25}`} className="monthly-chart-svg">
+          {/* Enclosing Outer Frame (Weekly Border) */}
+          <rect
+            x={startX - 6}
+            y={2}
+            width={7 * (barWidth + gap) - gap + 12}
+            height={chartHeight + 4}
+            rx={6}
+            className="monthly-weekly-enclosing-frame"
+          />
+
+          {/* Daily Bars */}
+          {daysData.map((d, i) => {
+            const barH = d.miles > 0 ? Math.max((d.miles / maxMiles) * chartHeight, 4) : 0;
+            const x = startX + i * (barWidth + gap);
+            const y = chartHeight - barH + 2;
+            const isHovered = hoveredDayIndex === i;
+            const hasWorkouts = d.sportWorkouts.length > 0;
+
+            return (
+              <g
+                key={i}
+                onMouseEnter={() => setHoveredDayIndex(i)}
+                onMouseLeave={() => setHoveredDayIndex(null)}
+                onClick={() => {
+                  if (hasWorkouts && onDayClick) {
+                    onDayClick(d.sportWorkouts, d.dateStr, sportType);
+                  }
+                }}
+                className={`monthly-chart-bar-group ${hasWorkouts ? 'monthly-clickable-bar' : ''}`}
+                style={{ cursor: hasWorkouts ? 'pointer' : 'default' }}
+              >
+                {/* Hit target background line */}
+                <rect
+                  x={x - 2}
+                  y={2}
+                  width={barWidth + 4}
+                  height={chartHeight}
+                  fill="transparent"
+                />
+
+                {barH > 0 && (
+                  <rect
+                    x={x}
+                    y={y}
+                    width={barWidth}
+                    height={barH}
+                    rx={2}
+                    fill={d.color}
+                    stroke={d.borderColor}
+                    strokeWidth={d.borderColor !== 'transparent' ? 2 : 0}
+                    className={`monthly-chart-bar ${isHovered ? 'bar-hovered' : ''}`}
+                  />
+                )}
+
+                {/* Day Letter Label */}
+                <text
+                  x={x + barWidth / 2}
+                  y={chartHeight + 18}
+                  textAnchor="middle"
+                  className={`monthly-chart-day-text ${isHovered ? 'text-hovered' : ''}`}
+                >
+                  {d.dayName}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Hover Tooltip Popup */}
+        {hoveredDayIndex !== null && (
+          <div
+            className="monthly-chart-tooltip"
+            style={{
+              left: `${((hoveredDayIndex + 0.5) / 7) * 100}%`
+            }}
+          >
+            <div className="tooltip-date">{daysData[hoveredDayIndex].fullDateStr}</div>
+            <div className="tooltip-miles">
+              <strong>{daysData[hoveredDayIndex].miles.toFixed(1)}</strong> mi
+            </div>
+            {daysData[hoveredDayIndex].miles > 0 ? (
+              <>
+                <div className="tooltip-zone">{daysData[hoveredDayIndex].zoneLabel}</div>
+                {daysData[hoveredDayIndex].miles > 8.0 && (
+                  <div className="tooltip-long-run">★ Long Run (&gt;8 mi)</div>
+                )}
+                <div className="tooltip-click-hint" style={{ fontSize: '10px', marginTop: '4px', opacity: 0.8 }}>
+                  Click to view workout details
+                </div>
+              </>
+            ) : (
+              <div className="tooltip-zone tooltip-rest">No activity</div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Isolated Content Wrapper: Remounting this component on tab switch
+ * resets internal states like open/close toggles in WorkoutTextSection.
+ */
+function WorkoutZoomContent({ workout, sportSettings, paces, isMobile }) {
+  return (
+    <div className="monthly-zoom-body">
+      <div className="monthly-zoom-chart-container">
+        <WorkoutChart
+          workout={workout}
+          thresholdPace={getThresholdPaceForSport(workout, sportSettings, paces)}
+          chartHeight={isMobile ? "110px" : "140px"}
+          showWorkoutName={true}
+          showThresholdPace={true}
+          showYAxisLabels={true}
+          showLegend={true}
+          minimalXAxis={false}
+          showHoverDetails={true}
+        />
+      </div>
+
+      <WorkoutTextSection 
+        workout={workout} 
+        thresholdPace={getThresholdPaceForSport(workout, sportSettings, paces)}
+        paceDetails={paces}
+      />
+    </div>
+  );
+}
+
+/**
+ * Full-Width Workout Zoom Modal (Supports multiple workouts with tab navigation)
+ */
+function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMobile }) {
+  const [activeWorkoutIndex, setActiveWorkoutIndex] = useState(0);
+
+  if (!workouts || workouts.length === 0) return null;
+
+  const activeWorkout = workouts[activeWorkoutIndex] || workouts[0];
+  const workoutKey = activeWorkout.id || activeWorkoutIndex;
+
+  return (
+    <div className="monthly-zoom-overlay" onClick={onClose}>
+      <div className="monthly-zoom-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="monthly-zoom-header">
+          <div className="monthly-zoom-title-group">
+            <span className="monthly-zoom-sport-tag">
+              {activeWorkout.type || activeWorkout.sport || 'Workout'}
+            </span>
+            <h2>{activeWorkout.name || activeWorkout.title || 'Workout Details'}</h2>
+          </div>
+          <button className="monthly-zoom-close" onClick={onClose}>✕</button>
+        </div>
+
+        {/* Multi-Workout Navigation Bar inside Modal */}
+        {workouts.length > 1 && (
+          <div 
+            className="monthly-zoom-tabs-bar"
+            style={{
+              display: 'flex',
+              gap: '8px',
+              padding: '10px 20px 0 20px',
+              borderBottom: '1px solid #E5E7EB',
+              overflowX: 'auto'
+            }}
+          >
+            {workouts.map((w, idx) => (
+              <button
+                key={w.id || idx}
+                type="button"
+                onClick={() => setActiveWorkoutIndex(idx)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px 6px 0 0',
+                  border: '1px solid #E5E7EB',
+                  borderBottom: activeWorkoutIndex === idx ? '2px solid #3B82F6' : '1px solid #E5E7EB',
+                  backgroundColor: activeWorkoutIndex === idx ? '#FFFFFF' : '#F3F4F6',
+                  fontWeight: activeWorkoutIndex === idx ? 'bold' : 'normal',
+                  cursor: 'pointer',
+                  fontSize: '13px'
+                }}
+              >
+                {w.name || w.type || `Workout ${idx + 1}`}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Using key={workoutKey} ensures WorkoutTextSection collapses on tab change */}
+        <WorkoutZoomContent
+          key={workoutKey}
+          workout={activeWorkout}
+          sportSettings={sportSettings}
+          paces={paces}
+          isMobile={isMobile}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default function MonthlyView() {
+  const { paces } = usePaces();
+
+  const [workouts, setWorkouts] = useState([]);
+  const [sportSettings, setSportSettings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentWeekMonday, setCurrentWeekMonday] = useState(() => getMondayOfWeek(new Date()));
+  const [errorMessage, setErrorMessage] = useState(null);
+
+  const [activeFilters, setActiveFilters] = useState(['Run']);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [tempFilters, setTempFilters] = useState(['Run']);
+
+  // State for Zoomed Workout Modal (Holds array of workouts for selected day)
+  const [zoomWorkouts, setZoomWorkouts] = useState(null);
+
+  const isMobile = useIsMobile(768);
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+
+    Promise.all([
+      fetch(VAL_WORKOUTS_URL).then((res) => res.json()).catch((err) => {
+        console.error("Error fetching val-workouts:", err);
+        return null;
+      }),
+      fetch(HISTORICAL_URL).then((res) => res.json()).catch((err) => {
+        console.error("Error fetching historical activities:", err);
+        return null;
+      })
+    ])
+      .then(([valJson, historicalJson]) => {
+        if (!isMounted) return;
+
+        const valList = (valJson?.planned || valJson?.workouts || (Array.isArray(valJson) ? valJson : []))
+          .map((item) => ({ ...item, feedSource: 'WORKOUTS' }));
+
+        const historicalList = (historicalJson?.activities || historicalJson?.workouts || (Array.isArray(historicalJson) ? historicalJson : []))
+          .map((item) => ({ ...item, feedSource: 'HISTORICAL' }));
+
+        const settings = Array.isArray(valJson?.sportSettings)
+          ? valJson.sportSettings
+          : Array.isArray(historicalJson?.sportSettings)
+          ? historicalJson.sportSettings
+          : [];
+
+        const plannedWorkoutsById = new Map();
+        const plannedWorkoutsByDateType = new Map();
+
+        valList.forEach((workout) => {
+          if (!workout) return;
+
+          if (workout.id !== undefined && workout.id !== null) {
+            plannedWorkoutsById.set(String(workout.id), workout);
+          }
+
+          const itemDate = getLocalDateString(workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date);
+          const itemType = safeStringLower(workout.type || workout.sport || 'workout');
+          if (itemDate) {
+            plannedWorkoutsByDateType.set(`${itemDate}-${itemType}`, workout);
+          }
+        });
+
+        const pairedEventIds = new Set();
+
+        const updatedHistoricalList = historicalList.map((item) => {
+          if (!item) return item;
+
+          let plannedMatch = null;
+
+          if (item.paired_event_id !== null && item.paired_event_id !== undefined) {
+            const pairedIdStr = String(item.paired_event_id);
+            pairedEventIds.add(pairedIdStr);
+            plannedMatch = plannedWorkoutsById.get(pairedIdStr);
+          }
+
+          if (!plannedMatch) {
+            const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
+            const itemType = safeStringLower(item.type || item.sport || 'workout');
+            plannedMatch = plannedWorkoutsByDateType.get(`${itemDate}-${itemType}`);
+
+            if (plannedMatch && plannedMatch.id) {
+              pairedEventIds.add(String(plannedMatch.id));
+            }
+          }
+
+          if (plannedMatch) {
+            const plannedName = plannedMatch.name || plannedMatch.title;
+            if (plannedName) {
+              return {
+                ...item,
+                name: plannedName,
+                title: plannedName,
+                workout_doc: item.workout_doc || plannedMatch.workout_doc,
+                description: item.description || plannedMatch.description
+              };
+            }
+          }
+
+          return item;
+        });
+
+        const filteredValList = valList.filter((workout) => {
+          if (!workout || workout.id === undefined || workout.id === null) return true;
+          return !pairedEventIds.has(String(workout.id));
+        });
+
+        const rawMerged = [...updatedHistoricalList, ...filteredValList];
+        const seenKeys = new Set();
+        const mergedList = [];
+
+        for (const item of rawMerged) {
+          if (!item) continue;
+          const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
+          const itemType = safeStringLower(item.type || item.sport || 'workout');
+          const uniqueKey = item.id ? String(item.id) : `${item.name || itemType}-${itemDate}-${item.feedSource}`;
+
+          if (!seenKeys.has(uniqueKey)) {
+            seenKeys.add(uniqueKey);
+            mergedList.push(item);
+          }
+        }
+
+        setWorkouts(mergedList);
+        setSportSettings(settings);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error loading workout data:", err);
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Keyboard shortcut listener to close zoom modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setZoomWorkouts(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const filteredWorkouts = useMemo(() => {
+    if (!activeFilters || activeFilters.length === 0 || activeFilters.length === 4) {
+      return workouts;
+    }
+    return workouts.filter((w) => {
+      const category = getSportCategory(w);
+      return activeFilters.includes(category);
+    });
+  }, [workouts, activeFilters]);
+
+  const fourWeeksDates = useMemo(() => getFourWeeksDates(currentWeekMonday), [currentWeekMonday]);
+
+  const workoutsByDate = useMemo(() => {
+    const map = {};
+    fourWeeksDates.forEach((date) => {
+      const dateStr = getLocalDateString(date);
+      map[dateStr] = [];
+    });
+
+    if (Array.isArray(filteredWorkouts)) {
+      filteredWorkouts.forEach((w) => {
+        const rawDate = w.start_date_local || w.icu_start_date || w.start_date || w.date;
+        const dateStr = getLocalDateString(rawDate);
+        if (map.hasOwnProperty(dateStr)) {
+          map[dateStr].push(w);
+        }
+      });
+    }
+
+    return map;
+  }, [filteredWorkouts, fourWeeksDates]);
+
+  // Determine active sports for weekly bar charts
+  const selectedChartSports = useMemo(() => {
+    if (!activeFilters || activeFilters.length === 0 || activeFilters.length === 4) {
+      return ['Run', 'Bike'];
+    }
+    return activeFilters.filter((f) => f === 'Run' || f === 'Bike');
+  }, [activeFilters]);
+
+  const todayStr = useMemo(() => getLocalDateString(new Date()), []);
+
+  const handlePrevWeek = () => {
+    setCurrentWeekMonday((prev) => {
+      const newMonday = new Date(prev);
+      newMonday.setDate(newMonday.getDate() - 7);
+      return newMonday;
+    });
+  };
+
+  const handleNextWeek = () => {
+    setCurrentWeekMonday((prev) => {
+      const newMonday = new Date(prev);
+      newMonday.setDate(newMonday.getDate() + 7);
+      return newMonday;
+    });
+  };
+
+  const handleToday = () => {
+    setCurrentWeekMonday(getMondayOfWeek(new Date()));
+  };
+
+  const handleOpenFilter = () => {
+    setTempFilters(activeFilters);
+    setIsFilterOpen(true);
+  };
+
+  const handleToggleTempFilter = (sport) => {
+    setTempFilters((prev) =>
+      prev.includes(sport) ? prev.filter((s) => s !== sport) : [...prev, sport]
+    );
+  };
+
+  const handleClearAll = () => {
+    setTempFilters(['Run']);
+  };
+
+  const handleCancelFilter = () => {
+    setIsFilterOpen(false);
+  };
+
+  const handleAcceptFilter = () => {
+    if (tempFilters.length === 4) {
+      setActiveFilters([]);
+    } else {
+      setActiveFilters(tempFilters);
+    }
+    setIsFilterOpen(false);
+  };
+
+  // Open zoom modal for a single workout or list of workouts
+  const handleOpenZoomModal = (workoutOrList) => {
+    if (Array.isArray(workoutOrList)) {
+      if (workoutOrList.length > 0) setZoomWorkouts(workoutOrList);
+    } else if (workoutOrList) {
+      setZoomWorkouts([workoutOrList]);
+    }
+  };
+
+  if (loading) return <div className="monthly-view-loading">Loading Monthly Workouts & Activities...</div>;
+
+  const formatHeaderDate = (dateObj) => {
+    return dateObj.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getDayName = (dayIndex) => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days[dayIndex];
+  };
+
+  const renderDayCell = (date, workoutList) => {
+    const dateStr = getLocalDateString(date);
+    const isToday = dateStr === todayStr;
+    const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
+
+    return (
+      <div 
+        key={dateStr} 
+        className={`monthly-day-cell ${isToday ? 'monthly-today' : ''}`}
+      >
+        <div className="monthly-day-header">
+          <span className="monthly-day-name">{getDayName(dayIndex)}</span>
+          <span className="monthly-day-separator">/</span>
+          <span className="monthly-day-date">{formatHeaderDate(date)}</span>
+        </div>
+
+        <div 
+          className="monthly-day-workouts"
+          style={{ overflowY: workoutList.length > 1 ? 'auto' : 'hidden' }}
+        >
+          {workoutList.length === 0 ? (
+            <div className="monthly-empty-day"></div>
+          ) : (
+            workoutList.map((workout, idx) => {
+              const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings, paces);
+              const completed = isWorkoutCompleted(workout);
+              const isPast = dateStr < todayStr;
+              const isMissed = isPast && !completed;
+
+              return (
+                <div 
+                  key={workout.id || idx} 
+                  className={`monthly-workout-item monthly-clickable ${completed ? 'monthly-completed' : ''} ${isMissed ? 'monthly-missed' : ''}`}
+                  onClick={() => handleOpenZoomModal(workoutList)}
+                >
+                  <div className="monthly-workout-type">
+                    {workout.name || workout.type || workout.sport || 'Activity'}
+                  </div>
+                  {(workout.workout_doc || workout.intervals) && (
+                    <WorkoutChart
+                      workout={workout}
+                      thresholdPace={thresholdPaceMps}
+                      chartHeight={isMobile ? "35px" : "55px"}
+                      showWorkoutName={false}
+                      showThresholdPace={false}
+                      showYAxis={false} 
+                      showYAxisLabels={false}
+                      showLegend={false}
+                      minimalXAxis={true}
+                      showHoverDetails={false}
+                    />
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const fourWeeksEndDate = new Date(currentWeekMonday.getTime() + 27 * 24 * 60 * 60 * 1000);
+
+  return (
+    <div className="monthly-view-container">
+      {errorMessage && (
+        <div className="monthly-toast-error">
+          <span className="monthly-toast-message">⚠️ {errorMessage}</span>
+          <button 
+            type="button" 
+            className="monthly-toast-close" 
+            onClick={() => setErrorMessage(null)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Navigation & Controls */}
+      <div className="monthly-nav-bar">
+        <div className="monthly-nav-buttons">
+          <button onClick={handlePrevWeek} className="nav-btn">
+            ← Prev Week
+          </button>
+          <button
+            onClick={handleToday}
+            className="nav-btn nav-btn-today"
+          >
+            This Week
+          </button>
+          <button onClick={handleNextWeek} className="nav-btn">
+            Next Week →
+          </button>
+        </div>
+
+        {/* ---------- Filter by Sport ---------- */}
+        <div className="monthly-nav-right-group">
+          <div className="monthly-filter-container">
+            <button
+              type="button"
+              className={`monthly-filter-btn ${activeFilters.length > 0 && activeFilters.length < 4 ? 'active-filters' : ''}`}
+              onClick={handleOpenFilter}
+              title="Filter Workouts"
+            >
+              <svg className="monthly-filter-icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+              <span>Filter</span>
+              {activeFilters.length > 0 && activeFilters.length < 4 && (
+                <span className="monthly-filter-badge">{activeFilters.join(', ')}</span>
+              )}
+            </button>
+
+            {isFilterOpen && (
+              <>
+                {isMobile && (
+                  <div 
+                    className="monthly-filter-overlay"
+                    onClick={handleCancelFilter}
+                    style={{
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                      zIndex: 999
+                    }}
+                  />
+                )}
+                <div 
+                  className="monthly-filter-modal"
+                  style={isMobile ? {
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 1000,
+                    width: '85%',
+                    maxWidth: '320px',
+                    boxSizing: 'border-box'
+                  } : {}}
+                >
+                  <div className="monthly-filter-title">Filter Workouts</div>
+                  <div className="monthly-filter-options">
+                    {['Swim', 'Bike', 'Run', 'Other'].map((sport) => (
+                      <label key={sport} className="monthly-filter-option">
+                        <input
+                          type="checkbox"
+                          checked={tempFilters.includes(sport)}
+                          onChange={() => handleToggleTempFilter(sport)}
+                        />
+                        <span>{sport}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="monthly-filter-actions-row">
+                    <button
+                      type="button"
+                      className="monthly-filter-btn-sm"
+                      onClick={handleClearAll}
+                    >
+                      Clear All
+                    </button>
+                    <div className="monthly-filter-right-actions">
+                      <button
+                        type="button"
+                        className="monthly-filter-btn-sm"
+                        onClick={handleCancelFilter}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="monthly-filter-btn-sm monthly-filter-btn-primary"
+                        onClick={handleAcceptFilter}
+                      >
+                        Accept
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="monthly-week-label">
+            {currentWeekMonday.toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            })} - {fourWeeksEndDate.toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* DESKTOP TOP SUMMARY CHARTS ROW */}
+      {!isMobile && selectedChartSports.length > 0 && (
+        <div className="monthly-desktop-top-charts">
+          {[0, 1, 2, 3].map((weekIdx) => {
+            const weekDates = fourWeeksDates.slice(weekIdx * 7, (weekIdx + 1) * 7);
+            return (
+              <div key={weekIdx} className="monthly-desktop-chart-column">
+                {selectedChartSports.map((sport) => (
+                  <WeeklyFrameChart
+                    key={sport}
+                    weekDates={weekDates}
+                    workoutsByDate={workoutsByDate}
+                    sportType={sport}
+                    onDayClick={(sportWorkouts) => handleOpenZoomModal(sportWorkouts)}
+                  />
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* MAIN 4-WEEK CALENDAR GRID */}
+      <div className="monthly-weeks-container">
+        {[0, 1, 2, 3].map((weekIdx) => {
+          const weekDates = fourWeeksDates.slice(weekIdx * 7, (weekIdx + 1) * 7);
+
+          return (
+            <div key={weekIdx} className="monthly-week-row-wrapper">
+              {/* MOBILE INLINE CHARTS (Appears directly above each 7-day week row) */}
+              {isMobile && selectedChartSports.length > 0 && (
+                <div className="monthly-mobile-charts-block">
+                  {selectedChartSports.map((sport) => (
+                    <WeeklyFrameChart
+                      key={sport}
+                      weekDates={weekDates}
+                      workoutsByDate={workoutsByDate}
+                      sportType={sport}
+                      onDayClick={(sportWorkouts) => handleOpenZoomModal(sportWorkouts)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* 7-Day Grid Row */}
+              <div className={`monthly-grid ${isMobile ? 'monthly-grid-mobile' : 'monthly-grid-desktop'}`}>
+                {weekDates.map((date) => {
+                  const dateStr = getLocalDateString(date);
+                  return renderDayCell(date, workoutsByDate[dateStr] || []);
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* REUSABLE FULL-WIDTH WORKOUT ZOOM MODAL */}
+      {zoomWorkouts && (
+        <WorkoutZoomModal
+          workouts={zoomWorkouts}
+          onClose={() => setZoomWorkouts(null)}
+          sportSettings={sportSettings}
+          paces={paces}
+          isMobile={isMobile}
+        />
+      )}
+    </div>
+  );
+} 
