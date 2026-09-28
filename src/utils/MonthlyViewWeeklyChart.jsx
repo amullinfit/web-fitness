@@ -200,6 +200,31 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
                     {d.dayName}
                   </text>
                 </g>
+
+                {/* Day Letter Label with Today highlight box */}
+                <g>
+                  {d.isToday && (
+                    <rect
+                      x={x + barWidth / 2 - 9}
+                      y={chartHeight + 8}
+                      width={18}
+                      height={18}
+                      rx={4}
+                      ry={4}
+                      className="weekly-today-rect"
+                    />
+                  )}
+                  <text
+                    x={x + barWidth / 2}
+                    y={chartHeight + 21}
+                    textAnchor="middle"
+                    className={`monthly-chart-day-text ${isHovered ? 'text-hovered' : ''} ${d.isToday ? 'is-today-text' : ''}`}
+                  >
+                    {d.dayName}
+                  </text>
+                </g>
+
+
               </g>
             );
           })}

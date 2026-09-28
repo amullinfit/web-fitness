@@ -607,28 +607,36 @@
   filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.2));
 }
 
+/* DEFAULT STATE (Not Today, Not Hovered) */
 .monthly-chart-day-text {
   font-size: 9px;
-  fill: #9ca3af;
+  fill: #9ca3af;       /* Medium Gray */
   font-weight: 600;
+  transition: fill 0.15s ease;
 }
 
+/* HOVER STATE (Not Today, Hovered) */
 .monthly-chart-day-text.text-hovered {
-  fill: #111827;
+  fill: #111827;       /* Dark charcoal on hover */
   font-weight: 700;
 }
 
-/* SVG Today highlight box background & border */
-.weekly-today-rect {
-  fill: #e6f7ff;      /* Very light blue fill */
-  stroke: #1890ff;    /* Darker blue border */
-  stroke-width: 1.5px;
-}
-
-/* Today letter text color */
+/* TODAY STATE (Is Today, Not Hovered) */
 .monthly-chart-day-text.is-today-text {
-  fill: #000000;      /* Dark text inside light blue box */
+  fill: #000000;       /* Pure Black for visibility inside blue box */
   font-weight: 700;
+}
+
+/* TODAY + HOVER STATE (Is Today AND Hovered) */
+.monthly-chart-day-text.is-today-text.text-hovered {
+  fill: #1890ff;       /* Accent blue shift on hover when it is Today */
+}
+
+/* Background rect for Today */
+.weekly-today-rect {
+  fill: #e6f7ff;       /* Very light blue fill */
+  stroke: #1890ff;     /* Darker blue border */
+  stroke-width: 1.5px;
 }
 
 /* Hover Tooltip Popup */
