@@ -315,7 +315,7 @@ function WorkoutZoomContent({ workout, sportSettings, paces }) {
         <WorkoutChart
           workout={workout}
           thresholdPace={getThresholdPaceForSport(workout, sportSettings, paces)}
-          chartHeight="220px"
+          chartHeight={isMobile ? "110px" : "140px"}
           showWorkoutName={true}
           showThresholdPace={true}
           showYAxisLabels={true}
