@@ -1,8 +1,10 @@
 /*
-  -- WorkoutBuilder.css
+WORKOUTBUILDER.CSS
 */
 .workout-builder-container {
   /* max-width: 900px; */
+  box-sizing: border-box;
+  padding: 12px;
   width: 100%;
   margin: 0 auto;
   font-family: inherit;
@@ -20,31 +22,6 @@
 .builder-header-title {
   margin: 0;
   font-size: 24px;
-}
-
-.options-menu-btn {
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: bold;
-  background-color: #007bff;
-  color: #ffffff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.options-menu-dropdown {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  margin-top: 4px;
-  width: 210px;
-  background-color: #ffffff;
-  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
-  border-radius: 6px;
-  z-index: 100;
-  overflow: hidden;
-  border: 1px solid #ddd;
 }
 
 .menu-divider {
@@ -336,15 +313,6 @@
   padding: 0 4px;
 }
  
-/* Preset buttons indentation aligned past drag handle + step name */
-.step-presets-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding-left: 140px;
-  flex-wrap: wrap;
-}
-
 /* JSON Preview Area */
 .json-preview-container {
   margin-top: 30px;
@@ -405,6 +373,17 @@
   color: #495057;
   flex-shrink: 0;
   line-height: 1.1;
+}
+
+.options-menu-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: bold;
+  background-color: #007bff;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 /* Container dropdown fixes */

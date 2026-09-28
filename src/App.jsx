@@ -1,3 +1,6 @@
+//
+// APP.JSX
+//
 import React, { useState, useEffect } from 'react';
 import DailyView from './components/DailyView.jsx';
 import MonthlyView from './components/MonthlyView.jsx';
