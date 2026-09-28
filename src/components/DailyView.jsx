@@ -32,11 +32,8 @@ const safeStringLower = (val) => {
   return String(val.id || val.type || val.name || val).toLowerCase();
 };
 
-// Updated helper accepting paces context fallback
 const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
-  
   return contextPaces?.threshold_pace || null;
-
 };
 
 const getLocalDateString = (dateInput) => {
@@ -94,7 +91,6 @@ const sortByDistanceDesc = (items) => {
 };
 
 export default function DailyView() {
-
   const { paces, loading: pacesLoading } = usePaces();
 
   const [workouts, setWorkouts] = useState([]);
@@ -270,20 +266,20 @@ export default function DailyView() {
       const params = new URLSearchParams({
         activityId: workoutId,
       });
-      
+
       const response = await fetch(`${GEAR_REMOVE_URL}?${params.toString()}`, {
         method: 'GET',
       });
-      
+
       const rawText = await response.text();
       let resData = {};
-      
+
       try {
         resData = rawText ? JSON.parse(rawText) : {};
       } catch (e) {
         throw new Error(`Server returned non-JSON response (${response.status} ${response.statusText}): ${rawText.slice(0, 80)}...`);
       }
-      
+
       if (!response.ok) {
         const errorDetail = resData.details ? `: ${resData.details}` : '';
         const msg = resData.error || `Failed to remove gear (${response.status} ${response.statusText})${errorDetail}`;
@@ -311,7 +307,7 @@ export default function DailyView() {
   const handleOpenAddGearModal = async (workoutId) => {
     setModalWorkoutId(workoutId);
     setSelectedGearId(null);
-    
+
     if (availableGear.length > 0) return;
 
     setLoadingGear(true);
@@ -456,7 +452,7 @@ export default function DailyView() {
 
   const renderWorkoutCard = (workout, index, isSelectedDate) => {
     const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings, paces);
-    
+
     const workoutDateStr = getLocalDateString(
       workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date
     );
@@ -467,7 +463,7 @@ export default function DailyView() {
 
     const shoeName = workout.shoe_name || workout.gear_name || 
       (typeof workout.gear === 'object' && !Array.isArray(workout.gear) ? workout.gear?.name : null);
-    
+
     const gearId = workout.gear_id || 
       (Array.isArray(workout.gear) && workout.gear.length > 0 
         ? (typeof workout.gear[0] === 'object' ? workout.gear[0].id : workout.gear[0])
@@ -477,14 +473,6 @@ export default function DailyView() {
     const isRemoving = removingGearId === activityId;
 
     const hasValidShoe = shoeName && String(gearId) !== '69215';
-
-    // Extract props passed to WorkoutChart for inspection
-    const chartDataDebug = {
-      workout: workout,
-      thresholdPace: thresholdPaceMps,
-      chartHeight: isMobile ? "110px" : "140px",
-      pacesContextData: paces || null
-    };
 
     return (
       <div key={activityId || index} className="daily-workout-card">
@@ -498,34 +486,36 @@ export default function DailyView() {
             {isMissed && <span className="status-badge badge-missed">MISSED</span>}
           </div>
 
-          {/* Top Right: Shoe Tag with del-btn or add-btn */}
+          {/* Top Right: Shoe Tag with del-btn or add-btn (ONLY rendered if workout is completed) */}
           <div className="daily-workout-header-right">
-            {hasValidShoe ? (
-              <span className="daily-workout-type daily-shoe-type">
-                <span>👟 {shoeName}</span>
+            {completed && (
+              hasValidShoe ? (
+                <span className="daily-workout-type daily-shoe-type">
+                  <span>👟 {shoeName}</span>
+                  <button
+                    type="button"
+                    className="del-btn remove-gear-btn"
+                    title={`Activity ID: ${activityId} | Gear ID: ${gearId}`}
+                    disabled={isRemoving}
+                    onClick={() => handleRemoveGear(activityId, gearId)}
+                  >
+                    {isRemoving ? <span className="gear-spinner" /> : '✕'}
+                  </button>
+                  <div className="gear-id-tooltip">
+                    <span><strong>Activity ID:</strong> {activityId || 'N/A'}</span>
+                    <span><strong>Gear ID:</strong> {gearId || 'N/A'}</span>
+                  </div>
+                </span>
+              ) : (
                 <button
                   type="button"
-                  className="del-btn remove-gear-btn"
-                  title={`Activity ID: ${activityId} | Gear ID: ${gearId}`}
-                  disabled={isRemoving}
-                  onClick={() => handleRemoveGear(activityId, gearId)}
+                  className="add-btn"
+                  title="Add Shoe"
+                  onClick={() => handleOpenAddGearModal(activityId)}
                 >
-                  {isRemoving ? <span className="gear-spinner" /> : '✕'}
+                  +
                 </button>
-                <div className="gear-id-tooltip">
-                  <span><strong>Activity ID:</strong> {activityId || 'N/A'}</span>
-                  <span><strong>Gear ID:</strong> {gearId || 'N/A'}</span>
-                </div>
-              </span>
-            ) : (
-              <button
-                type="button"
-                className="add-btn"
-                title="Add Shoe"
-                onClick={() => handleOpenAddGearModal(activityId)}
-              >
-                +
-              </button>
+              )
             )}
           </div>
         </div>
@@ -547,10 +537,9 @@ export default function DailyView() {
               workout={workout} 
               thresholdPace={thresholdPaceMps} 
               paceDetails={paces}
-              />
+            />
           </>
         )}
-
       </div>
     );
   };
