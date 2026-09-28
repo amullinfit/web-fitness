@@ -623,13 +623,13 @@
 
 /* TODAY STATE (Is Today, Not Hovered) */
 .monthly-chart-day-text.is-today-text {
-  fill: #000000;       /* Pure Black for visibility inside blue box */
+  fill: #1890ff;       /* Accent blue shift on hover when it is Today */
   font-weight: 700;
 }
 
 /* TODAY + HOVER STATE (Is Today AND Hovered) */
 .monthly-chart-day-text.is-today-text.text-hovered {
-  fill: #1890ff;       /* Accent blue shift on hover when it is Today */
+  fill: #000000;       /* Pure Black for visibility inside blue box */
 }
 
 /* Background rect for Today */
