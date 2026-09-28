@@ -302,7 +302,6 @@ export const CollapsedWeeklySummary = ({
         const isLastWeek = idx === weeklyTotals.length - 1;
         return (
           <div key={weekIdx} className="monthly-chart-collapsed-column">
-            <div className="monthly-collapsed-week-label">Week {weekIdx + 1} ({startDate})</div>
             <div className="monthly-collapsed-sports-row">
               {selectedChartSports.map((sport) => (
                 <div key={sport} className="monthly-collapsed-sport-item">
