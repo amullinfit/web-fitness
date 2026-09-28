@@ -337,7 +337,7 @@ function WorkoutZoomContent({ workout, sportSettings, paces, isMobile }) {
 /**
  * Full-Width Workout Zoom Modal (Supports multiple workouts with tab navigation)
  */
-function WorkoutZoomModal({ workouts, onClose, sportSettings, paces }) {
+function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMobile }) {
   const [activeWorkoutIndex, setActiveWorkoutIndex] = useState(0);
 
   if (!workouts || workouts.length === 0) return null;
@@ -930,6 +930,7 @@ export default function MonthlyView() {
           onClose={() => setZoomWorkouts(null)}
           sportSettings={sportSettings}
           paces={paces}
+          isMobile={isMobile}
         />
       )}
     </div>
