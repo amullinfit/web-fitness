@@ -300,7 +300,7 @@ export default function MonthlyView() {
     return (
       <div 
         key={dateStr} 
-        className={`monthly-day-cell ${isToday ? 'monthly-today' : ''}`}
+        className={`monthly-day-cell ${isToday ? 'monthly-filter-btn.active-filters' : ''}`}
       >
         <div className="monthly-day-header">
           <span className="monthly-day-name">{getDayName(dayIndex)}</span>
