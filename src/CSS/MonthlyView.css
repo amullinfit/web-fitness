@@ -673,13 +673,14 @@
 }
 
 /* Highlight container for today's cell */
-.monthly-day-cell.monthly-today {
+.weekly-today {
   background-color: #e6f7ff; /* Very light blue */
   border: 2px solid #1890ff;  /* Darker blue accent border */
   border-radius: 6px;
 }
 
 /* Ensure header text inside today's cell renders in bold black */
+/*
 .monthly-day-cell.monthly-today .monthly-day-header,
 .monthly-day-cell.monthly-today .monthly-day-name,
 .monthly-day-cell.monthly-today .monthly-day-date,
@@ -687,3 +688,4 @@
   color: #000000;
   font-weight: 700;
 }
+*/
