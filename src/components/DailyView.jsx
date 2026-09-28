@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import WorkoutChart from './WorkoutChart';
 import WorkoutTextSection from '../utils/WorkoutTextSection';
+import Modal_AddGear from '../modals/Modal_AddGear';
+import GearBadge from './GearBadge';
+import { useGearManagement, isWorkoutCompleted } from '../utils/useGearManagement';
 import '../CSS/DailyView.css';
 import { usePaces } from '../utils/PacesContext.jsx'; 
 
 const VAL_WORKOUTS_URL = "/api/val-workouts";
 const HISTORICAL_URL = "/api/val-historical";
-const GEAR_REMOVE_URL = "/api/val-gear-remove";
-const GEAR_ADD_URL = "/api/val-gear-add";
-const GEAR_URL = "/api/val-gear";
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(
@@ -54,70 +54,32 @@ const getLocalDateString = (dateInput) => {
   return `${year}-${month}-${day}`;
 };
 
-const isWorkoutCompleted = (workout) => {
-  if (workout.feedSource === 'HISTORICAL') {
-    return true;
-  }
-
-  const hasPairedEvent = workout.paired_event_id !== null && workout.paired_event_id !== undefined;
-  const hasCompliance = workout.compliance !== null && workout.compliance !== undefined;
-
-  return hasPairedEvent || hasCompliance;
-};
-
-const getDistanceInMiles = (gear) => {
-  if (gear.distance_miles !== undefined) return gear.distance_miles;
-  if (gear.distance_m !== undefined) return gear.distance_m / 1609.34;
-  if (gear.distance !== undefined) {
-    return gear.distance > 5000 ? gear.distance / 1609.34 : gear.distance;
-  }
-  return 0;
-};
-
-const isShoeGear = (gear) => {
-  const type = (gear.type || '').toLowerCase();
-  return type.includes('shoe');
-};
-
-const isUnassignedActivity = (gear) => {
-  const name = (gear.name || '').toUpperCase();
-  return name.includes('NOT ASSIGNED A SHOE') || name.includes('NOT TRACKED');
-};
-
-const hasRetiredDate = (gear) => Boolean(gear.retired);
-
-const sortByDistanceDesc = (items) => {
-  return [...items].sort((a, b) => getDistanceInMiles(b) - getDistanceInMiles(a));
-};
-
 export default function DailyView() {
-  const { paces, loading: pacesLoading } = usePaces();
+  const { paces } = usePaces();
 
   const [workouts, setWorkouts] = useState([]);
   const [sportSettings, setSportSettings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const [removingGearId, setRemovingGearId] = useState(null);
-  const [errorMessage, setErrorMessage] = useState(null);
-
-  const [modalWorkoutId, setModalWorkoutId] = useState(null);
-  const [availableGear, setAvailableGear] = useState([]);
-  const [loadingGear, setLoadingGear] = useState(false);
-  const [selectedGearId, setSelectedGearId] = useState(null);
 
   const isMobile = useIsMobile(768);
 
-  const showErrorMessage = (msg) => {
-    setErrorMessage(msg);
-    setTimeout(() => {
-      setErrorMessage(null);
-    }, 6000);
-  };
+  const {
+    removingGearId,
+    errorMessage,
+    setErrorMessage,
+    modalWorkoutId,
+    setModalWorkoutId,
+    loadingGear,
+    selectedGearId,
+    setSelectedGearId,
+    activeShoesList,
+    handleRemoveGear,
+    handleOpenAddGearModal,
+    handleAddGear,
+  } = useGearManagement(workouts, setWorkouts);
 
   useEffect(() => {
-    //
-    // Get workout information (planned, unplanned, gear, etc)
-    //
     let isMounted = true;
     setLoading(true);
 
@@ -236,167 +198,6 @@ export default function DailyView() {
     };
   }, []);
 
-  const handleRemoveGear = async (workoutId, gearId) => {
-    if (!workoutId || !gearId) {
-      console.warn("Cannot remove gear: missing workoutId or gearId", { workoutId, gearId });
-      showErrorMessage("Cannot remove gear: Missing Workout ID or Gear ID.");
-      return;
-    }
-
-    setRemovingGearId(workoutId);
-    setErrorMessage(null);
-
-    const previousWorkouts = [...workouts];
-
-    setWorkouts((prev) =>
-      prev.map((w) => {
-        const matchesId = String(w.id) === String(workoutId) || 
-                          String(w.icu_activity_id) === String(workoutId);
-        if (matchesId) {
-          return {
-            ...w,
-            shoe_name: null,
-            gear_name: null,
-            gear_id: null,
-            gear: null
-          };
-        }
-        return w;
-      })
-    );
-
-    try {
-      const params = new URLSearchParams({
-        activityId: workoutId,
-      });
-
-      const response = await fetch(`${GEAR_REMOVE_URL}?${params.toString()}`, {
-        method: 'GET',
-      });
-
-      const rawText = await response.text();
-      let resData = {};
-
-      try {
-        resData = rawText ? JSON.parse(rawText) : {};
-      } catch (e) {
-        throw new Error(`Server returned non-JSON response (${response.status} ${response.statusText}): ${rawText.slice(0, 80)}...`);
-      }
-
-      if (!response.ok) {
-        const errorDetail = resData.details ? `: ${resData.details}` : '';
-        const msg = resData.error || `Failed to remove gear (${response.status} ${response.statusText})${errorDetail}`;
-        throw new Error(msg);
-      }
-
-      if (Array.isArray(resData.gear)) {
-        setWorkouts((prev) =>
-          prev.map((w) => {
-            const matchesId = String(w.id) === String(workoutId) || 
-                              String(w.icu_activity_id) === String(workoutId);
-            return matchesId ? { ...w, gear: resData.gear } : w;
-          })
-        );
-      }
-    } catch (err) {
-      console.error("Error executing api_gear_remove, rolling back state:", err);
-      setWorkouts(previousWorkouts);
-      showErrorMessage(err.message || "Failed to remove gear. Restored original state.");
-    } finally {
-      setRemovingGearId(null);
-    }
-  };
-
-  const handleOpenAddGearModal = async (workoutId) => {
-    setModalWorkoutId(workoutId);
-    setSelectedGearId(null);
-
-    if (availableGear.length > 0) return;
-
-    setLoadingGear(true);
-    try {
-      const response = await fetch(GEAR_URL);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const json = await response.json();
-      const list = Array.isArray(json) ? json : json?.gear || json?.items || [];
-      setAvailableGear(list);
-    } catch (err) {
-      console.error("Error fetching gear for modal:", err);
-      showErrorMessage("Failed to load available gear list.");
-    } finally {
-      setLoadingGear(false);
-    }
-  };
-
-  const handleAddGear = async (workoutId, gearId) => {
-    if (!workoutId || !gearId) {
-      showErrorMessage("Cannot add gear: Missing Workout ID or Gear ID.");
-      return;
-    }
-
-    setErrorMessage(null);
-    const previousWorkouts = [...workouts];
-
-    try {
-      const params = new URLSearchParams({
-        activityId: workoutId,
-        gearId: gearId,
-      });
-
-      const response = await fetch(`${GEAR_ADD_URL}?${params.toString()}`, {
-        method: 'GET',
-      });
-
-      const rawText = await response.text();
-      let resData = {};
-      try {
-        resData = rawText ? JSON.parse(rawText) : {};
-      } catch (e) {
-        throw new Error(`Server returned non-JSON response (${response.status} ${response.statusText}): ${rawText.slice(0, 80)}...`);
-      }
-
-      if (!response.ok) {
-        const errorDetail = resData.details ? `: ${resData.details}` : '';
-        const msg = resData.error || `Failed to add gear (${response.status} ${response.statusText})${errorDetail}`;
-        throw new Error(msg);
-      }
-
-      const addedGearItem = availableGear.find(g => String(g.id || g.gear_id) === String(gearId));
-      const newShoeName = addedGearItem ? addedGearItem.name : 'Assigned Shoe';
-
-      setWorkouts((prev) =>
-        prev.map((w) => {
-          const matchesId = String(w.id) === String(workoutId) || 
-                            String(w.icu_activity_id) === String(workoutId);
-          if (matchesId) {
-            return {
-              ...w,
-              shoe_name: newShoeName,
-              gear_name: newShoeName,
-              gear_id: gearId,
-              gear: addedGearItem || gearId
-            };
-          }
-          return w;
-        })
-      );
-
-      setModalWorkoutId(null);
-      setSelectedGearId(null);
-    } catch (err) {
-      console.error("Error executing api_gear_add, rolling back state:", err);
-      setWorkouts(previousWorkouts);
-      showErrorMessage(err.message || "Failed to add gear. Restored original state.");
-    }
-  };
-
-  const activeShoesList = useMemo(() => {
-    const rawActive = availableGear.filter((item) => {
-      return isShoeGear(item) && !hasRetiredDate(item) && !isUnassignedActivity(item);
-    });
-    return sortByDistanceDesc(rawActive);
-  }, [availableGear]);
-
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
   const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
 
@@ -453,9 +254,8 @@ export default function DailyView() {
     });
   };
 
-  const renderWorkoutCard = (workout, index, isSelectedDate) => {
+  const renderWorkoutCard = (workout, index) => {
     const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings, paces);
-
     const workoutDateStr = getLocalDateString(
       workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date
     );
@@ -463,19 +263,7 @@ export default function DailyView() {
     const completed = isWorkoutCompleted(workout);
     const isPast = workoutDateStr < todayStr;
     const isMissed = isPast && !completed;
-
-    const shoeName = workout.shoe_name || workout.gear_name || 
-      (typeof workout.gear === 'object' && !Array.isArray(workout.gear) ? workout.gear?.name : null);
-
-    const gearId = workout.gear_id || 
-      (Array.isArray(workout.gear) && workout.gear.length > 0 
-        ? (typeof workout.gear[0] === 'object' ? workout.gear[0].id : workout.gear[0])
-        : typeof workout.gear === 'object' ? workout.gear?.id : null);
-
     const activityId = workout.icu_activity_id || workout.activity_id || workout.id;
-    const isRemoving = removingGearId === activityId;
-
-    const hasValidShoe = shoeName && String(gearId) !== '69215';
 
     return (
       <div key={activityId || index} className="daily-workout-card">
@@ -489,38 +277,12 @@ export default function DailyView() {
             {isMissed && <span className="status-badge badge-missed">MISSED</span>}
           </div>
 
-          {/* Top Right: Shoe Tag with del-btn or add-btn (ONLY rendered if workout is completed) */}
-          <div className="daily-workout-header-right">
-            {completed && (
-              hasValidShoe ? (
-                <span className="daily-workout-type daily-shoe-type">
-                  <span>👟 {shoeName}</span>
-                  <button
-                    type="button"
-                    className="del-btn remove-gear-btn"
-                    title={`Activity ID: ${activityId} | Gear ID: ${gearId}`}
-                    disabled={isRemoving}
-                    onClick={() => handleRemoveGear(activityId, gearId)}
-                  >
-                    {isRemoving ? <span className="gear-spinner" /> : '✕'}
-                  </button>
-                  <div className="gear-id-tooltip">
-                    <span><strong>Activity ID:</strong> {activityId || 'N/A'}</span>
-                    <span><strong>Gear ID:</strong> {gearId || 'N/A'}</span>
-                  </div>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  className="add-btn"
-                  title="Add Shoe"
-                  onClick={() => handleOpenAddGearModal(activityId)}
-                >
-                  +
-                </button>
-              )
-            )}
-          </div>
+          <GearBadge
+            workout={workout}
+            removingGearId={removingGearId}
+            onRemoveGear={handleRemoveGear}
+            onOpenAddGear={handleOpenAddGearModal}
+          />
         </div>
 
         {/* Workout Title */}
@@ -547,7 +309,7 @@ export default function DailyView() {
     );
   };
 
-  const renderDaySection = (dateObj, dateStr, dayWorkouts, isSelectedDate = false) => {
+  const renderDaySection = (dateObj, dateStr, dayWorkouts) => {
     const isToday = dateStr === todayStr;
 
     return (
@@ -565,7 +327,7 @@ export default function DailyView() {
           </div>
         ) : (
           <div className="daily-workouts-list">
-            {dayWorkouts.map((workout, idx) => renderWorkoutCard(workout, idx, isSelectedDate))}
+            {dayWorkouts.map((workout, idx) => renderWorkoutCard(workout, idx))}
           </div>
         )}
       </div>
@@ -605,75 +367,22 @@ export default function DailyView() {
       </div>
 
       <div className="daily-two-day-grid">
-        {renderDaySection(selectedDate, selectedDateStr, selectedDayWorkouts, true)}
-        {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts, false)}
+        {renderDaySection(selectedDate, selectedDateStr, selectedDayWorkouts)}
+        {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts)}
       </div>
 
-      {modalWorkoutId && (
-        <div className="gear-modal-overlay" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-        }}>
-          <div className="gear-modal-content" style={{
-            backgroundColor: '#fff', padding: '24px', borderRadius: '8px', width: '90%', maxWidth: '400px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-          }}>
-            <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Select Shoe to Add</h3>
-            {loadingGear ? (
-              <div style={{ textAlign: 'center', padding: '20px' }}>Loading available shoes...</div>
-            ) : activeShoesList.length === 0 ? (
-              <p style={{ color: '#666' }}>No active shoes available.</p>
-            ) : (
-              <div style={{ maxHeight: '250px', overflowY: 'auto', marginBottom: '20px', border: '1px solid #eee', borderRadius: '4px' }}>
-                {activeShoesList.map((shoe) => {
-                  const shoeId = shoe.id || shoe.gear_id;
-                  const isSelected = String(selectedGearId) === String(shoeId);
-                  const dist = getDistanceInMiles(shoe);
-                  return (
-                    <div 
-                      key={shoeId} 
-                      onClick={() => setSelectedGearId(shoeId)}
-                      style={{
-                        display: 'flex', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer',
-                        backgroundColor: isSelected ? '#e8f5e9' : 'transparent'
-                      }}
-                    >
-                      <input 
-                        type="radio" 
-                        name="selectShoeRadio" 
-                        checked={isSelected} 
-                        onChange={() => setSelectedGearId(shoeId)}
-                        style={{ marginRight: '10px' }}
-                      />
-                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                        <span style={{ fontWeight: '500', color: '#333' }}>{shoe.name}</span>
-                        <span style={{ fontSize: '12px', color: '#666' }}>{dist.toFixed(1)} miles</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button 
-                type="button" 
-                className="nav-btn" 
-                onClick={() => { setModalWorkoutId(null); setSelectedGearId(null); }}
-              >
-                Cancel
-              </button>
-              <button 
-                type="button" 
-                className="nav-btn"
-                style={{ backgroundColor: '#2e7d32', color: '#fff', border: 'none', padding: '6px 16px', borderRadius: '4px', cursor: selectedGearId ? 'pointer' : 'not-allowed', opacity: selectedGearId ? 1 : 0.6 }}
-                disabled={!selectedGearId}
-                onClick={() => handleAddGear(modalWorkoutId, selectedGearId)}
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal_AddGear
+        isOpen={Boolean(modalWorkoutId)}
+        onClose={() => {
+          setModalWorkoutId(null);
+          setSelectedGearId(null);
+        }}
+        loadingGear={loadingGear}
+        activeShoesList={activeShoesList}
+        selectedGearId={selectedGearId}
+        setSelectedGearId={setSelectedGearId}
+        onConfirmAdd={() => handleAddGear(modalWorkoutId, selectedGearId)}
+      />
     </div>
   );
 }

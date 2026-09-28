@@ -1,18 +1,34 @@
-//
-// MONTHLYMODAL_ZOOMWORKOUT.JSX
-//
 import React, { useState } from 'react';
-import WorkoutChart from '../components/WorkoutChart'; // Adjust path if WorkoutChart is in another directory
+import WorkoutChart from '../components/WorkoutChart';
 import WorkoutTextSection from '../utils/WorkoutTextSection';
+import Modal_AddGear from './Modal_AddGear';
+import GearBadge from '../components/GearBadge';
 import { getThresholdPaceForSport } from '../utils/MonthlyViewHelpers';
+import { useGearManagement } from '../utils/useGearManagement';
 
-/**
- * Isolated Content Wrapper: Remounting this component on tab switch
- * resets internal states like open/close toggles in WorkoutTextSection.
- */
-export function WorkoutZoomContent({ workout, sportSettings, paces, isMobile }) {
+export function WorkoutZoomContent({
+  workout,
+  sportSettings,
+  paces,
+  isMobile,
+  removingGearId,
+  onRemoveGear,
+  onOpenAddGear,
+}) {
   return (
     <div className="monthly-zoom-body">
+      <div
+        className="monthly-zoom-header-gear"
+        style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 20px 0 20px' }}
+      >
+        <GearBadge
+          workout={workout}
+          removingGearId={removingGearId}
+          onRemoveGear={onRemoveGear}
+          onOpenAddGear={onOpenAddGear}
+        />
+      </div>
+
       <div className="monthly-zoom-chart-container">
         <WorkoutChart
           workout={workout}
@@ -36,11 +52,23 @@ export function WorkoutZoomContent({ workout, sportSettings, paces, isMobile }) 
   );
 }
 
-/**
- * Full-Width Workout Zoom Modal (Supports multiple workouts with tab navigation)
- */
-export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMobile }) {
+export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMobile, setWorkouts }) {
   const [activeWorkoutIndex, setActiveWorkoutIndex] = useState(0);
+
+  const {
+    removingGearId,
+    errorMessage,
+    setErrorMessage,
+    modalWorkoutId,
+    setModalWorkoutId,
+    loadingGear,
+    selectedGearId,
+    setSelectedGearId,
+    activeShoesList,
+    handleRemoveGear,
+    handleOpenAddGearModal,
+    handleAddGear,
+  } = useGearManagement(workouts, setWorkouts);
 
   if (!workouts || workouts.length === 0) return null;
 
@@ -50,6 +78,19 @@ export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMo
   return (
     <div className="monthly-zoom-overlay" onClick={onClose}>
       <div className="monthly-zoom-modal" onClick={(e) => e.stopPropagation()}>
+        {errorMessage && (
+          <div className="daily-toast-error">
+            <span className="daily-toast-message">⚠️ {errorMessage}</span>
+            <button
+              type="button"
+              className="daily-toast-close"
+              onClick={() => setErrorMessage(null)}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         <div className="monthly-zoom-header">
           <div className="monthly-zoom-title-group">
             <span className="monthly-zoom-sport-tag">
@@ -60,7 +101,6 @@ export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMo
           <button className="monthly-zoom-close" onClick={onClose}>✕</button>
         </div>
 
-        {/* Multi-Workout Navigation Bar inside Modal */}
         {workouts.length > 1 && (
           <div 
             className="monthly-zoom-tabs-bar"
@@ -94,13 +134,28 @@ export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMo
           </div>
         )}
 
-        {/* Using key={workoutKey} ensures WorkoutTextSection collapses on tab change */}
         <WorkoutZoomContent
           key={workoutKey}
           workout={activeWorkout}
           sportSettings={sportSettings}
           paces={paces}
           isMobile={isMobile}
+          removingGearId={removingGearId}
+          onRemoveGear={handleRemoveGear}
+          onOpenAddGear={handleOpenAddGearModal}
+        />
+
+        <Modal_AddGear
+          isOpen={Boolean(modalWorkoutId)}
+          onClose={() => {
+            setModalWorkoutId(null);
+            setSelectedGearId(null);
+          }}
+          loadingGear={loadingGear}
+          activeShoesList={activeShoesList}
+          selectedGearId={selectedGearId}
+          setSelectedGearId={setSelectedGearId}
+          onConfirmAdd={() => handleAddGear(modalWorkoutId, selectedGearId)}
         />
       </div>
     </div>
