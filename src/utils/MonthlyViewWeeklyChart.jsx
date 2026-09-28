@@ -133,12 +133,12 @@ export const WeeklyFrameChart = ({
           onMouseEnter={() => setIsTotalHovered(true)}
           onMouseLeave={() => setIsTotalHovered(false)}
           onClick={isFarRight ? onToggleCollapse : undefined}
-          title={isFarRight ? (isCollapsed ? "Expand Weekly Charts" : "Collapse Weekly Charts") : undefined}
+          title={isFarRight ? "Collapse Weekly Charts" : undefined}
         >
           {totalWeeklyMiles} mi total
           {isFarRight && (
             <span className={`collapse-triangle-icon ${isTotalHovered ? 'visible' : ''}`}>
-              {isCollapsed ? ' ▲' : ' ▲'}
+              ▲
             </span>
           )}
         </span>
@@ -261,8 +261,8 @@ export const WeeklyFrameChart = ({
 
 /**
  * Compact View when Weekly Charts are Collapsed:
- * Displays all 4 weeks side-by-side with sport type and total numbers.
- * Hovering over the totals shows a "down triangle" to expand back.
+ * Displays all 4 weeks side-by-side in matching container windows.
+ * Details are arranged in a single horizontal row with sport badges and totals.
  */
 export const CollapsedWeeklySummary = ({
   fourWeeksDates,
@@ -291,39 +291,43 @@ export const CollapsedWeeklySummary = ({
         totalsBySport[sport] = metersToMilesNum(totalMeters).toFixed(1);
       });
 
-      const startDate = weekDates[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-      return { weekIdx, startDate, totalsBySport };
+      return { weekIdx, totalsBySport };
     });
   }, [fourWeeksDates, workoutsByDate, selectedChartSports]);
 
   return (
-    <div className="monthly-chart-collapsed-container">
-      {weeklyTotals.map(({ weekIdx, startDate, totalsBySport }, idx) => {
+    <div className="monthly-desktop-top-charts monthly-collapsed-grid">
+      {weeklyTotals.map(({ weekIdx, totalsBySport }, idx) => {
         const isLastWeek = idx === weeklyTotals.length - 1;
+
         return (
-          <div key={weekIdx} className="monthly-chart-collapsed-column">
-            <div className="monthly-collapsed-sports-row">
-              {selectedChartSports.map((sport) => (
-                <div key={sport} className="monthly-collapsed-sport-item">
-                  <span className={`monthly-chart-sport-badge badge-${sport.toLowerCase()}`}>
-                    {sport}
-                  </span>
-                  <span
-                    className={`monthly-collapsed-total-val ${isLastWeek ? 'collapsible-total' : ''}`}
-                    onMouseEnter={() => isLastWeek && setHoveredTotal(true)}
-                    onMouseLeave={() => isLastWeek && setHoveredTotal(false)}
-                    onClick={isLastWeek ? onToggleCollapse : undefined}
-                    title={isLastWeek ? "Expand Weekly Charts" : undefined}
-                  >
-                    {totalsBySport[sport]} mi
-                    {isLastWeek && (
-                      <span className={`collapse-triangle-icon ${hoveredTotal ? 'visible' : ''}`}>
-                        ▼
-                      </span>
-                    )}
-                  </span>
-                </div>
-              ))}
+          <div key={weekIdx} className="monthly-chart-frame-box monthly-collapsed-frame-box">
+            <div className="monthly-collapsed-single-row">
+              {selectedChartSports.map((sport, sIdx) => {
+                const isLastSportInFarRight = isLastWeek && sIdx === selectedChartSports.length - 1;
+
+                return (
+                  <div key={sport} className="monthly-collapsed-sport-inline">
+                    <span className={`monthly-chart-sport-badge badge-${sport.toLowerCase()}`}>
+                      {sport}
+                    </span>
+                    <span
+                      className={`monthly-collapsed-total-val ${isLastSportInFarRight ? 'collapsible-total' : ''}`}
+                      onMouseEnter={() => isLastSportInFarRight && setHoveredTotal(true)}
+                      onMouseLeave={() => isLastSportInFarRight && setHoveredTotal(false)}
+                      onClick={isLastSportInFarRight ? onToggleCollapse : undefined}
+                      title={isLastSportInFarRight ? "Expand Weekly Charts" : undefined}
+                    >
+                      {totalsBySport[sport]} mi
+                      {isLastSportInFarRight && (
+                        <span className={`collapse-triangle-icon ${hoveredTotal ? 'visible' : ''}`}>
+                          ▼
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );

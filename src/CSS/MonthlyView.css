@@ -764,3 +764,40 @@
 .monthly-collapsed-total-val {
   color: #374151;
 }
+
+/* Collapsed Top Grid - Matches expanded 4-column container row */
+.monthly-collapsed-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.monthly-collapsed-frame-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 10px 14px;
+}
+
+.monthly-collapsed-single-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+  gap: 12px;
+}
+
+.monthly-collapsed-sport-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.monthly-collapsed-total-val {
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+}
