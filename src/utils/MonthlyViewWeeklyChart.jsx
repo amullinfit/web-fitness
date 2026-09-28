@@ -69,9 +69,12 @@ export const getDayZoneStyle = (workoutsList) => {
 export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayClick }) => {
   const [hoveredDayIndex, setHoveredDayIndex] = useState(null);
 
+  const todayStr = getLocalDateString(new Date());
+
   const daysData = useMemo(() => {
     return weekDates.map((dateObj, idx) => {
       const dateStr = getLocalDateString(dateObj);
+      const isToday = dateStr === todayStr;
       const allWorkouts = workoutsByDate[dateStr] || [];
       const sportWorkouts = allWorkouts.filter((w) => getSportCategory(w) === sportType);
 
@@ -83,6 +86,7 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
         dayIndex: idx,
         dateObj,
         dateStr,
+        isToday,
         dayName,
         fullDateStr,
         miles: style.miles,
@@ -92,7 +96,7 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
         sportWorkouts
       };
     });
-  }, [weekDates, workoutsByDate, sportType]);
+  }, [weekDates, workoutsByDate, sportType, todayStr]);
 
   const totalWeeklyMiles = useMemo(() => {
     return daysData.reduce((sum, d) => sum + d.miles, 0).toFixed(1);
@@ -119,7 +123,7 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
       </div>
 
       <div className="monthly-chart-svg-wrapper">
-        <svg viewBox={`0 0 ${totalWidth} ${chartHeight + 25}`} className="monthly-chart-svg">
+        <svg viewBox={`0 0 ${totalWidth} ${chartHeight + 30}`} className="monthly-chart-svg">
           {/* Enclosing Outer Frame (Weekly Border) */}
           <rect
             x={startX - 6}
@@ -156,7 +160,7 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
                   x={x - 2}
                   y={2}
                   width={barWidth + 4}
-                  height={chartHeight}
+                  height={chartHeight + 25}
                   fill="transparent"
                 />
 
@@ -174,15 +178,30 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
                   />
                 )}
 
-                {/* Day Letter Label */}
-                <text
-                  x={x + barWidth / 2}
-                  y={chartHeight + 18}
-                  textAnchor="middle"
-                  className={`monthly-chart-day-text ${isHovered ? 'text-hovered' : ''}`}
-                >
-                  {d.dayName}
-                </text>
+                {/* Day Letter Label with optional Today highlight box */}
+                <g className={d.isToday ? 'monthly-today' : ''}>
+                  {d.isToday && (
+                    <rect
+                      x={x + barWidth / 2 - 9}
+                      y={chartHeight + 8}
+                      width={18}
+                      height={18}
+                      rx={4}
+                      ry={4}
+                      fill="#409eff"
+                      className="monthly-today-box"
+                    />
+                  )}
+                  <text
+                    x={x + barWidth / 2}
+                    y={chartHeight + 21}
+                    textAnchor="middle"
+                    fill={d.isToday ? '#ffffff' : undefined}
+                    className={`monthly-chart-day-text ${isHovered ? 'text-hovered' : ''} ${d.isToday ? 'is-today-text' : ''}`}
+                  >
+                    {d.dayName}
+                  </text>
+                </g>
               </g>
             );
           })}
