@@ -197,7 +197,7 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
                     fill={d.isToday ? '#ffffff' : undefined}
                     className={`monthly-chart-day-text ${isHovered ? 'text-hovered' : ''} ${d.isToday ? 'is-today-text' : ''}`}
                   >
-                    {d.dayName}_
+                    {d.dayName}
                   </text>
                 </g>
               </g>
