@@ -66,8 +66,17 @@ export const getDayZoneStyle = (workoutsList) => {
 /**
  * SVG Bar Chart with Enclosing Weekly Frame, Hover Tooltips, and Click Interactivity
  */
-export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayClick }) => {
+export const WeeklyFrameChart = ({
+  weekDates,
+  workoutsByDate,
+  sportType,
+  onDayClick,
+  isFarRight = false,
+  isCollapsed = false,
+  onToggleCollapse
+}) => {
   const [hoveredDayIndex, setHoveredDayIndex] = useState(null);
+  const [isTotalHovered, setIsTotalHovered] = useState(false);
 
   const todayStr = getLocalDateString(new Date());
 
@@ -119,7 +128,20 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
         <span className={`monthly-chart-sport-badge badge-${sportType.toLowerCase()}`}>
           {sportType}
         </span>
-        <span className="monthly-chart-weekly-total">{totalWeeklyMiles} mi total</span>
+        <span
+          className={`monthly-chart-weekly-total ${isFarRight ? 'collapsible-total' : ''}`}
+          onMouseEnter={() => setIsTotalHovered(true)}
+          onMouseLeave={() => setIsTotalHovered(false)}
+          onClick={isFarRight ? onToggleCollapse : undefined}
+          title={isFarRight ? (isCollapsed ? "Expand Weekly Charts" : "Collapse Weekly Charts") : undefined}
+        >
+          {totalWeeklyMiles} mi total
+          {isFarRight && (
+            <span className={`collapse-triangle-icon ${isTotalHovered ? 'visible' : ''}`}>
+              {isCollapsed ? ' ▲' : ' ▲'}
+            </span>
+          )}
+        </span>
       </div>
 
       <div className="monthly-chart-svg-wrapper">
@@ -200,31 +222,6 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
                     {d.dayName}
                   </text>
                 </g>
-
-                {/* Day Letter Label with Today highlight box */}
-                <g>
-                  {d.isToday && (
-                    <rect
-                      x={x + barWidth / 2 - 9}
-                      y={chartHeight + 8}
-                      width={18}
-                      height={18}
-                      rx={4}
-                      ry={4}
-                      className="weekly-today-rect"
-                    />
-                  )}
-                  <text
-                    x={x + barWidth / 2}
-                    y={chartHeight + 21}
-                    textAnchor="middle"
-                    className={`monthly-chart-day-text ${isHovered ? 'text-hovered' : ''} ${d.isToday ? 'is-today-text' : ''}`}
-                  >
-                    {d.dayName}
-                  </text>
-                </g>
-
-
               </g>
             );
           })}
@@ -258,6 +255,80 @@ export const WeeklyFrameChart = ({ weekDates, workoutsByDate, sportType, onDayCl
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+/**
+ * Compact View when Weekly Charts are Collapsed:
+ * Displays all 4 weeks side-by-side with sport type and total numbers.
+ * Hovering over the totals shows a "down triangle" to expand back.
+ */
+export const CollapsedWeeklySummary = ({
+  fourWeeksDates,
+  workoutsByDate,
+  selectedChartSports,
+  onToggleCollapse
+}) => {
+  const [hoveredTotal, setHoveredTotal] = useState(false);
+
+  // Compute 4-week totals grouped by week index and sport
+  const weeklyTotals = useMemo(() => {
+    return [0, 1, 2, 3].map((weekIdx) => {
+      const weekDates = fourWeeksDates.slice(weekIdx * 7, (weekIdx + 1) * 7);
+      const totalsBySport = {};
+
+      selectedChartSports.forEach((sport) => {
+        let totalMeters = 0;
+        weekDates.forEach((dateObj) => {
+          const dateStr = getLocalDateString(dateObj);
+          const allWorkouts = workoutsByDate[dateStr] || [];
+          const sportWorkouts = allWorkouts.filter((w) => getSportCategory(w) === sport);
+          sportWorkouts.forEach((w) => {
+            totalMeters += w.distance || w.icu_distance || 0;
+          });
+        });
+        totalsBySport[sport] = metersToMilesNum(totalMeters).toFixed(1);
+      });
+
+      const startDate = weekDates[0].toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return { weekIdx, startDate, totalsBySport };
+    });
+  }, [fourWeeksDates, workoutsByDate, selectedChartSports]);
+
+  return (
+    <div className="monthly-chart-collapsed-container">
+      {weeklyTotals.map(({ weekIdx, startDate, totalsBySport }, idx) => {
+        const isLastWeek = idx === weeklyTotals.length - 1;
+        return (
+          <div key={weekIdx} className="monthly-chart-collapsed-column">
+            <div className="monthly-collapsed-week-label">Week {weekIdx + 1} ({startDate})</div>
+            <div className="monthly-collapsed-sports-row">
+              {selectedChartSports.map((sport) => (
+                <div key={sport} className="monthly-collapsed-sport-item">
+                  <span className={`monthly-chart-sport-badge badge-${sport.toLowerCase()}`}>
+                    {sport}
+                  </span>
+                  <span
+                    className={`monthly-collapsed-total-val ${isLastWeek ? 'collapsible-total' : ''}`}
+                    onMouseEnter={() => isLastWeek && setHoveredTotal(true)}
+                    onMouseLeave={() => isLastWeek && setHoveredTotal(false)}
+                    onClick={isLastWeek ? onToggleCollapse : undefined}
+                    title={isLastWeek ? "Expand Weekly Charts" : undefined}
+                  >
+                    {totalsBySport[sport]} mi
+                    {isLastWeek && (
+                      <span className={`collapse-triangle-icon ${hoveredTotal ? 'visible' : ''}`}>
+                        ▼
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

@@ -692,3 +692,75 @@
   color: #facc15;
   margin-top: 2px;
 }
+
+/* Collapsible Total Hover & Icon Styling */
+.collapsible-total {
+  cursor: pointer;
+  user-select: none;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.collapsible-total:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+  color: #1f2937;
+}
+
+.collapse-triangle-icon {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;
+  opacity: 0;
+  transform: translateY(-1px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.collapse-triangle-icon.visible {
+  opacity: 1;
+}
+
+/* Collapsed Summary Layout */
+.monthly-chart-collapsed-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.monthly-chart-collapsed-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.monthly-collapsed-week-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.monthly-collapsed-sports-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.monthly-collapsed-sport-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.monthly-collapsed-total-val {
+  color: #374151;
+}
