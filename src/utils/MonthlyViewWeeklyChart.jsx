@@ -262,7 +262,7 @@ export const WeeklyFrameChart = ({
 /**
  * Compact View when Weekly Charts are Collapsed:
  * Displays all 4 weeks side-by-side in matching container windows.
- * Details are arranged in a single horizontal row with sport badges and totals.
+ * Left-justifies sport badges and right-justifies formatted totals (including "total").
  */
 export const CollapsedWeeklySummary = ({
   fourWeeksDates,
@@ -312,13 +312,13 @@ export const CollapsedWeeklySummary = ({
                       {sport}
                     </span>
                     <span
-                      className={`monthly-collapsed-total-val ${isLastSportInFarRight ? 'collapsible-total' : ''}`}
+                      className={`monthly-chart-weekly-total ${isLastSportInFarRight ? 'collapsible-total' : ''}`}
                       onMouseEnter={() => isLastSportInFarRight && setHoveredTotal(true)}
                       onMouseLeave={() => isLastSportInFarRight && setHoveredTotal(false)}
                       onClick={isLastSportInFarRight ? onToggleCollapse : undefined}
                       title={isLastSportInFarRight ? "Expand Weekly Charts" : undefined}
                     >
-                      {totalsBySport[sport]} mi
+                      {totalsBySport[sport]} mi total
                       {isLastSportInFarRight && (
                         <span className={`collapse-triangle-icon ${hoveredTotal ? 'visible' : ''}`}>
                           ▼
