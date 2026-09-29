@@ -305,7 +305,7 @@ export default function WorkoutBuilder() {
                 <WorkoutChart
                   workout={baseWorkout}
                   thresholdPace={paces?.threshold_pace || 400}
-                  chartHeight={"200px"}
+                  chartHeight={"140 px"}
                   showBarPace={false}
                 />
                 <WorkoutTextSection 
