@@ -1,7 +1,7 @@
 /* Container & Layout */
 .monthly-view-container {
-  flex-direction: column;
   display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   box-sizing: border-box;
@@ -551,13 +551,24 @@
   margin-bottom: 4px;
 }
 
+.monthly-chart-sport-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
 .monthly-chart-sport-badge {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 6px;
   border-radius: 4px;
-  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .badge-run {
@@ -571,9 +582,11 @@
 }
 
 .monthly-chart-weekly-total {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #4b5563;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 /* SVG Chart Elements */
@@ -610,32 +623,32 @@
 /* DEFAULT STATE (Not Today, Not Hovered) */
 .monthly-chart-day-text {
   font-size: 9px;
-  fill: #9ca3af;       /* Medium Gray */
+  fill: #9ca3af;
   font-weight: 600;
   transition: fill 0.15s ease;
 }
 
 /* HOVER STATE (Not Today, Hovered) */
 .monthly-chart-day-text.text-hovered {
-  fill: #111827;       /* Dark charcoal on hover */
+  fill: #111827;
   font-weight: 700;
 }
 
 /* TODAY STATE (Is Today, Not Hovered) */
 .monthly-chart-day-text.is-today-text {
-  fill: #1890ff;       /* Accent blue shift on hover when it is Today */
+  fill: #1890ff;
   font-weight: 700;
 }
 
 /* TODAY + HOVER STATE (Is Today AND Hovered) */
 .monthly-chart-day-text.is-today-text.text-hovered {
-  fill: #000000;       /* Pure Black for visibility inside blue box */
+  fill: #000000;
 }
 
 /* Background rect for Today */
 .weekly-today-rect {
-  fill: #e6f7ff;       /* Very light blue fill */
-  stroke: #1890ff;     /* Darker blue border */
+  fill: #e6f7ff;
+  stroke: #1890ff;
   stroke-width: 1.5px;
 }
 
@@ -710,7 +723,7 @@
 .collapse-triangle-icon {
   display: inline-block;
   margin-left: 4px;
-  font-size: 10px;
+  font-size: 9px;
   opacity: 0;
   transform: translateY(-1px);
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -761,11 +774,7 @@
   font-weight: 600;
 }
 
-.monthly-collapsed-total-val {
-  color: #374151;
-}
-
-/* Collapsed Top Grid - Matches expanded 4-column container row */
+/* Collapsed Top Grid */
 .monthly-collapsed-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -777,42 +786,6 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 10px 14px;
-}
-
-.monthly-collapsed-single-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  width: 100%;
-  gap: 12px;
-}
-
-.monthly-collapsed-sport-inline {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.monthly-collapsed-total-val {
-  color: #374151;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-/* Collapsed Top Grid Container */
-.monthly-collapsed-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.monthly-collapsed-frame-box {
-  display: flex;
-  align-items: center;
   padding: 8px 12px;
 }
 
@@ -823,7 +796,6 @@
   width: 100%;
 }
 
-/* Row Item with Left-Justified Badge & Right-Justified Total */
 .monthly-collapsed-sport-inline {
   display: flex;
   align-items: center;
@@ -831,7 +803,6 @@
   width: 100%;
 }
 
-/* Inherit header total typography for exact format matching */
 .monthly-collapsed-sport-inline .monthly-chart-weekly-total {
   font-size: 11px;
   font-weight: 600;
@@ -839,52 +810,8 @@
   white-space: nowrap;
 }
 
-/* Shared Flex Container ensuring left-badge / right-total layout */
-.monthly-chart-sport-inline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-/* Shared Sport Badge Typography & Alignment */
-.monthly-chart-sport-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  padding: 3px 6px;
-  border-radius: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-/* Shared Total Text Typography & Color */
-.monthly-chart-weekly-total {
+.monthly-collapsed-total-val {
+  color: #374151;
   font-size: 12px;
   font-weight: 600;
-  color: #4b5563; /* Uniform dark slate/gray */
-  line-height: 1.2;
-  white-space: nowrap;
 }
-
-/* Collapsible Clickable Accent Indicator */
-.collapsible-total {
-  cursor: pointer;
-  user-select: none;
-}
-
-.collapse-triangle-icon {
-  display: inline-block;
-  margin-left: 4px;
-  font-size: 9px;
-  opacity: 0;
-  transition: opacity 0.15s ease-in-out;
-}
-
-.collapse-triangle-icon.visible {
-  opacity: 1;
-}
-
