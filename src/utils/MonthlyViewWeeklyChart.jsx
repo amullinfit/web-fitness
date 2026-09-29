@@ -65,6 +65,7 @@ export const getDayZoneStyle = (workoutsList) => {
 
 /**
  * SVG Bar Chart with Enclosing Weekly Frame, Hover Tooltips, and Click Interactivity
+ * Renders the Expanded View header using the unified `.monthly-chart-sport-inline` layout.
  */
 export const WeeklyFrameChart = ({
   weekDates,
@@ -124,24 +125,27 @@ export const WeeklyFrameChart = ({
 
   return (
     <div className="monthly-chart-frame-box">
+      {/* Unified Header matching Collapsed Summary structure */}
       <div className="monthly-chart-frame-header">
-        <span className={`monthly-chart-sport-badge badge-${sportType.toLowerCase()}`}>
-          {sportType}
-        </span>
-        <span
-          className={`monthly-chart-weekly-total ${isFarRight ? 'collapsible-total' : ''}`}
-          onMouseEnter={() => setIsTotalHovered(true)}
-          onMouseLeave={() => setIsTotalHovered(false)}
-          onClick={isFarRight ? onToggleCollapse : undefined}
-          title={isFarRight ? "Collapse Weekly Charts" : undefined}
-        >
-          {totalWeeklyMiles} mi total
-          {isFarRight && (
-            <span className={`collapse-triangle-icon ${isTotalHovered ? 'visible' : ''}`}>
-              ▲
-            </span>
-          )}
-        </span>
+        <div className="monthly-chart-sport-inline">
+          <span className={`monthly-chart-sport-badge badge-${sportType.toLowerCase()}`}>
+            {sportType}
+          </span>
+          <span
+            className={`monthly-chart-weekly-total ${isFarRight ? 'collapsible-total' : ''}`}
+            onMouseEnter={() => setIsTotalHovered(true)}
+            onMouseLeave={() => setIsTotalHovered(false)}
+            onClick={isFarRight ? onToggleCollapse : undefined}
+            title={isFarRight ? "Collapse Weekly Charts" : undefined}
+          >
+            {totalWeeklyMiles} mi total
+            {isFarRight && (
+              <span className={`collapse-triangle-icon ${isTotalHovered ? 'visible' : ''}`}>
+                ▲
+              </span>
+            )}
+          </span>
+        </div>
       </div>
 
       <div className="monthly-chart-svg-wrapper">
@@ -307,7 +311,7 @@ export const CollapsedWeeklySummary = ({
                 const isLastSportInFarRight = isLastWeek && sIdx === selectedChartSports.length - 1;
 
                 return (
-                  <div key={sport} className="monthly-collapsed-sport-inline">
+                  <div key={sport} className="monthly-chart-sport-inline">
                     <span className={`monthly-chart-sport-badge badge-${sport.toLowerCase()}`}>
                       {sport}
                     </span>
