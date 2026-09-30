@@ -406,128 +406,133 @@ export default function RenderStepRow({
       );
     }
 
-  // 3. Zone or Zone Range 
-  if (paceMethod === 'Zone' || paceMethod === 'Zone Range') {
-    // Helper to look up a zone item by id (or fallback to name/zone)
-    const findZone = (zoneIdentifier) => {
-      if (!zoneIdentifier || !Array.isArray(zoneList)) return null;
-      return zoneList.find(
-        (z) =>
-          String(z.id) === String(zoneIdentifier) ||
-          z.name === zoneIdentifier ||
-          z.zone_name === zoneIdentifier ||
-          z.label === zoneIdentifier ||
-          String(z.zone) === String(zoneIdentifier)
-      );
-    };
+    // 3. Zone or Zone Range 
+    if (paceMethod === 'Zone' || paceMethod === 'Zone Range') {
+      // Helper to match a zone item by id (handling string vs number comparisons)
+      const findZone = (zoneIdentifier) => {
+        if (zoneIdentifier === undefined || zoneIdentifier === null || !Array.isArray(zoneList)) return null;
+        const targetStr = String(zoneIdentifier).trim();
+        return zoneList.find(
+          (z) =>
+            (z.id !== undefined && String(z.id).trim() === targetStr) ||
+            (z.preset_colors?.id !== undefined && String(z.preset_colors.id).trim() === targetStr) ||
+            z.name === zoneIdentifier ||
+            z.zone_name === zoneIdentifier ||
+            z.preset_colors?.zone_name === zoneIdentifier ||
+            z.label === zoneIdentifier ||
+            String(z.zone) === targetStr
+        );
+      };
 
-    // Helper to resolve pace in seconds from a zone id
-    const getZonePaceSec = (zoneIdentifier) => {
-      const matched = findZone(zoneIdentifier);
-      return matched?.targetPaceSec ?? matched?.pace_val_sec ?? matched?.minSec ?? 0;
-    };
+      // Helper to resolve pace in seconds from a zone id
+      const getZonePaceSec = (zoneIdentifier) => {
+        const matched = findZone(zoneIdentifier);
+        return matched?.targetPaceSec ?? matched?.pace_val_sec ?? matched?.minSec ?? 0;
+      };
 
-    const renderZoneOption = (z) => {
-      const zoneSec = z.targetPaceSec ?? z.pace_val_sec ?? z.minSec ?? 0;
-      const displayPace = z.displayPace || (zoneSec > 0 ? formatMMSS(zoneSec) : '');
-      
-      // Use zone_name for the visible label, but z.id for the option value
-      const displayName = z.zone_name || z.name || z.label || String(z.zone || z.id || '');
-      const labelText = `${displayName}${displayPace ? ` (${displayPace})` : ''}`;
-      
-      // Fallback value to z.id or z.name if id is missing
-      const optionVal = z.id !== undefined ? z.id : (z.name || displayName);
+      const renderZoneOption = (z) => {
+        // Look up preset_colors properties first if available
+        const zoneId = z.preset_colors?.id ?? z.id ?? z.name;
+        const zoneName = z.preset_colors?.zone_name ?? z.zone_name ?? z.name ?? z.label ?? String(z.zone || zoneId || '');
+        const zoneColor = z.preset_colors?.color || z.color || '#fff';
 
-      return (
-        <option key={optionVal} value={optionVal} style={{ backgroundColor: z.color || '#fff' }}>
-          {labelText}
-        </option>
-      );
-    };
+        const zoneSec = z.targetPaceSec ?? z.pace_val_sec ?? z.minSec ?? 0;
+        const displayPace = z.displayPace || (zoneSec > 0 ? formatMMSS(zoneSec) : '');
+        const labelText = `${zoneName}${displayPace ? ` (${displayPace})` : ''}`;
 
-    if (!isRange) {
-      // Retrieve current zone ID (defaults to first zone's ID or 'Z1')
-      const rawZoneVal = typeof step.pace === 'object' ? (step.pace.value ?? step.pace.start) : 'Z1';
-      const matchedZone = findZone(rawZoneVal);
-      const currentZoneId = matchedZone?.id !== undefined ? matchedZone.id : rawZoneVal;
+        // Ensure value is always converted to string for React <select> equality matching
+        const optionVal = String(zoneId);
 
-      const zonePaceSec = getZonePaceSec(currentZoneId);
-      const displayPaceStr = zonePaceSec > 0 ? formatMMSS(zonePaceSec) : '--:--';
+        return (
+          <option key={optionVal} value={optionVal} style={{ backgroundColor: zoneColor }}>
+            {labelText}
+          </option>
+        );
+      };
+
+      if (!isRange) {
+        // Retrieve stored zone ID from step.pace
+        const rawZoneVal = typeof step.pace === 'object' ? (step.pace.value ?? step.pace.start) : step.pace;
+        const matchedZone = findZone(rawZoneVal);
+
+        // Standardize current selected ID as a string, fallback to first zone's ID in list
+        const defaultZoneId = zoneList[0]?.preset_colors?.id ?? zoneList[0]?.id ?? 'Z1';
+        const currentZoneId = String(matchedZone?.preset_colors?.id ?? matchedZone?.id ?? rawZoneVal ?? defaultZoneId);
+
+        const zonePaceSec = getZonePaceSec(currentZoneId);
+        const displayPaceStr = zonePaceSec > 0 ? formatMMSS(zonePaceSec) : '--:--';
+
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label className="input-label">
+              Zone:{' '}
+              <select
+                value={currentZoneId}
+                onChange={(e) => {
+                  const selectedId = e.target.value;
+                  onUpdate(step.id, 'pace', { units: 'pace_zone', value: selectedId });
+                }}
+                className="pace-method-select"
+              >
+                {zoneList.map(renderZoneOption)}
+              </select>
+            </label>
+            <span style={{ fontSize: '12px', color: '#6c757d' }}>({displayPaceStr} /mi)</span>
+          </div>
+        );
+      }
+
+      // Zone Range (Fast & Slow)
+      const rawStartVal = typeof step.pace === 'object' ? step.pace.start : undefined;
+      const rawEndVal = typeof step.pace === 'object' ? step.pace.end : undefined;
+
+      const matchedStart = findZone(rawStartVal);
+      const matchedEnd = findZone(rawEndVal);
+
+      const defaultFastId = zoneList[1]?.preset_colors?.id ?? zoneList[1]?.id ?? 'Z2';
+      const defaultSlowId = zoneList[0]?.preset_colors?.id ?? zoneList[0]?.id ?? 'Z1';
+
+      const startZoneId = String(matchedStart?.preset_colors?.id ?? matchedStart?.id ?? rawStartVal ?? defaultFastId);
+      const endZoneId = String(matchedEnd?.preset_colors?.id ?? matchedEnd?.id ?? rawEndVal ?? defaultSlowId);
+
+      const fastZonePaceSec = getZonePaceSec(startZoneId);
+      const slowZonePaceSec = getZonePaceSec(endZoneId);
+
+      const calcFastZonePace = fastZonePaceSec > 0 ? formatMMSS(fastZonePaceSec) : '--:--';
+      const calcSlowZonePace = slowZonePaceSec > 0 ? formatMMSS(slowZonePaceSec) : '--:--';
 
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <label className="input-label">
-            Zone:{' '}
+            Fast Zone:{' '}
             <select
-              value={currentZoneId}
+              value={startZoneId}
               onChange={(e) => {
                 const selectedId = e.target.value;
-                onUpdate(step.id, 'pace', { units: 'pace_zone', value: selectedId });
+                onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', start: selectedId });
               }}
               className="pace-method-select"
             >
               {zoneList.map(renderZoneOption)}
             </select>
           </label>
-          <span style={{ fontSize: '12px', color: '#6c757d' }}>({displayPaceStr} /mi)</span>
+          <label className="input-label">
+            Slow Zone:{' '}
+            <select
+              value={endZoneId}
+              onChange={(e) => {
+                const selectedId = e.target.value;
+                onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', end: selectedId });
+              }}
+              className="pace-method-select"
+            >
+              {zoneList.map(renderZoneOption)}
+            </select>
+          </label>
+          <span style={{ fontSize: '12px', color: '#6c757d' }}>({calcFastZonePace} - {calcSlowZonePace} /mi)</span>
         </div>
       );
     }
-
-    // Zone Range (Fast & Slow)
-    const rawStartVal = typeof step.pace === 'object' ? step.pace.start : undefined;
-    const rawEndVal = typeof step.pace === 'object' ? step.pace.end : undefined;
-
-    const matchedStart = findZone(rawStartVal);
-    const matchedEnd = findZone(rawEndVal);
-
-    // Default to zoneList[1] for Fast and zoneList[0] for Slow if unspecified
-    const startZoneId = matchedStart?.id !== undefined 
-      ? matchedStart.id 
-      : (zoneList[1]?.id ?? rawStartVal ?? 'Z2');
-
-    const endZoneId = matchedEnd?.id !== undefined 
-      ? matchedEnd.id 
-      : (zoneList[0]?.id ?? rawEndVal ?? 'Z1');
-
-    const fastZonePaceSec = getZonePaceSec(startZoneId);
-    const slowZonePaceSec = getZonePaceSec(endZoneId);
-
-    const calcFastZonePace = fastZonePaceSec > 0 ? formatMMSS(fastZonePaceSec) : '--:--';
-    const calcSlowZonePace = slowZonePaceSec > 0 ? formatMMSS(slowZonePaceSec) : '--:--';
-
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <label className="input-label">
-          Fast Zone:{' '}
-          <select
-            value={startZoneId}
-            onChange={(e) => {
-              const selectedId = e.target.value;
-              onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', start: selectedId });
-            }}
-            className="pace-method-select"
-          >
-            {zoneList.map(renderZoneOption)}
-          </select>
-        </label>
-        <label className="input-label">
-          Slow Zone:{' '}
-          <select
-            value={endZoneId}
-            onChange={(e) => {
-              const selectedId = e.target.value;
-              onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', end: selectedId });
-            }}
-            className="pace-method-select"
-          >
-            {zoneList.map(renderZoneOption)}
-          </select>
-        </label>
-        <span style={{ fontSize: '12px', color: '#6c757d' }}>({calcFastZonePace} - {calcSlowZonePace} /mi)</span>
-      </div>
-    );
-  }
 
   return null;
   };
