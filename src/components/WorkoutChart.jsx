@@ -271,8 +271,8 @@ export default function WorkoutChart({
                   // thresholdSecPerMile is the # of seconds/mile at threshold (495 for 8:15 pace)
                   const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
 
-                  // zoneDetails (name and color) are derived from the mid pace of the step
-                  const zoneDetails = getZoneDetailsFromPaces(range.midSec, paces);
+                  // zoneDetails (name and color) are derived from the fast pace of the step
+                  const zoneDetails = getZoneDetailsFromPaces(range.fastSec, paces);
 
                   const fastHeightPct = computePaceToHeightPct(range.fastSec);
                   const slowHeightPct = computePaceToHeightPct(range.slowSec);
@@ -283,9 +283,16 @@ export default function WorkoutChart({
                   // Construct pace details: collapse to single value if identical
                   const paceDetails = fastPaceStr === slowPaceStr 
                     ? fastPaceStr 
-                    : `${fastPaceStr} - ${slowPaceStr}`;
+                    : `${slowPaceStr} - ${fastPaceStr}`;
 
                   const tooltipText = `${durationFormatted} @ ${paceDetails}`;
+
+                  console.log('[App Debug] ----------------------------------');
+                  console.log('[App Debug] workout:', workout.name );
+                  console.log('[App Debug] pace:', pace );
+                  console.log('[App Debug] range:', range );
+                  console.log('[App Debug] :' );
+                  console.log('[App Debug] ----------------------------------');
 
                   return (
                     <div
