@@ -169,7 +169,7 @@ export default function Modal_Workout_Edit({
                       <WorkoutChart
                         workout={workout}
                         thresholdPace={480}
-                        chartHeight={"60px"}
+                        chartHeight={"40px"}
                         showYAxis={false}
                         showWorkoutName={false}
                         showThresholdPace={false}
