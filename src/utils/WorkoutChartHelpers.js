@@ -227,19 +227,19 @@
     };
 
     const extractPaceRange = (step) => {
-        if (!step) return { slow: 99, mid: 100, fast: 101 };
+        if (!step) return { min: 99, mid: 100, max: 101 };
       
         if (step.pace && typeof step.pace === 'object') {
           const start = step.pace.start ?? step.pace.value ?? 100;
           const end = step.pace.end ?? start;
           return {
-            slow: Math.max(start, end),
+            min: Math.min(start, end),
             mid: (start + end) / 2,
-            fast: Math.min(start, end)
+            max: Math.max(start, end)
           };
         }
       
-        return { fast: 99, mid: 100, fast: 101 };
+        return { min: 99, mid: 100, max: 101 };
     };
       
     //
@@ -256,7 +256,10 @@
         // if it is an executed step vs planned and a ride, it will have step.weighted_average_watts
         const rawWatts = parseFloat(step.average_watts ?? step.weighted_average_watts);
         if (!isNaN(rawWatts) && rawWatts > 0) {
-            return { slowSec: rawWatts, midSec: rawWatts, fastSec: rawWatts, rangePct: { slow: 101, mid: 100, fast: 99 } };
+            return { slowSec: rawWatts, 
+                     midSec: rawWatts, 
+                     fastSec: rawWatts, 
+                     rangePct: { min: 99, mid: 100, max: 101 } };
         }
         
         // it if is an executed step vs planned but not a ride, it will have step.average_speed as m/s (3.25150 for 8:15 pace)
@@ -264,7 +267,10 @@
         if (!isNaN(rawSpeed) && rawSpeed > 0) {
             // convert 3.25150 to 495 for 8:15 pace
             const sec = speedToPaceSeconds(rawSpeed);
-            return { slowSec: sec, midSec: sec, fastSec: sec, rangePct: { slow: 101, mid: 100, fast: 99 } };
+            return { slowSec: sec,
+                     midSec: sec, 
+                     fastSec: sec, 
+                     rangePct: { min: 99, mid: 100, max: 101 } };
         }
         
         const refThresholdSec = (thresholdSecPerMile && thresholdSecPerMile > 0)
@@ -276,25 +282,25 @@
         const handlers = {
             // rangePct.XX has the sec/mi (495 = 8:15)
             'secs': () => ({
-                slowSec: rangePct.slow,
+                slowSec: rangePct.max,
                 midSec:  rangePct.mid,
-                fastSec: rangePct.fast,
+                fastSec: rangePct.min,
                 rangePct
             }),
             
             // rangePct.XX has the % of threshold
             '%pace': () => ({
-                slowSec: rangePct.slow > 0 ? refThresholdSec / (rangePct.slow / 100) : refThresholdSec,
-                midSec:  rangePct.mid  > 0 ? refThresholdSec / (rangePct.mid / 100)  : refThresholdSec,
-                fastSec: rangePct.fast > 0 ? refThresholdSec / (rangePct.fast / 100) : refThresholdSec,
+                slowSec: rangePct.min > 0 ? refThresholdSec / (rangePct.min / 100) : refThresholdSec,
+                midSec:  rangePct.mid > 0 ? refThresholdSec / (rangePct.mid / 100) : refThresholdSec,
+                fastSec: rangePct.max > 0 ? refThresholdSec / (rangePct.max / 100) : refThresholdSec,
                 rangePct
             }),
 
             // rangePct.XX has the zone #
             'pace_zone': () => {
-                const slowDetails = getZoneDetailsFromZoneNumber(rangePct.slow, paces);
+                const slowDetails = getZoneDetailsFromZoneNumber(rangePct.min, paces);
                 const midDetails  = getZoneDetailsFromZoneNumber(rangePct.mid,  paces);
-                const fastDetails = getZoneDetailsFromZoneNumber(rangePct.fast, paces);
+                const fastDetails = getZoneDetailsFromZoneNumber(rangePct.max, paces);
             
                 return {
                     slowSec: slowDetails?.slow,
@@ -309,7 +315,7 @@
         fastSec: refThresholdSec,
         midSec: refThresholdSec,
         slowSec: refThresholdSec,
-        rangePct: { slow: 101, mid: 100, fast: 101 }
+        rangePct: { min: 99, mid: 100, max: 101 }
         }));
 
         return handler();
