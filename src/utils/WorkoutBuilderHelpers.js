@@ -269,50 +269,83 @@ export const formatTime = (totalSeconds) => {
     const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
     const durationSec = mode === 'time' ? 600 : 0;
     const distanceMiles = mode === 'distance' ? 3.0 : 0;
-  
+
     const metric = mode === 'time' ? { duration: durationSec } : { distance: distanceMiles };
 
     switch (type) {
       case 'warmup':
-        return { id, warmup: true, ...metric, targetPaceSec: 619, intensity: 'warmup'};
-    
+        return {
+          id,
+          warmup: true,
+          ...metric,
+          intensity: 'warmup',
+          pace: { units: 'secs', value: 601 },
+        };
+
       case 'run':
-        return { id, ...metric, targetPaceSec: DEFAULT_THRESHOLD, intensity: 'active' };
-    
+        return {
+          id,
+          ...metric,
+          intensity: 'active',
+          pace: { units: 'secs', value: DEFAULT_THRESHOLD },
+        };
+
       case 'recovery':
-        return { id, ...metric, targetPaceSec: DEFAULT_THRESHOLD, intensity: 'recovery'};
-    
+        return {
+          id,
+          ...metric,
+          intensity: 'recovery',
+          pace: { units: 'secs', value: 602 },
+        };
+
       case 'cooldown':
-        return { id, cooldown: true, ...metric, targetPaceSec: 619, intensity: 'active'};
-    
+        return {
+          id,
+          cooldown: true,
+          ...metric,
+          intensity: 'active',
+          pace: { units: 'secs', value: 603 },
+        };
+
       case 'repeat':
         return {
           id,
           type: 'repeat',
           iterations: 3,
           steps: [
-            { id: `${id}-1`,
+            {
+              id: `${id}-1`,
               ...(mode === 'time' ? { duration: durationSec / 3 } : { distance: distanceMiles / 3 }),
-              targetPaceSec: 540,
+              pace: { units: 'secs', value: 445 },
             },
-            { id: `${id}-2`,
+            {
+              id: `${id}-2`,
               ...(mode === 'time' ? { duration: durationSec / 3 } : { distance: distanceMiles / 3 }),
-              targetPaceSec: 660,
+              pace: { units: 'secs', value: 540 },
             },
           ],
+          reps: 3,
         };
-    
-      default:
-        return { id, type: 'run', ...metric, targetPaceSec: DEFAULT_THRESHOLD, intensity: 'active'};
-    }
 
+      default:
+        return {
+          id,
+          type: 'run',
+          ...metric,
+          intensity: 'active',
+          pace: { units: 'secs', value: DEFAULT_THRESHOLD },
+        };
+    }
   };
-  
-  export const createDefaultSteps = (mode = 'time') => [
-    createStep('warmup', mode),
-    createStep('repeat', mode),
-    createStep('cooldown', mode),
-  ];
+
+  export const createDefaultSteps = (mode = 'time') => ({
+    steps: [
+      createStep('warmup', mode),
+      createStep('repeat', mode),
+      createStep('cooldown', mode),
+    ],
+  });
+
 
   export const addIdsToBaseWorkout = (baseWorkout) => {
     if (!baseWorkout?.workout_doc?.steps) return baseWorkout;
