@@ -268,25 +268,42 @@ export const formatTime = (totalSeconds) => {
   export const createStep = (type, mode = 'time') => {
     const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
     const durationSec = mode === 'time' ? 600 : 0;
-    const distanceMiles = mode === 'distance' ? 1.0 : 0;
+    const distanceMiles = mode === 'distance' ? 3.0 : 0;
   
+    const metric = mode === 'time' ? { duration: durationSec } : { distance: distanceMiles };
+
     switch (type) {
-      case 'warmup': return { id, type: 'warmup', durationSec, distanceMiles, targetPaceSec: 619 };
-      case 'run': return { id, type: 'run', durationSec, distanceMiles, targetPaceSec: DEFAULT_THRESHOLD };
-      case 'recovery': return { id, type: 'recovery', durationSec: mode === 'time' ? 120 : 0, distanceMiles: mode === 'distance' ? 0.25 : 0, targetPaceSec: 660 };
-      case 'cooldown': return { id, type: 'cooldown', durationSec, distanceMiles, targetPaceSec: 619 };
+      case 'warmup':
+        return { id, warmup: true, ...metric, targetPaceSec: 619, intensity: 'warmup'};
+    
+      case 'run':
+        return { id, ...metric, targetPaceSec: DEFAULT_THRESHOLD, intensity: 'active' };
+    
+      case 'recovery':
+        return { id, ...metric, targetPaceSec: DEFAULT_THRESHOLD, intensity: 'recovery'};
+    
+      case 'cooldown':
+        return { id, cooldown: true, ...metric, targetPaceSec: 619, intensity: 'active'};
+    
       case 'repeat':
         return {
           id,
           type: 'repeat',
           iterations: 3,
           steps: [
-            { id: `${id}-1`, type: 'run', durationSec, distanceMiles, targetPaceSec: DEFAULT_THRESHOLD },
-            { id: `${id}-2`, type: 'recovery', durationSec: mode === 'time' ? 120 : 0, distanceMiles: mode === 'distance' ? 0.25 : 0, targetPaceSec: 660 }
+            { id: `${id}-1`, ...metric, targetPaceSec: DEFAULT_THRESHOLD, intensity: 'active'},
+            {
+              id: `${id}-2`,
+              ...(mode === 'time' ? { duration: durationSec/3 } : { distance: distanceMiles/3 }),
+              targetPaceSec: 660,
+            },
           ],
         };
-      default: return { id, type: 'run', durationSec, distanceMiles, targetPaceSec: DEFAULT_THRESHOLD };
+    
+      default:
+        return { id, type: 'run', ...metric, targetPaceSec: DEFAULT_THRESHOLD, intensity: 'active'};
     }
+
   };
   
   export const createDefaultSteps = (mode = 'time') => [
