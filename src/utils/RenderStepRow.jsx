@@ -406,80 +406,130 @@ export default function RenderStepRow({
       );
     }
 
-    // 3. Zone or Zone Range 
-    if (paceMethod === 'Zone' || paceMethod === 'Zone Range') {
-      const renderZoneOption = (z) => {
-        const zoneSec = z.targetPaceSec ?? z.pace_val_sec ?? z.minSec ?? 0;
-        const displayPace = z.displayPace || (zoneSec > 0 ? formatMMSS(zoneSec) : '');
-        const zoneName = z.name || z.label || String(z.zone || '');
-        const labelText = `${zoneName}${displayPace ? ` (${displayPace})` : ''}`;
-        
-        return (
-          <option key={z.id || zoneName} value={zoneName} style={{ backgroundColor: z.color || '#fff' }}>
-            {labelText}
-          </option>
-        );
-      };
+  // 3. Zone or Zone Range 
+  if (paceMethod === 'Zone' || paceMethod === 'Zone Range') {
+    // Helper to look up a zone item by id (or fallback to name/zone)
+    const findZone = (zoneIdentifier) => {
+      if (!zoneIdentifier || !Array.isArray(zoneList)) return null;
+      return zoneList.find(
+        (z) =>
+          String(z.id) === String(zoneIdentifier) ||
+          z.name === zoneIdentifier ||
+          z.zone_name === zoneIdentifier ||
+          z.label === zoneIdentifier ||
+          String(z.zone) === String(zoneIdentifier)
+      );
+    };
 
-      if (!isRange) {
-        const currentZone = typeof step.pace === 'object' ? (step.pace.value || step.pace.start || 'Z1') : 'Z1';
-        const zonePaceSec = getZonePaceSec(currentZone);
-        const displayPaceStr = zonePaceSec > 0 ? formatMMSS(zonePaceSec) : '--:--';
+    // Helper to resolve pace in seconds from a zone id
+    const getZonePaceSec = (zoneIdentifier) => {
+      const matched = findZone(zoneIdentifier);
+      return matched?.targetPaceSec ?? matched?.pace_val_sec ?? matched?.minSec ?? 0;
+    };
 
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label className="input-label">
-              Zone:{' '}
-              <select
-                value={currentZone}
-                onChange={(e) => onUpdate(step.id, 'pace', { units: 'pace_zone', value: e.target.value })}
-                className="pace-method-select"
-              >
-                {zoneList.map(renderZoneOption)}
-              </select>
-            </label>
-            <span style={{ fontSize: '12px', color: '#6c757d' }}>({displayPaceStr} /mi)</span>
-          </div>
-        );
-      }
+    const renderZoneOption = (z) => {
+      const zoneSec = z.targetPaceSec ?? z.pace_val_sec ?? z.minSec ?? 0;
+      const displayPace = z.displayPace || (zoneSec > 0 ? formatMMSS(zoneSec) : '');
+      
+      // Use zone_name for the visible label, but z.id for the option value
+      const displayName = z.zone_name || z.name || z.label || String(z.zone || z.id || '');
+      const labelText = `${displayName}${displayPace ? ` (${displayPace})` : ''}`;
+      
+      // Fallback value to z.id or z.name if id is missing
+      const optionVal = z.id !== undefined ? z.id : (z.name || displayName);
 
-      const startZone = typeof step.pace === 'object' ? (step.pace.start || 'Z2') : 'Z2';
-      const endZone = typeof step.pace === 'object' ? (step.pace.end || 'Z1') : 'Z1';
+      return (
+        <option key={optionVal} value={optionVal} style={{ backgroundColor: z.color || '#fff' }}>
+          {labelText}
+        </option>
+      );
+    };
 
-      const fastZonePaceSec = getZonePaceSec(startZone);
-      const slowZonePaceSec = getZonePaceSec(endZone);
+    if (!isRange) {
+      // Retrieve current zone ID (defaults to first zone's ID or 'Z1')
+      const rawZoneVal = typeof step.pace === 'object' ? (step.pace.value ?? step.pace.start) : 'Z1';
+      const matchedZone = findZone(rawZoneVal);
+      const currentZoneId = matchedZone?.id !== undefined ? matchedZone.id : rawZoneVal;
 
-      const calcFastZonePace = fastZonePaceSec > 0 ? formatMMSS(fastZonePaceSec) : '--:--';
-      const calcSlowZonePace = slowZonePaceSec > 0 ? formatMMSS(slowZonePaceSec) : '--:--';
+      const zonePaceSec = getZonePaceSec(currentZoneId);
+      const displayPaceStr = zonePaceSec > 0 ? formatMMSS(zonePaceSec) : '--:--';
 
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <label className="input-label">
-            Fast Zone:{' '}
+            Zone:{' '}
             <select
-              value={startZone}
-              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', start: e.target.value })}
+              value={currentZoneId}
+              onChange={(e) => {
+                const selectedId = e.target.value;
+                onUpdate(step.id, 'pace', { units: 'pace_zone', value: selectedId });
+              }}
               className="pace-method-select"
             >
               {zoneList.map(renderZoneOption)}
             </select>
           </label>
-          <label className="input-label">
-            Slow Zone:{' '}
-            <select
-              value={endZone}
-              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', end: e.target.value })}
-              className="pace-method-select"
-            >
-              {zoneList.map(renderZoneOption)}
-            </select>
-          </label>
-          <span style={{ fontSize: '12px', color: '#6c757d' }}>({calcFastZonePace} - {calcSlowZonePace} /mi)</span>
+          <span style={{ fontSize: '12px', color: '#6c757d' }}>({displayPaceStr} /mi)</span>
         </div>
       );
     }
 
-    return null;
+    // Zone Range (Fast & Slow)
+    const rawStartVal = typeof step.pace === 'object' ? step.pace.start : undefined;
+    const rawEndVal = typeof step.pace === 'object' ? step.pace.end : undefined;
+
+    const matchedStart = findZone(rawStartVal);
+    const matchedEnd = findZone(rawEndVal);
+
+    // Default to zoneList[1] for Fast and zoneList[0] for Slow if unspecified
+    const startZoneId = matchedStart?.id !== undefined 
+      ? matchedStart.id 
+      : (zoneList[1]?.id ?? rawStartVal ?? 'Z2');
+
+    const endZoneId = matchedEnd?.id !== undefined 
+      ? matchedEnd.id 
+      : (zoneList[0]?.id ?? rawEndVal ?? 'Z1');
+
+    const fastZonePaceSec = getZonePaceSec(startZoneId);
+    const slowZonePaceSec = getZonePaceSec(endZoneId);
+
+    const calcFastZonePace = fastZonePaceSec > 0 ? formatMMSS(fastZonePaceSec) : '--:--';
+    const calcSlowZonePace = slowZonePaceSec > 0 ? formatMMSS(slowZonePaceSec) : '--:--';
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <label className="input-label">
+          Fast Zone:{' '}
+          <select
+            value={startZoneId}
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', start: selectedId });
+            }}
+            className="pace-method-select"
+          >
+            {zoneList.map(renderZoneOption)}
+          </select>
+        </label>
+        <label className="input-label">
+          Slow Zone:{' '}
+          <select
+            value={endZoneId}
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', end: selectedId });
+            }}
+            className="pace-method-select"
+          >
+            {zoneList.map(renderZoneOption)}
+          </select>
+        </label>
+        <span style={{ fontSize: '12px', color: '#6c757d' }}>({calcFastZonePace} - {calcSlowZonePace} /mi)</span>
+      </div>
+    );
+  }
+
+  return null;
   };
 
   // Inline helper: Step inputs row
@@ -548,8 +598,10 @@ export default function RenderStepRow({
         }
       } else if (method.includes('zone')) {
         const matchedZone = zoneList.find((z) => Math.abs((z.targetPaceSec || z.pace_val_sec || 0) - newSec) < 15);
-        const zoneVal = matchedZone?.name || matchedZone?.label || matchedZone?.zone || 'Z2';
-
+        const zoneVal = matchedZone?.id !== undefined 
+          ? matchedZone.id 
+          : (matchedZone?.zone_name || matchedZone?.name || 'Z2');
+      
         if (isRange) {
           onUpdate(step.id, 'pace', { units: 'pace_zone', start: zoneVal, end: zoneVal });
         } else {
