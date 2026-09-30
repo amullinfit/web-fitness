@@ -283,7 +283,7 @@ export default function WorkoutChart({
                   // Construct pace details: collapse to single value if identical
                   const paceDetails = fastPaceStr === slowPaceStr 
                     ? fastPaceStr 
-                    : `${slowPaceStr} - ${fastPaceStr}`;
+                    : `${fastPaceStr} - ${slowPaceStr}`;
 
                   const tooltipText = `${durationFormatted} @ ${paceDetails}`;
 

@@ -234,7 +234,7 @@
           const end = step.pace.end ?? start;
           return {
             min: Math.min(start, end),
-            mid: (start + end) / 2,
+            mid: Math.round((start + end) / 2),
             max: Math.max(start, end)
           };
         }
@@ -290,9 +290,9 @@
             
             // rangePct.XX has the % of threshold
             '%pace': () => ({
-                slowSec: rangePct.min > 0 ? refThresholdSec / (rangePct.min / 100) : refThresholdSec,
-                midSec:  rangePct.mid > 0 ? refThresholdSec / (rangePct.mid / 100) : refThresholdSec,
-                fastSec: rangePct.max > 0 ? refThresholdSec / (rangePct.max / 100) : refThresholdSec,
+                slowSec: Math.round(rangePct.min > 0 ? refThresholdSec / (rangePct.min / 100) : refThresholdSec),
+                midSec:  Math.round(rangePct.mid > 0 ? refThresholdSec / (rangePct.mid / 100) : refThresholdSec),
+                fastSec: Math.round(rangePct.max > 0 ? refThresholdSec / (rangePct.max / 100) : refThresholdSec),
                 rangePct
             }),
 
