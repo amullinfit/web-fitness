@@ -283,8 +283,18 @@ export default function WorkoutBuilder() {
               paddingRight: '16px'
             }}
           >
-            <div className="builder-header-bar">
-              <h1 className="builder-header-title">Workout Builder</h1>
+          <div className="builder-header-bar">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <h1 className="builder-header-title">Workout Builder:</h1>
+              <input
+                type="text"
+                value={workoutTitle}
+                onChange={(e) => setWorkoutTitle(e.target.value)}
+                placeholder="Workout Title"
+                className="workout-title-input"
+                style={{ fontSize: '18px', padding: '4px 8px', fontWeight: 'bold' }}
+              />
+            </div>
               <OptionsMenu
                 mode={mode}
                 onStartCreateNew={handleNewWorkout}
