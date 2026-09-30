@@ -279,7 +279,7 @@ export const formatTime = (totalSeconds) => {
           warmup: true,
           ...metric,
           intensity: 'warmup',
-          pace: { units: 'secs', value: 601 },
+          pace: { units: 'secs', value: 621 },
         };
 
       case 'run':
@@ -295,7 +295,7 @@ export const formatTime = (totalSeconds) => {
           id,
           ...metric,
           intensity: 'recovery',
-          pace: { units: 'secs', value: 602 },
+          pace: { units: 'secs', value: 622 },
         };
 
       case 'cooldown':
@@ -304,7 +304,7 @@ export const formatTime = (totalSeconds) => {
           cooldown: true,
           ...metric,
           intensity: 'active',
-          pace: { units: 'secs', value: 603 },
+          pace: { units: 'secs', value: 623 },
         };
 
       case 'repeat':
