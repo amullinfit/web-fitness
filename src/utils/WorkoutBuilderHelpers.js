@@ -339,11 +339,9 @@ export const formatTime = (totalSeconds) => {
   };
 
   export const createDefaultSteps = (mode = 'time') => ({
-    steps: [
       createStep('warmup', mode),
       createStep('repeat', mode),
       createStep('cooldown', mode),
-    ],
   });
 
 
