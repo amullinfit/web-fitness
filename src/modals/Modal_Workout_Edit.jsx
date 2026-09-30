@@ -151,16 +151,21 @@ export default function Modal_Workout_Edit({
                     className="workout-select-card"
                     onClick={() => onSelectWorkout(workout.id)}
                   >
-                    <div className="workout-card-header">
+                    {/* Left ~30%: Title */}
+                    <div className="workout-card-title-col">
                       <span className="workout-card-title">
                         {workout.name || workout.title || `Workout ${workout.id}`}
                       </span>
-                      <div className="workout-card-meta">
-                        <span>⏱ {durationText}</span>
-                        <span>📏 {distanceText}</span>
-                      </div>
                     </div>
-                    <div className="workout-card-chart">
+
+                    {/* Middle ~20%: Meta (Time on top, Distance on bottom) */}
+                    <div className="workout-card-meta-col">
+                      <span className="meta-item">⏱ {durationText}</span>
+                      <span className="meta-item">📏 {distanceText}</span>
+                    </div>
+
+                    {/* Right ~50%: Inline Chart */}
+                    <div className="workout-card-chart-col">
                       <WorkoutChart
                         workout={workout}
                         thresholdPace={480}

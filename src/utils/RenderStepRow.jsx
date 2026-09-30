@@ -215,7 +215,7 @@ export default function RenderStepRow({
               fontSize: '12px',
               fontWeight: '600',
               color: '#495057',
-              backgroundColor: '#e9ecef',
+              backgroundColor: 'transparent', /* Changed from #e9ecef to match parent background */
               padding: '2px 8px',
               borderRadius: '12px'
             }}
