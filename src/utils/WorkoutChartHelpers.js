@@ -227,19 +227,19 @@
     };
 
     const extractPaceRange = (step) => {
-        if (!step) return { start: 100, mid: 100, end: 100 };
+        if (!step) return { slow: 99, mid: 100, fast: 101 };
       
         if (step.pace && typeof step.pace === 'object') {
           const start = step.pace.start ?? step.pace.value ?? 100;
           const end = step.pace.end ?? start;
           return {
-            start: Math.min(start, end),
+            slow: Math.max(start, end),
             mid: (start + end) / 2,
-            end: Math.max(start, end)
+            fast: Math.min(start, end)
           };
         }
       
-        return { start: 100, end: 100, mid: 100 };
+        return { fast: 99, mid: 100, fast: 101 };
     };
       
     //
@@ -256,7 +256,7 @@
         // if it is an executed step vs planned and a ride, it will have step.weighted_average_watts
         const rawWatts = parseFloat(step.average_watts ?? step.weighted_average_watts);
         if (!isNaN(rawWatts) && rawWatts > 0) {
-            return { slowSec: rawWatts, midSec: rawWatts, fastSec: rawWatts, rangePct: { start: 100, mid: 100, end: 100 } };
+            return { slowSec: rawWatts, midSec: rawWatts, fastSec: rawWatts, rangePct: { slow: 101, mid: 100, fast: 99 } };
         }
         
         // it if is an executed step vs planned but not a ride, it will have step.average_speed as m/s (3.25150 for 8:15 pace)
@@ -264,7 +264,7 @@
         if (!isNaN(rawSpeed) && rawSpeed > 0) {
             // convert 3.25150 to 495 for 8:15 pace
             const sec = speedToPaceSeconds(rawSpeed);
-            return { slowSec: sec, midSec: sec, fastSec: sec, rangePct: { start: 100, mid: 100, end: 100 } };
+            return { slowSec: sec, midSec: sec, fastSec: sec, rangePct: { slow: 101, mid: 100, fast: 99 } };
         }
         
         const refThresholdSec = (thresholdSecPerMile && thresholdSecPerMile > 0)
@@ -276,25 +276,25 @@
         const handlers = {
             // rangePct.XX has the sec/mi (495 = 8:15)
             'secs': () => ({
-                slowSec: rangePct.start,
+                slowSec: rangePct.slow,
                 midSec:  rangePct.mid,
-                fastSec: rangePct.end,
+                fastSec: rangePct.fast,
                 rangePct
             }),
             
             // rangePct.XX has the % of threshold
             '%pace': () => ({
-                slowSec: rangePct.start > 0 ? refThresholdSec / (rangePct.start / 100) : refThresholdSec,
-                midSec:  rangePct.mid   > 0 ? refThresholdSec / (rangePct.mid / 100)   : refThresholdSec,
-                fastSec: rangePct.end   > 0 ? refThresholdSec / (rangePct.end / 100)   : refThresholdSec,
+                slowSec: rangePct.slow > 0 ? refThresholdSec / (rangePct.slow / 100) : refThresholdSec,
+                midSec:  rangePct.mid  > 0 ? refThresholdSec / (rangePct.mid / 100)  : refThresholdSec,
+                fastSec: rangePct.fast > 0 ? refThresholdSec / (rangePct.fast / 100) : refThresholdSec,
                 rangePct
             }),
 
             // rangePct.XX has the zone #
             'pace_zone': () => {
-                const slowDetails = getZoneDetailsFromZoneNumber(rangePct.start, paces);
-                const midDetails  = getZoneDetailsFromZoneNumber(rangePct.mid,   paces);
-                const fastDetails = getZoneDetailsFromZoneNumber(rangePct.end,   paces);
+                const slowDetails = getZoneDetailsFromZoneNumber(rangePct.slow, paces);
+                const midDetails  = getZoneDetailsFromZoneNumber(rangePct.mid,  paces);
+                const fastDetails = getZoneDetailsFromZoneNumber(rangePct.fast, paces);
             
                 return {
                     slowSec: slowDetails?.slow,
@@ -304,13 +304,13 @@
                 };}
         };
             
-            // Execute handler or run default if unit is missing/unrecognized
-            const handler = handlers[step.pace?.units] || (() => ({
-            fastSec: refThresholdSec,
-            midSec: refThresholdSec,
-            slowSec: refThresholdSec,
-            rangePct: { start: 100, end: 100, mid: 100 }
-            }));
+        // Execute handler or run default if unit is missing/unrecognized
+        const handler = handlers[step.pace?.units] || (() => ({
+        fastSec: refThresholdSec,
+        midSec: refThresholdSec,
+        slowSec: refThresholdSec,
+        rangePct: { slow: 101, mid: 100, fast: 101 }
+        }));
 
         return handler();
     };
