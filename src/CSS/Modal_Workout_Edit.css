@@ -212,7 +212,7 @@
     padding: 12px 0;
   }
 
-  /* Card Container */
+/* Card Container */
 .workout-select-card {
   display: flex;
   align-items: center;
@@ -224,6 +224,9 @@
   background-color: #ffffff;
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box; /* Ensures padding is included in element dimensions */
+  width: 100%;             /* Fits cleanly inside container */
+  overflow: hidden;        /* Keeps inner chart SVG bounded */
 }
 
 .workout-select-card:hover {
@@ -231,16 +234,16 @@
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.12);
 }
 
-/* Left Column: Title */
+/* Left Column: Title (~28% flex-grow) */
 .workout-card-title-col {
-  flex: 0 0 25%;
-  max-width: 25%;
-  padding-right: 8px;
+  flex: 1 1 28%;
+  min-width: 0;            /* Allows text truncation without blowing out flex width */
+  padding-right: 4px;
 }
 
 .workout-card-title {
   font-weight: 600;
-  font-size: 18px;
+  font-size: 15px;
   color: #1e293b;
   line-height: 1.3;
   display: -webkit-box;
@@ -250,10 +253,10 @@
   text-overflow: ellipsis;
 }
 
-/* Center Column: Time & Distance */
+/* Center Column: Time & Distance (~18% flex-grow) */
 .workout-card-meta-col {
-  flex: 0 0 15%;
-  max-width: 15%;
+  flex: 0 0 18%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start; 
@@ -263,13 +266,27 @@
   color: #64748b;
   font-weight: 500;
 }
+
 .workout-card-meta-col .meta-item {
   white-space: nowrap;
 }
 
-/* Right Column: Chart */
+/* Right Column: Chart (~50% flex-grow) */
 .workout-card-chart-col {
-  flex: 0 0 60%;
-  max-width: 60%;
-  min-width: 0; /* Prevents flex items from overflowing during chart render */
+  flex: 1 1 50%;
+  min-width: 0;            /* Critical for Recharts/SVG auto-scaling */
+  max-width: 50%;
+  overflow: hidden;        /* Clamps SVG within boundary */
+  background-color: #f8fafc;
+  border-radius: 4px;
+  padding: 4px;
+  border: 1px solid #f1f5f9;
+}
+
+/* Force chart canvas/SVG inside the column to respect the container width */
+.workout-card-chart-col svg,
+.workout-card-chart-col canvas,
+.workout-card-chart-col > div {
+  max-width: 100% !important;
+  width: 100% !important;
 }
