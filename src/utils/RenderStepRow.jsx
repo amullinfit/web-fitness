@@ -155,7 +155,7 @@ export default function RenderStepRow({
         newPaceObj = { units: 'pace_zone', value: newValue || 'Z1' };
         break;
       case 'Zone Range':
-        newPaceObj = { units: 'pace_zone', start: newValue || 'Z1', end: newValue || 'Z2' };
+        newPaceObj = { units: 'pace_zone', start: newValue || 'Z2', end: newValue || 'Z1' };
         break;
       default:
         newPaceObj = { units: 'secs', value: newValue || 480 };
@@ -284,7 +284,17 @@ export default function RenderStepRow({
 
   // Render pace controls based on Method
   const renderPaceInputControls = () => {
+
     const isRange = paceMethod.includes('Range');
+
+    // Helper to resolve pace in seconds from a zone name or zone object
+    const getZonePaceSec = (zoneName) => {
+      if (!zoneName || !Array.isArray(zoneList)) return 0;
+      const matched = zoneList.find(
+        (z) => z.name === zoneName || z.label === zoneName || String(z.zone) === String(zoneName) || z.id === zoneName
+      );
+      return matched?.targetPaceSec ?? matched?.pace_val_sec ?? matched?.minSec ?? 0;
+    };
 
     // 1. Pace or Pace Range
     if (paceMethod === 'Pace' || paceMethod === 'Pace Range') {
@@ -300,22 +310,28 @@ export default function RenderStepRow({
           </label>
         );
       }
-      const startSec = typeof step.pace === 'object' ? (step.pace.start ?? 0) : targetPaceSec;
-      const endSec = typeof step.pace === 'object' ? (step.pace.end ?? 0) : targetPaceSec + 15;
+
+      // Fast pace = FEWER seconds/mi; Slow pace = MORE seconds/mi
+      const rawStart = typeof step.pace === 'object' ? (step.pace.start ?? 480) : targetPaceSec;
+      const rawEnd = typeof step.pace === 'object' ? (step.pace.end ?? 495) : targetPaceSec + 15;
+
+      const fastSec = Math.min(rawStart, rawEnd);
+      const slowSec = Math.max(rawStart, rawEnd);
+
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <label className="input-label">
             Fast:{' '}
             <MMSSInput 
-              valueSec={startSec} 
-              onChange={(newSec) => onUpdate(step.id, 'pace', { ...step.pace, units: 'secs', start: newSec })} 
+              valueSec={fastSec} 
+              onChange={(newSec) => onUpdate(step.id, 'pace', { ...step.pace, units: 'secs', start: newSec, end: slowSec })} 
             />
           </label>
           <label className="input-label">
             Slow:{' '}
             <MMSSInput 
-              valueSec={endSec} 
-              onChange={(newSec) => onUpdate(step.id, 'pace', { ...step.pace, units: 'secs', end: newSec })} 
+              valueSec={slowSec} 
+              onChange={(newSec) => onUpdate(step.id, 'pace', { ...step.pace, units: 'secs', start: fastSec, end: newSec })} 
             />
           </label>
         </div>
@@ -347,10 +363,15 @@ export default function RenderStepRow({
         );
       }
 
-      const startPct = typeof step.pace === 'object' ? (step.pace.start ?? 95) : 95;
-      const endPct = typeof step.pace === 'object' ? (step.pace.end ?? 105) : 105;
-      const calcFastPace = thresholdSecPerMile > 0 ? formatMMSS(Math.round(thresholdSecPerMile / (startPct / 100))) : '--:--';
-      const calcSlowPace = thresholdSecPerMile > 0 ? formatMMSS(Math.round(thresholdSecPerMile / (endPct / 100))) : '--:--';
+      const rawStartPct = typeof step.pace === 'object' ? (step.pace.start ?? 105) : 105;
+      const rawEndPct = typeof step.pace === 'object' ? (step.pace.end ?? 95) : 95;
+
+      // Higher % = FASTER pace (fewer sec/mi); Lower % = SLOWER pace (more sec/mi)
+      const fastPct = Math.max(rawStartPct, rawEndPct);
+      const slowPct = Math.min(rawStartPct, rawEndPct);
+
+      const calcFastPace = thresholdSecPerMile > 0 ? formatMMSS(Math.round(thresholdSecPerMile / (fastPct / 100))) : '--:--';
+      const calcSlowPace = thresholdSecPerMile > 0 ? formatMMSS(Math.round(thresholdSecPerMile / (slowPct / 100))) : '--:--';
 
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -360,8 +381,8 @@ export default function RenderStepRow({
               type="number"
               min="50"
               max="200"
-              value={startPct}
-              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, units: '%pace', start: parseFloat(e.target.value) || 0 })}
+              value={fastPct}
+              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, units: '%pace', start: parseFloat(e.target.value) || 0, end: slowPct })}
               className="time-pace-input"
               style={{ width: '48px', padding: '2px 4px' }}
             />
@@ -373,8 +394,8 @@ export default function RenderStepRow({
               type="number"
               min="50"
               max="200"
-              value={endPct}
-              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, units: '%pace', end: parseFloat(e.target.value) || 0 })}
+              value={slowPct}
+              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, units: '%pace', start: fastPct, end: parseFloat(e.target.value) || 0 })}
               className="time-pace-input"
               style={{ width: '48px', padding: '2px 4px' }}
             />
@@ -388,9 +409,11 @@ export default function RenderStepRow({
     // 3. Zone or Zone Range 
     if (paceMethod === 'Zone' || paceMethod === 'Zone Range') {
       const renderZoneOption = (z) => {
-        const displayPace = z.displayPace || (z.targetPaceSec ? formatMMSS(z.targetPaceSec) : '');
-        const zoneName = z.name || z.label || z.zone;
+        const zoneSec = z.targetPaceSec ?? z.pace_val_sec ?? z.minSec ?? 0;
+        const displayPace = z.displayPace || (zoneSec > 0 ? formatMMSS(zoneSec) : '');
+        const zoneName = z.name || z.label || String(z.zone || '');
         const labelText = `${zoneName}${displayPace ? ` (${displayPace})` : ''}`;
+        
         return (
           <option key={z.id || zoneName} value={zoneName} style={{ backgroundColor: z.color || '#fff' }}>
             {labelText}
@@ -399,26 +422,38 @@ export default function RenderStepRow({
       };
 
       if (!isRange) {
-        const currentZone = typeof step.pace === 'object' ? (step.pace.value || 'Z1') : 'Z1';
+        const currentZone = typeof step.pace === 'object' ? (step.pace.value || step.pace.start || 'Z1') : 'Z1';
+        const zonePaceSec = getZonePaceSec(currentZone);
+        const displayPaceStr = zonePaceSec > 0 ? formatMMSS(zonePaceSec) : '--:--';
+
         return (
-          <label className="input-label">
-            Zone:{' '}
-            <select
-              value={currentZone}
-              onChange={(e) => onUpdate(step.id, 'pace', { units: 'pace_zone', value: e.target.value })}
-              className="pace-method-select"
-            >
-              {zoneList.map(renderZoneOption)}
-            </select>
-          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label className="input-label">
+              Zone:{' '}
+              <select
+                value={currentZone}
+                onChange={(e) => onUpdate(step.id, 'pace', { units: 'pace_zone', value: e.target.value })}
+                className="pace-method-select"
+              >
+                {zoneList.map(renderZoneOption)}
+              </select>
+            </label>
+            <span style={{ fontSize: '12px', color: '#6c757d' }}>({displayPaceStr} /mi)</span>
+          </div>
         );
       }
 
-      const startZone = typeof step.pace === 'object' ? (step.pace.start || 'Z1') : 'Z1';
-      const endZone = typeof step.pace === 'object' ? (step.pace.end || 'Z2') : 'Z2';
+      const startZone = typeof step.pace === 'object' ? (step.pace.start || 'Z2') : 'Z2';
+      const endZone = typeof step.pace === 'object' ? (step.pace.end || 'Z1') : 'Z1';
+
+      const fastZonePaceSec = getZonePaceSec(startZone);
+      const slowZonePaceSec = getZonePaceSec(endZone);
+
+      const calcFastZonePace = fastZonePaceSec > 0 ? formatMMSS(fastZonePaceSec) : '--:--';
+      const calcSlowZonePace = slowZonePaceSec > 0 ? formatMMSS(slowZonePaceSec) : '--:--';
 
       return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <label className="input-label">
             Fast Zone:{' '}
             <select
@@ -439,6 +474,7 @@ export default function RenderStepRow({
               {zoneList.map(renderZoneOption)}
             </select>
           </label>
+          <span style={{ fontSize: '12px', color: '#6c757d' }}>({calcFastZonePace} - {calcSlowZonePace} /mi)</span>
         </div>
       );
     }
