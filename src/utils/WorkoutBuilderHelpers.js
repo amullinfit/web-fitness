@@ -338,11 +338,11 @@ export const formatTime = (totalSeconds) => {
     }
   };
 
-  export const createDefaultSteps = (mode = 'time') => ({
+  export const createDefaultSteps = (mode = 'time') => [
       createStep('warmup', mode),
       createStep('repeat', mode),
       createStep('cooldown', mode),
-  });
+  ];
 
 
   export const addIdsToBaseWorkout = (baseWorkout) => {
