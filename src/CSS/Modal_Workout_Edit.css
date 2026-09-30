@@ -218,15 +218,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 12px 14px; /* Restored generous vertical padding */
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background-color: #ffffff;
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  box-sizing: border-box; /* Ensures padding is included in element dimensions */
-  width: 100%;             /* Fits cleanly inside container */
-  overflow: hidden;        /* Keeps inner chart SVG bounded */
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .workout-select-card:hover {
@@ -234,10 +233,11 @@
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.12);
 }
 
-/* Left Column: Title (~28% flex-grow) */
+/* Left Column: Title */
 .workout-card-title-col {
-  flex: 1 1 28%;
-  min-width: 0;            /* Allows text truncation without blowing out flex width */
+  flex: 0 0 28%;
+  max-width: 28%;
+  min-width: 0;
   padding-right: 4px;
 }
 
@@ -253,14 +253,15 @@
   text-overflow: ellipsis;
 }
 
-/* Center Column: Time & Distance (~18% flex-grow) */
+/* Center Column: Time & Distance */
 .workout-card-meta-col {
   flex: 0 0 18%;
+  max-width: 18%;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start; 
-  text-align: left;         
+  align-items: flex-start;
+  text-align: left;
   gap: 4px;
   font-size: 12px;
   color: #64748b;
@@ -271,22 +272,25 @@
   white-space: nowrap;
 }
 
-/* Right Column: Chart (~50% flex-grow) */
+/* Right Column: Chart Container */
 .workout-card-chart-col {
-  flex: 1 1 50%;
-  min-width: 0;            /* Critical for Recharts/SVG auto-scaling */
-  max-width: 50%;
-  overflow: hidden;        /* Clamps SVG within boundary */
+  flex: 0 0 48%; /* Adjusted slightly for 12px gap headroom */
+  max-width: 48%;
+  min-width: 0;
   background-color: #f8fafc;
-  border-radius: 4px;
-  padding: 4px;
+  border-radius: 6px;
+  padding: 6px 4px; /* Added vertical breathing room for SVG chart line tops/bottoms */
   border: 1px solid #f1f5f9;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
 }
 
-/* Force chart canvas/SVG inside the column to respect the container width */
+/* Constrain SVG/Canvas strictly horizontally without clipping vertical overflow */
+.workout-card-chart-col > div,
 .workout-card-chart-col svg,
-.workout-card-chart-col canvas,
-.workout-card-chart-col > div {
-  max-width: 100% !important;
+.workout-card-chart-col canvas {
   width: 100% !important;
+  max-width: 100% !important;
+  overflow: visible !important; /* Prevents stroke / data point clipping on top/bottom */
 }
