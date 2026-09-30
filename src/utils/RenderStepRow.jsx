@@ -56,15 +56,15 @@ const calculateStepTotals = (stepItem, thresholdSecPerMile = 0, zoneList = []) =
   // Resolve target pace in sec/mile
   let targetPaceSec = 0;
   if (typeof stepItem.pace === 'object' && stepItem.pace !== null) {
-    if (stepItem.pace.unit === '%pace' && thresholdSecPerMile > 0) {
+    if (stepItem.pace.units === '%pace' && thresholdSecPerMile > 0) {
       const pct = stepItem.pace.value ?? stepItem.pace.start ?? 100;
       targetPaceSec = Math.round(thresholdSecPerMile / (pct / 100));
-    } else if (stepItem.pace.unit === 'pace_zone' && Array.isArray(zoneList)) {
+    } else if (stepItem.pace.units === 'pace_zone' && Array.isArray(zoneList)) {
       const zoneName = stepItem.pace.value ?? stepItem.pace.start;
       const matchedZone = zoneList.find(
         (z) => z.name === zoneName || z.label === zoneName || z.id === zoneName
       );
-      targetPaceSec = matchedZone?.targetPaceSec ?? matchedZone?.minSec ?? 0;
+      targetPaceSec = matchedZone?.targetPaceSec ?? matchedZone?.minSec ?? matchedZone?.pace_val_sec ?? 0;
     } else {
       targetPaceSec = stepItem.pace.value ?? stepItem.pace.start ?? 0;
     }
@@ -101,16 +101,16 @@ export default function RenderStepRow({
 }) {
   if (!step) return null;
 
-  // Save thresholdpace as sec/mile (495)
+  // Save threshold pace as sec/mile (e.g. 495)
   const thresholdSecPerMile = paceDetails?.run_pace_sec;
 
-  // Default to 'time' and 'Pace' if unspecified
+  // Derive active paceMethod dynamically from step.pace payload first
+  const paceMethod = detectPaceMethod(step.pace) || step.paceMethod || 'Pace';
   const stepMode = step.stepMode || 'time';
-  const paceMethod = step.paceMethod || detectPaceMethod(step.pace, 'Pace');
 
-  const zoneList = paceDetails?.preset_colors;
+  const zoneList = paceDetails?.preset_colors || [];
 
-  // Zones and colors
+  // Zones and colors for presets
   const dynamicPresets = useMemo(
     () => calculateDynamicPresets(paceDetails, paceDetails?.threshold_pace || 360, paceMethod),
     [paceDetails, paceMethod]
@@ -122,51 +122,46 @@ export default function RenderStepRow({
 
   // Convert step values appropriately when pace method changes
   const setPaceMethod = (newPaceMethod) => {
-
-    onUpdate(step.id, 'paceMethod', newPaceMethod);
-    
-    const oldPaceMethod = detectPaceMethod(step.pace, 'Pace');
+    const oldPaceMethod = paceMethod;
 
     let oldValue = 0;
     if (typeof step.pace === 'object' && step.pace !== null) {
       const start = step.pace.start ?? 0;
       const end = step.pace.end ?? 0;
-    
-      // Use explicit value if available; otherwise take max of start/end, falling back to 0
       oldValue = step.pace.value ?? (Math.max(start, end) || 0);
-    } 
+    } else if (typeof step.pace === 'number') {
+      oldValue = step.pace;
+    }
 
-    let newValue = 0;
-    newValue = calculateNewPaceValue(oldPaceMethod, oldValue, newPaceMethod, thresholdSecPerMile, zoneList);
+    const newValue = calculateNewPaceValue(oldPaceMethod, oldValue, newPaceMethod, thresholdSecPerMile, zoneList);
 
     let newPaceObj = {};
     switch (newPaceMethod) {
       case 'Pace':
-        newPaceObj = { unit: 'secs', value: newValue || 480 };
+        newPaceObj = { units: 'secs', value: newValue || 480 };
         break;
       case 'Pace Range':
-        newPaceObj = { unit: 'secs', start: newValue || 480, end: (newValue || 480) + 15 };
+        newPaceObj = { units: 'secs', start: newValue || 480, end: (newValue || 480) + 15 };
         break;
 
-      case 'Threshold %': {
-        newPaceObj = { unit: '%pace', value: newValue };
+      case 'Threshold %':
+        newPaceObj = { units: '%pace', value: newValue || 100 };
         break;
-      }
-      case 'Threshold % Range': {
-        newPaceObj = { unit: '%pace', start: newValue, end: newValue };
+      case 'Threshold % Range':
+        newPaceObj = { units: '%pace', start: newValue || 100, end: newValue || 100 };
         break;
-      }
 
       case 'Zone':
-        newPaceObj = { unit: 'pace_zone', value: newValue };
+        newPaceObj = { units: 'pace_zone', value: newValue || 'Z1' };
         break;
       case 'Zone Range':
-        newPaceObj = { unit: 'pace_zone', start: newValue, end: newValue };
+        newPaceObj = { units: 'pace_zone', start: newValue || 'Z1', end: newValue || 'Z2' };
         break;
       default:
-        newPaceObj = { unit: 'secs', value: newValue };
+        newPaceObj = { units: 'secs', value: newValue || 480 };
     }
 
+    onUpdate(step.id, 'paceMethod', newPaceMethod);
     onUpdate(step.id, 'pace', newPaceObj);
   };
 
@@ -215,7 +210,7 @@ export default function RenderStepRow({
               fontSize: '12px',
               fontWeight: '600',
               color: '#495057',
-              backgroundColor: 'transparent', /* Changed from #e9ecef to match parent background */
+              backgroundColor: 'transparent',
               padding: '2px 8px',
               borderRadius: '12px'
             }}
@@ -261,9 +256,15 @@ export default function RenderStepRow({
   // Extract primary seconds calculation for distance/time estimation (in sec/mile)
   let targetPaceSec = 0;
   if (typeof step.pace === 'object' && step.pace !== null) {
-    if (step.pace.unit === '%pace' && thresholdSecPerMile > 0) {
+    if (step.pace.units === '%pace' && thresholdSecPerMile > 0) {
       const pct = step.pace.value ?? step.pace.start ?? 100;
       targetPaceSec = Math.round(thresholdSecPerMile / (pct / 100));
+    } else if (step.pace.units === 'pace_zone' && Array.isArray(zoneList)) {
+      const zoneName = step.pace.value ?? step.pace.start;
+      const matchedZone = zoneList.find(
+        (z) => z.name === zoneName || z.label === zoneName || z.id === zoneName
+      );
+      targetPaceSec = matchedZone?.targetPaceSec ?? matchedZone?.pace_val_sec ?? 0;
     } else {
       targetPaceSec = step.pace.value ?? step.pace.start ?? 0;
     }
@@ -285,7 +286,7 @@ export default function RenderStepRow({
   const renderPaceInputControls = () => {
     const isRange = paceMethod.includes('Range');
 
-    // 1. Pace or Pace Range (MMSSInput free-form)
+    // 1. Pace or Pace Range
     if (paceMethod === 'Pace' || paceMethod === 'Pace Range') {
       if (!isRange) {
         const valSec = typeof step.pace === 'object' ? (step.pace.value ?? 0) : targetPaceSec;
@@ -294,7 +295,7 @@ export default function RenderStepRow({
             Pace:{' '}
             <MMSSInput 
               valueSec={valSec} 
-              onChange={(newSec) => onUpdate(step.id, 'pace', { unit: 'secs', value: newSec })} 
+              onChange={(newSec) => onUpdate(step.id, 'pace', { units: 'secs', value: newSec })} 
             />
           </label>
         );
@@ -307,14 +308,14 @@ export default function RenderStepRow({
             Fast:{' '}
             <MMSSInput 
               valueSec={startSec} 
-              onChange={(newSec) => onUpdate(step.id, 'pace', { ...step.pace, unit: 'secs', start: newSec })} 
+              onChange={(newSec) => onUpdate(step.id, 'pace', { ...step.pace, units: 'secs', start: newSec })} 
             />
           </label>
           <label className="input-label">
             Slow:{' '}
             <MMSSInput 
               valueSec={endSec} 
-              onChange={(newSec) => onUpdate(step.id, 'pace', { ...step.pace, unit: 'secs', end: newSec })} 
+              onChange={(newSec) => onUpdate(step.id, 'pace', { ...step.pace, units: 'secs', end: newSec })} 
             />
           </label>
         </div>
@@ -335,7 +336,7 @@ export default function RenderStepRow({
                 min="50"
                 max="200"
                 value={valPct}
-                onChange={(e) => onUpdate(step.id, 'pace', { unit: '%pace', value: parseFloat(e.target.value) || 0 })}
+                onChange={(e) => onUpdate(step.id, 'pace', { units: '%pace', value: parseFloat(e.target.value) || 0 })}
                 className="time-pace-input"
                 style={{ width: '50px', padding: '2px 4px' }}
               />
@@ -360,7 +361,7 @@ export default function RenderStepRow({
               min="50"
               max="200"
               value={startPct}
-              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, unit: '%pace', start: parseFloat(e.target.value) || 0 })}
+              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, units: '%pace', start: parseFloat(e.target.value) || 0 })}
               className="time-pace-input"
               style={{ width: '48px', padding: '2px 4px' }}
             />
@@ -373,7 +374,7 @@ export default function RenderStepRow({
               min="50"
               max="200"
               value={endPct}
-              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, unit: '%pace', end: parseFloat(e.target.value) || 0 })}
+              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, units: '%pace', end: parseFloat(e.target.value) || 0 })}
               className="time-pace-input"
               style={{ width: '48px', padding: '2px 4px' }}
             />
@@ -388,9 +389,10 @@ export default function RenderStepRow({
     if (paceMethod === 'Zone' || paceMethod === 'Zone Range') {
       const renderZoneOption = (z) => {
         const displayPace = z.displayPace || (z.targetPaceSec ? formatMMSS(z.targetPaceSec) : '');
-        const labelText = `${z.name || z.label}${displayPace ? ` (${displayPace})` : ''}`;
+        const zoneName = z.name || z.label || z.zone;
+        const labelText = `${zoneName}${displayPace ? ` (${displayPace})` : ''}`;
         return (
-          <option key={z.id || z.name || z.label} value={z.name || z.label} style={{ backgroundColor: z.color || '#fff' }}>
+          <option key={z.id || zoneName} value={zoneName} style={{ backgroundColor: z.color || '#fff' }}>
             {labelText}
           </option>
         );
@@ -403,7 +405,7 @@ export default function RenderStepRow({
             Zone:{' '}
             <select
               value={currentZone}
-              onChange={(e) => onUpdate(step.id, 'pace', { unit: 'pace_zone', value: e.target.value })}
+              onChange={(e) => onUpdate(step.id, 'pace', { units: 'pace_zone', value: e.target.value })}
               className="pace-method-select"
             >
               {zoneList.map(renderZoneOption)}
@@ -421,7 +423,7 @@ export default function RenderStepRow({
             Fast Zone:{' '}
             <select
               value={startZone}
-              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, unit: 'pace_zone', start: e.target.value })}
+              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', start: e.target.value })}
               className="pace-method-select"
             >
               {zoneList.map(renderZoneOption)}
@@ -431,7 +433,7 @@ export default function RenderStepRow({
             Slow Zone:{' '}
             <select
               value={endZone}
-              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, unit: 'pace_zone', end: e.target.value })}
+              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', end: e.target.value })}
               className="pace-method-select"
             >
               {zoneList.map(renderZoneOption)}
@@ -493,26 +495,30 @@ export default function RenderStepRow({
 
     const handleSelectPace = (newSec) => {
       const method = (paceMethod || '').toLowerCase();
+      const isRange = method.includes('range');
 
       if (method.includes('pace')) {
-        onUpdate(step.id, 'pace', { units: 'secs', value: newSec });
-      } 
-      else if (method.includes('threshold')) {
+        if (isRange) {
+          onUpdate(step.id, 'pace', { units: 'secs', start: newSec, end: newSec + 15 });
+        } else {
+          onUpdate(step.id, 'pace', { units: 'secs', value: newSec });
+        }
+      } else if (method.includes('threshold')) {
         const pct = thresholdSecPerMile > 0 ? Math.round((thresholdSecPerMile / newSec) * 100) : 100;
-        onUpdate(step.id, 'pace', { unit: '%pace', value: pct });
-      } 
-      else if (method.includes('zone')) {
-        const matchedZoneKey = Object.keys(zones || {}).find((key) => {
-          const z = zones[key];
-          if (z?.minSec && z?.maxSec) {
-            return newSec <= z.minSec && newSec >= z.maxSec;
-          }
-          return false;
-        }) || 'Z2';
-        onUpdate(step.id, 'pace', {
-          unit: 'zone',
-          value: matchedZoneKey
-        });
+        if (isRange) {
+          onUpdate(step.id, 'pace', { units: '%pace', start: pct, end: pct });
+        } else {
+          onUpdate(step.id, 'pace', { units: '%pace', value: pct });
+        }
+      } else if (method.includes('zone')) {
+        const matchedZone = zoneList.find((z) => Math.abs((z.targetPaceSec || z.pace_val_sec || 0) - newSec) < 15);
+        const zoneVal = matchedZone?.name || matchedZone?.label || matchedZone?.zone || 'Z2';
+
+        if (isRange) {
+          onUpdate(step.id, 'pace', { units: 'pace_zone', start: zoneVal, end: zoneVal });
+        } else {
+          onUpdate(step.id, 'pace', { units: 'pace_zone', value: zoneVal });
+        }
       }
     };
 
