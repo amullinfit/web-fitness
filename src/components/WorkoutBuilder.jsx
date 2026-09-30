@@ -77,6 +77,16 @@ export default function WorkoutBuilder() {
     }
   }, [steps]);
 
+  // Sync root 'name' field in baseWorkout with workoutTitle
+  useEffect(() => {
+    if (baseWorkout) {
+      setBaseWorkout((prev) => ({
+        ...prev,
+        name: workoutTitle
+      }));
+    }
+  }, [workoutTitle]);
+
   // --- Data / Folders / Workouts State ---
   const [folders, setFolders] = useState([]);
   const [savedWorkouts, setSavedWorkouts] = useState([]);
@@ -123,35 +133,49 @@ export default function WorkoutBuilder() {
   // --- Handlers for Options Menu ---
 
   const handleNewWorkout = () => {
+    const initialTitle = 'New Workout';
     setWorkoutId(null);
-    setWorkoutTitle('New Workout');
+    setWorkoutTitle(initialTitle);
     setWorkoutDescription('');
     setUnalteredWorkout('');
-    const defaultSteps = createDefaultSteps(workoutMode);
-    const newBase = { workout_doc: { steps: defaultSteps } };
+    const defaultSteps = createDefaultSteps(workoutMode);    
+    const newBase = { 
+      name: initialTitle, // Root element
+      workout_doc: { 
+        steps: defaultSteps 
+      } 
+    };
     setBaseWorkout(newBase);
     setSteps(defaultSteps);
     setMode('BUILDING');
   };
-
+  
   const handleSelectWorkout = (id) => {
     const found = savedWorkouts.find((w) => String(w.id) === String(id));
     if (found) {
+      const title = found.name || found.title || 'Untitled';
       setWorkoutId(found.id);
-      setWorkoutTitle(found.name || found.title || 'Untitled');
+      setWorkoutTitle(title);
       setWorkoutDescription(found.description || '');
       setSelectedFolderId(found.folder_id ?? found.folderId ?? '');
-
+  
       const rawDocObj = found;
       const parsedObj = typeof rawDocObj === 'string' 
         ? (() => { try { return JSON.parse(rawDocObj); } catch { return null; } })() 
         : rawDocObj;
-
+  
       const preparedBase = addIdsToBaseWorkout(parsedObj);
+      
+      // Set root 'name' property
+      const baseWithTitle = {
+        ...preparedBase,
+        name: title
+      };
+  
       setUnalteredWorkout(parsedObj);
-      setBaseWorkout(preparedBase);
+      setBaseWorkout(baseWithTitle);
       setSteps(preparedBase?.workout_doc?.steps || []);
-
+  
       setMode('BUILDING');
       setIsEditModalOpen(false);
     }
