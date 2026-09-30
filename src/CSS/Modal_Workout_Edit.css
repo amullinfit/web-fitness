@@ -218,7 +218,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 4px 4px; /* Restored generous vertical padding */
+  padding: 1px 1px; /* Restored generous vertical padding */
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background-color: #ffffff;
@@ -279,7 +279,7 @@
   min-width: 0;
   background-color: #f8fafc;
   border-radius: 6px;
-  padding: 2px 2px; /* Added vertical breathing room for SVG chart line tops/bottoms */
+  padding: 1px 1px; /* Added vertical breathing room for SVG chart line tops/bottoms */
   border: 1px solid #f1f5f9;
   box-sizing: border-box;
   display: flex;
