@@ -291,10 +291,12 @@ export const formatTime = (totalSeconds) => {
           type: 'repeat',
           iterations: 3,
           steps: [
-            { id: `${id}-1`, ...metric, targetPaceSec: DEFAULT_THRESHOLD, intensity: 'active'},
-            {
-              id: `${id}-2`,
-              ...(mode === 'time' ? { duration: durationSec/3 } : { distance: distanceMiles/3 }),
+            { id: `${id}-1`,
+              ...(mode === 'time' ? { duration: durationSec / 3 } : { distance: distanceMiles / 3 }),
+              targetPaceSec: 540,
+            },
+            { id: `${id}-2`,
+              ...(mode === 'time' ? { duration: durationSec / 3 } : { distance: distanceMiles / 3 }),
               targetPaceSec: 660,
             },
           ],
