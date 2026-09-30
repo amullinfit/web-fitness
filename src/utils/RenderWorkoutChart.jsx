@@ -60,6 +60,7 @@ export default function RenderWorkoutChart({ steps, height, workoutMode, presets
         const barHeightPct = maxVel === minVel ? 60 : 25 + ((currentVel - minVel) / (maxVel - minVel)) * 70;
         const barColor = getBarColor(step.targetPaceSec);
 
+        console.log('[App Debug] inside RenderWorokutChart.jsx ---------');
         const durLabel = workoutMode === 'distance' 
           ? formatDistance(step.distanceMiles) 
           : formatTime(step.durationSec);

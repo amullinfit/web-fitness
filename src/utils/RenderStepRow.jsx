@@ -3,7 +3,7 @@
 //
 import React, { useMemo } from 'react';
 import MMSSInput from './MMSSInput';
-import { formatTime, formatMMSS,   calculateDynamicPresets } from './WorkoutBuilderHelpers.js';
+import { formatTime, formatMMSS, calculateDynamicPresets } from './WorkoutBuilderHelpers.js';
 
 import {
   detectPaceMethod,
@@ -20,6 +20,72 @@ const METERS_PER_MILE = 1609.344;
 const formatDistanceFixed = (miles) => {
   const val = Number(miles) || 0;
   return `${val.toFixed(2)} mi`;
+};
+
+// Helper to recursively calculate total duration (seconds) and distance (miles) for any step or block
+const calculateStepTotals = (stepItem, thresholdSecPerMile = 0, zoneList = []) => {
+  if (!stepItem) return { totalSec: 0, totalMiles: 0 };
+
+  const isRepeatBlock = stepItem.type === 'repeat' || Boolean(stepItem.reps) || Array.isArray(stepItem.steps);
+
+  if (isRepeatBlock) {
+    const reps = Number(stepItem.reps ?? stepItem.iterations ?? 1) || 1;
+    const childSteps = stepItem.steps || [];
+
+    const innerTotals = childSteps.reduce(
+      (acc, child) => {
+        const childTotals = calculateStepTotals(child, thresholdSecPerMile, zoneList);
+        return {
+          totalSec: acc.totalSec + childTotals.totalSec,
+          totalMiles: acc.totalMiles + childTotals.totalMiles,
+        };
+      },
+      { totalSec: 0, totalMiles: 0 }
+    );
+
+    return {
+      totalSec: innerTotals.totalSec * reps,
+      totalMiles: innerTotals.totalMiles * reps,
+    };
+  }
+
+  // Single Leaf Step Calculation
+  const stepMode = stepItem.stepMode || 'time';
+  const durationSec = Number(stepItem.duration ?? stepItem.durationSec ?? 0) || 0;
+
+  // Resolve target pace in sec/mile
+  let targetPaceSec = 0;
+  if (typeof stepItem.pace === 'object' && stepItem.pace !== null) {
+    if (stepItem.pace.unit === '%pace' && thresholdSecPerMile > 0) {
+      const pct = stepItem.pace.value ?? stepItem.pace.start ?? 100;
+      targetPaceSec = Math.round(thresholdSecPerMile / (pct / 100));
+    } else if (stepItem.pace.unit === 'pace_zone' && Array.isArray(zoneList)) {
+      const zoneName = stepItem.pace.value ?? stepItem.pace.start;
+      const matchedZone = zoneList.find(
+        (z) => z.name === zoneName || z.label === zoneName || z.id === zoneName
+      );
+      targetPaceSec = matchedZone?.targetPaceSec ?? matchedZone?.minSec ?? 0;
+    } else {
+      targetPaceSec = stepItem.pace.value ?? stepItem.pace.start ?? 0;
+    }
+  } else {
+    targetPaceSec = stepItem.targetPaceSec ?? (typeof stepItem.pace === 'number' ? stepItem.pace : 0);
+  }
+
+  let distanceMiles = 0;
+  let calculatedSec = durationSec;
+
+  if (stepMode === 'time') {
+    distanceMiles = targetPaceSec > 0 ? durationSec / targetPaceSec : 0;
+  } else {
+    distanceMiles = Number(stepItem.distanceMiles ?? 0) || 0;
+    calculatedSec = distanceMiles * targetPaceSec;
+  }
+
+  return {
+    totalSec: calculatedSec,
+    totalMiles: distanceMiles,
+  };
 };
 
 export default function RenderStepRow({
@@ -71,7 +137,7 @@ export default function RenderStepRow({
     } 
 
     let newValue = 0;
-    newValue = calculateNewPaceValue(oldPaceMethod, oldValue, newPaceMethod, thresholdSecPerMile, zonelist);
+    newValue = calculateNewPaceValue(oldPaceMethod, oldValue, newPaceMethod, thresholdSecPerMile, zoneList);
 
     let newPaceObj = {};
     switch (newPaceMethod) {
@@ -110,6 +176,9 @@ export default function RenderStepRow({
     const childSteps = step.steps || [];
     const iterations = step.reps ?? step.iterations ?? 1;
 
+    // Dynamically recalculate aggregate totals for all child iterations
+    const repeatTotals = calculateStepTotals(step, thresholdSecPerMile, zoneList);
+
     return (
       <div
         className="repeat-block-container"
@@ -118,7 +187,7 @@ export default function RenderStepRow({
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => onDrop && onDrop(e, parentId, index)}
       >
-        <div className="repeat-header">
+        <div className="repeat-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className="drag-handle">⣿</span>
           <strong className="repeat-type-title">Repeat Block</strong>
           <label style={{ fontSize: '12px', marginLeft: '8px' }}>
@@ -136,6 +205,24 @@ export default function RenderStepRow({
               style={{ width: '48px', marginLeft: '4px' }}
             />
           </label>
+
+          {/* Repeat Total Summary Badge */}
+          <div
+            className="repeat-summary-badge"
+            style={{
+              marginLeft: 'auto',
+              marginRight: '8px',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: '#495057',
+              backgroundColor: '#e9ecef',
+              padding: '2px 8px',
+              borderRadius: '12px'
+            }}
+          >
+            Total: {formatTime(repeatTotals.totalSec)} ({formatDistanceFixed(repeatTotals.totalMiles)})
+          </div>
+
           <button onClick={() => onRemove(step.id)} className="btn-remove">✕</button>
         </div>
 

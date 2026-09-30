@@ -287,13 +287,6 @@ export default function WorkoutChart({
 
                   const tooltipText = `${durationFormatted} @ ${paceDetails}`;
 
-                  console.log('[App Debug] ----------------------------------');
-                  console.log('[App Debug] workout:', workout.name );
-                  console.log('[App Debug] pace:', step.pace );
-                  console.log('[App Debug] range:', range );
-                  console.log('[App Debug] :' );
-                  console.log('[App Debug] ----------------------------------');
-
                   return (
                     <div
                       key={`plan-${idx}`}
