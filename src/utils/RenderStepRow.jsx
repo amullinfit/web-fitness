@@ -166,14 +166,14 @@ export default function RenderStepRow({
     const newValue = calculateNewPaceValue(oldPaceMethod, oldValue, newPaceMethod, thresholdSecPerMile, zoneList);
 
     let newPaceObj = {};
-    const defaultZoneVal = zoneList[0]?.zone ? String(zoneList[0].zone) : '1';
+    const defaultZoneVal = zoneList[0]?.pace_value_sec ? String(zoneList[0].pace_value_sec) : 720;
 
     switch (newPaceMethod) {
       case 'Pace':
         newPaceObj = { units: 'secs', value: newValue || 480 };
         break;
       case 'Pace Range':
-        newPaceObj = { units: 'secs', start: newValue || 480, end: (newValue || 480) + 15 };
+        newPaceObj = { units: 'secs', start: newValue || 480, end: newValue || 480 };
         break;
 
       case 'Threshold %':
