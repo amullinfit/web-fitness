@@ -22,6 +22,38 @@ const formatDistanceFixed = (miles) => {
   return `${val.toFixed(2)} mi`;
 };
 
+// Helper to reliably locate a zone in zoneList regardless of structure (z.zone, z.id, z.zone_name, z.name)
+const findZoneItem = (zoneList, zoneIdentifier) => {
+  if (zoneIdentifier === undefined || zoneIdentifier === null || !Array.isArray(zoneList)) return null;
+  const targetStr = String(zoneIdentifier).trim().toLowerCase();
+
+  return zoneList.find((z) => {
+    const rawZone = z.zone !== undefined ? String(z.zone) : '';
+    const rawId = z.id !== undefined ? String(z.id) : '';
+    const rawPresetId = z.preset_colors?.id !== undefined ? String(z.preset_colors.id) : '';
+    const zoneName = (z.zone_name || z.name || z.label || z.preset_colors?.zone_name || '').toLowerCase();
+
+    return (
+      rawZone.toLowerCase() === targetStr ||
+      rawId.toLowerCase() === targetStr ||
+      rawPresetId.toLowerCase() === targetStr ||
+      zoneName === targetStr
+    );
+  });
+};
+
+// Helper to resolve pace in seconds from a zone match
+const getZoneTargetPaceSec = (matchedZone) => {
+  if (!matchedZone) return 0;
+  return (
+    matchedZone.pace_val_sec ??
+    matchedZone.targetPaceSec ??
+    matchedZone.minSec ??
+    matchedZone.preset_colors?.pace_val_sec ??
+    0
+  );
+};
+
 // Helper to recursively calculate total duration (seconds) and distance (miles) for any step or block
 const calculateStepTotals = (stepItem, thresholdSecPerMile = 0, zoneList = []) => {
   if (!stepItem) return { totalSec: 0, totalMiles: 0 };
@@ -61,10 +93,8 @@ const calculateStepTotals = (stepItem, thresholdSecPerMile = 0, zoneList = []) =
       targetPaceSec = Math.round(thresholdSecPerMile / (pct / 100));
     } else if (stepItem.pace.units === 'pace_zone' && Array.isArray(zoneList)) {
       const zoneName = stepItem.pace.value ?? stepItem.pace.start;
-      const matchedZone = zoneList.find(
-        (z) => z.name === zoneName || z.label === zoneName || z.id === zoneName
-      );
-      targetPaceSec = matchedZone?.targetPaceSec ?? matchedZone?.minSec ?? matchedZone?.pace_val_sec ?? 0;
+      const matchedZone = findZoneItem(zoneList, zoneName);
+      targetPaceSec = getZoneTargetPaceSec(matchedZone);
     } else {
       targetPaceSec = stepItem.pace.value ?? stepItem.pace.start ?? 0;
     }
@@ -136,6 +166,8 @@ export default function RenderStepRow({
     const newValue = calculateNewPaceValue(oldPaceMethod, oldValue, newPaceMethod, thresholdSecPerMile, zoneList);
 
     let newPaceObj = {};
+    const defaultZoneVal = zoneList[0]?.zone ? String(zoneList[0].zone) : '1';
+
     switch (newPaceMethod) {
       case 'Pace':
         newPaceObj = { units: 'secs', value: newValue || 480 };
@@ -152,10 +184,10 @@ export default function RenderStepRow({
         break;
 
       case 'Zone':
-        newPaceObj = { units: 'pace_zone', value: newValue || 'Z1' };
+        newPaceObj = { units: 'pace_zone', value: newValue || defaultZoneVal };
         break;
       case 'Zone Range':
-        newPaceObj = { units: 'pace_zone', start: newValue || 'Z2', end: newValue || 'Z1' };
+        newPaceObj = { units: 'pace_zone', start: newValue || defaultZoneVal, end: defaultZoneVal };
         break;
       default:
         newPaceObj = { units: 'secs', value: newValue || 480 };
@@ -261,10 +293,8 @@ export default function RenderStepRow({
       targetPaceSec = Math.round(thresholdSecPerMile / (pct / 100));
     } else if (step.pace.units === 'pace_zone' && Array.isArray(zoneList)) {
       const zoneName = step.pace.value ?? step.pace.start;
-      const matchedZone = zoneList.find(
-        (z) => z.name === zoneName || z.label === zoneName || z.id === zoneName
-      );
-      targetPaceSec = matchedZone?.targetPaceSec ?? matchedZone?.pace_val_sec ?? 0;
+      const matchedZone = findZoneItem(zoneList, zoneName);
+      targetPaceSec = getZoneTargetPaceSec(matchedZone);
     } else {
       targetPaceSec = step.pace.value ?? step.pace.start ?? 0;
     }
@@ -286,15 +316,6 @@ export default function RenderStepRow({
   const renderPaceInputControls = () => {
 
     const isRange = paceMethod.includes('Range');
-
-    // Helper to resolve pace in seconds from a zone name or zone object
-    const getZonePaceSec = (zoneName) => {
-      if (!zoneName || !Array.isArray(zoneList)) return 0;
-      const matched = zoneList.find(
-        (z) => z.name === zoneName || z.label === zoneName || String(z.zone) === String(zoneName) || z.id === zoneName
-      );
-      return matched?.targetPaceSec ?? matched?.pace_val_sec ?? matched?.minSec ?? 0;
-    };
 
     // 1. Pace or Pace Range
     if (paceMethod === 'Pace' || paceMethod === 'Pace Range') {
@@ -408,58 +429,31 @@ export default function RenderStepRow({
 
     // 3. Zone or Zone Range 
     if (paceMethod === 'Zone' || paceMethod === 'Zone Range') {
-      // Helper to match a zone item by id (handling string vs number comparisons)
-      const findZone = (zoneIdentifier) => {
-        if (zoneIdentifier === undefined || zoneIdentifier === null || !Array.isArray(zoneList)) return null;
-        const targetStr = String(zoneIdentifier).trim();
-        return zoneList.find(
-          (z) =>
-            (z.id !== undefined && String(z.id).trim() === targetStr) ||
-            (z.preset_colors?.id !== undefined && String(z.preset_colors.id).trim() === targetStr) ||
-            z.name === zoneIdentifier ||
-            z.zone_name === zoneIdentifier ||
-            z.preset_colors?.zone_name === zoneIdentifier ||
-            z.label === zoneIdentifier ||
-            String(z.zone) === targetStr
-        );
-      };
-
-      // Helper to resolve pace in seconds from a zone id
-      const getZonePaceSec = (zoneIdentifier) => {
-        const matched = findZone(zoneIdentifier);
-        return matched?.targetPaceSec ?? matched?.pace_val_sec ?? matched?.minSec ?? 0;
-      };
-
       const renderZoneOption = (z) => {
-        // Look up preset_colors properties first if available
-        const zoneId = z.preset_colors?.id ?? z.id ?? z.name;
-        const zoneName = z.preset_colors?.zone_name ?? z.zone_name ?? z.name ?? z.label ?? String(z.zone || zoneId || '');
-        const zoneColor = z.preset_colors?.color || z.color || '#fff';
+        // Resolve primary key and display values from schema
+        const zoneKey = String(z.zone ?? z.id ?? z.preset_colors?.id ?? z.zone_name ?? z.name ?? '');
+        const zoneName = z.zone_name ?? z.name ?? z.preset_colors?.zone_name ?? z.label ?? `Zone ${zoneKey}`;
+        const zoneColor = z.color ?? z.preset_colors?.color ?? '#fff';
 
-        const zoneSec = z.targetPaceSec ?? z.pace_val_sec ?? z.minSec ?? 0;
+        const zoneSec = getZoneTargetPaceSec(z);
         const displayPace = z.displayPace || (zoneSec > 0 ? formatMMSS(zoneSec) : '');
         const labelText = `${zoneName}${displayPace ? ` (${displayPace})` : ''}`;
 
-        // Ensure value is always converted to string for React <select> equality matching
-        const optionVal = String(zoneId);
-
         return (
-          <option key={optionVal} value={optionVal} style={{ backgroundColor: zoneColor }}>
+          <option key={zoneKey} value={zoneKey} style={{ backgroundColor: zoneColor }}>
             {labelText}
           </option>
         );
       };
 
       if (!isRange) {
-        // Retrieve stored zone ID from step.pace
         const rawZoneVal = typeof step.pace === 'object' ? (step.pace.value ?? step.pace.start) : step.pace;
-        const matchedZone = findZone(rawZoneVal);
+        const matchedZone = findZoneItem(zoneList, rawZoneVal);
 
-        // Standardize current selected ID as a string, fallback to first zone's ID in list
-        const defaultZoneId = zoneList[0]?.preset_colors?.id ?? zoneList[0]?.id ?? 'Z1';
-        const currentZoneId = String(matchedZone?.preset_colors?.id ?? matchedZone?.id ?? rawZoneVal ?? defaultZoneId);
+        const defaultZoneVal = String(zoneList[0]?.zone ?? zoneList[0]?.id ?? '1');
+        const currentZoneKey = String(matchedZone?.zone ?? matchedZone?.id ?? rawZoneVal ?? defaultZoneVal);
 
-        const zonePaceSec = getZonePaceSec(currentZoneId);
+        const zonePaceSec = getZoneTargetPaceSec(matchedZone);
         const displayPaceStr = zonePaceSec > 0 ? formatMMSS(zonePaceSec) : '--:--';
 
         return (
@@ -467,10 +461,10 @@ export default function RenderStepRow({
             <label className="input-label">
               Zone:{' '}
               <select
-                value={currentZoneId}
+                value={currentZoneKey}
                 onChange={(e) => {
-                  const selectedId = e.target.value;
-                  onUpdate(step.id, 'pace', { units: 'pace_zone', value: selectedId });
+                  const selectedVal = e.target.value;
+                  onUpdate(step.id, 'pace', { units: 'pace_zone', value: selectedVal });
                 }}
                 className="pace-method-select"
               >
@@ -486,17 +480,17 @@ export default function RenderStepRow({
       const rawStartVal = typeof step.pace === 'object' ? step.pace.start : undefined;
       const rawEndVal = typeof step.pace === 'object' ? step.pace.end : undefined;
 
-      const matchedStart = findZone(rawStartVal);
-      const matchedEnd = findZone(rawEndVal);
+      const matchedStart = findZoneItem(zoneList, rawStartVal);
+      const matchedEnd = findZoneItem(zoneList, rawEndVal);
 
-      const defaultFastId = zoneList[1]?.preset_colors?.id ?? zoneList[1]?.id ?? 'Z2';
-      const defaultSlowId = zoneList[0]?.preset_colors?.id ?? zoneList[0]?.id ?? 'Z1';
+      const defaultFastVal = String(zoneList[1]?.zone ?? zoneList[1]?.id ?? '2');
+      const defaultSlowVal = String(zoneList[0]?.zone ?? zoneList[0]?.id ?? '1');
 
-      const startZoneId = String(matchedStart?.preset_colors?.id ?? matchedStart?.id ?? rawStartVal ?? defaultFastId);
-      const endZoneId = String(matchedEnd?.preset_colors?.id ?? matchedEnd?.id ?? rawEndVal ?? defaultSlowId);
+      const startZoneKey = String(matchedStart?.zone ?? matchedStart?.id ?? rawStartVal ?? defaultFastVal);
+      const endZoneKey = String(matchedEnd?.zone ?? matchedEnd?.id ?? rawEndVal ?? defaultSlowVal);
 
-      const fastZonePaceSec = getZonePaceSec(startZoneId);
-      const slowZonePaceSec = getZonePaceSec(endZoneId);
+      const fastZonePaceSec = getZoneTargetPaceSec(matchedStart);
+      const slowZonePaceSec = getZoneTargetPaceSec(matchedEnd);
 
       const calcFastZonePace = fastZonePaceSec > 0 ? formatMMSS(fastZonePaceSec) : '--:--';
       const calcSlowZonePace = slowZonePaceSec > 0 ? formatMMSS(slowZonePaceSec) : '--:--';
@@ -506,10 +500,10 @@ export default function RenderStepRow({
           <label className="input-label">
             Fast Zone:{' '}
             <select
-              value={startZoneId}
+              value={startZoneKey}
               onChange={(e) => {
-                const selectedId = e.target.value;
-                onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', start: selectedId });
+                const selectedVal = e.target.value;
+                onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', start: selectedVal });
               }}
               className="pace-method-select"
             >
@@ -519,10 +513,10 @@ export default function RenderStepRow({
           <label className="input-label">
             Slow Zone:{' '}
             <select
-              value={endZoneId}
+              value={endZoneKey}
               onChange={(e) => {
-                const selectedId = e.target.value;
-                onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', end: selectedId });
+                const selectedVal = e.target.value;
+                onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', end: selectedVal });
               }}
               className="pace-method-select"
             >
@@ -534,7 +528,7 @@ export default function RenderStepRow({
       );
     }
 
-  return null;
+    return null;
   };
 
   // Inline helper: Step inputs row
@@ -602,11 +596,11 @@ export default function RenderStepRow({
           onUpdate(step.id, 'pace', { units: '%pace', value: pct });
         }
       } else if (method.includes('zone')) {
-        const matchedZone = zoneList.find((z) => Math.abs((z.targetPaceSec || z.pace_val_sec || 0) - newSec) < 15);
-        const zoneVal = matchedZone?.id !== undefined 
-          ? matchedZone.id 
-          : (matchedZone?.zone_name || matchedZone?.name || 'Z2');
-      
+        const matchedZone = zoneList.find((z) => Math.abs((z.pace_val_sec || z.targetPaceSec || 0) - newSec) < 15);
+        const zoneVal = matchedZone
+          ? String(matchedZone.zone ?? matchedZone.id ?? matchedZone.zone_name ?? '1')
+          : '1';
+        
         if (isRange) {
           onUpdate(step.id, 'pace', { units: 'pace_zone', start: zoneVal, end: zoneVal });
         } else {
