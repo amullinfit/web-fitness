@@ -97,73 +97,173 @@ export function convertWorkoutToTargetFormat(workoutPayload, options = {}) {
   };
 }
 
-// Detect Pace Method directly from step.pace schema
-export const detectPaceMethod = (stepPace) => {
-  if (!stepPace || typeof stepPace !== 'object') return 'Pace';
+/**
+ * Detects paceMethod string from a step's `pace` object schema.
+ */
+export function detectPaceMethod(pace) {
+  if (!pace || typeof pace !== 'object') return 'Pace';
+  const isRange = pace.start !== undefined || pace.end !== undefined;
 
-  const units = stepPace.units;
-  const isRange = 'start' in stepPace || 'end' in stepPace;
-
-  if (units === 'secs') {
-    return isRange ? 'Pace Range' : 'Pace';
-  } else if (units === '%pace') {
-    return isRange ? 'Threshold % Range' : 'Threshold %';
-  } else if (units === 'pace_zone') {
-    return isRange ? 'Zone Range' : 'Zone';
+  switch (pace.units) {
+    case '%pace':
+      return isRange ? 'Threshold % Range' : 'Threshold %';
+    case 'pace_zone':
+      return isRange ? 'Zone Range' : 'Zone';
+    case 'secs':
+    default:
+      return isRange ? 'Pace Range' : 'Pace';
   }
-
-  return 'Pace';
-};
-
-// Helper returns pace in seconds
-export function calculatePaceFromPct(thresholdPaceSec, inputPct) {
-  if (!thresholdPaceSec || !inputPct || inputPct <= 0) return thresholdPaceSec;
-  return Math.round(thresholdPaceSec / (inputPct / 100));
 }
 
-// Helper returns pace as % of threshold
-export function calculatePctFromPace(thresholdPaceSec, inputPaceSec) {
-  if (!thresholdPaceSec || !inputPaceSec || inputPaceSec <= 0) return 100;
-  return Number(((thresholdPaceSec / inputPaceSec) * 100).toFixed(1));
+/**
+ * Calculates % of threshold from a given pace in seconds.
+ * Higher % = Faster running (fewer sec/mi).
+ */
+export function calculatePctFromPace(paceSec, thresholdSec) {
+  if (!paceSec || !thresholdSec || paceSec <= 0) return 100;
+  return Math.round((thresholdSec / paceSec) * 100);
 }
 
-// Helper to return zone identifier from pace
-export function calculateZoneFromPace(zoneList, inputPaceSec) {
-  const presets = Array.isArray(zoneList) ? zoneList : zoneList?.preset_colors;
+/**
+ * Calculates pace in seconds from a % of threshold.
+ */
+export function calculatePaceFromPct(pct, thresholdSec) {
+  if (!pct || !thresholdSec || pct <= 0) return thresholdSec || 480;
+  return Math.round(thresholdSec / (pct / 100));
+}
 
-  if (!Array.isArray(presets) || presets.length === 0 || !inputPaceSec) {
-    return 'Z1';
-  }
+/**
+ * Finds the matching zone identifier in zoneList for a given pace in seconds.
+ */
+export function calculateZoneFromPace(paceSec, zoneList = []) {
+  if (!Array.isArray(zoneList) || zoneList.length === 0 || !paceSec) return '1';
 
-  for (let i = 0; i < presets.length; i++) {
-    const currentZone = presets[i];
-    const thresholdSec = currentZone.pace_val_sec || currentZone.targetPaceSec;
-    if (thresholdSec && inputPaceSec >= thresholdSec) {
-      return currentZone.name || currentZone.label || currentZone.zone || 'Z1';
+  for (const z of zoneList) {
+    const fastSec = z.pace_val_sec ?? z.targetPaceSec ?? z.minSec ?? 0;
+    const slowSec = z.maxSec ?? z.pace_slow_sec ?? (fastSec + 60);
+
+    if (slowSec === 0) {
+      if (paceSec <= fastSec) return String(z.zone ?? z.id ?? '1');
+    } else if (paceSec >= fastSec && paceSec <= slowSec) {
+      return String(z.zone ?? z.id ?? '1');
     }
   }
-
-  const highestZone = presets[presets.length - 1];
-  return highestZone?.name || highestZone?.label || highestZone?.zone || 'Z1';
+  return String(zoneList[0]?.zone ?? zoneList[0]?.id ?? '1');
 }
 
-// Helper to return target pace seconds from zone identifier
-export function calculatePaceFromZone(zoneList, targetZone) {
-  const presets = Array.isArray(zoneList) ? zoneList : zoneList?.preset_colors;
+/**
+ * Resolves fastest pace in seconds for a matched zone in zoneList.
+ */
+export function calculatePaceFromZone(zoneIdentifier, zoneList = []) {
+  if (!zoneIdentifier || !Array.isArray(zoneList) || zoneList.length === 0) return 480;
 
-  if (!Array.isArray(presets) || presets.length === 0 || targetZone == null) {
-    return 480;
+  const targetStr = String(zoneIdentifier).trim().toLowerCase();
+  const matched = zoneList.find((z) => {
+    const rawZone = z.zone !== undefined ? String(z.zone) : '';
+    const rawId = z.id !== undefined ? String(z.id) : '';
+    const zoneName = (z.zone_name || z.name || '').toLowerCase();
+    return rawZone.toLowerCase() === targetStr || rawId.toLowerCase() === targetStr || zoneName === targetStr;
+  });
+
+  if (!matched) return 480;
+  return matched.pace_val_sec ?? matched.targetPaceSec ?? matched.minSec ?? 480;
+}
+
+/**
+ * Converts a step's `pace` payload when changing paceMethod.
+ * Supports ranges (fast & slow) across all 3 unit types (%pace, pace_zone, secs).
+ */
+export function convertStepPaceTarget(currentPace, newPaceMethod, thresholdSec = 480, zoneList = []) {
+  const defaultThresholdSec = thresholdSec > 0 ? thresholdSec : 480;
+
+  // Step 1: Normalize existing pace object into fastSec and slowSec
+  let fastSec = defaultThresholdSec;
+  let slowSec = defaultThresholdSec + 15;
+
+  if (typeof currentPace === 'object' && currentPace !== null) {
+    const isCurrentRange = currentPace.start !== undefined || currentPace.end !== undefined;
+
+    if (currentPace.units === '%pace') {
+      if (!isCurrentRange) {
+        fastSec = calculatePaceFromPct(currentPace.value ?? 100, defaultThresholdSec);
+        slowSec = fastSec;
+      } else {
+        const startPct = currentPace.start ?? 100;
+        const endPct = currentPace.end ?? 100;
+        // Higher % = FASTER pace (fewer sec/mi)
+        const fastPct = Math.max(startPct, endPct);
+        const slowPct = Math.min(startPct, endPct);
+        fastSec = calculatePaceFromPct(fastPct, defaultThresholdSec);
+        slowSec = calculatePaceFromPct(slowPct, defaultThresholdSec);
+      }
+    } else if (currentPace.units === 'pace_zone') {
+      if (!isCurrentRange) {
+        fastSec = calculatePaceFromZone(currentPace.value, zoneList);
+        slowSec = fastSec;
+      } else {
+        fastSec = calculatePaceFromZone(currentPace.start, zoneList);
+        slowSec = calculatePaceFromZone(currentPace.end, zoneList);
+      }
+    } else {
+      // units === 'secs' or missing
+      if (!isCurrentRange) {
+        fastSec = currentPace.value ?? defaultThresholdSec;
+        slowSec = fastSec;
+      } else {
+        const p1 = currentPace.start ?? defaultThresholdSec;
+        const p2 = currentPace.end ?? defaultThresholdSec + 15;
+        fastSec = Math.min(p1, p2);
+        slowSec = Math.max(p1, p2);
+      }
+    }
+  } else if (typeof currentPace === 'number') {
+    fastSec = currentPace;
+    slowSec = currentPace;
   }
 
-  const matchedZone = presets.find(
-    (item) =>
-      item.name === targetZone ||
-      item.label === targetZone ||
-      String(item.zone) === String(targetZone) ||
-      item.id === targetZone
-  );
+  // Step 2: Convert normalized seconds to requested target shape
+  const defaultZoneVal = String(zoneList[0]?.zone ?? zoneList[0]?.id ?? '1');
 
-  return matchedZone?.targetPaceSec ?? matchedZone?.pace_val_sec ?? 480;
+  switch (newPaceMethod) {
+    case 'Pace':
+      return { units: 'secs', value: fastSec };
+
+    case 'Pace Range':
+      return { units: 'secs', start: fastSec, end: slowSec };
+
+    case 'Threshold %':
+      return {
+        units: '%pace',
+        value: calculatePctFromPace(fastSec, defaultThresholdSec),
+      };
+
+    case 'Threshold % Range': {
+      // start = lower % (slower pace), end = higher % (faster pace)
+      const slowPct = calculatePctFromPace(slowSec, defaultThresholdSec);
+      const fastPct = calculatePctFromPace(fastSec, defaultThresholdSec);
+      return {
+        units: '%pace',
+        start: Math.min(slowPct, fastPct),
+        end: Math.max(slowPct, fastPct),
+      };
+    }
+
+    case 'Zone':
+      return {
+        units: 'pace_zone',
+        value: calculateZoneFromPace(fastSec, zoneList) || defaultZoneVal,
+      };
+
+    case 'Zone Range':
+      return {
+        units: 'pace_zone',
+        start: calculateZoneFromPace(fastSec, zoneList) || defaultZoneVal,
+        end: calculateZoneFromPace(slowSec, zoneList) || defaultZoneVal,
+      };
+
+    default:
+      return { units: 'secs', value: fastSec };
+  }
 }
 
 // Helper to convert value across pace methods

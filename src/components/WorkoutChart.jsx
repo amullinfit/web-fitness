@@ -14,13 +14,19 @@ import {
   flattenSteps,
   generateWavyBarPath,
   extractPaceRangeInSeconds,
-  getZoneDetailsFromPaces
+  getZoneDetailsFromPaces,
+  extractStepPaceRange
 } from '../utils/WorkoutChartHelpers.js';
 
 import { 
   convertWorkoutToTargetFormat,
   getZoneDescriptiveText
 } from '../utils/WorkoutConverter.js';
+
+const { fastSec, slowSec, formattedText } = extractStepPaceRange(step.pace, pacesContext);
+
+// Tooltip & Text Box Label
+const label = formattedText; // e.g., "70%-85% Threshold (10:43 - 8:49/mi)"
 
 const SLOW_BUFFER_MINUTES = 1;
 const FAST_BUFFER_MINUTES = 1;

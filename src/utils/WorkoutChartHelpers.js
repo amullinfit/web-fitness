@@ -104,15 +104,6 @@
         return 1609.344 / speedMps;
       };
         
-    // - Convert s/mi to pace (example: 495 s/mi => "8:15 mi")
-    export const formatSecPerMileToStr = (secPerMile) => {
-        if (!secPerMile || secPerMile <= 0 || isNaN(secPerMile)) return "N/A";
-        const totalSecs = Math.round(secPerMile);
-        const mins = Math.floor(totalSecs / 60);
-        const secs = totalSecs % 60;
-        return `${mins}:${String(secs).padStart(2, '0')} /mi`;
-    };
-      
     // -- Helper to generate the wavy bars for executed plans
     export const generateWavyBarPath = (durationMinutes = 1) => {
 
@@ -320,3 +311,298 @@
 
         return handler();
     };
+
+    /**
+ * WorkoutChartHelpers.js
+ * Comprehensive utility for handling 'secs', 'pace_zone', and '%pace' targets.
+ */
+
+// =============================================================================
+// INTERNAL HELPERS & PARSERS
+// =============================================================================
+
+/**
+ * Extracts preset_colors array from the zonelist or paces input.
+ */
+const getZoneList = (pacesInput) => {
+    if (!pacesInput) return [];
+    if (Array.isArray(pacesInput)) return pacesInput;
+    if (Array.isArray(pacesInput.preset_colors)) return pacesInput.preset_colors;
+    return [];
+  };
+  
+  /**
+   * Extracts Threshold Pace in total seconds per mile from paces input or defaults.
+   */
+  export function getThresholdSecFromPaces(pacesInput) {
+    if (!pacesInput) return 450; // Default 7:30/mi fallback if unspecified
+    
+    if (typeof pacesInput.thresholdSec === 'number') return pacesInput.thresholdSec;
+    if (typeof pacesInput.threshold_pace_sec === 'number') return pacesInput.threshold_pace_sec;
+    
+    // Try to derive threshold from Zone 4 / Zone 5 boundary or preset_colors
+    const zones = getZoneList(pacesInput);
+    if (zones.length) {
+      const z4 = zones.find(z => Number(z.zone) === 4) || zones[0];
+      if (z4?.pace_val_sec) return z4.pace_val_sec;
+      if (z4?.pace_fast) return parsePaceStrToSec(z4.pace_fast);
+    }
+    return 450;
+  }
+  
+  /**
+   * Normalizes pace string like "10:20/mi" -> "10:20"
+   */
+  const cleanPaceStr = (paceStr) => {
+    if (!paceStr || typeof paceStr !== "string") return "";
+    return paceStr.replace(/\/mi$/i, "").trim();
+  };
+  
+  /**
+   * Parses "10:20" or "10:20/mi" into total seconds per mile (620).
+   */
+  export function parsePaceStrToSec(paceStr) {
+    const cleaned = cleanPaceStr(paceStr);
+    if (!cleaned || cleaned === "0:00") return 0;
+    const parts = cleaned.split(":");
+    if (parts.length !== 2) return 0;
+    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+  }
+  
+  /**
+   * Formats seconds per mile (620) into "10:20".
+   */
+  export function formatSecPerMileToStr(totalSec) {
+    if (!totalSec || isNaN(totalSec) || totalSec <= 0) return "--:--";
+    const mins = Math.floor(totalSec / 60);
+    const secs = Math.round(totalSec % 60);
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  }
+  
+  /**
+   * Finds matching zone number (1..N) from preset_colors for a given pace in seconds per mile.
+   */
+  export function getZoneFromPaceSec(paceSec, pacesInput) {
+    const zones = getZoneList(pacesInput);
+    if (!zones.length || !paceSec) return 1;
+  
+    for (const z of zones) {
+      const fastSec = z.pace_val_sec || parsePaceStrToSec(z.pace_fast);
+      const slowSec = parsePaceStrToSec(z.pace_slow);
+  
+      if (slowSec === 0) {
+        if (paceSec >= fastSec) return Number(z.zone);
+      } else {
+        if (paceSec >= fastSec && paceSec <= slowSec) return Number(z.zone);
+      }
+    }
+  
+    const fastestZoneSec = Math.min(...zones.map((z) => z.pace_val_sec || 600));
+    if (paceSec < fastestZoneSec) {
+      return Math.max(...zones.map((z) => Number(z.zone)));
+    }
+  
+    return 1;
+  }
+  
+  // =============================================================================
+  // CONVERSION MATH CORE
+  // =============================================================================
+  
+  export function convertPaceSecToPct(paceSec, thresholdSec) {
+    if (!paceSec || !thresholdSec) return 100;
+    return Math.round((thresholdSec / paceSec) * 100);
+  }
+  
+  export function convertPctToPaceSec(pct, thresholdSec) {
+    if (!pct || !thresholdSec) return thresholdSec;
+    return Math.round(thresholdSec / (pct / 100));
+  }
+  
+  // =============================================================================
+  // MASTER TARGET CONVERTER
+  // =============================================================================
+  
+  /**
+   * Converts a step's `pace` object between any target modes ("secs", "pace_zone", "%pace").
+   * 
+   * @param {Object} currentPace - Step `pace` object (e.g. { units: "%pace", start: 70, end: 90 })
+   * @param {string} targetType - "zone" | "zone_range" | "pace" | "pace_range" | "pct" | "pct_range"
+   * @param {Object|Array} pacesInput - The preset_colors zone list context
+   * @returns {Object} Updated `pace` object matching schema
+   */
+  export function convertStepPaceTarget(currentPace, targetType, pacesInput) {
+    const zones = getZoneList(pacesInput);
+    const thresholdSec = getThresholdSecFromPaces(pacesInput);
+    if (!currentPace) return currentPace;
+  
+    const findZone = (zNum) => zones.find((z) => Number(z.zone) === Number(zNum));
+  
+    const getZoneFastestSec = (zNum) => {
+      const zObj = findZone(zNum);
+      if (!zObj) return thresholdSec;
+      return zObj.pace_val_sec || parsePaceStrToSec(zObj.pace_fast);
+    };
+  
+    const getZoneSlowestSec = (zNum) => {
+      const zObj = findZone(zNum);
+      if (!zObj) return thresholdSec + 120;
+      const slowSec = parsePaceStrToSec(zObj.pace_slow);
+      return slowSec > 0 ? slowSec : getZoneFastestSec(zNum) + 120;
+    };
+  
+    // Step 1: Normalize current pace into seconds (fastSec, slowSec)
+    let currentFastSec = 0;
+    let currentSlowSec = 0;
+  
+    if (currentPace.units === "secs") {
+      if (currentPace.value != null) {
+        currentFastSec = currentPace.value;
+        currentSlowSec = currentPace.value;
+      } else {
+        currentFastSec = Math.min(currentPace.start, currentPace.end);
+        currentSlowSec = Math.max(currentPace.start, currentPace.end);
+      }
+    } else if (currentPace.units === "pace_zone") {
+      if (currentPace.value != null) {
+        currentFastSec = getZoneFastestSec(currentPace.value);
+        currentSlowSec = getZoneSlowestSec(currentPace.value);
+      } else {
+        const slowZ = Math.min(currentPace.start, currentPace.end);
+        const fastZ = Math.max(currentPace.start, currentPace.end);
+        currentFastSec = getZoneFastestSec(fastZ);
+        currentSlowSec = getZoneSlowestSec(slowZ);
+      }
+    } else if (currentPace.units === "%pace") {
+      if (currentPace.value != null) {
+        currentFastSec = convertPctToPaceSec(currentPace.value, thresholdSec);
+        currentSlowSec = currentFastSec;
+      } else {
+        const slowPct = Math.min(currentPace.start, currentPace.end);
+        const fastPct = Math.max(currentPace.start, currentPace.end);
+        currentFastSec = convertPctToPaceSec(fastPct, thresholdSec);
+        currentSlowSec = convertPctToPaceSec(slowPct, thresholdSec);
+      }
+    }
+  
+    // Step 2: Convert normalized seconds to requested target shape
+  
+    // --- TARGET: PACE (secs) ---
+    if (targetType === "pace") {
+      return { units: "secs", value: currentFastSec };
+    }
+    if (targetType === "pace_range") {
+      return { units: "secs", start: currentSlowSec, end: currentFastSec };
+    }
+  
+    // --- TARGET: ZONE (pace_zone) ---
+    if (targetType === "zone") {
+      return { units: "pace_zone", value: getZoneFromPaceSec(currentFastSec, pacesInput) };
+    }
+    if (targetType === "zone_range") {
+      return {
+        units: "pace_zone",
+        start: getZoneFromPaceSec(currentSlowSec, pacesInput),
+        end: getZoneFromPaceSec(currentFastSec, pacesInput),
+      };
+    }
+  
+    // --- TARGET: THRESHOLD % (%pace) ---
+    if (targetType === "pct") {
+      return {
+        units: "%pace",
+        value: convertPaceSecToPct(currentFastSec, thresholdSec),
+      };
+    }
+    if (targetType === "pct_range") {
+      return {
+        units: "%pace",
+        start: convertPaceSecToPct(currentSlowSec, thresholdSec),
+        end: convertPaceSecToPct(currentFastSec, thresholdSec),
+      };
+    }
+  
+    return currentPace;
+  }
+  
+  // =============================================================================
+  // STEP PARSER & DESCRIPTIVE TEXT EXTRACTOR
+  // =============================================================================
+  
+  /**
+   * Extracts normalized fastSec, slowSec, and descriptive labels for charts & UI text.
+   */
+  export function extractStepPaceRange(stepPace, pacesInput) {
+    if (!stepPace) return { fastSec: 0, slowSec: 0, formattedText: "" };
+  
+    const zones = getZoneList(pacesInput);
+    const thresholdSec = getThresholdSecFromPaces(pacesInput);
+    const findZone = (zNum) => zones.find((z) => Number(z.zone) === Number(zNum));
+  
+    let fastSec = 0;
+    let slowSec = 0;
+    let descriptiveLabel = "";
+  
+    // 1. Explicit Pace (`units: "secs"`)
+    if (stepPace.units === "secs") {
+      if (typeof stepPace.value === "number") {
+        fastSec = stepPace.value;
+        slowSec = stepPace.value;
+        descriptiveLabel = `${formatSecPerMileToStr(fastSec)}/mi`;
+      } else if (typeof stepPace.start === "number" && typeof stepPace.end === "number") {
+        fastSec = Math.min(stepPace.start, stepPace.end);
+        slowSec = Math.max(stepPace.start, stepPace.end);
+        descriptiveLabel = `${formatSecPerMileToStr(slowSec)} - ${formatSecPerMileToStr(fastSec)}/mi`;
+      }
+    }
+  
+    // 2. Zone-Based (`units: "pace_zone"`)
+    else if (stepPace.units === "pace_zone") {
+      if (stepPace.value != null && zones.length) {
+        const zObj = findZone(stepPace.value);
+        if (zObj) {
+          fastSec = zObj.pace_val_sec || parsePaceStrToSec(zObj.pace_fast);
+          slowSec = parsePaceStrToSec(zObj.pace_slow) || (fastSec + 120);
+  
+          const fastStr = cleanPaceStr(zObj.pace_fast);
+          let slowStr = cleanPaceStr(zObj.pace_slow);
+          if (!slowStr || slowStr === "0:00") slowStr = formatSecPerMileToStr(slowSec);
+  
+          descriptiveLabel = `Zone ${stepPace.value} (${slowStr} - ${fastStr})`;
+        }
+      } else if (stepPace.start != null && stepPace.end != null && zones.length) {
+        const slowZ = findZone(Math.min(stepPace.start, stepPace.end));
+        const fastZ = findZone(Math.max(stepPace.start, stepPace.end));
+  
+        if (slowZ && fastZ) {
+          fastSec = fastZ.pace_val_sec || parsePaceStrToSec(fastZ.pace_fast);
+          slowSec = parsePaceStrToSec(slowZ.pace_slow) || (parsePaceStrToSec(slowZ.pace_fast) + 120);
+  
+          const fastPaceStr = cleanPaceStr(fastZ.pace_fast);
+          let slowPaceStr = cleanPaceStr(slowZ.pace_slow);
+          if (!slowPaceStr || slowPaceStr === "0:00") slowPaceStr = formatSecPerMileToStr(slowSec);
+  
+          descriptiveLabel = `Z${stepPace.start}-${stepPace.end} (${slowPaceStr} - ${fastPaceStr})`;
+        }
+      }
+    }
+  
+    // 3. Threshold % (`units: "%pace"`)
+    else if (stepPace.units === "%pace") {
+      if (typeof stepPace.value === "number") {
+        fastSec = convertPctToPaceSec(stepPace.value, thresholdSec);
+        slowSec = fastSec;
+        descriptiveLabel = `${stepPace.value}% Threshold (${formatSecPerMileToStr(fastSec)}/mi)`;
+      } else if (typeof stepPace.start === "number" && typeof stepPace.end === "number") {
+        const slowPct = Math.min(stepPace.start, stepPace.end);
+        const fastPct = Math.max(stepPace.start, stepPace.end);
+  
+        fastSec = convertPctToPaceSec(fastPct, thresholdSec);
+        slowSec = convertPctToPaceSec(slowPct, thresholdSec);
+  
+        descriptiveLabel = `${slowPct}%-${fastPct}% Threshold (${formatSecPerMileToStr(slowSec)} - ${formatSecPerMileToStr(fastSec)}/mi)`;
+      }
+    }
+  
+    return { fastSec, slowSec, formattedText: descriptiveLabel };
+  }
