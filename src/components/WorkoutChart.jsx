@@ -23,7 +23,7 @@ import {
   getZoneDescriptiveText
 } from '../utils/WorkoutConverter.js';
 
-const { fastSec, slowSec, formattedText } = extractStepPaceRange(step.pace, pacesContext);
+// const { fastSec, slowSec, formattedText } = extractStepPaceRange(step.pace, pacesContext);
 
 // Tooltip & Text Box Label
 const label = formattedText; // e.g., "70%-85% Threshold (10:43 - 8:49/mi)"
