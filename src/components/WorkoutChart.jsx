@@ -17,6 +17,11 @@ import {
   getZoneDetailsFromPaces
 } from '../utils/WorkoutChartHelpers.js';
 
+import { 
+  convertWorkoutToTargetFormat,
+  getZoneDescriptiveText
+} from '../utils/WorkoutConverter.js';
+
 const SLOW_BUFFER_MINUTES = 1;
 const FAST_BUFFER_MINUTES = 1;
 
