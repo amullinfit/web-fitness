@@ -338,7 +338,7 @@ export const secondsToPaceStr = (secPerMile) => {
 };
 
 /**
- * Helper to normalize string representations like "0:00/mi" or "10:20/mi" to "MM:SS"
+ * Helper to normalize string representations like "0:00/mi" or "10:20/mi" to ":SS"
  */
 const cleanPaceStr = (paceStr) => {
   if (!paceStr) return "";
