@@ -11,7 +11,8 @@ import GearView from './components/GearView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
 
-const DEFAULT_VIEW = 'workout-builder';
+//const DEFAULT_VIEW = 'workout-builder';
+const DEFAULT_VIEW = 'monthly';
 
 const originalLog = console.log;
 
