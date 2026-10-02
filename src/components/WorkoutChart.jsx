@@ -280,10 +280,14 @@ export default function WorkoutChart({
                   const fastPaceStr = formatSecPerMileToStr(range.fastSec);
                   const slowPaceStr = formatSecPerMileToStr(range.slowSec);
                   
+                  // Get the descriptive text for zone or zone/range, if applicable
+                  const descriptivePaceStr = getZoneDescriptiveText(step, paces);
+
+                  // Fall back to extractPaceRangeInSeconds if it's an explicit pace (not a zone)
                   // Construct pace details: collapse to single value if identical
-                  const paceDetails = fastPaceStr === slowPaceStr 
-                    ? fastPaceStr 
-                    : `${fastPaceStr} - ${slowPaceStr}`;
+                  const paceDetails = descriptivePaceStr || (
+                    fastPaceStr === slowPaceStr ? fastPaceStr : `${fastPaceStr} - ${slowPaceStr}`
+                  );
 
                   const tooltipText = `${durationFormatted} @ ${paceDetails}`;
 

@@ -236,3 +236,112 @@ export const secondsToPaceStr = (secPerMile) => {
   const secs = roundedSec % 60;
   return `${mins}:${String(secs).padStart(2, '0')}/mi`;
 };
+
+/**
+ * Helper to normalize string representations like "0:00/mi" or "10:20/mi" to "MM:SS"
+ */
+const cleanPaceStr = (paceStr) => {
+  if (!paceStr) return "";
+  return paceStr.replace(/\/mi$/i, "").trim();
+};
+
+/**
+ * Converts "MM:SS" pace string into total seconds.
+ */
+const parsePaceStrToSec = (paceStr) => {
+  const cleaned = cleanPaceStr(paceStr);
+  if (!cleaned || cleaned === "0:00") return 0;
+  const parts = cleaned.split(":");
+  if (parts.length !== 2) return 0;
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+};
+
+/**
+ * Normalizes paces input to always return an array of zone objects.
+ */
+const extractZonesArray = (pacesInput) => {
+  if (!pacesInput) return [];
+  if (Array.isArray(pacesInput)) return pacesInput;
+  if (Array.isArray(pacesInput.preset_colors)) return pacesInput.preset_colors;
+  return [];
+};
+
+/**
+ * Generates descriptive zone text string from a workout step and user's pace zones.
+ * 
+ * Rules:
+ * 1. Single Zone (zone/value): Returns "SlowPace - FastPace".
+ *    - If SlowPace is "0:00" or missing, it sets slow = FastPace + 2:00 (120s).
+ * 2. Zone Range (start and end): Returns "FastPace (of start zone) - SlowPace (of end zone)".
+ * 
+ * - Should always return "FAST - SLOW" (e.g., "10:20 - 12:20" or "7:25 - 8:44")
+ * 
+ * @param {Object} step - Step object containing { zone, value, start, end }
+ * @param {Object|Array} pacesInput - Paces object or array of preset_colors
+ * @returns {string} Formatted range string (e.g., "10:20 - 12:20" or "7:25 - 8:44")
+ */
+export function getZoneDescriptiveText(step, pacesInput) {
+  if (!step) return "";
+
+  const zones = extractZonesArray(pacesInput);
+  if (!zones.length) return "";
+
+  // Helper to find a zone object by zone ID/number
+  const findZone = (zoneNum) => zones.find((z) => Number(z.zone) === Number(zoneNum));
+
+  const singleZoneNum = step.zone ?? step.value;
+  const startZoneNum = step.start;
+  const endZoneNum = step.end;
+
+  // -------------------------------------------------------------------------
+  // Case 1: Single Zone (e.g. Zone 1)
+  // -------------------------------------------------------------------------
+  if (singleZoneNum != null && startZoneNum == null) {
+    const targetZone = findZone(singleZoneNum);
+    if (!targetZone) return "";
+
+    const fastPaceStr = cleanPaceStr(targetZone.pace_fast);
+    let slowPaceStr = cleanPaceStr(targetZone.pace_slow);
+
+    // If slow is "0:00" or empty, calculate 2:00 slower than fast pace
+    if (!slowPaceStr || slowPaceStr === "0:00") {
+      const fastSec = parsePaceStrToSec(fastPaceStr) || targetZone.pace_val_sec || 0;
+      if (fastSec > 0) {
+        slowPaceStr = formatSecPerMileToStr(fastSec + 120); // +2 mins slower
+      }
+    }
+
+    return `${fastPaceStr} - ${slowPaceStr}`;
+  }
+
+  // -------------------------------------------------------------------------
+  // Case 2: Zone Range (e.g. start: 4, end: 6)
+  // -------------------------------------------------------------------------
+  if (startZoneNum != null && endZoneNum != null) {
+    // Determine fast (lower zone number) and slow (higher zone number)
+    const fastZoneId = Math.min(Number(startZoneNum), Number(endZoneNum));
+    const slowZoneId = Math.max(Number(startZoneNum), Number(endZoneNum));
+
+    const fastZoneObj = findZone(fastZoneId);
+    const slowZoneObj = findZone(slowZoneId);
+
+    if (!fastZoneObj || !slowZoneObj) return "";
+
+    // Fast end of the faster zone (e.g. fast end of Zone 4)
+    const fastPaceStr = cleanPaceStr(fastZoneObj.pace_fast);
+
+    // Slow end of the slower zone (e.g. slow end of Zone 6)
+    let slowPaceStr = cleanPaceStr(slowZoneObj.pace_slow);
+
+    if (!slowPaceStr || slowPaceStr === "0:00") {
+      const slowZoneFastSec = parsePaceStrToSec(slowZoneObj.pace_fast) || slowZoneObj.pace_val_sec || 0;
+      if (slowZoneFastSec > 0) {
+        slowPaceStr = formatSecPerMileToStr(slowZoneFastSec + 120);
+      }
+    }
+
+    return `${fastPaceStr} - ${slowPaceStr}`;
+  }
+
+  return "";
+}
