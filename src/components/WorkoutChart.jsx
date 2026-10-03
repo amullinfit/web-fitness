@@ -280,6 +280,9 @@ export default function WorkoutChart({
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
                   // Extract pace details using extractStepPaceRange
+                  console.log('[App Debug WorkoutChart] -----------------------------------------');
+                  console.log('[App Debug WorkoutChart] ');
+                  console.log('[App Debug WorkoutChart] ');
                   console.log('[App Debug WorkoutChart] step  : ', step);
                   console.log('[App Debug WorkoutChart] thresh: ', thresholdSecPerMile);
                   console.log('[App Debug WorkoutChart] paces : ', paces);
