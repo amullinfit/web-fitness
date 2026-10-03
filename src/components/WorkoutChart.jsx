@@ -50,6 +50,7 @@ export default function WorkoutChart({
   showBarPace = false
 }) {
   console.log('[App Debug] WorkoutChart rendered for workout:', workout?.name || workout?.title || 'Workout');
+  console.log('[App Debug] WorkoutChart: workout: ', workout);
 
   const clipId = useId();
 
