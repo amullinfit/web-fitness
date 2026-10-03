@@ -402,6 +402,8 @@ const extractZonesArray = (pacesInput) => {
 export function getZoneDescriptiveText(step, pacesInput) {
   console.log('[App Debug Converter] getZoneDescriptiveText called with step:', step);
   if (!step) return "";
+  console.log('[App Debug Converter getZoneDesc] step: ', step);
+  console.log('[App Debug Converter getZoneDesc] pacesInput: ', pacesInput);
 
   const zones = extractZonesArray(pacesInput);
   if (!zones.length) return "";

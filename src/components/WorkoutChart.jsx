@@ -297,7 +297,7 @@ export default function WorkoutChart({
                   const slowHeightPct = computePaceToHeightPct(range.slowSec);
 
                   // Get descriptive text for zone or fallback to extracted/formatted range strings
-                  const descriptivePaceStr = getZoneDescriptiveText(step, paces);
+                  const descriptivePaceStr = getZoneDescriptiveText(step.pace, paces);
                   console.log('[App Debug WorkoutChart Plan] pacestr: ', descriptivePaceStr);
 
                   const paceDetails = descriptivePaceStr || (
