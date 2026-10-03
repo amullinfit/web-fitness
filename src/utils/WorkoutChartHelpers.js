@@ -555,12 +555,16 @@ const getZoneList = (pacesInput) => {
     console.log('[App Debug WorkoutChartHelper] stepPace  : ', stepPace);
     console.log('[App Debug WorkoutChartHelper] pacesInput: ', pacesInput);
 
-    if (!stepPace) return { fastSec: 0, slowSec: 0, formattedText: "" };
+    if (!stepPace) return { fastSec: 1, slowSec: 1, formattedText: "??:??" };
   
     const zones = getZoneList(pacesInput);
     const thresholdSec = getThresholdSecFromPaces(pacesInput);
     const findZone = (zNum) => zones.find((z) => Number(z.zone) === Number(zNum));
   
+    console.log('[App Debug WorkoutChartHelper] zones: ', zones);
+    console.log('[App Debug WorkoutChartHelper] thrsh: ', thresholdSec);
+    console.log('[App Debug WorkoutChartHelper] fzone: ', findZone);
+
     let fastSec = 0;
     let slowSec = 0;
     let descriptiveLabel = "";
@@ -576,6 +580,9 @@ const getZoneList = (pacesInput) => {
         slowSec = Math.max(stepPace.start, stepPace.end);
         descriptiveLabel = `${formatSecPerMileToStr(slowSec)} - ${formatSecPerMileToStr(fastSec)}/mi`;
       }
+      console.log('[App Debug WorkoutChartHelper] Pfast: ', fastSec);
+      console.log('[App Debug WorkoutChartHelper] Pslow: ', slowSec);
+      console.log('[App Debug WorkoutChartHelper] Pdesc: ', descriptiveLabel);
     }
   
     // 2. Zone-Based (`units: "pace_zone"`)
@@ -607,6 +614,9 @@ const getZoneList = (pacesInput) => {
           descriptiveLabel = `Z${stepPace.start}-${stepPace.end} (${slowPaceStr} - ${fastPaceStr})`;
         }
       }
+      console.log('[App Debug WorkoutChartHelper] Zfast: ', fastSec);
+      console.log('[App Debug WorkoutChartHelper] Zslow: ', slowSec);
+      console.log('[App Debug WorkoutChartHelper] Zdesc: ', descriptiveLabel);
     }
   
     // 3. Threshold % (`units: "%pace"`)
@@ -624,6 +634,9 @@ const getZoneList = (pacesInput) => {
   
         descriptiveLabel = `${slowPct}%-${fastPct}% Threshold (${formatSecPerMileToStr(slowSec)} - ${formatSecPerMileToStr(fastSec)}/mi)`;
       }
+      console.log('[App Debug WorkoutChartHelper] %fast: ', fastSec);
+      console.log('[App Debug WorkoutChartHelper] %slow: ', slowSec);
+      console.log('[App Debug WorkoutChartHelper] %desc: ', descriptiveLabel);
     }
   
     console.log('[App Debug WorkoutChartHelper] fast/slow/text: ', fastSec, slowSec, descriptiveLabel);
