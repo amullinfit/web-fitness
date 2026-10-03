@@ -552,6 +552,9 @@ const getZoneList = (pacesInput) => {
    * Extracts normalized fastSec, slowSec, and descriptive labels for charts & UI text.
    */
   export function extractStepPaceRange(stepPace, pacesInput) {
+    console.log('[App Debug ChartHelper] stepPace  : ', stepPace);
+    console.log('[App Debug ChartHelper] pacesInput: ', pacesInput);
+
     if (!stepPace) return { fastSec: 0, slowSec: 0, formattedText: "" };
   
     const zones = getZoneList(pacesInput);
