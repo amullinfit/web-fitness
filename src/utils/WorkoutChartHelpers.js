@@ -626,6 +626,6 @@ const getZoneList = (pacesInput) => {
       }
     }
   
-    console.log('[App Debug WorkoutChartHelper] fast/slow/text: ', fastsec, slowsec, descriptiveLabel);
+    console.log('[App Debug WorkoutChartHelper] fast/slow/text: ', fastSec, slowSec, descriptiveLabel);
     return { fastSec, slowSec, formattedText: descriptiveLabel };
   }
