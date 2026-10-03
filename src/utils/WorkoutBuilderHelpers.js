@@ -18,7 +18,7 @@ const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 const VAL_MY_PACES_URL = '/api/val-my-paces';
 
 export const DEFAULT_THRESHOLD = (paces) => {
-  console.log('[App Debug] DEFAULT_THRESHOLD evaluated');
+  console.log('[App Debug BuilderHelpers] DEFAULT_THRESHOLD evaluated');
   return paces?.threshold_pace || FALLBACK_THRESHOLD;
 };
 
@@ -33,7 +33,7 @@ export const DEFAULT_THRESHOLD = (paces) => {
 // 
 // --- API Functions ---
 export async function fetchFoldersApi() {
-  console.log('[App Debug] fetchFoldersApi called');
+  console.log('[App Debug BuilderHelpers] fetchFoldersApi called');
   const res = await fetch(`${VAL_WORKOUTBUILDER_URL}?action=get_folders`, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch folders');
   const data = await res.json();
@@ -41,7 +41,7 @@ export async function fetchFoldersApi() {
 }
 
 export async function fetchWorkoutsApi(folderId = null) {
-  console.log('[App Debug] fetchWorkoutsApi called with folderId:', folderId);
+  console.log('[App Debug BuilderHelpers] fetchWorkoutsApi called with folderId:', folderId);
   const url = folderId 
     ? `${VAL_WORKOUTBUILDER_URL}?action=get_workouts&folder_id=${folderId}` 
     : `${VAL_WORKOUTBUILDER_URL}?action=get_workouts`;
@@ -73,7 +73,7 @@ export async function fetchWorkoutsApi(folderId = null) {
 }
 
 export async function createFolderApi(folderName) {
-  console.log('[App Debug] createFolderApi called with folderName:', folderName);
+  console.log('[App Debug BuilderHelpers] createFolderApi called with folderName:', folderName);
   const res = await fetch(VAL_WORKOUTBUILDER_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -93,7 +93,7 @@ export async function createFolderApi(folderName) {
 }
 
 export async function saveWorkoutApi(payload) {
-  console.log('[App Debug] saveWorkoutApi called with payload:', payload);
+  console.log('[App Debug BuilderHelpers] saveWorkoutApi called with payload:', payload);
   const action = payload.id ? 'update_workout' : 'create_workout';
   const method = payload.id ? 'PUT' : 'POST';
   const res = await fetch(VAL_WORKOUTBUILDER_URL, {
@@ -109,7 +109,7 @@ export async function saveWorkoutApi(payload) {
 }
 
 export async function fetchMyPacesApi() {
-  console.log('[App Debug] fetchMyPacesApi called');
+  console.log('[App Debug BuilderHelpers] fetchMyPacesApi called');
   const res = await fetch(VAL_MY_PACES_URL, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch paces from Intervals.icu');
   return await res.json();
@@ -127,7 +127,7 @@ export async function fetchMyPacesApi() {
 // --- Formatting & Parsing Helpers ---
 
 export const formatTime = (totalSeconds) => {
-  console.log('[App Debug] formatTime called with totalSeconds:', totalSeconds);
+  console.log('[App Debug BuilderHelpers] formatTime called with totalSeconds:', totalSeconds);
   const sec = Math.max(0, Math.round(totalSeconds || 0));
   const hrs = Math.floor(sec / 3600);
   const mins = Math.floor((sec % 3600) / 60);
@@ -137,7 +137,7 @@ export const formatTime = (totalSeconds) => {
 };
 
 export const formatMMSS = (totalSeconds) => {
-  console.log('[App Debug] formatMMSS called with totalSeconds:', totalSeconds);
+  console.log('[App Debug BuilderHelpers] formatMMSS called with totalSeconds:', totalSeconds);
   // sec/mi -> mm:ss  (ie, 495 -> 8:15)
   const sec = Math.max(0, Math.round(totalSeconds || 0));
   const mins = Math.floor(sec / 60);
@@ -146,7 +146,7 @@ export const formatMMSS = (totalSeconds) => {
 };
 
 export const parseMMSS = (str) => {
-  console.log('[App Debug] parseMMSS called with str:', str);
+  console.log('[App Debug BuilderHelpers] parseMMSS called with str:', str);
   // mm:ss -> sec/mi (ie, 8:15 -> 495)
   if (!str) return 0;
   let cleanStr = String(str).trim().replace(/\/mi|\/km/g, '');
@@ -166,7 +166,7 @@ export const parseMMSS = (str) => {
 };
 
 export const convertToPaceSec = (val) => {
-  console.log('[App Debug] convertToPaceSec called with val:', val);
+  console.log('[App Debug BuilderHelpers] convertToPaceSec called with val:', val);
   // Converts pace to sec/mi (495)
   if (!val) return DEFAULT_THRESHOLD();
   if (typeof val === 'string') {
@@ -184,7 +184,7 @@ export const convertToPaceSec = (val) => {
 };
 
 export const formatDistance = (miles) => {
-  console.log('[App Debug] formatDistance called with miles:', miles);
+  console.log('[App Debug BuilderHelpers] formatDistance called with miles:', miles);
   return (miles || 0).toFixed(2) + ' mi';
 };
 
@@ -201,7 +201,7 @@ export const formatDistance = (miles) => {
 
 // Dynamically compute preset values from intervals.icu data
 export function calculateDynamicPresets(paces, thresholdPaceSec, paceMethod) {
-  console.log('[App Debug] calculateDynamicPresets called', { thresholdPaceSec, paceMethod });
+  console.log('[App Debug BuilderHelpers] calculateDynamicPresets called', { thresholdPaceSec, paceMethod });
   // If paces or preset_colors array doesn't exist, use fallback logic
   if (!paces || !Array.isArray(paces.preset_colors)) {
 
@@ -278,7 +278,7 @@ export function calculateDynamicPresets(paces, thresholdPaceSec, paceMethod) {
 // --- Step Creation & Mapping Helpers ---
 
 export const createStep = (type, mode = 'time') => {
-  console.log('[App Debug] createStep called with type:', type, 'mode:', mode);
+  console.log('[App Debug BuilderHelpers] createStep called with type:', type, 'mode:', mode);
   const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
   const durationSec = mode === 'time' ? 600 : 0;
   const distanceMiles = mode === 'distance' ? 3.0 : 0;
@@ -352,7 +352,7 @@ export const createStep = (type, mode = 'time') => {
 };
 
 export const createDefaultSteps = (mode = 'time') => {
-  console.log('[App Debug] createDefaultSteps called with mode:', mode);
+  console.log('[App Debug BuilderHelpers] createDefaultSteps called with mode:', mode);
   return [
     createStep('warmup', mode),
     createStep('repeat', mode),
@@ -361,7 +361,7 @@ export const createDefaultSteps = (mode = 'time') => {
 };
 
 export const addIdsToBaseWorkout = (baseWorkout) => {
-  console.log('[App Debug] addIdsToBaseWorkout called');
+  console.log('[App Debug BuilderHelpers] addIdsToBaseWorkout called');
   if (!baseWorkout?.workout_doc?.steps) return baseWorkout;
 
   const timestamp = new Date().toISOString().replace(/[-T:]/g, '').slice(0, 14);
@@ -370,7 +370,7 @@ export const addIdsToBaseWorkout = (baseWorkout) => {
     `step-loaded-${timestamp}-${idx}-${Math.random().toString(36).substring(2, 6)}`;
 
   const processSteps = (steps) => {
-    console.log('[App Debug] addIdsToBaseWorkout -> processSteps executing');
+    console.log('[App Debug BuilderHelpers] addIdsToBaseWorkout -> processSteps executing');
     return steps.map((step, idx) => {
       const updatedStep = {
         ...step,
@@ -396,11 +396,11 @@ export const addIdsToBaseWorkout = (baseWorkout) => {
 };
 
 export const removeIdsFromBaseWorkout = (baseWorkout) => {
-  console.log('[App Debug] removeIdsFromBaseWorkout called');
+  console.log('[App Debug BuilderHelpers] removeIdsFromBaseWorkout called');
   if (!baseWorkout?.workout_doc?.steps) return baseWorkout;
 
   const stripStepId = (steps) => {
-    console.log('[App Debug] removeIdsFromBaseWorkout -> stripStepId executing');
+    console.log('[App Debug BuilderHelpers] removeIdsFromBaseWorkout -> stripStepId executing');
     return steps.map((step) => {
       // Destructure to separate 'id' from the rest of the step properties
       const { id, steps: childSteps, ...cleanStep } = step;
@@ -424,14 +424,14 @@ export const removeIdsFromBaseWorkout = (baseWorkout) => {
 };
 
 export const mapIcuDocToSteps = (workout, mode = 'time') => {
-  console.log('[App Debug] mapIcuDocToSteps called with mode:', mode);
+  console.log('[App Debug BuilderHelpers] mapIcuDocToSteps called with mode:', mode);
   const stepsSource = workout?.workout_doc?.steps || workout?.steps;
   if (!Array.isArray(stepsSource) || stepsSource.length === 0) {
     return createDefaultSteps('time');
   }
 
   const mapStep = (s, idx) => {
-    console.log('[App Debug] mapIcuDocToSteps -> mapStep executing at index:', idx);
+    console.log('[App Debug BuilderHelpers] mapIcuDocToSteps -> mapStep executing at index:', idx);
     // step.id = date(YYYYMMSS)-idx-randomstring
     const id = `step-loaded-${new Date().toISOString().replace(/[-T:]/g, '').slice(0, 14)}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
 
@@ -469,7 +469,7 @@ export const mapIcuDocToSteps = (workout, mode = 'time') => {
 };
 
 export const downloadFile = (content, filename, mimeType) => {
-  console.log('[App Debug] downloadFile called with filename:', filename, 'mimeType:', mimeType);
+  console.log('[App Debug BuilderHelpers] downloadFile called with filename:', filename, 'mimeType:', mimeType);
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createElementObjectURL(blob);
   const link = document.createElement('a');

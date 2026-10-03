@@ -28,7 +28,7 @@ const FAST_BUFFER_MINUTES = 1;
 
 // Helper to format total duration seconds into "#m#s" string
 const formatDurationMinsSecs = (totalSec) => {
-  console.log('[App Debug] formatDurationMinsSecs called with totalSec:', totalSec);
+  console.log('[App Debug WorkoutChart] formatDurationMinsSecs called with totalSec:', totalSec);
   const mins = Math.floor(totalSec / 60);
   const secs = Math.floor(totalSec % 60);
   return `${mins}:${String(secs).padStart(2, '0')}`;
@@ -49,8 +49,8 @@ export default function WorkoutChart({
   showHoverDetails = true,
   showBarPace = false
 }) {
-  console.log('[App Debug] WorkoutChart rendered for workout:', workout?.name || workout?.title || 'Workout');
-  console.log('[App Debug] WorkoutChart: workout: ', workout);
+  console.log('[App Debug WorkoutChart] WorkoutChart rendered for workout:', workout?.name || workout?.title || 'Workout');
+  console.log('[App Debug WorkoutChart] WorkoutChart: workout: ', workout);
 
   const clipId = useId();
 
@@ -142,7 +142,7 @@ export default function WorkoutChart({
   const timeTicks = rawTimeTicks.filter((_, idx) => idx % stepInterval === 0 || idx === rawTimeTicks.length - 1);
 
   const computePaceToHeightPct = (paceSec) => {
-    console.log('[App Debug] computePaceToHeightPct called with paceSec:', paceSec);
+    console.log('[App Debug WorkoutChart] computePaceToHeightPct called with paceSec:', paceSec);
     if (!paceSec || ySlowestSec <= yFastestSec) return 50;
     const pct = ((ySlowestSec - paceSec) / (ySlowestSec - yFastestSec)) * 100;
     return Math.min(Math.max(pct, 0), 100);
@@ -156,15 +156,15 @@ export default function WorkoutChart({
       className="workout-chart-container"
       style={{ position: 'relative' }}
       onMouseEnter={() => {
-        console.log('[App Debug] onMouseEnter chart container');
+        console.log('[App Debug WorkoutChart] onMouseEnter chart container');
         setIsChartHovered(true);
       }}
       onMouseLeave={() => {
-        console.log('[App Debug] onMouseLeave chart container');
+        console.log('[App Debug WorkoutChart] onMouseLeave chart container');
         setIsChartHovered(false);
       }}
       onTouchStart={() => {
-        console.log('[App Debug] onTouchStart chart container');
+        console.log('[App Debug WorkoutChart] onTouchStart chart container');
         setIsChartHovered(true);
       }}
     >
@@ -201,7 +201,7 @@ export default function WorkoutChart({
                   type="button"
                   className="workout-layer-swap-btn"
                   onClick={() => {
-                    console.log('[App Debug] Layer swap button clicked, previous executedOnTop:', executedOnTop);
+                    console.log('[App Debug WorkoutChart] Layer swap button clicked, previous executedOnTop:', executedOnTop);
                     setExecutedOnTop((prev) => !prev);
                   }}
                   title={executedOnTop ? "Executed is in front. Click to bring Planned to front." : "Planned is in front. Click to bring Executed to front."}
