@@ -281,6 +281,8 @@ export default function WorkoutChart({
 
                   // Extract pace details using extractStepPaceRange
                   const range = extractStepPaceRange(step, thresholdSecPerMile, paces);
+                  console.log('[App Debug WorkoutChart] step : ', step);
+                  console.log('[App Debug WorkoutChart] range: ', range);
 
                   // zoneDetails (name and color) are derived from the fast pace
                   const zoneDetails = getZoneDetailsFromPaces(range.fastSec, paces);
@@ -290,6 +292,7 @@ export default function WorkoutChart({
 
                   // Get descriptive text for zone or fallback to extracted/formatted range strings
                   const descriptivePaceStr = getZoneDescriptiveText(step, paces);
+                  console.log('[App Debug WorkoutChart] pacestr: ', descriptivePaceStr);
 
                   const paceDetails = descriptivePaceStr || (
                     range.fastPaceStr === range.slowPaceStr 
