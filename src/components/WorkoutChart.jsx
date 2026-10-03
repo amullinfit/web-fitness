@@ -286,7 +286,7 @@ export default function WorkoutChart({
                   console.log('[App Debug WorkoutChart] step  : ', step);
                   console.log('[App Debug WorkoutChart] thresh: ', thresholdSecPerMile);
                   console.log('[App Debug WorkoutChart] paces : ', paces);
-                  const range = extractStepPaceRange(step, thresholdSecPerMile, paces);
+                  const range = extractStepPaceRange(step, paces);
                   console.log('[App Debug WorkoutChart] range : ', range);
 
 
