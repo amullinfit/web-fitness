@@ -391,7 +391,7 @@ export default function WorkoutChart({
   
                     const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
                     const tooltipText = `${durationFormatted} @ ${paceRangeFormatted}`;
-                    console.log('[App Debug WorkoutChart Exec] tool: ', paceRangeFormatted);
+                    console.log('[App Debug WorkoutChart Exec] tool: ', tooltipText);
                   
                     const durationMinutes = durationSecs / 60;
                     const pathData = generateWavyBarPath(durationMinutes);
