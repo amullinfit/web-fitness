@@ -17,6 +17,8 @@ export default function Modal_Workout_Edit({
   workoutMode = 'time',
   presets = {}
 }) {
+  console.log('[App Debug] Modal_Workout_Edit rendered. isOpen:', isOpen, 'currentFolderId:', currentFolderId);
+
   const defaultFolderId = useMemo(() => {
     if (currentFolderId !== null && currentFolderId !== undefined && currentFolderId !== '') {
       return String(currentFolderId);
@@ -53,6 +55,7 @@ export default function Modal_Workout_Edit({
   }, [workouts, selectedFolderId]);
 
   const getWorkoutSummary = (workout) => {
+    console.log('[App Debug] getWorkoutSummary called for workout:', workout?.id || workout?.name);
     const rawDoc = workout?.workout_doc ?? workout?.document ?? workout?.icu_doc;
     
     let parsedDoc = rawDoc;
@@ -67,6 +70,7 @@ export default function Modal_Workout_Edit({
     const steps = mapIcuDocToSteps(parsedDoc, workoutMode);
 
     const calcTotals = (list) => {
+      console.log('[App Debug] calcTotals called with list length:', list?.length);
       let timeSec = 0;
       let distMiles = 0;
 
@@ -110,7 +114,10 @@ export default function Modal_Workout_Edit({
           <h2 className="modal-title">Select Workout</h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={(e) => {
+              console.log('[App Debug] Close button clicked in Modal_Workout_Edit');
+              onClose?.(e);
+            }}
             className="modal-close-btn"
             aria-label="Close"
           >
@@ -122,7 +129,10 @@ export default function Modal_Workout_Edit({
           <label className="form-label">Folder</label>
           <select
             value={selectedFolderId}
-            onChange={(e) => setSelectedFolderId(e.target.value)}
+            onChange={(e) => {
+              console.log('[App Debug] Folder selection changed to:', e.target.value);
+              setSelectedFolderId(e.target.value);
+            }}
             className="form-select"
           >
             {(!folders || folders.length === 0) && (
@@ -149,7 +159,10 @@ export default function Modal_Workout_Edit({
                   <div
                     key={workout.id}
                     className="workout-select-card"
-                    onClick={() => onSelectWorkout(workout.id)}
+                    onClick={() => {
+                      console.log('[App Debug] Selected workout card clicked:', workout.id);
+                      onSelectWorkout(workout.id);
+                    }}
                   >
                     {/* Left ~30%: Title */}
                     <div className="workout-card-title-col">
@@ -187,7 +200,14 @@ export default function Modal_Workout_Edit({
         </div>
 
         <div className="modal-actions" style={{ marginTop: '16px' }}>
-          <button type="button" onClick={onClose} className="btn btn-secondary">
+          <button 
+            type="button" 
+            onClick={(e) => {
+              console.log('[App Debug] Cancel button clicked in Modal_Workout_Edit');
+              onClose?.(e);
+            }} 
+            className="btn btn-secondary"
+          >
             Cancel
           </button>
         </div>

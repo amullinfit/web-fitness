@@ -3,6 +3,7 @@
  */
 
 export function convertStepsToWorkout(steps) {
+  console.log('[App Debug] convertStepsToWorkout called with steps:', steps);
   if (!steps) return null;
 
   return {
@@ -19,6 +20,7 @@ export function convertStepsToWorkout(steps) {
 }
 
 export function convertWorkoutToTargetFormat(workoutPayload, options = {}) {
+  console.log('[App Debug] convertWorkoutToTargetFormat called with workoutPayload:', workoutPayload, 'options:', options);
   if (!workoutPayload) return null;
 
   const doc = workoutPayload.workout_doc || {};
@@ -101,6 +103,7 @@ export function convertWorkoutToTargetFormat(workoutPayload, options = {}) {
  * Detects paceMethod string from a step's `pace` object schema.
  */
 export function detectPaceMethod(pace) {
+  console.log('[App Debug] detectPaceMethod called with pace:', pace);
   if (!pace || typeof pace !== 'object') return 'Pace';
   const isRange = pace.start !== undefined || pace.end !== undefined;
 
@@ -120,6 +123,7 @@ export function detectPaceMethod(pace) {
  * Higher % = Faster running (fewer sec/mi).
  */
 export function calculatePctFromPace(paceSec, thresholdSec) {
+  console.log('[App Debug] calculatePctFromPace called with paceSec:', paceSec, 'thresholdSec:', thresholdSec);
   if (!paceSec || !thresholdSec || paceSec <= 0) return 100;
   return Math.round((thresholdSec / paceSec) * 100);
 }
@@ -128,6 +132,7 @@ export function calculatePctFromPace(paceSec, thresholdSec) {
  * Calculates pace in seconds from a % of threshold.
  */
 export function calculatePaceFromPct(pct, thresholdSec) {
+  console.log('[App Debug] calculatePaceFromPct called with pct:', pct, 'thresholdSec:', thresholdSec);
   if (!pct || !thresholdSec || pct <= 0) return thresholdSec || 480;
   return Math.round(thresholdSec / (pct / 100));
 }
@@ -136,6 +141,7 @@ export function calculatePaceFromPct(pct, thresholdSec) {
  * Finds the matching zone identifier in zoneList for a given pace in seconds.
  */
 export function calculateZoneFromPace(zoneList = [], paceSec) {
+  console.log('[App Debug] calculateZoneFromPace called with zoneList count:', zoneList?.length, 'paceSec:', paceSec);
   if (!Array.isArray(zoneList) || zoneList.length === 0 || paceSec == null) {
     return 1;
   }
@@ -160,6 +166,7 @@ export function calculateZoneFromPace(zoneList = [], paceSec) {
  * Resolves fastest pace in seconds for a matched zone in zoneList.
  */
 export function calculatePaceFromZone(zoneList = [], zoneIdentifier) {
+  console.log('[App Debug] calculatePaceFromZone called with zoneIdentifier:', zoneIdentifier);
   if (zoneIdentifier == null || !Array.isArray(zoneList) || zoneList.length === 0) {
     return 480;
   }
@@ -179,6 +186,7 @@ export function convertStepPaceTarget(currentPace,
                                       thresholdSec = 480, 
                                       zoneList = []) 
   {
+    console.log('[App Debug] convertStepPaceTarget called', { currentPace, newPaceMethod, thresholdSec });
     const defaultThresholdSec = thresholdSec > 0 ? thresholdSec : 480;
 
     // Step 1: Normalize existing pace object into fastSec and slowSec
@@ -273,6 +281,7 @@ export function convertStepPaceTarget(currentPace,
 
 // Helper to convert value across pace methods
 export const calculateNewPaceValue = (oldPaceMethod, oldPaceValue, newPaceMethod, threshold_spm, zoneList) => {
+  console.log('[App Debug] calculateNewPaceValue called', { oldPaceMethod, oldPaceValue, newPaceMethod, threshold_spm });
   let newPaceValue = oldPaceValue;
 
   const oldMethod = (oldPaceMethod || '')
@@ -326,6 +335,7 @@ export const calculateNewPaceValue = (oldPaceMethod, oldPaceValue, newPaceMethod
 };
 
 export const metersPerSecondToPaceStr = (mps) => {
+  console.log('[App Debug] metersPerSecondToPaceStr called with mps:', mps);
   if (!mps || mps <= 0) return "N/A";
   const secPerMile = 1609.34 / mps;
   const roundedSecPerMile = Math.round(secPerMile / 5) * 5;
@@ -335,6 +345,7 @@ export const metersPerSecondToPaceStr = (mps) => {
 };
 
 export const secondsToPaceStr = (secPerMile) => {
+  console.log('[App Debug] secondsToPaceStr called with secPerMile:', secPerMile);
   if (!secPerMile || secPerMile <= 0) return "N/A";
   const roundedSec = Math.round(secPerMile / 5) * 5;
   const mins = Math.floor(roundedSec / 60);
@@ -346,6 +357,7 @@ export const secondsToPaceStr = (secPerMile) => {
  * Helper to normalize string representations like "0:00/mi" or "10:20/mi" to "mm:ss"
  */
 const cleanPaceStr = (paceStr) => {
+  console.log('[App Debug] cleanPaceStr called with paceStr:', paceStr);
   if (!paceStr) return "";
   return paceStr.replace(/\/mi$/i, "").trim();
 };
@@ -354,6 +366,7 @@ const cleanPaceStr = (paceStr) => {
  * Converts "MM:SS" pace string into total seconds.
  */
 const parsePaceStrToSec = (paceStr) => {
+  console.log('[App Debug] parsePaceStrToSec called with paceStr:', paceStr);
   const cleaned = cleanPaceStr(paceStr);
   if (!cleaned || cleaned === "0:00") return 0;
   const parts = cleaned.split(":");
@@ -365,6 +378,7 @@ const parsePaceStrToSec = (paceStr) => {
  * Normalizes paces input to always return an array of zone objects.
  */
 const extractZonesArray = (pacesInput) => {
+  console.log('[App Debug] extractZonesArray called');
   if (!pacesInput) return [];
   if (Array.isArray(pacesInput)) return pacesInput;
   if (Array.isArray(pacesInput.preset_colors)) return pacesInput.preset_colors;
@@ -386,6 +400,7 @@ const extractZonesArray = (pacesInput) => {
  * @returns {string} Formatted range string (e.g., "10:20 - 12:20" or "7:25 - 8:44")
  */
 export function getZoneDescriptiveText(step, pacesInput) {
+  console.log('[App Debug] getZoneDescriptiveText called with step:', step);
   if (!step) return "";
 
   const zones = extractZonesArray(pacesInput);

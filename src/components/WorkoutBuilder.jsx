@@ -35,6 +35,8 @@ import {
 } from '../utils/WorkoutBuilderHelpers.js';
 
 export default function WorkoutBuilder() {
+  console.log('[App Debug] WorkoutBuilder rendering');
+
   const { paces } = usePaces();
 
   // --- Core State ---
@@ -70,6 +72,7 @@ export default function WorkoutBuilder() {
 
   // Keep baseWorkout.workout_doc.steps synced with hook steps
   useEffect(() => {
+    console.log('[App Debug] useEffect: syncing steps to baseWorkout');
     if (baseWorkout && baseWorkout.workout_doc) {
       setBaseWorkout((prev) => ({
         ...prev,
@@ -83,6 +86,7 @@ export default function WorkoutBuilder() {
 
   // Sync root 'name' field in baseWorkout with workoutTitle
   useEffect(() => {
+    console.log('[App Debug] useEffect: syncing workoutTitle to baseWorkout');
     if (baseWorkout) {
       setBaseWorkout((prev) => ({
         ...prev,
@@ -106,13 +110,19 @@ export default function WorkoutBuilder() {
   const [statusMessage, setStatusMessage] = useState('');
 
   const showToast = (msg) => {
+    console.log('[App Debug] showToast triggered with message:', msg);
     setStatusMessage(msg);
-    setTimeout(() => setStatusMessage(''), 3000);
+    setTimeout(() => {
+      console.log('[App Debug] showToast timeout clear message');
+      setStatusMessage('');
+    }, 3000);
   };
 
   // Initial Load
   useEffect(() => {
+    console.log('[App Debug] useEffect: initial data fetch starting');
     async function initData() {
+      console.log('[App Debug] initData executing');
       try {
         const fetchedFolders = await fetchFoldersApi();
         setFolders(fetchedFolders || []);
@@ -121,6 +131,7 @@ export default function WorkoutBuilder() {
           ? fetchedWorkouts 
           : (fetchedWorkouts?.workouts || []);
         setSavedWorkouts(workoutsArray);
+        console.log('[App Debug] initData successfully fetched folders and workouts');
       } catch (err) {
         console.error('Failed to initialize workout builder data:', err);
       }
@@ -129,14 +140,15 @@ export default function WorkoutBuilder() {
   }, []);
 
   // Presets & Totals
-  const dynamicPresets = useMemo(
-    () => calculateDynamicPresets(paces, paces?.threshold_pace || 360, paceMethod),
-    [paces, paceMethod]
-  );
+  const dynamicPresets = useMemo(() => {
+    console.log('[App Debug] useMemo: calculating dynamicPresets');
+    return calculateDynamicPresets(paces, paces?.threshold_pace || 360, paceMethod);
+  }, [paces, paceMethod]);
 
   // --- Handlers for Options Menu ---
 
   const handleNewWorkout = () => {
+    console.log('[App Debug] handleNewWorkout invoked');
     const initialTitle = 'New Workout';
     setWorkoutId(null);
     setWorkoutTitle(initialTitle);
@@ -155,6 +167,7 @@ export default function WorkoutBuilder() {
   };
   
   const handleSelectWorkout = (id) => {
+    console.log('[App Debug] handleSelectWorkout invoked with id:', id);
     const found = savedWorkouts.find((w) => String(w.id) === String(id));
     if (found) {
       const title = found.name || found.title || 'Untitled';
@@ -165,7 +178,10 @@ export default function WorkoutBuilder() {
   
       const rawDocObj = found;
       const parsedObj = typeof rawDocObj === 'string' 
-        ? (() => { try { return JSON.parse(rawDocObj); } catch { return null; } })() 
+        ? (() => {
+            console.log('[App Debug] handleSelectWorkout parsing JSON string document');
+            try { return JSON.parse(rawDocObj); } catch { return null; }
+          })() 
         : rawDocObj;
   
       const preparedBase = addIdsToBaseWorkout(parsedObj);
@@ -186,11 +202,13 @@ export default function WorkoutBuilder() {
   };
 
   const handleOpenSaveModal = (isSaveAs = false) => {
+    console.log('[App Debug] handleOpenSaveModal invoked with isSaveAs:', isSaveAs);
     setIsSaveAsMode(isSaveAs);
     setIsSaveModalOpen(true);
   };
 
   const handleSaveWorkout = async (overrideTitle, overrideFolderId) => {
+    console.log('[App Debug] handleSaveWorkout invoked', { overrideTitle, overrideFolderId });
     const icuDocument = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
     const targetId = isSaveAsMode ? null : workoutId;
 
@@ -223,6 +241,7 @@ export default function WorkoutBuilder() {
   };
 
   const handleDuplicateWorkout = () => {
+    console.log('[App Debug] handleDuplicateWorkout invoked');
     setWorkoutId(null);
     setWorkoutTitle(`${workoutTitle} (Copy)`);
     setMode('BUILDING');
@@ -230,6 +249,7 @@ export default function WorkoutBuilder() {
   };
 
   const handleCopyWorkoutText = () => {
+    console.log('[App Debug] handleCopyWorkoutText invoked');
     const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
     const stringified = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
     navigator.clipboard.writeText(stringified);
@@ -237,8 +257,9 @@ export default function WorkoutBuilder() {
   };
 
   const triggerFileDownload = (content, fileName, mimeType) => {
+    console.log('[App Debug] triggerFileDownload invoked', { fileName, mimeType });
     const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
+    const url = URL.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = fileName;
@@ -249,6 +270,7 @@ export default function WorkoutBuilder() {
   };
 
   const handleDownloadIcu = () => {
+    console.log('[App Debug] handleDownloadIcu invoked');
     const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
     const content = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
     const cleanTitle = workoutTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
@@ -256,12 +278,14 @@ export default function WorkoutBuilder() {
   };
 
   const handleDownloadZwo = () => {
+    console.log('[App Debug] handleDownloadZwo invoked');
     const zwoContent = convertWorkoutToTargetFormat(steps, workoutMode, 'ZWO');
     const cleanTitle = workoutTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     triggerFileDownload(zwoContent, `${cleanTitle}.zwo`, 'application/xml');
   };
 
   const handleCreateFolder = async (folderName) => {
+    console.log('[App Debug] handleCreateFolder invoked with folderName:', folderName);
     try {
       const newFolder = await createFolderApi(folderName);
       if (newFolder) {
@@ -277,6 +301,7 @@ export default function WorkoutBuilder() {
   };
 
   const handleCancelEdits = () => {
+    console.log('[App Debug] handleCancelEdits invoked');
     if (workoutId) {
       handleSelectWorkout(workoutId);
       showToast('Reverted edits back to saved state.');
@@ -286,6 +311,7 @@ export default function WorkoutBuilder() {
   };
 
   const handleCloseWorkout = () => {
+    console.log('[App Debug] handleCloseWorkout invoked');
     setWorkoutId(null);
     setMode('EMPTY');
   };
@@ -317,7 +343,10 @@ export default function WorkoutBuilder() {
               <input
                 type="text"
                 value={workoutTitle}
-                onChange={(e) => setWorkoutTitle(e.target.value)}
+                onChange={(e) => {
+                  console.log('[App Debug] workoutTitle input changed:', e.target.value);
+                  setWorkoutTitle(e.target.value);
+                }}
                 placeholder="Workout Title"
                 className="workout-title-input"
                 style={{ fontSize: '18px', padding: '4px 8px', fontWeight: 'bold' }}
@@ -326,8 +355,14 @@ export default function WorkoutBuilder() {
               <OptionsMenu
                 mode={mode}
                 onStartCreateNew={handleNewWorkout}
-                onOpenSelectModal={() => setIsEditModalOpen(true)}
-                onOpenCreateFolderModal={() => setIsFolderModalOpen(true)}
+                onOpenSelectModal={() => {
+                  console.log('[App Debug] OptionsMenu -> onOpenSelectModal');
+                  setIsEditModalOpen(true);
+                }}
+                onOpenCreateFolderModal={() => {
+                  console.log('[App Debug] OptionsMenu -> onOpenCreateFolderModal');
+                  setIsFolderModalOpen(true);
+                }}
                 onOpenSaveModal={handleOpenSaveModal}
                 onDuplicateWorkout={handleDuplicateWorkout}
                 onCopyWorkoutText={handleCopyWorkoutText}
@@ -376,8 +411,14 @@ export default function WorkoutBuilder() {
               <div>
                 <div 
                   className="steps-list-container" 
-                  onDragOver={(e) => e.preventDefault()} 
-                  onDrop={(e) => handleDrop(e, null, baseWorkout?.workout_doc?.steps?.length || 0)}
+                  onDragOver={(e) => {
+                    console.log('[App Debug] onDragOver steps container');
+                    e.preventDefault();
+                  }} 
+                  onDrop={(e) => {
+                    console.log('[App Debug] onDrop root steps container');
+                    handleDrop(e, null, baseWorkout?.workout_doc?.steps?.length || 0);
+                  }}
                 >
                   {baseWorkout?.workout_doc?.steps?.map((step, index) => (
                     <RenderStepRow
@@ -396,13 +437,22 @@ export default function WorkoutBuilder() {
                 </div>
 
                 <div className="root-add-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-                  <button className="btn-add-step" onClick={() => addStep('run', null)}>
+                  <button className="btn-add-step" onClick={() => {
+                    console.log('[App Debug] Add Run button clicked');
+                    addStep('run', null);
+                  }}>
                     + Add Run
                   </button>
-                  <button className="btn-add-step" onClick={() => addStep('recovery', null)}>
+                  <button className="btn-add-step" onClick={() => {
+                    console.log('[App Debug] Add Recovery button clicked');
+                    addStep('recovery', null);
+                  }}>
                     + Add Recovery
                   </button>
-                  <button className="btn-add-step" onClick={() => addStep('repeat', null)}>
+                  <button className="btn-add-step" onClick={() => {
+                    console.log('[App Debug] Add Repeat Block button clicked');
+                    addStep('repeat', null);
+                  }}>
                     + Add Repeat Block
                   </button>
                 </div>
@@ -437,7 +487,10 @@ export default function WorkoutBuilder() {
             )}
             <button
               type="button"
-              onClick={() => setIsRightPanelCollapsed((prev) => !prev)}
+              onClick={() => {
+                console.log('[App Debug] Toggle panel collapse button clicked');
+                setIsRightPanelCollapsed((prev) => !prev);
+              }}
               title={isRightPanelCollapsed ? 'Expand Panel' : 'Collapse Panel'}
               style={{
                 background: 'none',
@@ -481,7 +534,10 @@ export default function WorkoutBuilder() {
       {/* Modals */}
       {isFolderModalOpen && (
         <Modal_Folder_Create
-          onClose={() => setIsFolderModalOpen(false)}
+          onClose={() => {
+            console.log('[App Debug] Modal_Folder_Create onClose');
+            setIsFolderModalOpen(false);
+          }}
           onCreate={handleCreateFolder}
         />
       )}
@@ -495,7 +551,10 @@ export default function WorkoutBuilder() {
           workoutMode={workoutMode}
           presets={dynamicPresets}
           onSelectWorkout={handleSelectWorkout}
-          onClose={() => setIsEditModalOpen(false)}
+          onClose={() => {
+            console.log('[App Debug] Modal_Workout_Edit onClose');
+            setIsEditModalOpen(false);
+          }}
         />
       )}
 
@@ -505,7 +564,10 @@ export default function WorkoutBuilder() {
           folders={folders}
           selectedFolderId={selectedFolderId}
           onConfirmSave={handleSaveWorkout}
-          onClose={() => setIsSaveModalOpen(false)}
+          onClose={() => {
+            console.log('[App Debug] Modal_Workout_Save onClose');
+            setIsSaveModalOpen(false);
+          }}
         />
       )}
 
@@ -514,7 +576,10 @@ export default function WorkoutBuilder() {
           steps={steps}
           workoutMode={workoutMode}
           presets={dynamicPresets}
-          onClose={() => setIsZoomModalOpen(false)}
+          onClose={() => {
+            console.log('[App Debug] Modal_Workout_Zoom onClose');
+            setIsZoomModalOpen(false);
+          }}
         />
       )}
     </div>

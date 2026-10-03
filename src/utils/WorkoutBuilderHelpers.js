@@ -1,5 +1,5 @@
 //
-// WorkoutBUilderHelpers.js
+// WorkoutBuilderHelpers.js
 //
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
@@ -17,7 +17,10 @@ export const FALLBACK_THRESHOLD = 540;
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 const VAL_MY_PACES_URL = '/api/val-my-paces';
 
-export const DEFAULT_THRESHOLD = (paces) => paces?.threshold_pace || FALLBACK_THRESHOLD;
+export const DEFAULT_THRESHOLD = (paces) => {
+  console.log('[App Debug] DEFAULT_THRESHOLD evaluated');
+  return paces?.threshold_pace || FALLBACK_THRESHOLD;
+};
 
 // 
 // 
@@ -30,6 +33,7 @@ export const DEFAULT_THRESHOLD = (paces) => paces?.threshold_pace || FALLBACK_TH
 // 
 // --- API Functions ---
 export async function fetchFoldersApi() {
+  console.log('[App Debug] fetchFoldersApi called');
   const res = await fetch(`${VAL_WORKOUTBUILDER_URL}?action=get_folders`, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch folders');
   const data = await res.json();
@@ -37,6 +41,7 @@ export async function fetchFoldersApi() {
 }
 
 export async function fetchWorkoutsApi(folderId = null) {
+  console.log('[App Debug] fetchWorkoutsApi called with folderId:', folderId);
   const url = folderId 
     ? `${VAL_WORKOUTBUILDER_URL}?action=get_workouts&folder_id=${folderId}` 
     : `${VAL_WORKOUTBUILDER_URL}?action=get_workouts`;
@@ -68,6 +73,7 @@ export async function fetchWorkoutsApi(folderId = null) {
 }
 
 export async function createFolderApi(folderName) {
+  console.log('[App Debug] createFolderApi called with folderName:', folderName);
   const res = await fetch(VAL_WORKOUTBUILDER_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -87,6 +93,7 @@ export async function createFolderApi(folderName) {
 }
 
 export async function saveWorkoutApi(payload) {
+  console.log('[App Debug] saveWorkoutApi called with payload:', payload);
   const action = payload.id ? 'update_workout' : 'create_workout';
   const method = payload.id ? 'PUT' : 'POST';
   const res = await fetch(VAL_WORKOUTBUILDER_URL, {
@@ -102,6 +109,7 @@ export async function saveWorkoutApi(payload) {
 }
 
 export async function fetchMyPacesApi() {
+  console.log('[App Debug] fetchMyPacesApi called');
   const res = await fetch(VAL_MY_PACES_URL, { method: 'GET' });
   if (!res.ok) throw new Error('Failed to fetch paces from Intervals.icu');
   return await res.json();
@@ -119,63 +127,66 @@ export async function fetchMyPacesApi() {
 // --- Formatting & Parsing Helpers ---
 
 export const formatTime = (totalSeconds) => {
-    const sec = Math.max(0, Math.round(totalSeconds || 0));
-    const hrs = Math.floor(sec / 3600);
-    const mins = Math.floor((sec % 3600) / 60);
-    const secs = sec % 60;
-    if (hrs > 0) return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
-  
-  export const formatMMSS = (totalSeconds) => {
-    // sec/mi -> mm:ss  (ie, 495 -> 8:15)
-    const sec = Math.max(0, Math.round(totalSeconds || 0));
-    const mins = Math.floor(sec / 60);
-    const secs = sec % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
-  
-  export const parseMMSS = (str) => {
-    // mm:ss -> sec/mi (ie, 8:15 -> 495)
-    if (!str) return 0;
-    let cleanStr = String(str).trim().replace(/\/mi|\/km/g, '');
-    if (cleanStr.includes(':')) {
-      const parts = cleanStr.split(':');
-      if (parts.length === 3) {
-        return (parseInt(parts[0], 10) || 0) * 3600 + (parseInt(parts[1], 10) || 0) * 60 + (parseInt(parts[2], 10) || 0);
-      }
-      return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+  console.log('[App Debug] formatTime called with totalSeconds:', totalSeconds);
+  const sec = Math.max(0, Math.round(totalSeconds || 0));
+  const hrs = Math.floor(sec / 3600);
+  const mins = Math.floor((sec % 3600) / 60);
+  const secs = sec % 60;
+  if (hrs > 0) return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+
+export const formatMMSS = (totalSeconds) => {
+  console.log('[App Debug] formatMMSS called with totalSeconds:', totalSeconds);
+  // sec/mi -> mm:ss  (ie, 495 -> 8:15)
+  const sec = Math.max(0, Math.round(totalSeconds || 0));
+  const mins = Math.floor(sec / 60);
+  const secs = sec % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+
+export const parseMMSS = (str) => {
+  console.log('[App Debug] parseMMSS called with str:', str);
+  // mm:ss -> sec/mi (ie, 8:15 -> 495)
+  if (!str) return 0;
+  let cleanStr = String(str).trim().replace(/\/mi|\/km/g, '');
+  if (cleanStr.includes(':')) {
+    const parts = cleanStr.split(':');
+    if (parts.length === 3) {
+      return (parseInt(parts[0], 10) || 0) * 3600 + (parseInt(parts[1], 10) || 0) * 60 + (parseInt(parts[2], 10) || 0);
     }
-    const num = parseInt(cleanStr, 10);
-    if (isNaN(num)) return 0;
-    if (num < 100) return num * 60;
-    const mins = Math.floor(num / 100);
-    const secs = num % 100;
-    return mins * 60 + Math.min(secs, 59);
-  };
-  
-  export const convertToPaceSec = (val) => {
-    // Converts pace to sec/mi (495)
-    // (ie, 8:15 -> 495)
-    // (ie, 3.2512 - > 495)
-    // (ie, 495 -> 495)
-    // (ie w)
-    if (!val) return DEFAULT_THRESHOLD;
-    if (typeof val === 'string') {
-      return parseMMSS(val);
+    return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+  }
+  const num = parseInt(cleanStr, 10);
+  if (isNaN(num)) return 0;
+  if (num < 100) return num * 60;
+  const mins = Math.floor(num / 100);
+  const secs = num % 100;
+  return mins * 60 + Math.min(secs, 59);
+};
+
+export const convertToPaceSec = (val) => {
+  console.log('[App Debug] convertToPaceSec called with val:', val);
+  // Converts pace to sec/mi (495)
+  if (!val) return DEFAULT_THRESHOLD();
+  if (typeof val === 'string') {
+    return parseMMSS(val);
+  }
+  if (typeof val === 'number' && val > 0) {
+    // If value is small (< 15), treat as m/s speed from Intervals.icu
+    if (val < 15) {
+      return Math.round(1609.344 / val);
     }
-    if (typeof val === 'number' && val > 0) {
-      // If value is small (< 15), treat as m/s speed from Intervals.icu
-      if (val < 15) {
-        return Math.round(1609.344 / val);
-      }
-      // Otherwise treat as raw seconds
-      return Math.round(val);
-    }
-    return DEFAULT_THRESHOLD;
-  };
-  
-  export const formatDistance = (miles) => (miles || 0).toFixed(2) + ' mi';
+    // Otherwise treat as raw seconds
+    return Math.round(val);
+  }
+  return DEFAULT_THRESHOLD();
+};
+
+export const formatDistance = (miles) => {
+  console.log('[App Debug] formatDistance called with miles:', miles);
+  return (miles || 0).toFixed(2) + ' mi';
+};
 
 // 
 // 
@@ -188,72 +199,73 @@ export const formatTime = (totalSeconds) => {
 // 
 // - Data retrieval & Parsing Helpers ---
 
-  // Dynamically compute preset values from intervals.icu data
-  export function calculateDynamicPresets(paces, thresholdPaceSec, paceMethod) {
-    // If paces or preset_colors array doesn't exist, use fallback logic
-    if (!paces || !Array.isArray(paces.preset_colors)) {
+// Dynamically compute preset values from intervals.icu data
+export function calculateDynamicPresets(paces, thresholdPaceSec, paceMethod) {
+  console.log('[App Debug] calculateDynamicPresets called', { thresholdPaceSec, paceMethod });
+  // If paces or preset_colors array doesn't exist, use fallback logic
+  if (!paces || !Array.isArray(paces.preset_colors)) {
 
-      // Fallback zone config if PacesContext is not available
-      const DEFAULT_PACE_ZONE_NAMES  = [  "Zone_1", "Zone_2", "Zone_3", "Zone_4","Zone_5a","Zone_5b","Zone_5c", "Zone 6"];
-      const DEFAULT_PACE_ZONE_COLORS = [ "#b0b0b0","#88d8b0","#28a745","#ffc107","#fd7e14","#ff6b6b","#dc3545","#6f42c1"];
-      const DEFAULT_PACE_ZONES       = [        80,       92,     94.3,      100,    103.4,    111.5,    128.9,      169];
-      const DEFAULT_PACE_VAL_SEC     = [       619,      538,      525,      495,      479,      444,      330,      293];
-      const DEFAULT_PACE_STR         = ["10:19/mi","8:58/mi","8:45/mi","8:15/mi","7:59/mi","7:24/mi","6:24/mi","4:53/mi"];
+    // Fallback zone config if PacesContext is not available
+    const DEFAULT_PACE_ZONE_NAMES  = [  "Zone_1", "Zone_2", "Zone_3", "Zone_4","Zone_5a","Zone_5b","Zone_5c", "Zone 6"];
+    const DEFAULT_PACE_ZONE_COLORS = [ "#b0b0b0","#88d8b0","#28a745","#ffc107","#fd7e14","#ff6b6b","#dc3545","#6f42c1"];
+    const DEFAULT_PACE_ZONES       = [        80,        92,      94.3,       100,     103.4,     111.5,     128.9,       169];
+    const DEFAULT_PACE_VAL_SEC     = [       619,       538,       525,       495,       479,       444,       330,       293];
+    const DEFAULT_PACE_STR         = ["10:19/mi","8:58/mi","8:45/mi","8:15/mi","7:59/mi","7:24/mi","6:24/mi","4:53/mi"];
 
-      return DEFAULT_PACE_ZONE_NAMES.map((name, idx) => ({
-        label: name,
-        displayPace: formatMMSS(DEFAULT_PACE_VAL_SEC[idx]),
-        targetPaceSec: DEFAULT_PACE_VAL_SEC[idx],
-        color: DEFAULT_PACE_ZONE_COLORS[idx % DEFAULT_PACE_ZONE_COLORS.length],
-        colorLabel: '',
-      }));
+    return DEFAULT_PACE_ZONE_NAMES.map((name, idx) => ({
+      label: name,
+      displayPace: formatMMSS(DEFAULT_PACE_VAL_SEC[idx]),
+      targetPaceSec: DEFAULT_PACE_VAL_SEC[idx],
+      color: DEFAULT_PACE_ZONE_COLORS[idx % DEFAULT_PACE_ZONE_COLORS.length],
+      colorLabel: '',
+    }));
+  }
+
+  return paces.preset_colors.map((p) => {
+    // Extract properties directly from the preset_colors object
+    const label = p.zone_name || `Zone ${p.zone}`;
+    const color = p.color || '#cccccc';
+    const colorLabel = p.label || 'n/a';
+    
+    // Determine the base pace seconds (prefer pace_val_sec from JSON if present)
+    let paceSec = p.pace_val_sec;
+    if (!paceSec) {
+      if (p.pace_fast) {
+        paceSec = parseMMSS(p.pace_fast);
+      } else if (p.pace_value_num) {
+        paceSec = convertToPaceSec(p.pace_value_num);
+      } else {
+        paceSec = thresholdPaceSec;
+      }
     }
 
-    return paces.preset_colors.map((p) => {
-      // Extract properties directly from the preset_colors object
-      const label = p.zone_name || `Zone ${p.zone}`;
-      const color = p.color || '#cccccc';
-      const colorLabel = p.label || 'n/a';
-      
-      // Determine the base pace seconds (prefer pace_val_sec from JSON if present)
-      let paceSec = p.pace_val_sec;
-      if (!paceSec) {
-        if (p.pace_fast) {
-          paceSec = parseMMSS(p.pace_fast);
-        } else if (p.pace_value_num) {
-          paceSec = convertToPaceSec(p.pace_value_num);
-        } else {
-          paceSec = thresholdPaceSec;
-        }
-      }
+    // Format display pace based on the requested paceMethod
+    let displayPace = formatMMSS(paceSec);
+    
+    if (paceMethod === 'Threshold %') {
+      const pct = p.pace_zone_pct || Math.round((thresholdPaceSec / paceSec) * 100);
+      displayPace = `${pct}%`;
+    } else if (paceMethod?.includes('Range') && p.pace_slow && p.pace_fast) {
+      displayPace = `${p.pace_slow}-${p.pace_fast}`;
+    } else if (paceMethod?.includes('Range')) {
+      const lowPace = Math.round(paceSec * 0.97);
+      const highPace = Math.round(paceSec * 1.03);
+      displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
+    }
 
-      // Format display pace based on the requested paceMethod
-      let displayPace = formatMMSS(paceSec);
-      
-      if (paceMethod === 'Threshold %') {
-        const pct = p.pace_zone_pct || Math.round((thresholdPaceSec / paceSec) * 100);
-        displayPace = `${pct}%`;
-      } else if (paceMethod?.includes('Range') && p.pace_slow && p.pace_fast) {
-        displayPace = `${p.pace_slow}-${p.pace_fast}`;
-      } else if (paceMethod?.includes('Range')) {
-        const lowPace = Math.round(paceSec * 0.97);
-        const highPace = Math.round(paceSec * 1.03);
-        displayPace = `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
-      }
-
-      return {
-        zone: p.zone_name,
-        label,
-        displayPace,
-        targetPaceSec: paceSec,
-        color,
-        colorLabel,
-        paceSlow: p.pace_slow,
-        paceFast: p.pace_fast,
-        pct: p.pace_zone_pct
-      };
-    });
-  }
+    return {
+      zone: p.zone_name,
+      label,
+      displayPace,
+      targetPaceSec: paceSec,
+      color,
+      colorLabel,
+      paceSlow: p.pace_slow,
+      paceFast: p.pace_fast,
+      pct: p.pace_zone_pct
+    };
+  });
+}
 // 
 // 
 // 
@@ -265,196 +277,206 @@ export const formatTime = (totalSeconds) => {
 // 
 // --- Step Creation & Mapping Helpers ---
 
-  export const createStep = (type, mode = 'time') => {
-    const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-    const durationSec = mode === 'time' ? 600 : 0;
-    const distanceMiles = mode === 'distance' ? 3.0 : 0;
+export const createStep = (type, mode = 'time') => {
+  console.log('[App Debug] createStep called with type:', type, 'mode:', mode);
+  const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+  const durationSec = mode === 'time' ? 600 : 0;
+  const distanceMiles = mode === 'distance' ? 3.0 : 0;
 
-    const metric = mode === 'time' ? { duration: durationSec } : { distance: distanceMiles };
+  const metric = mode === 'time' ? { duration: durationSec } : { distance: distanceMiles };
 
-    switch (type) {
-      case 'warmup':
-        return {
-          id,
-          warmup: true,
-          ...metric,
-          intensity: 'warmup',
-          pace: { units: 'secs', value: 621 },
-        };
-
-      case 'run':
-        return {
-          id,
-          ...metric,
-          intensity: 'active',
-          pace: { units: 'secs', value: DEFAULT_THRESHOLD },
-        };
-
-      case 'recovery':
-        return {
-          id,
-          ...metric,
-          intensity: 'recovery',
-          pace: { units: 'secs', value: 622 },
-        };
-
-      case 'cooldown':
-        return {
-          id,
-          cooldown: true,
-          ...metric,
-          intensity: 'active',
-          pace: { units: 'secs', value: 623 },
-        };
-
-      case 'repeat':
-        return {
-          id,
-          type: 'repeat',
-          iterations: 3,
-          steps: [
-            {
-              id: `${id}-1`,
-              ...(mode === 'time' ? { duration: durationSec / 3 } : { distance: distanceMiles / 3 }),
-              pace: { units: 'secs', value: 445 },
-            },
-            {
-              id: `${id}-2`,
-              ...(mode === 'time' ? { duration: durationSec / 3 } : { distance: distanceMiles / 3 }),
-              pace: { units: 'secs', value: 540 },
-            },
-          ],
-          reps: 3,
-        };
-
-      default:
-        return {
-          id,
-          type: 'run',
-          ...metric,
-          intensity: 'active',
-          pace: { units: 'secs', value: DEFAULT_THRESHOLD },
-        };
-    }
-  };
-
-  export const createDefaultSteps = (mode = 'time') => [
-      createStep('warmup', mode),
-      createStep('repeat', mode),
-      createStep('cooldown', mode),
-  ];
-
-
-  export const addIdsToBaseWorkout = (baseWorkout) => {
-    if (!baseWorkout?.workout_doc?.steps) return baseWorkout;
-  
-    const timestamp = new Date().toISOString().replace(/[-T:]/g, '').slice(0, 14);
-  
-    const generateStepId = (idx) => 
-      `step-loaded-${timestamp}-${idx}-${Math.random().toString(36).substring(2, 6)}`;
-  
-    const processSteps = (steps) => {
-      return steps.map((step, idx) => {
-        const updatedStep = {
-          ...step,
-          id: step.id || generateStepId(idx)
-        };
-  
-        // Recursively add IDs to nested child steps (e.g. inside repeaters)
-        if (Array.isArray(updatedStep.steps)) {
-          updatedStep.steps = processSteps(updatedStep.steps);
-        }
-  
-        return updatedStep;
-      });
-    };
-  
-    return {
-      ...baseWorkout,
-      workout_doc: {
-        ...baseWorkout.workout_doc,
-        steps: processSteps(baseWorkout.workout_doc.steps)
-      }
-    };
-  };
-    
-  export const removeIdsFromBaseWorkout = (baseWorkout) => {
-    if (!baseWorkout?.workout_doc?.steps) return baseWorkout;
-  
-    const stripStepId = (steps) => {
-      return steps.map((step) => {
-        // Destructure to separate 'id' from the rest of the step properties
-        const { id, steps: childSteps, ...cleanStep } = step;
-  
-        // Recursively strip IDs from nested child steps if present
-        if (Array.isArray(childSteps)) {
-          cleanStep.steps = stripStepId(childSteps);
-        }
-  
-        return cleanStep;
-      });
-    };
-  
-    return {
-      ...baseWorkout,
-      workout_doc: {
-        ...baseWorkout.workout_doc,
-        steps: stripStepId(baseWorkout.workout_doc.steps)
-      }
-    };
-  };
-  
-  export const mapIcuDocToSteps = (workout, mode = 'time') => {
-    const stepsSource = workout?.workout_doc?.steps || workout?.steps;
-    if (!Array.isArray(stepsSource) || stepsSource.length === 0) {
-      return createDefaultSteps('time');
-    }
-  
-    const mapStep = (s, idx) => {
-      // step.id = date(YYYYMMSS)-idx-randomstring
-      const id = `step-loaded-${new Date().toISOString().replace(/[-T:]/g, '').slice(0, 14)}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
-
-      if (s.reps && Array.isArray(s.steps)) {
-        return {
-          id,
-          type: 'repeat',
-          iterations: s.reps,
-          steps: s.steps.map(mapStep),
-        };
-      }
-  
-      let type = 'run';
-      if (s.warmup || s.intensity === 'warmup') type = 'warmup';
-      else if (s.cooldown || s.intensity === 'cooldown') type = 'cooldown';
-      else if (s.intensity === 'rest') type = 'recovery';
-  
-      let targetPaceSec = DEFAULT_THRESHOLD;
-      if (s.pace?.value) targetPaceSec = convertToPaceSec(s.pace.value);
-      else if (s.pace?.start) targetPaceSec = convertToPaceSec(s.pace.start);
-  
-      const durationSec = s.duration || s.durationSec || 300;
-      const distanceMiles = s.distance ? s.distance / 1609.344 : (durationSec / targetPaceSec);
-  
+  switch (type) {
+    case 'warmup':
       return {
         id,
-        type,
-        durationSec,
-        distanceMiles,
-        targetPaceSec,
+        warmup: true,
+        ...metric,
+        intensity: 'warmup',
+        pace: { units: 'secs', value: 621 },
       };
+
+    case 'run':
+      return {
+        id,
+        ...metric,
+        intensity: 'active',
+        pace: { units: 'secs', value: DEFAULT_THRESHOLD() },
+      };
+
+    case 'recovery':
+      return {
+        id,
+        ...metric,
+        intensity: 'recovery',
+        pace: { units: 'secs', value: 622 },
+      };
+
+    case 'cooldown':
+      return {
+        id,
+        cooldown: true,
+        ...metric,
+        intensity: 'active',
+        pace: { units: 'secs', value: 623 },
+      };
+
+    case 'repeat':
+      return {
+        id,
+        type: 'repeat',
+        iterations: 3,
+        steps: [
+          {
+            id: `${id}-1`,
+            ...(mode === 'time' ? { duration: durationSec / 3 } : { distance: distanceMiles / 3 }),
+            pace: { units: 'secs', value: 445 },
+          },
+          {
+            id: `${id}-2`,
+            ...(mode === 'time' ? { duration: durationSec / 3 } : { distance: distanceMiles / 3 }),
+            pace: { units: 'secs', value: 540 },
+          },
+        ],
+        reps: 3,
+      };
+
+    default:
+      return {
+        id,
+        type: 'run',
+        ...metric,
+        intensity: 'active',
+        pace: { units: 'secs', value: DEFAULT_THRESHOLD() },
+      };
+  }
+};
+
+export const createDefaultSteps = (mode = 'time') => {
+  console.log('[App Debug] createDefaultSteps called with mode:', mode);
+  return [
+    createStep('warmup', mode),
+    createStep('repeat', mode),
+    createStep('cooldown', mode),
+  ];
+};
+
+export const addIdsToBaseWorkout = (baseWorkout) => {
+  console.log('[App Debug] addIdsToBaseWorkout called');
+  if (!baseWorkout?.workout_doc?.steps) return baseWorkout;
+
+  const timestamp = new Date().toISOString().replace(/[-T:]/g, '').slice(0, 14);
+
+  const generateStepId = (idx) => 
+    `step-loaded-${timestamp}-${idx}-${Math.random().toString(36).substring(2, 6)}`;
+
+  const processSteps = (steps) => {
+    console.log('[App Debug] addIdsToBaseWorkout -> processSteps executing');
+    return steps.map((step, idx) => {
+      const updatedStep = {
+        ...step,
+        id: step.id || generateStepId(idx)
+      };
+
+      // Recursively add IDs to nested child steps (e.g. inside repeaters)
+      if (Array.isArray(updatedStep.steps)) {
+        updatedStep.steps = processSteps(updatedStep.steps);
+      }
+
+      return updatedStep;
+    });
+  };
+
+  return {
+    ...baseWorkout,
+    workout_doc: {
+      ...baseWorkout.workout_doc,
+      steps: processSteps(baseWorkout.workout_doc.steps)
+    }
+  };
+};
+
+export const removeIdsFromBaseWorkout = (baseWorkout) => {
+  console.log('[App Debug] removeIdsFromBaseWorkout called');
+  if (!baseWorkout?.workout_doc?.steps) return baseWorkout;
+
+  const stripStepId = (steps) => {
+    console.log('[App Debug] removeIdsFromBaseWorkout -> stripStepId executing');
+    return steps.map((step) => {
+      // Destructure to separate 'id' from the rest of the step properties
+      const { id, steps: childSteps, ...cleanStep } = step;
+
+      // Recursively strip IDs from nested child steps if present
+      if (Array.isArray(childSteps)) {
+        cleanStep.steps = stripStepId(childSteps);
+      }
+
+      return cleanStep;
+    });
+  };
+
+  return {
+    ...baseWorkout,
+    workout_doc: {
+      ...baseWorkout.workout_doc,
+      steps: stripStepId(baseWorkout.workout_doc.steps)
+    }
+  };
+};
+
+export const mapIcuDocToSteps = (workout, mode = 'time') => {
+  console.log('[App Debug] mapIcuDocToSteps called with mode:', mode);
+  const stepsSource = workout?.workout_doc?.steps || workout?.steps;
+  if (!Array.isArray(stepsSource) || stepsSource.length === 0) {
+    return createDefaultSteps('time');
+  }
+
+  const mapStep = (s, idx) => {
+    console.log('[App Debug] mapIcuDocToSteps -> mapStep executing at index:', idx);
+    // step.id = date(YYYYMMSS)-idx-randomstring
+    const id = `step-loaded-${new Date().toISOString().replace(/[-T:]/g, '').slice(0, 14)}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
+
+    if (s.reps && Array.isArray(s.steps)) {
+      return {
+        id,
+        type: 'repeat',
+        iterations: s.reps,
+        steps: s.steps.map(mapStep),
+      };
+    }
+
+    let type = 'run';
+    if (s.warmup || s.intensity === 'warmup') type = 'warmup';
+    else if (s.cooldown || s.intensity === 'cooldown') type = 'cooldown';
+    else if (s.intensity === 'rest') type = 'recovery';
+
+    let targetPaceSec = DEFAULT_THRESHOLD();
+    if (s.pace?.value) targetPaceSec = convertToPaceSec(s.pace.value);
+    else if (s.pace?.start) targetPaceSec = convertToPaceSec(s.pace.start);
+
+    const durationSec = s.duration || s.durationSec || 300;
+    const distanceMiles = s.distance ? s.distance / 1609.344 : (durationSec / targetPaceSec);
+
+    return {
+      id,
+      type,
+      durationSec,
+      distanceMiles,
+      targetPaceSec,
     };
-  
-    return stepsSource.map(mapStep);
   };
-  
-  export const downloadFile = (content, filename, mimeType) => {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createElementObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+
+  return stepsSource.map(mapStep);
+};
+
+export const downloadFile = (content, filename, mimeType) => {
+  console.log('[App Debug] downloadFile called with filename:', filename, 'mimeType:', mimeType);
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createElementObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};

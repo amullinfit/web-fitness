@@ -23,29 +23,17 @@ import {
   getZoneDescriptiveText
 } from '../utils/WorkoutConverter.js';
 
-const { fastSec, slowSec, formattedText } = extractStepPaceRange(step.pace, pacesContext);
-
-// Tooltip & Text Box Label
-const label = formattedText; // e.g., "70%-85% Threshold (10:43 - 8:49/mi)"
-
 const SLOW_BUFFER_MINUTES = 1;
 const FAST_BUFFER_MINUTES = 1;
 
 // Helper to format total duration seconds into "#m#s" string
 const formatDurationMinsSecs = (totalSec) => {
+  console.log('[App Debug] formatDurationMinsSecs called with totalSec:', totalSec);
   const mins = Math.floor(totalSec / 60);
   const secs = Math.floor(totalSec % 60);
   return `${mins}:${String(secs).padStart(2, '0')}`;
-};//
-//
-//
-// ------------------------------------------------------------------------------------------------
-// ------------------------------------------------------------------------------------------------
-// ------------------------------------------------------------------------------------------------
-// ------------------------------------------------------------------------------------------------
-// ------------------------------------------------------------------------------------------------
-//
-//
+};
+
 //
 // START OF THE WORKOUTCHART CODE
 //
@@ -61,10 +49,11 @@ export default function WorkoutChart({
   showHoverDetails = true,
   showBarPace = false
 }) {
+  console.log('[App Debug] WorkoutChart rendered for workout:', workout?.name || workout?.title || 'Workout');
 
   const clipId = useId();
 
-  // 2. Consume Paces Context
+  // Consume Paces Context
   const { paces, loading: pacesLoading } = usePaces();
 
   const [executedOnTop, setExecutedOnTop] = useState(true);
@@ -85,7 +74,6 @@ export default function WorkoutChart({
   const workoutTitleStr = workout?.name || workout?.title || 'Workout';
 
   const plannedList = extractPlannedSteps(workout);
-
   const executedList = extractExecutedSteps(workout);
 
   if (!plannedList.length && !executedList.length) return null;
@@ -109,8 +97,7 @@ export default function WorkoutChart({
       if (parsed.fastSec) stepPacesSec.push(parsed.fastSec);
       if (parsed.slowSec) stepPacesSec.push(parsed.slowSec);
     }
-    });
-
+  });
 
   let yTicks = [];
   let yFastestSec = 0;
@@ -154,6 +141,7 @@ export default function WorkoutChart({
   const timeTicks = rawTimeTicks.filter((_, idx) => idx % stepInterval === 0 || idx === rawTimeTicks.length - 1);
 
   const computePaceToHeightPct = (paceSec) => {
+    console.log('[App Debug] computePaceToHeightPct called with paceSec:', paceSec);
     if (!paceSec || ySlowestSec <= yFastestSec) return 50;
     const pct = ((ySlowestSec - paceSec) / (ySlowestSec - yFastestSec)) * 100;
     return Math.min(Math.max(pct, 0), 100);
@@ -166,9 +154,18 @@ export default function WorkoutChart({
     <div 
       className="workout-chart-container"
       style={{ position: 'relative' }}
-      onMouseEnter={() => setIsChartHovered(true)}
-      onMouseLeave={() => setIsChartHovered(false)}
-      onTouchStart={() => setIsChartHovered(true)}
+      onMouseEnter={() => {
+        console.log('[App Debug] onMouseEnter chart container');
+        setIsChartHovered(true);
+      }}
+      onMouseLeave={() => {
+        console.log('[App Debug] onMouseLeave chart container');
+        setIsChartHovered(false);
+      }}
+      onTouchStart={() => {
+        console.log('[App Debug] onTouchStart chart container');
+        setIsChartHovered(true);
+      }}
     >
 
       {/* ------------------------------------------------------------------------------------------------ */}
@@ -202,7 +199,10 @@ export default function WorkoutChart({
                 <button
                   type="button"
                   className="workout-layer-swap-btn"
-                  onClick={() => setExecutedOnTop((prev) => !prev)}
+                  onClick={() => {
+                    console.log('[App Debug] Layer swap button clicked, previous executedOnTop:', executedOnTop);
+                    setExecutedOnTop((prev) => !prev);
+                  }}
                   title={executedOnTop ? "Executed is in front. Click to bring Planned to front." : "Planned is in front. Click to bring Executed to front."}
                   style={{
                     background: 'transparent',
@@ -237,7 +237,6 @@ export default function WorkoutChart({
       {/* MAIN CHART AREA */}
       {/* ------------------------------------------------------------------------------------------------ */}
 
-
       <div className="workout-chart-wrapper">
 
         {/* -------------------------------------------------------------------------------------- */}
@@ -265,7 +264,6 @@ export default function WorkoutChart({
             {/* -------------------------------------------------------------------------------------- */}
             {/* PLANNED WORKOUT PRESENTATION */}
             {/* -------------------------------------------------------------------------------------- */}
-
 
             {plannedList.length > 0 && (
               <div 
@@ -360,7 +358,6 @@ export default function WorkoutChart({
             {/* EXECUTED WORKOUT PRESENTATION */}
             {/* -------------------------------------------------------------------------------------- */}
 
-
             {executedList.length > 0 && (
               <div 
                 className="workout-chart-bars track-executed" 
@@ -412,11 +409,11 @@ export default function WorkoutChart({
             )}
           </div>
 
-            {/* -------------------------------------------------------------------------------------- */}
-            {/* X-AXIS LABELS */}
-            {/* -------------------------------------------------------------------------------------- */}
+          {/* -------------------------------------------------------------------------------------- */}
+          {/* X-AXIS LABELS */}
+          {/* -------------------------------------------------------------------------------------- */}
 
-            <div className="workout-chart-xaxis">
+          <div className="workout-chart-xaxis">
             {isMinimalXAxis ? (
               <>
                 <span>0m</span>

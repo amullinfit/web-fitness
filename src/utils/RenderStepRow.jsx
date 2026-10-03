@@ -17,12 +17,14 @@ const METERS_PER_MILE = 1609.344;
 
 // Helper function to guarantee strictly 2 decimal places (#.00)
 const formatDistanceFixed = (miles) => {
+  console.log('[App Debug] formatDistanceFixed called with miles:', miles);
   const val = Number(miles) || 0;
   return `${val.toFixed(2)} mi`;
 };
 
 // Helper to reliably locate a zone in zoneList regardless of structure
 const findZoneItem = (zoneList, zoneIdentifier) => {
+  console.log('[App Debug] findZoneItem called with zoneIdentifier:', zoneIdentifier);
   if (zoneIdentifier === undefined || zoneIdentifier === null || !Array.isArray(zoneList)) return null;
   const targetStr = String(zoneIdentifier).trim().toLowerCase();
 
@@ -43,6 +45,7 @@ const findZoneItem = (zoneList, zoneIdentifier) => {
 
 // Helper to resolve pace in seconds from a zone match
 const getZoneTargetPaceSec = (matchedZone) => {
+  console.log('[App Debug] getZoneTargetPaceSec called with matchedZone:', matchedZone);
   if (!matchedZone) return 0;
   return (
     matchedZone.pace_val_sec ??
@@ -55,6 +58,7 @@ const getZoneTargetPaceSec = (matchedZone) => {
 
 // Helper to calculate representative pace (in sec/mi) from step pace object
 const getStepPaceInSeconds = (stepPace, thresholdSecPerMile = 0, zoneList = []) => {
+  console.log('[App Debug] getStepPaceInSeconds called with stepPace:', stepPace, 'thresholdSecPerMile:', thresholdSecPerMile);
   if (!stepPace) return 0;
 
   if (typeof stepPace === 'object') {
@@ -93,6 +97,7 @@ const getStepPaceInSeconds = (stepPace, thresholdSecPerMile = 0, zoneList = []) 
 
 // Helper to recursively calculate total duration (seconds) and distance (miles) for any step or block
 const calculateStepTotals = (stepItem, thresholdSecPerMile = 0, zoneList = []) => {
+  console.log('[App Debug] calculateStepTotals called with stepItem ID:', stepItem?.id, 'thresholdSecPerMile:', thresholdSecPerMile);
   if (!stepItem) return { totalSec: 0, totalMiles: 0 };
 
   const isRepeatBlock = stepItem.type === 'repeat' || Boolean(stepItem.reps) || Array.isArray(stepItem.steps);
@@ -150,6 +155,7 @@ export default function RenderStepRow({
   onDragStart,
   onDrop
 }) {
+  console.log('[App Debug] RenderStepRow called for step ID:', step?.id, 'index:', index, 'parentId:', parentId);
   if (!step) return null;
 
   // Save threshold pace as sec/mile (e.g. 450)
@@ -168,11 +174,13 @@ export default function RenderStepRow({
   );
 
   const setStepMode = (newMode) => {
+    console.log('[App Debug] setStepMode called with newMode:', newMode, 'stepId:', step.id);
     onUpdate(step.id, 'stepMode', newMode);
   };
 
   // Convert step values appropriately when pace method changes
   const setPaceMethod = (newPaceMethod) => {
+    console.log('[App Debug] setPaceMethod called with newPaceMethod:', newPaceMethod, 'stepId:', step.id);
     const updatedPaceObj = convertStepPaceTarget(
       step.pace,
       newPaceMethod,
@@ -212,6 +220,7 @@ export default function RenderStepRow({
               max="99"
               value={iterations}
               onChange={(e) => {
+                console.log('[App Debug] repeat reps onChange called with value:', e.target.value);
                 const val = parseInt(e.target.value, 10) || 1;
                 onUpdate(step.id, 'reps', val);
                 onUpdate(step.id, 'iterations', val);
@@ -237,7 +246,10 @@ export default function RenderStepRow({
             Total: {formatTime(repeatTotals.totalSec)} ({formatDistanceFixed(repeatTotals.totalMiles)})
           </div>
 
-          <button onClick={() => onRemove(step.id)} className="btn-remove">✕</button>
+          <button onClick={() => {
+            console.log('[App Debug] onRemove clicked for stepId:', step.id);
+            onRemove(step.id);
+          }} className="btn-remove">✕</button>
         </div>
 
         <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop && onDrop(e, step.id, childSteps.length)}>
@@ -258,10 +270,16 @@ export default function RenderStepRow({
         </div>
 
         <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-          <button onClick={() => onAddChild('run', step.id)} className="btn-add-step" style={{ fontSize: '12px' }}>
+          <button onClick={() => {
+            console.log('[App Debug] onAddChild ("run") clicked for parentId:', step.id);
+            onAddChild('run', step.id);
+          }} className="btn-add-step" style={{ fontSize: '12px' }}>
             + Add Run
           </button>
-          <button onClick={() => onAddChild('recovery', step.id)} className="btn-add-step" style={{ fontSize: '12px' }}>
+          <button onClick={() => {
+            console.log('[App Debug] onAddChild ("recovery") clicked for parentId:', step.id);
+            onAddChild('recovery', step.id);
+          }} className="btn-add-step" style={{ fontSize: '12px' }}>
             + Add Recovery
           </button>
         </div>
@@ -276,6 +294,7 @@ export default function RenderStepRow({
   const distanceMiles = step.distanceMiles ?? (targetPaceSec > 0 ? durationSec / targetPaceSec : 0);
 
   const handleDurationChange = (newSec) => {
+    console.log('[App Debug] handleDurationChange called with newSec:', newSec, 'stepId:', step.id);
     onUpdate(step.id, 'duration', newSec);
     onUpdate(step.id, 'durationSec', newSec);
   };
@@ -285,6 +304,7 @@ export default function RenderStepRow({
 
   // Render pace controls based on Method
   const renderPaceInputControls = () => {
+    console.log('[App Debug] renderPaceInputControls called for stepId:', step.id, 'paceMethod:', paceMethod);
     const isRange = paceMethod.includes('Range');
 
     // 1. Pace or Pace Range
@@ -296,7 +316,10 @@ export default function RenderStepRow({
             Pace:{' '}
             <MMSSInput 
               valueSec={valSec} 
-              onChange={(newSec) => onUpdate(step.id, 'pace', { units: 'secs', value: newSec })} 
+              onChange={(newSec) => {
+                console.log('[App Debug] Pace input MMSS onChange called with newSec:', newSec);
+                onUpdate(step.id, 'pace', { units: 'secs', value: newSec });
+              }} 
             />
           </label>
         );
@@ -315,14 +338,20 @@ export default function RenderStepRow({
             Fast:{' '}
             <MMSSInput 
               valueSec={fastSec} 
-              onChange={(newSec) => onUpdate(step.id, 'pace', { ...step.pace, units: 'secs', start: newSec, end: slowSec })} 
+              onChange={(newSec) => {
+                console.log('[App Debug] Fast Pace MMSS onChange called with newSec:', newSec);
+                onUpdate(step.id, 'pace', { ...step.pace, units: 'secs', start: newSec, end: slowSec });
+              }} 
             />
           </label>
           <label className="input-label">
             Slow:{' '}
             <MMSSInput 
               valueSec={slowSec} 
-              onChange={(newSec) => onUpdate(step.id, 'pace', { ...step.pace, units: 'secs', start: fastSec, end: newSec })} 
+              onChange={(newSec) => {
+                console.log('[App Debug] Slow Pace MMSS onChange called with newSec:', newSec);
+                onUpdate(step.id, 'pace', { ...step.pace, units: 'secs', start: fastSec, end: newSec });
+              }} 
             />
           </label>
         </div>
@@ -343,7 +372,10 @@ export default function RenderStepRow({
                 min="50"
                 max="200"
                 value={valPct}
-                onChange={(e) => onUpdate(step.id, 'pace', { units: '%pace', value: parseFloat(e.target.value) || 0 })}
+                onChange={(e) => {
+                  console.log('[App Debug] Pace % onChange called with value:', e.target.value);
+                  onUpdate(step.id, 'pace', { units: '%pace', value: parseFloat(e.target.value) || 0 });
+                }}
                 className="time-pace-input"
                 style={{ width: '50px', padding: '2px 4px' }}
               />
@@ -373,7 +405,10 @@ export default function RenderStepRow({
               min="50"
               max="200"
               value={slowPct}
-              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, units: '%pace', start: parseFloat(e.target.value) || 0, end: fastPct })}
+              onChange={(e) => {
+                console.log('[App Debug] Start (Slow) % onChange called with value:', e.target.value);
+                onUpdate(step.id, 'pace', { ...step.pace, units: '%pace', start: parseFloat(e.target.value) || 0, end: fastPct });
+              }}
               className="time-pace-input"
               style={{ width: '48px', padding: '2px 4px' }}
             />
@@ -386,7 +421,10 @@ export default function RenderStepRow({
               min="50"
               max="200"
               value={fastPct}
-              onChange={(e) => onUpdate(step.id, 'pace', { ...step.pace, units: '%pace', start: slowPct, end: parseFloat(e.target.value) || 0 })}
+              onChange={(e) => {
+                console.log('[App Debug] End (Fast) % onChange called with value:', e.target.value);
+                onUpdate(step.id, 'pace', { ...step.pace, units: '%pace', start: slowPct, end: parseFloat(e.target.value) || 0 });
+              }}
               className="time-pace-input"
               style={{ width: '48px', padding: '2px 4px' }}
             />
@@ -400,6 +438,7 @@ export default function RenderStepRow({
     // 3. Zone or Zone Range 
     if (paceMethod === 'Zone' || paceMethod === 'Zone Range') {
       const renderZoneOption = (z) => {
+        console.log('[App Debug] renderZoneOption called for zone:', z?.zone || z?.id);
         const zoneKey = String(z.zone ?? z.id ?? z.preset_colors?.id ?? z.zone_name ?? z.name ?? '');
         const zoneName = z.zone_name ?? z.name ?? z.preset_colors?.zone_name ?? z.label ?? `Zone ${zoneKey}`;
         const zoneColor = z.color ?? z.preset_colors?.color ?? '#fff';
@@ -433,6 +472,7 @@ export default function RenderStepRow({
                 value={currentZoneKey}
                 onChange={(e) => {
                   const selectedVal = e.target.value;
+                  console.log('[App Debug] Zone select onChange called with value:', selectedVal);
                   onUpdate(step.id, 'pace', { units: 'pace_zone', value: selectedVal });
                 }}
                 className="pace-method-select"
@@ -472,6 +512,7 @@ export default function RenderStepRow({
               value={startZoneKey}
               onChange={(e) => {
                 const selectedVal = e.target.value;
+                console.log('[App Debug] Fast Zone select onChange called with value:', selectedVal);
                 onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', start: selectedVal });
               }}
               className="pace-method-select"
@@ -485,6 +526,7 @@ export default function RenderStepRow({
               value={endZoneKey}
               onChange={(e) => {
                 const selectedVal = e.target.value;
+                console.log('[App Debug] Slow Zone select onChange called with value:', selectedVal);
                 onUpdate(step.id, 'pace', { ...step.pace, units: 'pace_zone', end: selectedVal });
               }}
               className="pace-method-select"
@@ -502,6 +544,7 @@ export default function RenderStepRow({
 
   // Inline helper: Step inputs row
   const renderStepInputs = () => {
+    console.log('[App Debug] renderStepInputs called for stepId:', step.id);
     return (
       <div className="step-row-inputs" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
         <span className="drag-handle">⣿</span>
@@ -520,7 +563,10 @@ export default function RenderStepRow({
               step="0.01"
               min="0"
               value={Number(distanceMiles).toFixed(2)}
-              onChange={(e) => onUpdate(step.id, 'distanceMiles', parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                console.log('[App Debug] distanceMiles onChange called with value:', e.target.value);
+                onUpdate(step.id, 'distanceMiles', parseFloat(e.target.value) || 0);
+              }}
               className="time-pace-input"
               style={{ width: '68px', padding: '2px 4px' }}
             />
@@ -537,17 +583,22 @@ export default function RenderStepRow({
             : `Time: ${formatTime(calculatedTimeSec)}`}
         </span>
 
-        <button onClick={() => onRemove(step.id)} className="btn-remove">✕</button>
+        <button onClick={() => {
+          console.log('[App Debug] onRemove clicked for stepId:', step.id);
+          onRemove(step.id);
+        }} className="btn-remove">✕</button>
       </div>
     );
   };
 
   // Inline helper: Step preset buttons
   const renderStepPresets = () => {
+    console.log('[App Debug] renderStepPresets called for stepId:', step.id);
     const presetList = dynamicPresets || [];
     if (presetList.length === 0) return null;
 
     const handleSelectPace = (newSec) => {
+      console.log('[App Debug] handleSelectPace called with newSec:', newSec, 'stepId:', step.id);
       const isRange = paceMethod.includes('Range');
 
       if (paceMethod === 'Pace' || paceMethod === 'Pace Range') {
@@ -581,6 +632,7 @@ export default function RenderStepRow({
     const row2 = presetList.slice(4);
 
     const renderButton = (preset) => {
+      console.log('[App Debug] renderButton called for preset:', preset?.label);
       const isSelected = Math.abs(targetPaceSec - preset.targetPaceSec) < 3;
       return (
         <button
@@ -628,6 +680,7 @@ export default function RenderStepRow({
 
   // Inline helper: Mode and Pace Method selector bar
   const renderControlBar = () => {
+    console.log('[App Debug] renderControlBar called for stepId:', step.id);
     return (
       <div className="step-controls-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '4px' }}>
         <div className="mode-toggle-group" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
