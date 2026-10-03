@@ -281,13 +281,13 @@ export default function WorkoutChart({
 
                   // Extract pace details using extractStepPaceRange
                   console.log('[App Debug WorkoutChart] -----------------------------------------');
-                  console.log('[App Debug WorkoutChart] ');
-                  console.log('[App Debug WorkoutChart] ');
-                  console.log('[App Debug WorkoutChart] step  : ', step);
-                  console.log('[App Debug WorkoutChart] thresh: ', thresholdSecPerMile);
-                  console.log('[App Debug WorkoutChart] paces : ', paces);
+                  console.log('[App Debug WorkoutChart Plan] ');
+                  console.log('[App Debug WorkoutChart Plan] ');
+                  console.log('[App Debug WorkoutChart Plan] step  : ', step);
+                  console.log('[App Debug WorkoutChart Plan] thresh: ', thresholdSecPerMile);
+                  console.log('[App Debug WorkoutChart Plan] paces : ', paces);
                   const range = extractStepPaceRange(step.pace, paces);
-                  console.log('[App Debug WorkoutChart] range : ', range);
+                  console.log('[App Debug WorkoutChart Plan] range : ', range);
 
 
                   // zoneDetails (name and color) are derived from the fast pace
@@ -298,7 +298,7 @@ export default function WorkoutChart({
 
                   // Get descriptive text for zone or fallback to extracted/formatted range strings
                   const descriptivePaceStr = getZoneDescriptiveText(step, paces);
-                  console.log('[App Debug WorkoutChart] pacestr: ', descriptivePaceStr);
+                  console.log('[App Debug WorkoutChart Plan] pacestr: ', descriptivePaceStr);
 
                   const paceDetails = descriptivePaceStr || (
                     range.fastPaceStr === range.slowPaceStr 
@@ -307,6 +307,7 @@ export default function WorkoutChart({
                   );
 
                   const tooltipText = `${durationFormatted} @ ${paceDetails}`;
+                  console.log('[App Debug WorkoutChart Plan] tool: ', descriptivePaceStr);
 
                   return (
                     <div
@@ -380,12 +381,18 @@ export default function WorkoutChart({
                     const intensityFormatted = formatIntensityTitleCase(rawIntensity);
   
                     // Extract step pace range for executed steps
-                    const range = extractStepPaceRange(step, thresholdSecPerMile, paces);
+                    console.log('[App Debug WorkoutChart Exec] step  : ', step);
+                    console.log('[App Debug WorkoutChart Exec] thresh: ', thresholdSecPerMile);
+                    console.log('[App Debug WorkoutChart Exec] paces : ', paces);
+                    const range = extractStepPaceRange(step.pace, paces);
+                    console.log('[App Debug WorkoutChart Exec] range : ', range);
+
                     const heightPct = computePaceToHeightPct(range.midSec);
   
-                    const paceRangeFormatted = range.midPaceStr || formatSecPerMileToStr(range.midSec);
+                    const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
                     const tooltipText = `${durationFormatted} @ ${paceRangeFormatted}`;
-                    
+                    console.log('[App Debug WorkoutChart Exec] tool: ', descriptivePaceStr);
+                  
                     const durationMinutes = durationSecs / 60;
                     const pathData = generateWavyBarPath(durationMinutes);
                                         
