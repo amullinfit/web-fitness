@@ -56,33 +56,57 @@
      * Dynamically resolves zone details using PacesContext zones, names, and colors.
      */
     export const getZoneDetailsFromZoneNumber = (targetZone, paces) => {
-
-        const zones  = paces?.pace_val_sec || DEFAULT_PACE_VAL_SEC;
-        const names  = paces?.preset_colors?.map((item) => item.zone_name) || DEFAULT_PACE_ZONE_NAMES;
-        const colors = paces?.preset_colors?.map((item) => item.color)     || DEFAULT_PACE_ZONE_COLORS;
-
-        if (targetZone > zones.length) {
-            const lastIdx = zones.length - 1;
-            return {name:  names[lastIdx], 
-                    color: colors[lastIdx], 
-                    slow:  zones[lastIdx-1]-1,
-                    mid:   Math.floor((zones[lastIdx-1]-1+zones[lastIdx])/2),
-                    fast:  zones[lastIdx]};
-        } else if (targetZone <= 0) {
-            return {name:  names[0], 
-                    color: colors[0], 
-                    slow:  zones[0]+90,
-                    mid:   Math.floor((zones[0]+90+zones[0])/2),
-                    fast:  zones[0]};
-        } else {
-            return {name:  names[targetZone], 
-                    color: colors[targetZone], 
-                    slow:  zones[targetZone-1]-1,
-                    mid:   Math.floor((zones[targetZone-1]-1+zones[targetZone])/2),
-                    fast:  zones[targetZone]};
+        // Extract preset_colors list or fall back to empty array
+        const presetColors = paces?.preset_colors || [];
+    
+        if (presetColors.length === 0) {
+            // Fallback or default object if no preset colors exist
+            return null;
         }
-
+    
+        let selectedZone;
+    
+        if (targetZone <= 0) {
+            // Use the first zone (index 0)
+            selectedZone = presetColors[0];
+        } else {
+            // Try to find matching zone by numeric id
+            const matched = presetColors.find((item) => item.zone === targetZone);
+    
+            if (matched) {
+                selectedZone = matched;
+            } else {
+                // Check if targetZone is greater than the highest zone number available
+                const maxZone = Math.max(...presetColors.map((item) => item.zone));
+    
+                if (targetZone > maxZone) {
+                    // Return the last zone in the list
+                    selectedZone = presetColors[presetColors.length - 1];
+                } else {
+                    // Fallback for missing/unmatched intermediate numbers (defaults to first zone)
+                    selectedZone = presetColors[0];
+                }
+            }
+        }
+    
+        // Convert string paces "MM:SS/mi" to seconds integer if needed,
+        // or calculate based on pace_val_sec
+        const fastSec = selectedZone.pace_val_sec;
+        const slowSec = fastSec + 90; // Or extract from pace_slow if pre-calculated
+        const midSec = Math.floor((fastSec + slowSec) / 2);
+    
+        return {
+            zone: selectedZone.zone,
+            name: selectedZone.zone_name,
+            color: selectedZone.color,
+            slow: selectedZone.pace_slow,
+            fast: selectedZone.pace_fast,
+            fast_sec: fastSec,
+            mid_sec: midSec,
+            slow_sec: slowSec
+        };
     };
+
 
 // -- Helper to make titles look nice
     export const formatIntensityTitleCase = (val) => {
@@ -294,9 +318,9 @@
                 const fastDetails = getZoneDetailsFromZoneNumber(rangePct.max, paces);
             
                 return {
-                    slowSec: slowDetails?.slow,
-                    midSec:  midDetails?.mid,
-                    fastSec: fastDetails?.fast,
+                    slowSec: slowDetails?.slow_sec,
+                    midSec:  midDetails?.mid_sec,
+                    fastSec: fastDetails?.fast_sec,
                     rangePct
                 };}
         };
@@ -311,11 +335,6 @@
 
         return handler();
     };
-
-    /**
- * WorkoutChartHelpers.js
- * Comprehensive utility for handling 'secs', 'pace_zone', and '%pace' targets.
- */
 
 // =============================================================================
 // INTERNAL HELPERS & PARSERS

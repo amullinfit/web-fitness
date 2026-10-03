@@ -92,7 +92,7 @@ export default function WorkoutChart({
   const stepPacesSec = [];
 
   allStepsCombined.forEach((s) => {
-    const parsed = extractPaceRangeInSeconds(s, thresholdSecPerMile);
+    const parsed = extractPaceRangeInSeconds(s, thresholdSecPerMile, paces);
     if (parsed) {
       if (parsed.fastSec) stepPacesSec.push(parsed.fastSec);
       if (parsed.slowSec) stepPacesSec.push(parsed.slowSec);
@@ -270,6 +270,7 @@ export default function WorkoutChart({
                 className="workout-chart-bars track-planned" 
                 style={{ zIndex: executedOnTop ? 1 : 2 }}
               >
+
                 {plannedList.map((step, idx) => {
                   const durationSecs = step.duration || 60;
                   const durationFormatted = formatDurationMinsSecs(durationSecs);
@@ -277,25 +278,22 @@ export default function WorkoutChart({
                   const rawIntensity = step.type || 'active';
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
-                  // thresholdSecPerMile is the # of seconds/mile at threshold (495 for 8:15 pace)
-                  const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
+                  // Extract pace details using extractStepPaceRange
+                  const range = extractStepPaceRange(step, thresholdSecPerMile, paces);
 
-                  // zoneDetails (name and color) are derived from the fast pace of the step
+                  // zoneDetails (name and color) are derived from the fast pace
                   const zoneDetails = getZoneDetailsFromPaces(range.fastSec, paces);
 
                   const fastHeightPct = computePaceToHeightPct(range.fastSec);
                   const slowHeightPct = computePaceToHeightPct(range.slowSec);
 
-                  const fastPaceStr = formatSecPerMileToStr(range.fastSec);
-                  const slowPaceStr = formatSecPerMileToStr(range.slowSec);
-                  
-                  // Get the descriptive text for zone or zone/range, if applicable
+                  // Get descriptive text for zone or fallback to extracted/formatted range strings
                   const descriptivePaceStr = getZoneDescriptiveText(step, paces);
 
-                  // Fall back to extractPaceRangeInSeconds if it's an explicit pace (not a zone)
-                  // Construct pace details: collapse to single value if identical
                   const paceDetails = descriptivePaceStr || (
-                    fastPaceStr === slowPaceStr ? fastPaceStr : `${fastPaceStr} - ${slowPaceStr}`
+                    range.fastPaceStr === range.slowPaceStr 
+                      ? range.fastPaceStr 
+                      : `${range.fastPaceStr} - ${range.slowPaceStr}`
                   );
 
                   const tooltipText = `${durationFormatted} @ ${paceDetails}`;
@@ -327,7 +325,7 @@ export default function WorkoutChart({
                         }}
                       />
 
-                      {/* Optionally display target pace inside the bar */}
+                      {/* Display target pace on bar */}
                       {isBarPaceVisible && (
                         <span
                           className="workout-chart-bar-label"
@@ -344,12 +342,13 @@ export default function WorkoutChart({
                             zIndex: 3
                           }}
                         >
-                          {fastPaceStr}
+                          {range.fastPaceStr}
                         </span>
                       )}
                     </div>
                   );
                 })}
+
               </div>
             )}
 
@@ -363,23 +362,23 @@ export default function WorkoutChart({
                 className="workout-chart-bars track-executed" 
                 style={{ zIndex: executedOnTop ? 2 : 1, opacity: 0.65 }}
               >
-                {executedList.map((step, idx) => {
-                  const durationSecs = step.duration || 60;
-                  const durationFormatted = formatDurationMinsSecs(durationSecs);
-                  const widthPct = (durationSecs / totalDurationSec) * 100;
-                  const rawIntensity = step.type || 'active';
-                  const intensityFormatted = formatIntensityTitleCase(rawIntensity);
-
-                  // thresholdSecPerMile is the # of seconds to run a mile at threshold (495 for 8:15 pace)
-                  const range = extractPaceRangeInSeconds(step, thresholdSecPerMile);
-                  const heightPct = computePaceToHeightPct(range.midSec);
-
-                  const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
-                  const tooltipText = `${durationFormatted} @ ${paceRangeFormatted}`;
-                  
-                  const durationMinutes = durationSecs / 60;
-                  const pathData = generateWavyBarPath(durationMinutes);
-
+                  {executedList.map((step, idx) => {
+                    const durationSecs = step.duration || 60;
+                    const durationFormatted = formatDurationMinsSecs(durationSecs);
+                    const widthPct = (durationSecs / totalDurationSec) * 100;
+                    const rawIntensity = step.type || 'active';
+                    const intensityFormatted = formatIntensityTitleCase(rawIntensity);
+  
+                    // Extract step pace range for executed steps
+                    const range = extractStepPaceRange(step, thresholdSecPerMile, paces);
+                    const heightPct = computePaceToHeightPct(range.midSec);
+  
+                    const paceRangeFormatted = range.midPaceStr || formatSecPerMileToStr(range.midSec);
+                    const tooltipText = `${durationFormatted} @ ${paceRangeFormatted}`;
+                    
+                    const durationMinutes = durationSecs / 60;
+                    const pathData = generateWavyBarPath(durationMinutes);
+                                        
                   return (
                     <div
                       key={`exec-${idx}`}
