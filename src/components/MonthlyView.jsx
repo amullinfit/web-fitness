@@ -55,123 +55,160 @@ export default function MonthlyView() {
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
-
-    Promise.all([
-      fetch(VAL_WORKOUTS_URL).then((res) => res.json()).catch((err) => {
-        console.error("Error fetching val-workouts:", err);
-        return null;
-      }),
-      fetch(HISTORICAL_URL).then((res) => res.json()).catch((err) => {
-        console.error("Error fetching historical activities:", err);
-        return null;
-      })
-    ])
-      .then(([valJson, historicalJson]) => {
+    setError(null);
+  
+    const controller = new AbortController();
+  
+    const fetchData = async () => {
+      try {
+        const [valRes, histRes] = await Promise.allSettled([
+          fetch(VAL_WORKOUTS_URL, { signal: controller.signal }).then((r) => {
+            if (!r.ok) throw new Error(`Workouts fetch failed: ${r.status}`);
+            return r.json();
+          }),
+          fetch(HISTORICAL_URL, { signal: controller.signal }).then((r) => {
+            if (!r.ok) throw new Error(`Historical fetch failed: ${r.status}`);
+            return r.json();
+          }),
+        ]);
+  
         if (!isMounted) return;
-
+  
+        const valJson = valRes.status === 'fulfilled' ? valRes.value : null;
+        const historicalJson = histRes.status === 'fulfilled' ? histRes.value : null;
+  
+        // Log or handle partial failures
+        if (valRes.status === 'rejected') console.error(valRes.reason);
+        if (histRes.status === 'rejected') console.error(histRes.reason);
+  
         const valList = (valJson?.planned || valJson?.workouts || (Array.isArray(valJson) ? valJson : []))
           .map((item) => ({ ...item, feedSource: 'WORKOUTS' }));
-
+  
         const historicalList = (historicalJson?.activities || historicalJson?.workouts || (Array.isArray(historicalJson) ? historicalJson : []))
           .map((item) => ({ ...item, feedSource: 'HISTORICAL' }));
-
+  
         const settings = Array.isArray(valJson?.sportSettings)
           ? valJson.sportSettings
           : Array.isArray(historicalJson?.sportSettings)
           ? historicalJson.sportSettings
           : [];
-
+  
+        // 1. Pre-index planned workouts
         const plannedWorkoutsById = new Map();
-        const plannedWorkoutsByDateType = new Map();
-
-        valList.forEach((workout) => {
-          if (!workout) return;
-
-          if (workout.id !== undefined && workout.id !== null) {
+        const plannedWorkoutsByDateType = new Map(); // Key -> Array of workouts
+  
+        for (const workout of valList) {
+          if (!workout) continue;
+  
+          if (workout.id != null) {
             plannedWorkoutsById.set(String(workout.id), workout);
           }
-
-          const itemDate = getLocalDateString(workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date);
+  
+          const dateStr = workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date;
+          const itemDate = dateStr ? getLocalDateString(dateStr) : '';
           const itemType = safeStringLower(workout.type || workout.sport || 'workout');
+  
           if (itemDate) {
-            plannedWorkoutsByDateType.set(`${itemDate}-${itemType}`, workout);
+            const key = `${itemDate}-${itemType}`;
+            const existing = plannedWorkoutsByDateType.get(key) || [];
+            existing.push(workout);
+            plannedWorkoutsByDateType.set(key, existing);
           }
-        });
-
+        }
+  
         const pairedEventIds = new Set();
-
+  
+        // 2. Process historical items
         const updatedHistoricalList = historicalList.map((item) => {
           if (!item) return item;
-
+  
           let plannedMatch = null;
-
-          if (item.paired_event_id !== null && item.paired_event_id !== undefined) {
+  
+          // Try direct ID pairing first
+          if (item.paired_event_id != null) {
             const pairedIdStr = String(item.paired_event_id);
-            pairedEventIds.add(pairedIdStr);
             plannedMatch = plannedWorkoutsById.get(pairedIdStr);
+            if (plannedMatch) pairedEventIds.add(pairedIdStr);
           }
-
+  
+          // Fallback to Date + Sport matching
           if (!plannedMatch) {
-            const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
+            const dateStr = item.start_date_local || item.icu_start_date || item.start_date || item.date;
+            const itemDate = dateStr ? getLocalDateString(dateStr) : '';
             const itemType = safeStringLower(item.type || item.sport || 'workout');
-            plannedMatch = plannedWorkoutsByDateType.get(`${itemDate}-${itemType}`);
-
-            if (plannedMatch && plannedMatch.id) {
-              pairedEventIds.add(String(plannedMatch.id));
+            const key = `${itemDate}-${itemType}`;
+  
+            const matches = plannedWorkoutsByDateType.get(key);
+            if (matches && matches.length > 0) {
+              // Pick first unpaired planned workout matching this date/type
+              plannedMatch = matches.find((m) => m.id != null && !pairedEventIds.has(String(m.id)));
+              if (plannedMatch?.id != null) {
+                pairedEventIds.add(String(plannedMatch.id));
+              }
             }
           }
-
+  
+          // Enrich attributes if matched
           if (plannedMatch) {
-            const plannedName = plannedMatch.name || plannedMatch.title;
-            if (plannedName) {
-              return {
-                ...item,
-                name: plannedName,
-                title: plannedName,
-                workout_doc: item.workout_doc || plannedMatch.workout_doc,
-                description: item.description || plannedMatch.description
-              };
-            }
+            const plannedName = plannedMatch.name || plannedMatch.title || item.name || item.title;
+            return {
+              ...item,
+              name: plannedName,
+              title: plannedName,
+              workout_doc: item.workout_doc || plannedMatch.workout_doc,
+              description: item.description || plannedMatch.description,
+            };
           }
-
+  
           return item;
         });
-
-        const filteredValList = valList.filter((workout) => {
-          if (!workout || workout.id === undefined || workout.id === null) return true;
+  
+        // 3. Filter out paired planned workouts
+        const remainingValList = valList.filter((workout) => {
+          if (!workout || workout.id == null) return true;
           return !pairedEventIds.has(String(workout.id));
         });
-
-        const rawMerged = [...updatedHistoricalList, ...filteredValList];
-        const seenKeys = new Set();
+  
+        // 4. Merge and deduplicate in a single pass
         const mergedList = [];
-
-        for (const item of rawMerged) {
+        const seenKeys = new Set();
+  
+        for (const item of [...updatedHistoricalList, ...remainingValList]) {
           if (!item) continue;
-          const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
+          const dateStr = item.start_date_local || item.icu_start_date || item.start_date || item.date;
+          const itemDate = dateStr ? getLocalDateString(dateStr) : '';
           const itemType = safeStringLower(item.type || item.sport || 'workout');
-          const uniqueKey = item.id ? String(item.id) : `${item.name || itemType}-${itemDate}-${item.feedSource}`;
-
+  
+          const uniqueKey = item.id != null
+            ? String(item.id)
+            : `${item.name || itemType}-${itemDate}-${item.feedSource}`;
+  
           if (!seenKeys.has(uniqueKey)) {
             seenKeys.add(uniqueKey);
             mergedList.push(item);
           }
         }
-
+  
         setWorkouts(mergedList);
         setSportSettings(settings);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error loading workout data:", err);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error("Error loading workout data:", err);
+          if (isMounted) setError(err.message);
+        }
+      } finally {
         if (isMounted) setLoading(false);
-      });
-
+      }
+    };
+  
+    fetchData();
+  
     return () => {
       isMounted = false;
+      controller.abort(); // Cancel ongoing network requests on unmount
     };
-  }, []);
-
+  }, [VAL_WORKOUTS_URL, HISTORICAL_URL]);
+  
   // When workouts state updates, re-sync zoomWorkouts if modal is currently open
   useEffect(() => {
     if (zoomWorkouts && zoomWorkouts.length > 0) {
