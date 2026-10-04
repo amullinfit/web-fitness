@@ -254,7 +254,7 @@ export default function WorkoutBuilder() {
     }
   };
 
-  const handleDuplicateWorkout = () => {
+  const OLD_handleDuplicateWorkout = () => {
     console.log('[App Debug WorkoutBuilder] handleDuplicateWorkout invoked');
     const duplicateTitle = `${workoutTitle} (Copy)`;
     setWorkoutId(null);
@@ -266,6 +266,13 @@ export default function WorkoutBuilder() {
     showToast('Workout duplicated! Choose a folder and save your new copy.');
   };
 
+  const handleDuplicateWorkout = (workoutToDuplicate) => {
+    setSaveTitle(`${workoutToDuplicate.name || workoutToDuplicate.title || 'Workout'} (Copy)`);
+    setSaveFolderId(workoutToDuplicate.folderId || workoutToDuplicate.folder_id || '');
+    setSaveAsNew(true); // Flag as new/duplicate
+    setIsSaveModalOpen(true); // Open Modal_Workout_Save
+  };
+  
   const handleCopyWorkoutText = () => {
     console.log('[App Debug WorkoutBuilder] handleCopyWorkoutText invoked');
     const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
@@ -274,6 +281,32 @@ export default function WorkoutBuilder() {
     showToast('Workout plain text copied to clipboard!');
   };
 
+  const handleConfirmSaveWorkout = async () => {
+    try {
+      setApiLoading(true);
+      const payload = {
+        id: saveAsNew ? null : currentWorkoutId,
+        name: saveTitle,
+        folderId: saveFolderId,
+        workout_doc: currentWorkoutDoc,
+      };
+  
+      await saveWorkoutApi(payload, saveAsNew);
+      
+      // Refresh folders/workouts list after saving
+      const updatedData = await fetchWorkoutsApi();
+      setWorkouts(updatedData.workouts);
+      setFolders(updatedData.folders);
+      
+      setIsSaveModalOpen(false);
+    } catch (err) {
+      console.error('Error saving workout:', err);
+      alert(`Save failed: ${err.message}`);
+    } finally {
+      setApiLoading(false);
+    }
+  };
+  
   const triggerFileDownload = (content, fileName, mimeType) => {
     console.log('[App Debug WorkoutBuilder] triggerFileDownload invoked', { fileName, mimeType });
     const blob = new Blob([content], { type: mimeType });

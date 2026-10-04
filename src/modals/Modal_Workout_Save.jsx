@@ -1,5 +1,5 @@
 //
-// Modal_Workout_Save
+// Modal_Workout_Save.jsx
 //
 import React from 'react';
 import { modalOverlayStyle, modalContentStyle } from './modalStyles';
@@ -27,7 +27,7 @@ export default function Modal_Workout_Save({
     <div style={modalOverlayStyle} onClick={onClose}>
       <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
         <h3 style={{ marginTop: 0, marginBottom: '16px' }}>
-          {saveAsNew ? 'Save As New Workout' : 'Save Workout'}
+          {saveAsNew ? 'Save As New Workout / Duplicate' : 'Save Workout'}
         </h3>
 
         <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', fontSize: '13px' }}>
@@ -46,14 +46,14 @@ export default function Modal_Workout_Save({
         </label>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
           <select
-            value={saveFolderId}
+            value={saveFolderId ?? ''}
             onChange={(e) => setSaveFolderId(e.target.value)}
             style={{ flex: 1, padding: '8px' }}
           >
             <option value="">(No Folder / Root)</option>
             {Array.isArray(folders) &&
               folders.map((f, idx) => {
-                const fId = f.id || f._id || idx;
+                const fId = f.id !== undefined ? f.id : (f._id !== undefined ? f._id : idx);
                 const fName = f.name || f.title || f.folderName || 'Untitled Folder';
                 return (
                   <option key={fId} value={fId}>
@@ -65,8 +65,9 @@ export default function Modal_Workout_Save({
           <button
             type="button"
             onClick={() => setShowInlineFolderInput(!showInlineFolderInput)}
+            style={{ padding: '8px 12px', cursor: 'pointer' }}
           >
-            + New Folder
+            {showInlineFolderInput ? 'Cancel' : '+ New Folder'}
           </button>
         </div>
 
@@ -83,6 +84,7 @@ export default function Modal_Workout_Save({
               type="button"
               onClick={handleCreateInlineFolder}
               disabled={apiLoading || !inlineFolderInput.trim()}
+              style={{ padding: '6px 12px', cursor: 'pointer' }}
             >
               Create
             </button>
@@ -90,7 +92,7 @@ export default function Modal_Workout_Save({
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-          <button type="button" onClick={onClose} disabled={apiLoading}>
+          <button type="button" onClick={onClose} disabled={apiLoading} style={{ padding: '8px 16px', cursor: 'pointer' }}>
             Cancel
           </button>
           <button
@@ -99,7 +101,7 @@ export default function Modal_Workout_Save({
             disabled={apiLoading || !saveTitle.trim()}
             style={{ backgroundColor: '#007bff', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}
           >
-            {apiLoading ? 'Saving...' : 'Save'}
+            {apiLoading ? 'Saving...' : saveAsNew ? 'Save As New' : 'Save'}
           </button>
         </div>
       </div>

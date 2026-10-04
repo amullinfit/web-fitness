@@ -92,19 +92,43 @@ export async function createFolderApi(folderName) {
   return await res.json();
 }
 
-export async function saveWorkoutApi(payload) {
-  console.log('[App Debug BuilderHelpers] saveWorkoutApi called with payload:', payload);
-  const action = payload.id ? 'update_workout' : 'create_workout';
-  const method = payload.id ? 'PUT' : 'POST';
+export async function saveWorkoutApi(payload, isNew = false) {
+  console.log('[App Debug BuilderHelpers] saveWorkoutApi called with payload:', payload, 'isNew:', isNew);
+  
+  // If explicitly flagged as new (or duplicating), strip the ID so the API performs a POST/create
+  const workoutData = { ...payload };
+  if (isNew) {
+    delete workoutData.id;
+  }
+
+  const action = workoutData.id ? 'update_workout' : 'create_workout';
+  const method = workoutData.id ? 'PUT' : 'POST';
+
+  // Format folder_id properly: convert empty string to null or number if numeric string
+  let folderId = workoutData.folderId || workoutData.folder_id || null;
+  if (folderId === '' || folderId === 'root') {
+    folderId = null;
+  } else if (typeof folderId === 'string' && !isNaN(Number(folderId))) {
+    folderId = Number(folderId);
+  }
+
+  const bodyPayload = {
+    action,
+    ...workoutData,
+    folder_id: folderId,
+  };
+
   const res = await fetch(VAL_WORKOUTBUILDER_URL, {
     method,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, ...payload }),
+    body: JSON.stringify(bodyPayload),
   });
+
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`Failed to save workout: ${errorText}`);
   }
+
   return await res.json();
 }
 
