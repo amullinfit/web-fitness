@@ -566,6 +566,7 @@ const getZoneList = (pacesInput) => {
     console.log('[App Debug WorkoutChartHelper] units: ', stepPace.units);
 
     let fastSec = 0;
+    let midSec  = 0;
     let slowSec = 0;
     let descriptiveLabel = "";
   
@@ -574,13 +575,16 @@ const getZoneList = (pacesInput) => {
       if (typeof stepPace.value === "number") {
         fastSec = stepPace.value;
         slowSec = stepPace.value;
+        midSec  = Math.round((fastSec + slowSec)/2);
         descriptiveLabel = `${formatSecPerMileToStr(fastSec)}/mi`;
       } else if (typeof stepPace.start === "number" && typeof stepPace.end === "number") {
         fastSec = Math.min(stepPace.start, stepPace.end);
         slowSec = Math.max(stepPace.start, stepPace.end);
+        midSec  = Math.round((fastSec + slowSec)/2);
         descriptiveLabel = `${formatSecPerMileToStr(slowSec)} - ${formatSecPerMileToStr(fastSec)}/mi`;
       }
       console.log('[App Debug WorkoutChartHelper] Pfast: ', fastSec);
+      console.log('[App Debug WorkoutChartHelper] Pmid : ', midSec);
       console.log('[App Debug WorkoutChartHelper] Pslow: ', slowSec);
       console.log('[App Debug WorkoutChartHelper] Pdesc: ', descriptiveLabel);
     }
@@ -592,6 +596,7 @@ const getZoneList = (pacesInput) => {
         if (zObj) {
           fastSec = zObj.pace_val_sec || parsePaceStrToSec(zObj.pace_fast);
           slowSec = parsePaceStrToSec(zObj.pace_slow) || (fastSec + 120);
+          midSec  = Math.round((fastSec + slowSec)/2);
   
           const fastStr = cleanPaceStr(zObj.pace_fast);
           let slowStr = cleanPaceStr(zObj.pace_slow);
@@ -606,6 +611,7 @@ const getZoneList = (pacesInput) => {
         if (slowZ && fastZ) {
           fastSec = fastZ.pace_val_sec || parsePaceStrToSec(fastZ.pace_fast);
           slowSec = parsePaceStrToSec(slowZ.pace_slow) || (parsePaceStrToSec(slowZ.pace_fast) + 120);
+          midSec  = Math.round((fastSec + slowSec)/2);
   
           const fastPaceStr = cleanPaceStr(fastZ.pace_fast);
           let slowPaceStr = cleanPaceStr(slowZ.pace_slow);
@@ -615,6 +621,7 @@ const getZoneList = (pacesInput) => {
         }
       }
       console.log('[App Debug WorkoutChartHelper] Zfast: ', fastSec);
+      console.log('[App Debug WorkoutChartHelper] Zmid : ', midSec);
       console.log('[App Debug WorkoutChartHelper] Zslow: ', slowSec);
       console.log('[App Debug WorkoutChartHelper] Zdesc: ', descriptiveLabel);
     }
@@ -624,6 +631,7 @@ const getZoneList = (pacesInput) => {
       if (typeof stepPace.value === "number") {
         fastSec = convertPctToPaceSec(stepPace.value, thresholdSec);
         slowSec = fastSec;
+        midSec  = Math.round((fastSec + slowSec)/2);
         descriptiveLabel = `${stepPace.value}% Threshold (${formatSecPerMileToStr(fastSec)}/mi)`;
       } else if (typeof stepPace.start === "number" && typeof stepPace.end === "number") {
         const slowPct = Math.min(stepPace.start, stepPace.end);
@@ -631,14 +639,16 @@ const getZoneList = (pacesInput) => {
   
         fastSec = convertPctToPaceSec(fastPct, thresholdSec);
         slowSec = convertPctToPaceSec(slowPct, thresholdSec);
+        midSec  = Math.round((fastSec + slowSec)/2);
   
         descriptiveLabel = `${slowPct}%-${fastPct}% Threshold (${formatSecPerMileToStr(slowSec)} - ${formatSecPerMileToStr(fastSec)}/mi)`;
       }
       console.log('[App Debug WorkoutChartHelper] %fast: ', fastSec);
+      console.log('[App Debug WorkoutChartHelper] %mid : ', midSec);
       console.log('[App Debug WorkoutChartHelper] %slow: ', slowSec);
       console.log('[App Debug WorkoutChartHelper] %desc: ', descriptiveLabel);
     }
   
-    console.log('[App Debug WorkoutChartHelper] fast/slow/text: ', fastSec, slowSec, descriptiveLabel);
-    return { fastSec, slowSec, formattedText: descriptiveLabel };
+    console.log('[App Debug WorkoutChartHelper] fast/mid/slow/text: ', fastSec, midSec, slowSec, descriptiveLabel);
+    return { fastSec, midSec, slowSec, formattedText: descriptiveLabel };
   }
