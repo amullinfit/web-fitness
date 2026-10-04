@@ -18,7 +18,6 @@ const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 const VAL_MY_PACES_URL = '/api/val-my-paces';
 
 export const DEFAULT_THRESHOLD = (paces) => {
-  console.log('[App Debug BuilderHelpers] DEFAULT_THRESHOLD evaluated');
   return paces?.threshold_pace || FALLBACK_THRESHOLD;
 };
 
@@ -166,7 +165,6 @@ export async function fetchMyPacesApi() {
 // --- Formatting & Parsing Helpers ---
 
 export const formatTime = (totalSeconds) => {
-  console.log('[App Debug BuilderHelpers] formatTime called with totalSeconds:', totalSeconds);
   const sec = Math.max(0, Math.round(totalSeconds || 0));
   const hrs = Math.floor(sec / 3600);
   const mins = Math.floor((sec % 3600) / 60);
@@ -176,7 +174,6 @@ export const formatTime = (totalSeconds) => {
 };
 
 export const formatMMSS = (totalSeconds) => {
-  console.log('[App Debug BuilderHelpers] formatMMSS called with totalSeconds:', totalSeconds);
   // sec/mi -> mm:ss  (ie, 495 -> 8:15)
   const sec = Math.max(0, Math.round(totalSeconds || 0));
   const mins = Math.floor(sec / 60);
@@ -185,7 +182,6 @@ export const formatMMSS = (totalSeconds) => {
 };
 
 export const parseMMSS = (str) => {
-  console.log('[App Debug BuilderHelpers] parseMMSS called with str:', str);
   // mm:ss -> sec/mi (ie, 8:15 -> 495)
   if (!str) return 0;
   let cleanStr = String(str).trim().replace(/\/mi|\/km/g, '');
@@ -205,7 +201,6 @@ export const parseMMSS = (str) => {
 };
 
 export const convertToPaceSec = (val) => {
-  console.log('[App Debug BuilderHelpers] convertToPaceSec called with val:', val);
   // Converts pace to sec/mi (495)
   if (!val) return DEFAULT_THRESHOLD();
   if (typeof val === 'string') {
@@ -223,7 +218,6 @@ export const convertToPaceSec = (val) => {
 };
 
 export const formatDistance = (miles) => {
-  console.log('[App Debug BuilderHelpers] formatDistance called with miles:', miles);
   return (miles || 0).toFixed(2) + ' mi';
 };
 
@@ -240,7 +234,6 @@ export const formatDistance = (miles) => {
 
 // Dynamically compute preset values from intervals.icu data
 export function calculateDynamicPresets(paces, thresholdPaceSec, paceMethod) {
-  console.log('[App Debug BuilderHelpers] calculateDynamicPresets called', { thresholdPaceSec, paceMethod });
   // If paces or preset_colors array doesn't exist, use fallback logic
   if (!paces || !Array.isArray(paces.preset_colors)) {
 
@@ -317,7 +310,6 @@ export function calculateDynamicPresets(paces, thresholdPaceSec, paceMethod) {
 // --- Step Creation & Mapping Helpers ---
 
 export const createStep = (type, mode = 'time') => {
-  console.log('[App Debug BuilderHelpers] createStep called with type:', type, 'mode:', mode);
   const id = `step-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
   const durationSec = mode === 'time' ? 600 : 0;
   const distanceMiles = mode === 'distance' ? 3.0 : 0;
@@ -391,7 +383,6 @@ export const createStep = (type, mode = 'time') => {
 };
 
 export const createDefaultSteps = (mode = 'time') => {
-  console.log('[App Debug BuilderHelpers] createDefaultSteps called with mode:', mode);
   return [
     createStep('warmup', mode),
     createStep('repeat', mode),
