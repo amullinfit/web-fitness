@@ -49,8 +49,10 @@ export default function WorkoutChart({
   showHoverDetails = true,
   showBarPace = false
 }) {
-  console.log('[App Debug WorkoutChart] WorkoutChart rendered for workout:', workout?.name || workout?.title || 'Workout');
-  console.log('[App Debug WorkoutChart] WorkoutChart: workout: ', workout);
+  console.log('[App Debug WorkoutChart] Rendered for workout:', workout?.name || workout?.title || 'Workout');
+  console.log('[App Debug WorkoutChart] workout: ', workout);
+  console.log('[App Debug WorkoutChart] workout_doc: ', workout.workout_doc);
+  console.log('[App Debug WorkoutChart] intervals: ', workout.intervals);
 
   const clipId = useId();
 
@@ -76,6 +78,8 @@ export default function WorkoutChart({
 
   const plannedList = extractPlannedSteps(workout);
   const executedList = extractExecutedSteps(workout);
+  console.log('[App Debug WorkoutChart] workout: ', workout);
+  console.log('[App Debug WorkoutChart] workout: ', workout);
 
   if (!plannedList.length && !executedList.length) return null;
 
