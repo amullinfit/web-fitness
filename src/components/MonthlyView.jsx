@@ -121,48 +121,49 @@ export default function MonthlyView() {
         // 2. Process historical items
         const updatedHistoricalList = historicalList.map((item) => {
           if (!item) return item;
-  
+        
           let plannedMatch = null;
-  
-          // Try direct ID pairing first
-          if (item.paired_event_id != null) {
+        
+          if (item.paired_event_id !== null && item.paired_event_id !== undefined) {
             const pairedIdStr = String(item.paired_event_id);
+            pairedEventIds.add(pairedIdStr);
             plannedMatch = plannedWorkoutsById.get(pairedIdStr);
-            if (plannedMatch) pairedEventIds.add(pairedIdStr);
           }
-  
-          // Fallback to Date + Sport matching
+        
           if (!plannedMatch) {
-            const dateStr = item.start_date_local || item.icu_start_date || item.start_date || item.date;
-            const itemDate = dateStr ? getLocalDateString(dateStr) : '';
+            const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
             const itemType = safeStringLower(item.type || item.sport || 'workout');
-            const key = `${itemDate}-${itemType}`;
-  
-            const matches = plannedWorkoutsByDateType.get(key);
-            if (matches && matches.length > 0) {
-              // Pick first unpaired planned workout matching this date/type
-              plannedMatch = matches.find((m) => m.id != null && !pairedEventIds.has(String(m.id)));
-              if (plannedMatch?.id != null) {
-                pairedEventIds.add(String(plannedMatch.id));
-              }
+            plannedMatch = plannedWorkoutsByDateType.get(`${itemDate}-${itemType}`);
+        
+            if (plannedMatch && plannedMatch.id) {
+              pairedEventIds.add(String(plannedMatch.id));
             }
           }
-  
-          // Enrich attributes if matched
+        
           if (plannedMatch) {
-            const plannedName = plannedMatch.name || plannedMatch.title || item.name || item.title;
+            const plannedName = plannedMatch.name || plannedMatch.title;
             return {
               ...item,
-              name: plannedName,
-              title: plannedName,
-              workout_doc: item.workout_doc || plannedMatch.workout_doc,
-              description: item.description || plannedMatch.description,
+              // Preserve or override name/title
+              name: plannedName || item.name || item.title,
+              title: plannedName || item.title || item.name,
+              
+              // Explicitly pull workout_doc from historical first, falling back to planned
+              workout_doc: item.workout_doc || plannedMatch.workout_doc || null,
+              
+              // FIX: Explicitly preserve intervals from historical first, falling back to planned match
+              intervals: (item.intervals && item.intervals.length > 0) 
+                ? item.intervals 
+                : (plannedMatch.intervals || item.intervals || null),
+                
+              // Explicitly pull description from historical first, falling back to planned
+              description: item.description || plannedMatch.description || ''
             };
           }
-  
+        
           return item;
         });
-  
+          
         // 3. Filter out paired planned workouts
         const remainingValList = valList.filter((workout) => {
           if (!workout || workout.id == null) return true;
