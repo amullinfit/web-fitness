@@ -210,41 +210,60 @@ export default function WorkoutBuilder() {
     console.log('[App Debug WorkoutBuilder] handleSaveWorkout invoked', { overrideTitle, overrideFolderId });
     const icuDocument = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
     const targetId = isSaveAsMode ? null : workoutId;
+    const finalTitle = overrideTitle || workoutTitle;
+    const finalFolderId = overrideFolderId !== undefined ? overrideFolderId : selectedFolderId;
 
     const payload = {
       id: targetId,
-      name: overrideTitle || workoutTitle,
+      name: finalTitle,
       description: workoutDescription,
-      folder_id: overrideFolderId || selectedFolderId,
+      folder_id: finalFolderId,
       document: icuDocument
     };
 
     try {
       const saved = await saveWorkoutApi(payload);
       if (saved) {
-        setWorkoutId(saved.id);
-        setWorkoutTitle(payload.name);
-        setSelectedFolderId(payload.folder_id);
+        const newId = saved.id || saved.workout_id || targetId;
+        setWorkoutId(newId);
+        setWorkoutTitle(finalTitle);
+        setSelectedFolderId(finalFolderId);
+
+        const preparedSavedBase = addIdsToBaseWorkout(saved);
+        setUnalteredWorkout(saved);
+        setBaseWorkout({
+          ...preparedSavedBase,
+          name: finalTitle
+        });
+
+        // Re-fetch workouts list to stay synchronized
         const updatedData = await fetchWorkoutsApi();
         const workoutsArray = Array.isArray(updatedData) 
           ? updatedData 
           : (updatedData?.workouts || []);
         setSavedWorkouts(workoutsArray);
+
         setIsSaveModalOpen(false);
+        setIsSaveAsMode(false);
         setMode('SAVED');
         showToast(isSaveAsMode ? 'Workout saved as new file!' : 'Workout saved successfully!');
       }
     } catch (err) {
       console.error('Error saving workout:', err);
+      showToast('Failed to save workout. Please try again.');
     }
   };
 
   const handleDuplicateWorkout = () => {
     console.log('[App Debug WorkoutBuilder] handleDuplicateWorkout invoked');
+    const duplicateTitle = `${workoutTitle} (Copy)`;
     setWorkoutId(null);
-    setWorkoutTitle(`${workoutTitle} (Copy)`);
+    setWorkoutTitle(duplicateTitle);
     setMode('BUILDING');
-    showToast('Workout duplicated!');
+    
+    // Automatically trigger Save As modal so the user can save the duplicate
+    handleOpenSaveModal(true);
+    showToast('Workout duplicated! Choose a folder and save your new copy.');
   };
 
   const handleCopyWorkoutText = () => {
@@ -258,7 +277,7 @@ export default function WorkoutBuilder() {
   const triggerFileDownload = (content, fileName, mimeType) => {
     console.log('[App Debug WorkoutBuilder] triggerFileDownload invoked', { fileName, mimeType });
     const blob = new Blob([content], { type: mimeType });
-    const url = URL.URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = fileName;
@@ -362,6 +381,7 @@ export default function WorkoutBuilder() {
                   console.log('[App Debug WorkoutBuilder] OptionsMenu -> onOpenCreateFolderModal');
                   setIsFolderModalOpen(true);
                 }}
+                onSaveWorkout={() => handleSaveWorkout()}
                 onOpenSaveModal={handleOpenSaveModal}
                 onDuplicateWorkout={handleDuplicateWorkout}
                 onCopyWorkoutText={handleCopyWorkoutText}
@@ -566,6 +586,7 @@ export default function WorkoutBuilder() {
           onClose={() => {
             console.log('[App Debug WorkoutBuilder] Modal_Workout_Save onClose');
             setIsSaveModalOpen(false);
+            setIsSaveAsMode(false);
           }}
         />
       )}
