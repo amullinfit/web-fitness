@@ -48,10 +48,6 @@ export default function WorkoutChart({
   showHoverDetails = true,
   showBarPace = false
 }) {
-  console.log('[App Debug WorkoutChart] Rendered for workout:', workout?.name || workout?.title || 'Workout');
-  console.log('[App Debug WorkoutChart] workout: ', workout);
-  console.log('[App Debug WorkoutChart] workout_doc: ', workout.workout_doc);
-  console.log('[App Debug WorkoutChart] intervals: ', workout.intervals);
 
   const clipId = useId();
 
