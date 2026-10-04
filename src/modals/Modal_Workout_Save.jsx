@@ -23,6 +23,15 @@ export default function Modal_Workout_Save({
   errorMessage = '', // Optional: pass down error string from parent state
   successMessage = '', // Optional: pass down success string from parent state
 }) {
+
+  console.log('[App Debug Modal_Save] Render State:', {
+    isOpen,
+    saveTitle,
+    isTitleValid: Boolean(saveTitle?.trim()),
+    apiLoading,
+    isHandlerFunction: typeof handleConfirmSaveWorkout === 'function'
+  });
+  
   if (!isOpen) return null;
 
   return (
