@@ -552,8 +552,6 @@ const getZoneList = (pacesInput) => {
    * Extracts normalized fastSec, slowSec, and descriptive labels for charts & UI text.
    */
   export function extractStepPaceRange(stepPace, pacesInput) {
-    console.log('[App Debug WorkoutChartHelper] stepPace  : ', stepPace);
-    console.log('[App Debug WorkoutChartHelper] pacesInput: ', pacesInput);
 
     if (!stepPace) return { fastSec: 1, slowSec: 1, formattedText: "??:??" };
   
@@ -561,10 +559,6 @@ const getZoneList = (pacesInput) => {
     const thresholdSec = getThresholdSecFromPaces(pacesInput);
     const findZone = (zNum) => zones.find((z) => Number(z.zone) === Number(zNum));
   
-    console.log('[App Debug WorkoutChartHelper] zones: ', zones);
-    console.log('[App Debug WorkoutChartHelper] thrsh: ', thresholdSec);
-    console.log('[App Debug WorkoutChartHelper] units: ', stepPace.units);
-
     let fastSec = 0;
     let midSec  = 0;
     let slowSec = 0;
@@ -583,10 +577,6 @@ const getZoneList = (pacesInput) => {
         midSec  = Math.round((fastSec + slowSec)/2);
         descriptiveLabel = `${formatSecPerMileToStr(slowSec)} - ${formatSecPerMileToStr(fastSec)}/mi`;
       }
-      console.log('[App Debug WorkoutChartHelper] Pfast: ', fastSec);
-      console.log('[App Debug WorkoutChartHelper] Pmid : ', midSec);
-      console.log('[App Debug WorkoutChartHelper] Pslow: ', slowSec);
-      console.log('[App Debug WorkoutChartHelper] Pdesc: ', descriptiveLabel);
     }
   
     // 2. Zone-Based (`units: "pace_zone"`)
@@ -620,10 +610,6 @@ const getZoneList = (pacesInput) => {
           descriptiveLabel = `Z${stepPace.start}-${stepPace.end} (${slowPaceStr} - ${fastPaceStr})`;
         }
       }
-      console.log('[App Debug WorkoutChartHelper] Zfast: ', fastSec);
-      console.log('[App Debug WorkoutChartHelper] Zmid : ', midSec);
-      console.log('[App Debug WorkoutChartHelper] Zslow: ', slowSec);
-      console.log('[App Debug WorkoutChartHelper] Zdesc: ', descriptiveLabel);
     }
   
     // 3. Threshold % (`units: "%pace"`)
@@ -643,12 +629,7 @@ const getZoneList = (pacesInput) => {
   
         descriptiveLabel = `${slowPct}%-${fastPct}% Threshold (${formatSecPerMileToStr(slowSec)} - ${formatSecPerMileToStr(fastSec)}/mi)`;
       }
-      console.log('[App Debug WorkoutChartHelper] %fast: ', fastSec);
-      console.log('[App Debug WorkoutChartHelper] %mid : ', midSec);
-      console.log('[App Debug WorkoutChartHelper] %slow: ', slowSec);
-      console.log('[App Debug WorkoutChartHelper] %desc: ', descriptiveLabel);
     }
   
-    console.log('[App Debug WorkoutChartHelper] fast/mid/slow/text: ', fastSec, midSec, slowSec, descriptiveLabel);
     return { fastSec, midSec, slowSec, formattedText: descriptiveLabel };
   }
