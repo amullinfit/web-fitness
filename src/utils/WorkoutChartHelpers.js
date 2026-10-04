@@ -563,6 +563,7 @@ const getZoneList = (pacesInput) => {
   
     console.log('[App Debug WorkoutChartHelper] zones: ', zones);
     console.log('[App Debug WorkoutChartHelper] thrsh: ', thresholdSec);
+    console.log('[App Debug WorkoutChartHelper] units: ', stepPace.units);
 
     let fastSec = 0;
     let slowSec = 0;
