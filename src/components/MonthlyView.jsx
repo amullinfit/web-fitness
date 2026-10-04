@@ -55,7 +55,7 @@ export default function MonthlyView() {
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
-    setError(null);
+    setErrorMessage(null);
   
     const controller = new AbortController();
   
@@ -194,7 +194,7 @@ export default function MonthlyView() {
       } catch (err) {
         if (err.name !== 'AbortError') {
           console.error("Error loading workout data:", err);
-          if (isMounted) setError(err.message);
+          if (isMounted) setErrorMessage(err.message);
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -208,7 +208,7 @@ export default function MonthlyView() {
       controller.abort(); // Cancel ongoing network requests on unmount
     };
   }, [VAL_WORKOUTS_URL, HISTORICAL_URL]);
-  
+
   // When workouts state updates, re-sync zoomWorkouts if modal is currently open
   useEffect(() => {
     if (zoomWorkouts && zoomWorkouts.length > 0) {
