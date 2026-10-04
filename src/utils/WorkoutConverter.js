@@ -488,7 +488,7 @@ export function getDescriptiveText(step, pacesInput) {
   // -------------------------------------------------------------------------
   if (units === "secs") {
     if (value != null) {
-      return formatSecPerMileToStr(Number(singleVal));
+      return formatSecPerMileToStr(Number(value));
     }
     if (start != null || end != null) {
       return formatOutputRange(Number(start), Number(end));
