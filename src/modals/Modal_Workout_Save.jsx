@@ -20,6 +20,8 @@ export default function Modal_Workout_Save({
   handleCreateInlineFolder,
   handleConfirmSaveWorkout,
   apiLoading = false,
+  errorMessage = '', // Optional: pass down error string from parent state
+  successMessage = '', // Optional: pass down success string from parent state
 }) {
   if (!isOpen) return null;
 
@@ -29,6 +31,40 @@ export default function Modal_Workout_Save({
         <h3 style={{ marginTop: 0, marginBottom: '16px' }}>
           {saveAsNew ? 'Save As New Workout / Duplicate' : 'Save Workout'}
         </h3>
+
+        {/* --- Error Display --- */}
+        {errorMessage && (
+          <div
+            style={{
+              padding: '10px 12px',
+              backgroundColor: '#f8d7da',
+              color: '#721c24',
+              borderRadius: '4px',
+              marginBottom: '16px',
+              fontSize: '13px',
+              border: '1px solid #f5c6cb',
+            }}
+          >
+            <strong>Error:</strong> {errorMessage}
+          </div>
+        )}
+
+        {/* --- Success Display --- */}
+        {successMessage && (
+          <div
+            style={{
+              padding: '10px 12px',
+              backgroundColor: '#d4edda',
+              color: '#155724',
+              borderRadius: '4px',
+              marginBottom: '16px',
+              fontSize: '13px',
+              border: '1px solid #c3e6cb',
+            }}
+          >
+            {successMessage}
+          </div>
+        )}
 
         <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', fontSize: '13px' }}>
           Workout Name:

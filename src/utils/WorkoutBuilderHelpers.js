@@ -95,27 +95,42 @@ export async function createFolderApi(folderName) {
 export async function saveWorkoutApi(payload, isNew = false) {
   console.log('[App Debug BuilderHelpers] saveWorkoutApi called with payload:', payload, 'isNew:', isNew);
   
-  // If explicitly flagged as new (or duplicating), strip the ID so the API performs a POST/create
-  const workoutData = { ...payload };
+  // Clone payload to prevent side-effects on UI state
+  let workoutData = JSON.parse(JSON.stringify(payload));
+
+  // If explicitly flagged as new or duplicating, strip top-level ID and refresh step IDs
   if (isNew) {
     delete workoutData.id;
+    delete workoutData._id;
+    if (workoutData.workout_doc) {
+      workoutData = addIdsToBaseWorkout(workoutData);
+    }
   }
 
   const action = workoutData.id ? 'update_workout' : 'create_workout';
   const method = workoutData.id ? 'PUT' : 'POST';
 
-  // Format folder_id properly: convert empty string to null or number if numeric string
-  let folderId = workoutData.folderId || workoutData.folder_id || null;
-  if (folderId === '' || folderId === 'root') {
+  // Format folder_id properly without accidentally corrupting non-numeric/UUID string IDs to NaN
+  let folderId = workoutData.saveFolderId ?? workoutData.folderId ?? workoutData.folder_id ?? null;
+  if (folderId === '' || folderId === 'root' || folderId === undefined) {
     folderId = null;
-  } else if (typeof folderId === 'string' && !isNaN(Number(folderId))) {
+  } else if (typeof folderId === 'string' && /^\d+$/.test(folderId.trim())) {
     folderId = Number(folderId);
   }
 
+  // Ensure workout_doc structure exists even if flat steps were passed
+  const steps = workoutData.workout_doc?.steps || workoutData.steps || [];
+  const workoutDoc = workoutData.workout_doc || {
+    name: workoutData.name || workoutData.title || 'Untitled Workout',
+    steps: steps,
+  };
+
   const bodyPayload = {
     action,
-    ...workoutData,
+    ...(workoutData.id ? { id: workoutData.id } : {}),
+    name: workoutData.name || workoutData.title || workoutDoc.name || 'Untitled Workout',
     folder_id: folderId,
+    workout_doc: workoutDoc,
   };
 
   const res = await fetch(VAL_WORKOUTBUILDER_URL, {

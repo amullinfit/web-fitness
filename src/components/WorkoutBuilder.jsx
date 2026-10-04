@@ -282,30 +282,29 @@ export default function WorkoutBuilder() {
   };
 
   const handleConfirmSaveWorkout = async () => {
+    setApiLoading(true);
+    setErrorMessage('');
+    
     try {
-      setApiLoading(true);
       const payload = {
-        id: saveAsNew ? null : currentWorkoutId,
         name: saveTitle,
-        folderId: saveFolderId,
-        workout_doc: currentWorkoutDoc,
+        saveFolderId,
+        workout_doc: { steps },
+        ...(saveAsNew ? {} : { id: currentWorkoutId }),
       };
   
       await saveWorkoutApi(payload, saveAsNew);
       
-      // Refresh folders/workouts list after saving
-      const updatedData = await fetchWorkoutsApi();
-      setWorkouts(updatedData.workouts);
-      setFolders(updatedData.folders);
-      
-      setIsSaveModalOpen(false);
+      // Success feedback
+      setIsOpen(false); // or show success message before closing
     } catch (err) {
-      console.error('Error saving workout:', err);
-      alert(`Save failed: ${err.message}`);
+      console.error('Save workout error:', err);
+      setErrorMessage(err.message || 'Failed to save workout. Please try again.');
     } finally {
       setApiLoading(false);
     }
   };
+  
   
   const triggerFileDownload = (content, fileName, mimeType) => {
     console.log('[App Debug WorkoutBuilder] triggerFileDownload invoked', { fileName, mimeType });
