@@ -336,7 +336,10 @@ export default function MonthlyView() {
     }
   };
 
-  if (loading) return <div className="monthly-view-loading">Loading Monthly Workouts & Activities...</div>;
+  // Wait for workouts, sport settings, and paces context to finish loading
+  if (loading || !paces) {
+    return <div className="monthly-view-loading">Loading Monthly Workouts & Activities...</div>;
+  }
 
   const formatHeaderDate = (dateObj) => {
     return dateObj.toLocaleDateString(undefined, {
