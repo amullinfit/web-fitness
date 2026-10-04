@@ -390,6 +390,40 @@ const extractZonesArray = (pacesInput) => {
 };
 
 /**
+ * Resolves and sorts fast/slow zone objects from start/end zone identifiers.
+ * Higher zone number = Faster pace (fastZoneObj)
+ * Lower zone number = Slower pace (slowZoneObj)
+ *
+ * @param {number|string|null} startZone - Start zone number
+ * @param {number|string|null} endZone - End zone number
+ * @param {Function} findZoneFn - Function to look up a zone object by its zone number
+ * @returns {{ fastZoneObj: Object|null, slowZoneObj: Object|null }}
+ */
+function getSortedZoneObjs(startZone, endZone, findZoneFn) {
+  const startNum = startZone != null ? Number(startZone) : null;
+  const endNum = endZone != null ? Number(endZone) : null;
+
+  if (startNum == null && endNum == null) {
+    return { fastZoneObj: null, slowZoneObj: null };
+  }
+
+  let fastZoneNum, slowZoneNum;
+
+  if (startNum != null && endNum != null) {
+    fastZoneNum = Math.max(startNum, endNum); // Higher zone ID = faster pace
+    slowZoneNum = Math.min(startNum, endNum); // Lower zone ID = slower pace
+  } else {
+    fastZoneNum = startNum ?? endNum;
+    slowZoneNum = startNum ?? endNum;
+  }
+
+  return {
+    fastZoneObj: findZoneFn(fastZoneNum) || null,
+    slowZoneObj: findZoneFn(slowZoneNum) || null,
+  };
+}
+
+/**
  * Generates descriptive zone text string from a workout step and user's pace zones.
  *
  * Handles units:
@@ -411,7 +445,7 @@ export function getDescriptiveText(step, pacesInput) {
   const zones = extractZonesArray(pacesInput);
 
   // Helper to standardise range output as "FAST_PACE - SLOW_PACE"
-  const formatOutputDesc = (secA, secB) => {
+  const formatOutputRange = (secA, secB) => {
     if (!secA && !secB) return "";
     if (secA && !secB) return formatSecPerMileToStr(secA);
     if (!secA && secB) return formatSecPerMileToStr(secB);
@@ -445,7 +479,7 @@ export function getDescriptiveText(step, pacesInput) {
     if (start != null || end != null) {
       const secStart = start != null ? calcPaceFromPct(Number(start)) : null;
       const secEnd = end != null ? calcPaceFromPct(Number(end)) : null;
-      return formatOutputDesc(secStart, secEnd);
+      return formatOutputRange(secStart, secEnd);
     }
   }
 
@@ -453,12 +487,11 @@ export function getDescriptiveText(step, pacesInput) {
   // 2. Handling Seconds ("secs")
   // -------------------------------------------------------------------------
   if (units === "secs") {
-    const singleVal = value != null ? value : zone;
-    if (singleVal != null) {
+    if (value != null) {
       return formatSecPerMileToStr(Number(singleVal));
     }
     if (start != null || end != null) {
-      return formatOutputDesc(Number(start), Number(end));
+      return formatOutputRange(Number(start), Number(end));
     }
   }
 
@@ -469,12 +502,12 @@ export function getDescriptiveText(step, pacesInput) {
 
   const findZone = (zNum) => zones.find((z) => Number(z.zone) === Number(zNum));
 
-  const singleZoneNum = value != null ? value : zone;
+  const singleZoneNum = value;
   const startZoneNum = start;
   const endZoneNum = end;
 
   // Single Zone target
-  if (singleZoneNum != null && startZoneNum == null) {
+  if (singleZoneNum != null) {
     const targetZone = findZone(singleZoneNum);
     if (!targetZone) return "";
 
@@ -485,26 +518,19 @@ export function getDescriptiveText(step, pacesInput) {
       slowSec = fastSec ? fastSec + 120 : 0; // +2 mins fallback if slow pace is missing/0:00
     }
 
-    return formatOutputDesc(fastSec, slowSec);
+    return formatOutputRange(fastSec, slowSec);
   }
 
   // Zone Range target (e.g. Zone 4 to Zone 6)
   if (startZoneNum != null || endZoneNum != null) {
-    const fastZoneObj = startZoneNum != null ? findZone(startZoneNum) : null;
-    const slowZoneObj = endZoneNum != null ? findZone(endZoneNum) : null;
+    // Inside getDescriptiveText():
+    const { fastZoneObj, slowZoneObj } = getSortedZoneObjs(startZoneNum, endZoneNum, findZone);
 
-    const fastSec = fastZoneObj ? (parsePaceStrToSec(fastZoneObj.pace_fast) || fastZoneObj.pace_val_sec) : null;
+    const fastSec = fastZoneObj ? parsePaceStrToSec(fastZoneObj.pace_fast): null;
     
-    let slowSec = null;
-    if (slowZoneObj) {
-      slowSec = parsePaceStrToSec(slowZoneObj.pace_slow);
-      if (!slowSec) {
-        const fallbackFast = parsePaceStrToSec(slowZoneObj.pace_fast) || slowZoneObj.pace_val_sec;
-        if (fallbackFast) slowSec = fallbackFast + 120;
-      }
-    }
+    const slowSec = slowZoneObj ? parsePaceStrToSec(fastZoneObj.pace_slow): null;
 
-    return formatOutputDesc(fastSec, slowSec);
+    return formatOutputRange(fastSec, slowSec);
   }
 
   return "";
