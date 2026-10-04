@@ -20,7 +20,7 @@ import {
 
 import { 
   convertWorkoutToTargetFormat,
-  getZoneDescriptiveText
+  getDescriptiveText
 } from '../utils/WorkoutConverter.js';
 
 const SLOW_BUFFER_MINUTES = 1;
@@ -297,7 +297,7 @@ export default function WorkoutChart({
                   const slowHeightPct = computePaceToHeightPct(range.slowSec);
 
                   // Get descriptive text for zone or fallback to extracted/formatted range strings
-                  const descriptivePaceStr = getZoneDescriptiveText(step.pace, paces);
+                  const descriptivePaceStr = getDescriptiveText(step.pace, paces);
                   console.log('[App Debug WorkoutChart Plan] pacestr: ', descriptivePaceStr);
 
                   const paceDetails = descriptivePaceStr || (

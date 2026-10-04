@@ -450,7 +450,7 @@ const getZoneList = (pacesInput) => {
    * @param {Object|Array} pacesInput - The preset_colors zone list context
    * @returns {Object} Updated `pace` object matching schema
    */
-  export function convertStepPaceTarget(currentPace, targetType, pacesInput) {
+  export function c_onvertStepPaceTarget_OLD_DELETE(currentPace, targetType, pacesInput) {
     const zones = getZoneList(pacesInput);
     const thresholdSec = getThresholdSecFromPaces(pacesInput);
     if (!currentPace) return currentPace;

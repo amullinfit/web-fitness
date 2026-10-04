@@ -16,7 +16,6 @@ import { OptionsMenu } from '../utils/WorkoutBuilderMenus';
 
 import { 
   convertWorkoutToTargetFormat,
-  getZoneDescriptiveText
 } from '../utils/WorkoutConverter.js';
 
 import Modal_Folder_Create from '../modals/Modal_Folder_Create';
