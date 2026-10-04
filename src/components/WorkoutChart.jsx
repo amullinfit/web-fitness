@@ -28,7 +28,6 @@ const FAST_BUFFER_MINUTES = 1;
 
 // Helper to format total duration seconds into "#m#s" string
 const formatDurationMinsSecs = (totalSec) => {
-  console.log('[App Debug WorkoutChart] formatDurationMinsSecs called with totalSec:', totalSec);
   const mins = Math.floor(totalSec / 60);
   const secs = Math.floor(totalSec % 60);
   return `${mins}:${String(secs).padStart(2, '0')}`;
@@ -78,8 +77,6 @@ export default function WorkoutChart({
 
   const plannedList = extractPlannedSteps(workout);
   const executedList = extractExecutedSteps(workout);
-  console.log('[App Debug WorkoutChart] workout: ', workout);
-  console.log('[App Debug WorkoutChart] workout: ', workout);
 
   if (!plannedList.length && !executedList.length) return null;
 
@@ -146,7 +143,6 @@ export default function WorkoutChart({
   const timeTicks = rawTimeTicks.filter((_, idx) => idx % stepInterval === 0 || idx === rawTimeTicks.length - 1);
 
   const computePaceToHeightPct = (paceSec) => {
-    console.log('[App Debug WorkoutChart] computePaceToHeightPct called with paceSec:', paceSec);
     if (!paceSec || ySlowestSec <= yFastestSec) return 50;
     const pct = ((ySlowestSec - paceSec) / (ySlowestSec - yFastestSec)) * 100;
     return Math.min(Math.max(pct, 0), 100);
@@ -160,15 +156,12 @@ export default function WorkoutChart({
       className="workout-chart-container"
       style={{ position: 'relative' }}
       onMouseEnter={() => {
-        console.log('[App Debug WorkoutChart] onMouseEnter chart container');
         setIsChartHovered(true);
       }}
       onMouseLeave={() => {
-        console.log('[App Debug WorkoutChart] onMouseLeave chart container');
         setIsChartHovered(false);
       }}
       onTouchStart={() => {
-        console.log('[App Debug WorkoutChart] onTouchStart chart container');
         setIsChartHovered(true);
       }}
     >
@@ -205,7 +198,6 @@ export default function WorkoutChart({
                   type="button"
                   className="workout-layer-swap-btn"
                   onClick={() => {
-                    console.log('[App Debug WorkoutChart] Layer swap button clicked, previous executedOnTop:', executedOnTop);
                     setExecutedOnTop((prev) => !prev);
                   }}
                   title={executedOnTop ? "Executed is in front. Click to bring Planned to front." : "Planned is in front. Click to bring Executed to front."}
@@ -284,14 +276,7 @@ export default function WorkoutChart({
                   const intensityFormatted = formatIntensityTitleCase(rawIntensity);
 
                   // Extract pace details using extractStepPaceRange
-                  console.log('[App Debug WorkoutChart] -----------------------------------------');
-                  console.log('[App Debug WorkoutChart Plan] ');
-                  console.log('[App Debug WorkoutChart Plan] ');
-                  console.log('[App Debug WorkoutChart Plan] step  : ', step);
-                  console.log('[App Debug WorkoutChart Plan] thresh: ', thresholdSecPerMile);
-                  console.log('[App Debug WorkoutChart Plan] paces : ', paces);
                   const range = extractStepPaceRange(step.pace, paces);
-                  console.log('[App Debug WorkoutChart Plan] range : ', range);
 
 
                   // zoneDetails (name and color) are derived from the fast pace
@@ -302,7 +287,6 @@ export default function WorkoutChart({
 
                   // Get descriptive text for zone or fallback to extracted/formatted range strings
                   const descriptivePaceStr = getDescriptiveText(step.pace, paces);
-                  console.log('[App Debug WorkoutChart Plan] pacestr: ', descriptivePaceStr);
 
                   const paceDetails = descriptivePaceStr || (
                     range.fastPaceStr === range.slowPaceStr 
@@ -311,7 +295,6 @@ export default function WorkoutChart({
                   );
 
                   const tooltipText = `${durationFormatted} @ ${paceDetails}`;
-                  console.log('[App Debug WorkoutChart Plan] tool: ', descriptivePaceStr);
 
                   return (
                     <div
@@ -385,18 +368,13 @@ export default function WorkoutChart({
                     const intensityFormatted = formatIntensityTitleCase(rawIntensity);
   
                     // Extract step pace range for executed steps
-                    console.log('[App Debug WorkoutChart Exec] step  : ', step);
-                    console.log('[App Debug WorkoutChart Exec] thresh: ', thresholdSecPerMile);
-                    console.log('[App Debug WorkoutChart Exec] paces : ', paces);
                     const stepPace = { value: Math.round(step.pace), units: 'secs' };
                     const range = extractStepPaceRange(stepPace, paces);
-                    console.log('[App Debug WorkoutChart Exec] range : ', range);
 
                     const heightPct = computePaceToHeightPct(range.midSec);
   
                     const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
                     const tooltipText = `${durationFormatted} @ ${paceRangeFormatted}`;
-                    console.log('[App Debug WorkoutChart Exec] tool: ', tooltipText);
                   
                     const durationMinutes = durationSecs / 60;
                     const pathData = generateWavyBarPath(durationMinutes);
