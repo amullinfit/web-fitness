@@ -384,7 +384,7 @@ export default function WorkoutChart({
                     console.log('[App Debug WorkoutChart Exec] step  : ', step);
                     console.log('[App Debug WorkoutChart Exec] thresh: ', thresholdSecPerMile);
                     console.log('[App Debug WorkoutChart Exec] paces : ', paces);
-                    const stepPace = ({ pace: { value: Math.round(step.pace), units: 'secs' } });
+                    const stepPace = { value: Math.round(step.pace), units: 'secs' };
                     const range = extractStepPaceRange(stepPace, paces);
                     console.log('[App Debug WorkoutChart Exec] range : ', range);
 
