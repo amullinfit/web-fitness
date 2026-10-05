@@ -125,47 +125,36 @@ export default function WorkoutBuilder() {
     if (!baseWorkout?.workout_doc) {
       return;
     }
-
+  
     const liveDescription =
       buildWorkoutDescription(steps);
-
-    console.log(
-      '[App Debug WorkoutBuilder] Synchronizing live workout:',
-      {
-        stepCount: Array.isArray(steps)
-          ? steps.length
-          : 0,
-        descriptionLength:
-          liveDescription.length,
-        description:
-          liveDescription,
+  
+    setBaseWorkout((prev) => {
+      if (!prev?.workout_doc) {
+        return prev;
       }
-    );
-
-    // Remove description from workout_doc in the API response,
-    // in case the backend returned the legacy nested property.
-    const {
-      description: _savedWorkoutDocDescription,
-      ...savedWorkoutDocWithoutDescription
-    } = preparedSavedBase?.workout_doc || {};
-
-    setBaseWorkout({
-      ...preparedSavedBase,
-      name: finalTitle,
-
-      // Description exists ONLY at the root.
-      description:
-        saved.description ??
-        finalDescription,
-
-      workout_doc: {
-        ...savedWorkoutDocWithoutDescription,
-        steps,
-      },
+  
+      // Strip any existing nested description.
+      const {
+        description: _workoutDocDescription,
+        ...workoutDocWithoutDescription
+      } = prev.workout_doc;
+  
+      return {
+        ...prev,
+  
+        // Description ONLY at the root.
+        description: liveDescription,
+  
+        workout_doc: {
+          ...workoutDocWithoutDescription,
+          steps,
+        },
+      };
     });
-    
   }, [steps]);
 
+  
   // ------------------------------------------------------------
   // Keep baseWorkout.name synchronized with workoutTitle
   // ------------------------------------------------------------
@@ -557,28 +546,32 @@ export default function WorkoutBuilder() {
   
       const preparedSavedBase =
         addIdsToBaseWorkout(saved);
-  
+    
       setUnalteredWorkout(saved);
-  
+      
+      // Remove description from workout_doc in case the API
+      // response still contains the legacy nested property.
+      const {
+        description: _savedWorkoutDocDescription,
+        ...savedWorkoutDocWithoutDescription
+      } = preparedSavedBase?.workout_doc || {};
+      
       setBaseWorkout({
         ...preparedSavedBase,
+      
         name: finalTitle,
-  
-        // Ensure the live UI retains the description even
-        // if the API response omits it at the root.
+      
+        // Description belongs ONLY at the root.
         description:
           saved.description ??
           finalDescription,
-  
+      
         workout_doc: {
-          ...(preparedSavedBase?.workout_doc || {}),
+          ...savedWorkoutDocWithoutDescription,
           steps,
-          description:
-            saved.description ??
-            finalDescription,
         },
       });
-  
+            
       console.log(
         '[Save Flow Builder 8/8] Refreshing saved workout list...'
       );
