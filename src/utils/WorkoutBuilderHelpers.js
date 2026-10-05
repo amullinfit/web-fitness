@@ -1,11 +1,9 @@
 import React from 'react';
 
-// ============================================================
-// Constants
-// ============================================================
+// Module-level fallback constant for threshold in sec/mi
+export const FALLBACK_THRESHOLD = 540;
 
-export const FALLBACK_THRESHOLD = 540; // seconds per mile
-
+// API endpoints
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 const VAL_MY_PACES_URL = '/api/val-my-paces';
 
@@ -13,55 +11,43 @@ export const DEFAULT_THRESHOLD = (paces) => {
   return paces?.threshold_pace || FALLBACK_THRESHOLD;
 };
 
-// ============================================================
-// API - Folders
-// ============================================================
+/* =========================================================
+   API FUNCTIONS
+   ========================================================= */
 
 export async function fetchFoldersApi() {
-  console.log(
-    '[WorkoutBuilder API] [Folders 1/3] fetchFoldersApi() called'
-  );
-
-  const endpoint = `${VAL_WORKOUTBUILDER_URL}?action=get_folders`;
-
-  console.log(
-    '[WorkoutBuilder API] [Folders 2/3] GET',
-    endpoint
-  );
+  console.log('[Save Flow] [Folders 1/3] fetchFoldersApi called');
 
   try {
+    const endpoint = `${VAL_WORKOUTBUILDER_URL}?action=get_folders`;
+
+    console.log('[Save Flow] [Folders 2/3] GET:', endpoint);
+
     const res = await fetch(endpoint, {
       method: 'GET',
     });
 
     console.log(
-      '[WorkoutBuilder API] [Folders 2/3] Response:',
-      {
-        status: res.status,
-        statusText: res.statusText,
-        ok: res.ok,
-      }
+      '[Save Flow] [Folders 3/3] Response:',
+      res.status,
+      res.statusText
     );
 
     if (!res.ok) {
-      throw new Error(
-        `HTTP ${res.status}: Failed to fetch folders`
-      );
+      throw new Error(`HTTP ${res.status}: Failed to fetch folders`);
     }
 
     const data = await res.json();
 
     console.log(
-      '[WorkoutBuilder API] [Folders 3/3] Folder data received:',
+      '[Save Flow] [Folders] Parsed response:',
       data
     );
 
-    return Array.isArray(data)
-      ? data
-      : (data?.folders || []);
+    return Array.isArray(data) ? data : (data?.folders || []);
   } catch (err) {
     console.error(
-      '[WorkoutBuilder API] [Folders ERROR]',
+      '[Save Flow] [Folders ERROR]',
       err
     );
 
@@ -69,37 +55,31 @@ export async function fetchFoldersApi() {
   }
 }
 
-// ============================================================
-// API - Workouts
-// ============================================================
 
 export async function fetchWorkoutsApi(folderId = null) {
   console.log(
-    '[WorkoutBuilder API] [Workouts 1/4] fetchWorkoutsApi() called',
+    '[Save Flow] [Workouts 1/4] fetchWorkoutsApi called',
     { folderId }
   );
 
-  const url = folderId
-    ? `${VAL_WORKOUTBUILDER_URL}?action=get_workouts&folder_id=${encodeURIComponent(folderId)}`
-    : `${VAL_WORKOUTBUILDER_URL}?action=get_workouts`;
-
-  console.log(
-    '[WorkoutBuilder API] [Workouts 2/4] GET',
-    url
-  );
-
   try {
+    const url = folderId
+      ? `${VAL_WORKOUTBUILDER_URL}?action=get_workouts&folder_id=${encodeURIComponent(folderId)}`
+      : `${VAL_WORKOUTBUILDER_URL}?action=get_workouts`;
+
+    console.log(
+      '[Save Flow] [Workouts 2/4] GET:',
+      url
+    );
+
     const res = await fetch(url, {
       method: 'GET',
     });
 
     console.log(
-      '[WorkoutBuilder API] [Workouts 2/4] Response:',
-      {
-        status: res.status,
-        statusText: res.statusText,
-        ok: res.ok,
-      }
+      '[Save Flow] [Workouts 3/4] Response:',
+      res.status,
+      res.statusText
     );
 
     if (!res.ok) {
@@ -111,7 +91,7 @@ export async function fetchWorkoutsApi(folderId = null) {
     const data = await res.json();
 
     console.log(
-      '[WorkoutBuilder API] [Workouts 3/4] Raw workout response:',
+      '[Save Flow] [Workouts 4/4] Parsed response:',
       data
     );
 
@@ -131,12 +111,8 @@ export async function fetchWorkoutsApi(folderId = null) {
     );
 
     console.log(
-      '[WorkoutBuilder API] [Workouts 4/4] Parsed workout list:',
-      {
-        folderCount: folders.length,
-        workoutCount: workouts.length,
-        workouts,
-      }
+      '[Save Flow] [Workouts] Normalized workout count:',
+      workouts.length
     );
 
     return {
@@ -145,7 +121,7 @@ export async function fetchWorkoutsApi(folderId = null) {
     };
   } catch (err) {
     console.error(
-      '[WorkoutBuilder API] [Workouts ERROR]',
+      '[Save Flow] [Workouts ERROR]',
       err
     );
 
@@ -153,50 +129,40 @@ export async function fetchWorkoutsApi(folderId = null) {
   }
 }
 
-// ============================================================
-// API - Create Folder
-// ============================================================
 
 export async function createFolderApi(folderName) {
   console.log(
-    '[WorkoutBuilder API] [Create Folder 1/4] createFolderApi() called',
-    { folderName }
-  );
-
-  if (!folderName || !String(folderName).trim()) {
-    throw new Error('Folder name is required.');
-  }
-
-  const body = {
-    action: 'create_folder',
-    name: String(folderName).trim(),
-    type: 'FOLDER',
-  };
-
-  console.log(
-    '[WorkoutBuilder API] [Create Folder 2/4] POST request:',
-    {
-      endpoint: VAL_WORKOUTBUILDER_URL,
-      body,
-    }
+    '[Save Flow] [Folder Create 1/4] createFolderApi:',
+    folderName
   );
 
   try {
-    const res = await fetch(VAL_WORKOUTBUILDER_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    const body = {
+      action: 'create_folder',
+      name: folderName,
+      type: 'FOLDER',
+    };
 
     console.log(
-      '[WorkoutBuilder API] [Create Folder 3/4] Response:',
+      '[Save Flow] [Folder Create 2/4] Request body:',
+      body
+    );
+
+    const res = await fetch(
+      VAL_WORKOUTBUILDER_URL,
       {
-        status: res.status,
-        statusText: res.statusText,
-        ok: res.ok,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
       }
+    );
+
+    console.log(
+      '[Save Flow] [Folder Create 3/4] Response:',
+      res.status,
+      res.statusText
     );
 
     if (!res.ok) {
@@ -207,8 +173,8 @@ export async function createFolderApi(folderName) {
 
         errorDetails =
           errJson?.error ||
-          errJson?.details ||
           errJson?.message ||
+          errJson?.details ||
           JSON.stringify(errJson);
       } catch {
         errorDetails = await res.text();
@@ -219,17 +185,17 @@ export async function createFolderApi(folderName) {
       );
     }
 
-    const result = await res.json();
+    const data = await res.json();
 
     console.log(
-      '[WorkoutBuilder API] [Create Folder 4/4] Folder created:',
-      result
+      '[Save Flow] [Folder Create 4/4] Created folder:',
+      data
     );
 
-    return result;
+    return data;
   } catch (err) {
     console.error(
-      '[WorkoutBuilder API] [Create Folder ERROR]',
+      '[Save Flow] [Folder Create ERROR]',
       err
     );
 
@@ -237,414 +203,459 @@ export async function createFolderApi(folderName) {
   }
 }
 
-// ============================================================
-// API - SAVE WORKOUT
-//
-// This is the single authoritative save function.
-//
-// Expected input from WorkoutBuilder:
-//
-// {
-//   id,
-//   name,
-//   description,
-//   folder_id,
-//   document
-// }
-//
-// OR:
-//
-// {
-//   id,
-//   name,
-//   folder_id,
-//   workout_doc: {
-//     steps: []
-//   }
-// }
-//
-// The function normalizes either form before sending it to
-// /api/val-workoutbuilder.
-// ============================================================
 
-export async function saveWorkoutApi(
-  payload,
-  isNew = false
-) {
+/* =========================================================
+   SAVE WORKOUT API
+   ========================================================= */
+
+/**
+ * Saves a workout through /api/val-workoutbuilder.
+ *
+ * IMPORTANT:
+ * The canonical workout structure is:
+ *
+ * {
+ *   id,
+ *   name,
+ *   folder_id,
+ *   workout_doc: {
+ *     steps: [...]
+ *   }
+ * }
+ *
+ * isNew=true forces a CREATE operation.
+ */
+export async function saveWorkoutApi(payload, isNew = false) {
   console.log(
-    '============================================================'
+    '=================================================='
   );
 
   console.log(
-    '[Save Flow] [1/8] saveWorkoutApi() ENTERED'
+    '[Save Flow] [1/8] saveWorkoutApi ENTERED'
   );
 
   console.log(
-    '[Save Flow] [1/8] Arguments:',
-    {
-      payload,
-      isNew,
-    }
+    '[Save Flow] [1/8] isNew:',
+    isNew
   );
+
+  console.log(
+    '[Save Flow] [1/8] Raw payload received:',
+    payload
+  );
+
+
+  /* -----------------------------------------------------
+     STEP 2 — Validate incoming payload
+     ----------------------------------------------------- */
 
   if (!payload || typeof payload !== 'object') {
     console.error(
-      '[Save Flow] [ERROR] Invalid save payload:',
+      '[Save Flow] [2/8] INVALID PAYLOAD:',
       payload
     );
 
     throw new Error(
-      'Cannot save workout: save payload is missing or invalid.'
+      'Cannot save workout: payload is missing or invalid.'
     );
   }
 
+  let workoutData;
+
   try {
-    // ----------------------------------------------------------
-    // STEP 2 - Clone the payload
-    // ----------------------------------------------------------
-
-    console.log(
-      '[Save Flow] [2/8] Cloning and normalizing payload...'
+    /*
+     * Deep clone so we don't accidentally mutate React state.
+     */
+    workoutData = JSON.parse(
+      JSON.stringify(payload)
+    );
+  } catch (err) {
+    console.error(
+      '[Save Flow] [2/8] Failed to clone payload:',
+      err
     );
 
-    let workoutData;
+    throw new Error(
+      'Cannot save workout: payload could not be serialized.'
+    );
+  }
 
-    try {
-      workoutData = JSON.parse(
-        JSON.stringify(payload)
-      );
-    } catch (cloneError) {
-      console.error(
-        '[Save Flow] [ERROR] Could not clone payload:',
-        cloneError
-      );
+  console.log(
+    '[Save Flow] [2/8] Cloned workout payload:',
+    workoutData
+  );
 
-      throw new Error(
-        'Cannot save workout: payload contains invalid data.'
-      );
-    }
 
+  /* -----------------------------------------------------
+     STEP 3 — Determine CREATE vs UPDATE
+     ----------------------------------------------------- */
+
+  if (isNew) {
     console.log(
-      '[Save Flow] [2/8] Cloned payload:',
-      workoutData
+      '[Save Flow] [3/8] Save As New requested — removing existing IDs.'
     );
 
-    // ----------------------------------------------------------
-    // STEP 3 - Determine whether this is CREATE or UPDATE
-    // ----------------------------------------------------------
+    delete workoutData.id;
+    delete workoutData._id;
+  }
 
-    if (isNew) {
-      console.log(
-        '[Save Flow] [3/8] Save-As-New requested. Removing existing IDs.'
-      );
+  const action = workoutData.id
+    ? 'update_workout'
+    : 'create_workout';
 
-      delete workoutData.id;
-      delete workoutData._id;
-      delete workoutData.workout_id;
+  const method = workoutData.id
+    ? 'PUT'
+    : 'POST';
 
-      if (workoutData.workout_doc) {
-        workoutData = addIdsToBaseWorkout(
-          workoutData
-        );
-      }
-    }
-
-    const workoutId =
-      workoutData.id ??
-      workoutData.workout_id ??
-      workoutData._id ??
-      null;
-
-    const action = workoutId
-      ? 'update_workout'
-      : 'create_workout';
-
-    const method = workoutId
-      ? 'PUT'
-      : 'POST';
-
-    console.log(
-      '[Save Flow] [3/8] Save operation determined:',
-      {
-        isNew,
-        workoutId,
-        action,
-        method,
-      }
-    );
-
-    // ----------------------------------------------------------
-    // STEP 4 - Normalize folder
-    // ----------------------------------------------------------
-
-    let folderId =
-      workoutData.saveFolderId ??
-      workoutData.folderId ??
-      workoutData.folder_id ??
-      null;
-
-    if (
-      folderId === '' ||
-      folderId === 'root' ||
-      folderId === undefined
-    ) {
-      folderId = null;
-    } else if (
-      typeof folderId === 'string' &&
-      /^\d+$/.test(folderId.trim())
-    ) {
-      folderId = Number(folderId);
-    }
-
-    console.log(
-      '[Save Flow] [4/8] Folder normalized:',
-      {
-        originalFolderId:
-          workoutData.saveFolderId ??
-          workoutData.folderId ??
-          workoutData.folder_id ??
-          null,
-        normalizedFolderId: folderId,
-      }
-    );
-
-    // ----------------------------------------------------------
-    // STEP 5 - Extract workout information
-    // ----------------------------------------------------------
-
-    const workoutName =
-      workoutData.name ||
-      workoutData.title ||
-      workoutData.workout_doc?.name ||
-      'Untitled Workout';
-
-    let steps =
-      workoutData.workout_doc?.steps ||
-      workoutData.steps ||
-      [];
-
-    if (!Array.isArray(steps)) {
-      console.warn(
-        '[Save Flow] [5/8] Workout steps were not an array. Using empty array.',
-        steps
-      );
-
-      steps = [];
-    }
-
-    console.log(
-      '[Save Flow] [5/8] Workout data extracted:',
-      {
-        workoutName,
-        stepCount: steps.length,
-        steps,
-      }
-    );
-
-    // ----------------------------------------------------------
-    // STEP 6 - Generate Intervals.icu text description
-    // ----------------------------------------------------------
-
-    console.log(
-      '[Save Flow] [6/8] Converting steps to Intervals.icu text...'
-    );
-
-    const icuDescription =
-      convertStepsToIcuText(steps);
-
-    console.log(
-      '[Save Flow] [6/8] Generated Intervals.icu description:',
-      icuDescription
-    );
-
-    // ----------------------------------------------------------
-    // STEP 7 - Build final backend payload
-    // ----------------------------------------------------------
-
-    const workoutDoc = {
-      ...(workoutData.workout_doc || {}),
-      name: workoutName,
-      steps,
-    };
-
-    const bodyPayload = {
+  console.log(
+    '[Save Flow] [3/8] Operation determined:',
+    {
       action,
+      method,
+      id: workoutData.id ?? null,
+      isNew,
+    }
+  );
 
-      ...(workoutId
-        ? { id: workoutId }
-        : {}),
 
-      name: workoutName,
+  /* -----------------------------------------------------
+     STEP 4 — Normalize folder ID
+     ----------------------------------------------------- */
 
-      description:
-        workoutData.description ||
-        icuDescription,
+  let folderId =
+    workoutData.saveFolderId ??
+    workoutData.folderId ??
+    workoutData.folder_id ??
+    null;
 
-      type:
-        workoutData.type ||
-        'Run',
+  if (
+    folderId === '' ||
+    folderId === 'root' ||
+    folderId === undefined
+  ) {
+    folderId = null;
+  } else if (
+    typeof folderId === 'string' &&
+    /^\d+$/.test(folderId.trim())
+  ) {
+    folderId = Number(folderId);
+  }
 
-      folder_id: folderId,
+  console.log(
+    '[Save Flow] [4/8] Normalized folder ID:',
+    folderId
+  );
 
-      workout_doc: workoutDoc,
-    };
 
-    console.log(
-      '[Save Flow] [7/8] FINAL API PAYLOAD:',
-      bodyPayload
+  /* -----------------------------------------------------
+     STEP 5 — Extract workout name and steps
+     ----------------------------------------------------- */
+
+  const workoutName =
+    workoutData.name ||
+    workoutData.title ||
+    workoutData.workout_doc?.name ||
+    'Untitled Workout';
+
+  const steps =
+    workoutData.workout_doc?.steps ||
+    workoutData.steps ||
+    [];
+
+  if (!Array.isArray(steps)) {
+    console.error(
+      '[Save Flow] [5/8] INVALID STEPS:',
+      steps
     );
 
-    console.log(
-      '[Save Flow] [7/8] FINAL API REQUEST:',
-      {
-        endpoint: VAL_WORKOUTBUILDER_URL,
-        method,
-        action,
-        id: workoutId,
-      }
+    throw new Error(
+      'Cannot save workout: workout steps are not an array.'
     );
+  }
 
-    // ----------------------------------------------------------
-    // STEP 8 - Actually call backend
-    // ----------------------------------------------------------
+  console.log(
+    '[Save Flow] [5/8] Workout content extracted:',
+    {
+      workoutName,
+      stepCount: steps.length,
+      steps,
+    }
+  );
 
-    console.log(
-      '[Save Flow] [8/8] Sending request to save API...'
-    );
 
-    const requestStart = Date.now();
+  /* -----------------------------------------------------
+     STEP 6 — Generate Intervals.icu description
+     ----------------------------------------------------- */
 
-    const res = await fetch(
+  const icuDescription =
+    convertStepsToIcuText(steps);
+
+  console.log(
+    '[Save Flow] [6/8] Generated Intervals.icu description:',
+    icuDescription
+  );
+
+
+  /*
+   * Preserve the workout_doc structure.
+   *
+   * This is important because the frontend works with:
+   *
+   * baseWorkout.workout_doc.steps
+   */
+  const workoutDoc = {
+    ...(workoutData.workout_doc || {}),
+    name: workoutName,
+    steps,
+  };
+
+  /*
+   * This is the actual request body sent to the
+   * /api/val-workoutbuilder proxy.
+   */
+  const bodyPayload = {
+    action,
+
+    ...(workoutData.id
+      ? { id: workoutData.id }
+      : {}),
+
+    name: workoutName,
+
+    /*
+     * The description is generated from the actual steps.
+     * This is what Intervals.icu expects.
+     */
+    description: icuDescription,
+
+    type:
+      workoutData.type ||
+      'Run',
+
+    folder_id: folderId,
+
+    workout_doc: workoutDoc,
+  };
+
+  console.log(
+    '[Save Flow] [6/8] FINAL BACKEND PAYLOAD:',
+    bodyPayload
+  );
+
+  console.log(
+    '[Save Flow] [6/8] FINAL BACKEND PAYLOAD JSON:',
+    JSON.stringify(bodyPayload, null, 2)
+  );
+
+
+  /* -----------------------------------------------------
+     STEP 7 — Send HTTP request
+     ----------------------------------------------------- */
+
+  console.log(
+    '[Save Flow] [7/8] Sending request:',
+    {
+      endpoint: VAL_WORKOUTBUILDER_URL,
+      method,
+      action,
+      id: workoutData.id ?? null,
+    }
+  );
+
+  let res;
+
+  try {
+    res = await fetch(
       VAL_WORKOUTBUILDER_URL,
       {
         method,
         headers: {
-          'Content-Type':
-            'application/json',
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(
-          bodyPayload
-        ),
+        body: JSON.stringify(bodyPayload),
       }
     );
-
-    const requestDuration =
-      Date.now() - requestStart;
-
-    console.log(
-      '[Save Flow] [8/8] Save API responded:',
-      {
-        status: res.status,
-        statusText: res.statusText,
-        ok: res.ok,
-        durationMs: requestDuration,
-      }
+  } catch (networkError) {
+    console.error(
+      '[Save Flow] [7/8] NETWORK ERROR:',
+      networkError
     );
 
-    // ----------------------------------------------------------
-    // Handle HTTP error
-    // ----------------------------------------------------------
+    throw networkError;
+  }
 
-    if (!res.ok) {
-      let errorText = '';
-
-      try {
-        const errJson =
-          await res.json();
-
-        console.error(
-          '[Save Flow] [API ERROR] Backend JSON error:',
-          errJson
-        );
-
-        errorText =
-          errJson?.error ||
-          errJson?.message ||
-          errJson?.details ||
-          JSON.stringify(errJson);
-      } catch {
-        errorText =
-          await res.text();
-
-        console.error(
-          '[Save Flow] [API ERROR] Backend text error:',
-          errorText
-        );
-      }
-
-      throw new Error(
-        `Failed to save workout (${res.status}): ${
-          errorText || 'Unknown server error'
-        }`
-      );
+  console.log(
+    '[Save Flow] [7/8] HTTP response:',
+    {
+      status: res.status,
+      statusText: res.statusText,
+      ok: res.ok,
     }
+  );
 
-    // ----------------------------------------------------------
-    // Parse successful response
-    // ----------------------------------------------------------
 
-    let savedResult;
+  /* -----------------------------------------------------
+     STEP 8 — Read and validate response
+     ----------------------------------------------------- */
 
+  let responseText = '';
+
+  try {
+    responseText = await res.text();
+  } catch (readError) {
+    console.error(
+      '[Save Flow] [8/8] Failed reading response body:',
+      readError
+    );
+
+    throw new Error(
+      'Save request completed but the server response could not be read.'
+    );
+  }
+
+  console.log(
+    '[Save Flow] [8/8] RAW RESPONSE BODY:',
+    responseText
+  );
+
+
+  let savedResult = null;
+
+  if (responseText) {
     try {
-      savedResult =
-        await res.json();
-    } catch (jsonError) {
+      savedResult = JSON.parse(responseText);
+    } catch (parseError) {
       console.error(
-        '[Save Flow] [ERROR] Backend returned invalid JSON:',
-        jsonError
+        '[Save Flow] [8/8] Response was not valid JSON:',
+        parseError
       );
 
+      if (!res.ok) {
+        throw new Error(
+          `Save failed (${res.status} ${res.statusText}): ${responseText}`
+        );
+      }
+
+      /*
+       * HTTP 200 but non-JSON response.
+       *
+       * Do NOT silently call this a successful save.
+       */
       throw new Error(
-        'Workout may have been saved, but the server returned an invalid response.'
+        `Save returned HTTP ${res.status}, but the server did not return valid JSON.`
       );
     }
+  }
 
-    console.log(
-      '[Save Flow] [SUCCESS] Save API returned:',
+
+  console.log(
+    '[Save Flow] [8/8] PARSED RESPONSE:',
+    savedResult
+  );
+
+
+  /*
+   * HTTP-level validation.
+   */
+  if (!res.ok) {
+    const errorMessage =
+      savedResult?.error ||
+      savedResult?.message ||
+      savedResult?.details ||
+      `HTTP ${res.status} ${res.statusText}`;
+
+    console.error(
+      '[Save Flow] [8/8] HTTP SAVE FAILURE:',
+      errorMessage
+    );
+
+    throw new Error(
+      `Failed to save workout: ${errorMessage}`
+    );
+  }
+
+
+  /*
+   * Application-level validation.
+   *
+   * Some APIs return HTTP 200 even when the operation failed.
+   */
+  if (
+    savedResult?.success === false ||
+    savedResult?.saved === false ||
+    savedResult?.ok === false ||
+    savedResult?.error
+  ) {
+    const errorMessage =
+      savedResult?.error ||
+      savedResult?.message ||
+      savedResult?.details ||
+      'The backend reported that the workout was not saved.';
+
+    console.error(
+      '[Save Flow] [8/8] BACKEND REPORTED SAVE FAILURE:',
       savedResult
     );
 
-    console.log(
-      '[Save Flow] [SUCCESS] Workout save operation completed.'
+    throw new Error(
+      errorMessage
     );
-
-    console.log(
-      '============================================================'
-    );
-
-    return savedResult;
-
-  } catch (err) {
-    console.error(
-      '[Save Flow] [FATAL ERROR] saveWorkoutApi() failed:',
-      err
-    );
-
-    console.error(
-      '[Save Flow] [FATAL ERROR] Error message:',
-      err?.message
-    );
-
-    console.error(
-      '[Save Flow] [FATAL ERROR] Stack:',
-      err?.stack
-    );
-
-    console.log(
-      '============================================================'
-    );
-
-    throw err;
   }
+
+
+  /*
+   * Try to identify the saved workout ID.
+   */
+  const returnedId =
+    savedResult?.id ??
+    savedResult?.workout_id ??
+    savedResult?.workout?.id ??
+    savedResult?.data?.id ??
+    savedResult?.data?.workout_id ??
+    null;
+
+
+  console.log(
+    '[Save Flow] [8/8] Returned workout ID:',
+    returnedId
+  );
+
+
+  /*
+   * This is an important diagnostic.
+   *
+   * An update should normally return some indication of which
+   * workout was updated. A create should normally return the
+   * newly-created workout ID.
+   */
+  if (!returnedId && !workoutData.id) {
+    console.warn(
+      '[Save Flow] [8/8] WARNING: HTTP request succeeded, but no workout ID was returned.',
+      savedResult
+    );
+  }
+
+
+  console.log(
+    '[Save Flow] [8/8] SAVE REQUEST COMPLETED SUCCESSFULLY:',
+    savedResult
+  );
+
+  console.log(
+    '=================================================='
+  );
+
+  return savedResult;
 }
 
-// ============================================================
-// API - My Paces
-// ============================================================
+
+/* =========================================================
+   PACES API
+   ========================================================= */
 
 export async function fetchMyPacesApi() {
   console.log(
-    '[WorkoutBuilder API] [Paces 1/3] fetchMyPacesApi() called'
+    '[App Debug BuilderHelpers] fetchMyPacesApi called'
   );
 
   try {
@@ -655,32 +666,16 @@ export async function fetchMyPacesApi() {
       }
     );
 
-    console.log(
-      '[WorkoutBuilder API] [Paces 2/3] Response:',
-      {
-        status: res.status,
-        statusText: res.statusText,
-        ok: res.ok,
-      }
-    );
-
     if (!res.ok) {
       throw new Error(
         `HTTP ${res.status}: Failed to fetch paces`
       );
     }
 
-    const data = await res.json();
-
-    console.log(
-      '[WorkoutBuilder API] [Paces 3/3] Pace data:',
-      data
-    );
-
-    return data;
+    return await res.json();
   } catch (err) {
     console.error(
-      '[WorkoutBuilder API] [Paces ERROR]',
+      '[App Debug BuilderHelpers] fetchMyPacesApi error:',
       err
     );
 
@@ -688,169 +683,109 @@ export async function fetchMyPacesApi() {
   }
 }
 
-// ============================================================
-// Formatting & Parsing Helpers
-// ============================================================
 
-export const formatTime = (
-  totalSeconds
-) => {
+/* =========================================================
+   FORMATTING / PARSING HELPERS
+   ========================================================= */
+
+export const formatTime = (totalSeconds) => {
   const sec = Math.max(
     0,
-    Math.round(
-      totalSeconds || 0
-    )
+    Math.round(totalSeconds || 0)
   );
 
-  const hrs = Math.floor(
-    sec / 3600
-  );
-
+  const hrs = Math.floor(sec / 3600);
   const mins = Math.floor(
     (sec % 3600) / 60
   );
-
-  const secs =
-    sec % 60;
+  const secs = sec % 60;
 
   if (hrs > 0) {
-    return `${hrs}:${String(
-      mins
-    ).padStart(2, '0')}:${String(
-      secs
-    ).padStart(2, '0')}`;
+    return `${hrs}:${String(mins).padStart(
+      2,
+      '0'
+    )}:${String(secs).padStart(2, '0')}`;
   }
 
-  return `${String(
-    mins
-  ).padStart(2, '0')}:${String(
-    secs
-  ).padStart(2, '0')}`;
+  return `${String(mins).padStart(
+    2,
+    '0'
+  )}:${String(secs).padStart(2, '0')}`;
 };
 
-export const formatMMSS = (
-  totalSeconds
-) => {
+
+export const formatMMSS = (totalSeconds) => {
   const sec = Math.max(
     0,
-    Math.round(
-      totalSeconds || 0
-    )
+    Math.round(totalSeconds || 0)
   );
 
-  const mins = Math.floor(
-    sec / 60
-  );
+  const mins = Math.floor(sec / 60);
+  const secs = sec % 60;
 
-  const secs =
-    sec % 60;
-
-  return `${String(
-    mins
-  ).padStart(2, '0')}:${String(
-    secs
-  ).padStart(2, '0')}`;
+  return `${String(mins).padStart(
+    2,
+    '0'
+  )}:${String(secs).padStart(2, '0')}`;
 };
 
-export const parseMMSS = (
-  str
-) => {
+
+export const parseMMSS = (str) => {
   if (!str) return 0;
 
   let cleanStr = String(str)
     .trim()
-    .replace(
-      /\/mi|\/km/g,
-      ''
-    );
+    .replace(/\/mi|\/km/g, '');
 
   if (cleanStr.includes(':')) {
-    const parts =
-      cleanStr.split(':');
+    const parts = cleanStr.split(':');
 
     if (parts.length === 3) {
       return (
-        (parseInt(
-          parts[0],
-          10
-        ) || 0) *
-          3600 +
-        (parseInt(
-          parts[1],
-          10
-        ) || 0) *
-          60 +
-        (parseInt(
-          parts[2],
-          10
-        ) || 0)
+        (parseInt(parts[0], 10) || 0) * 3600 +
+        (parseInt(parts[1], 10) || 0) * 60 +
+        (parseInt(parts[2], 10) || 0)
       );
     }
 
     return (
-      (parseInt(
-        parts[0],
-        10
-      ) || 0) *
-        60 +
-      (parseInt(
-        parts[1],
-        10
-      ) || 0)
+      (parseInt(parts[0], 10) || 0) * 60 +
+      (parseInt(parts[1], 10) || 0)
     );
   }
 
-  const num =
-    parseInt(
-      cleanStr,
-      10
-    );
+  const num = parseInt(
+    cleanStr,
+    10
+  );
 
-  if (isNaN(num)) {
-    return 0;
-  }
+  if (isNaN(num)) return 0;
 
   if (num < 100) {
     return num * 60;
   }
 
-  const mins =
-    Math.floor(
-      num / 100
-    );
+  const mins = Math.floor(num / 100);
+  const secs = num % 100;
 
-  const secs =
-    num % 100;
-
-  return (
-    mins * 60 +
-    Math.min(
-      secs,
-      59
-    )
-  );
+  return mins * 60 + Math.min(secs, 59);
 };
+
 
 export const convertToPaceSec = (
   val,
   paces = null
 ) => {
   if (!val) {
-    return DEFAULT_THRESHOLD(
-      paces
-    );
+    return DEFAULT_THRESHOLD(paces);
   }
 
-  if (
-    typeof val ===
-    'string'
-  ) {
+  if (typeof val === 'string') {
     return parseMMSS(val);
   }
 
   if (
-    typeof val ===
-      'number' &&
+    typeof val === 'number' &&
     val > 0
   ) {
     if (val < 15) {
@@ -862,23 +797,21 @@ export const convertToPaceSec = (
     return Math.round(val);
   }
 
-  return DEFAULT_THRESHOLD(
-    paces
-  );
+  return DEFAULT_THRESHOLD(paces);
 };
 
-export const formatDistance = (
-  miles
-) => {
+
+export const formatDistance = (miles) => {
   return (
     (miles || 0).toFixed(2) +
     ' mi'
   );
 };
 
-// ============================================================
-// Preset Calculations
-// ============================================================
+
+/* =========================================================
+   PRESET CALCULATIONS
+   ========================================================= */
 
 export function calculateDynamicPresets(
   paces,
@@ -887,9 +820,7 @@ export function calculateDynamicPresets(
 ) {
   if (
     !paces ||
-    !Array.isArray(
-      paces.preset_colors
-    )
+    !Array.isArray(paces.preset_colors)
   ) {
     const DEFAULT_PACE_ZONE_NAMES = [
       'Zone_1',
@@ -927,16 +858,11 @@ export function calculateDynamicPresets(
     return DEFAULT_PACE_ZONE_NAMES.map(
       (name, idx) => ({
         label: name,
-        displayPace:
-          formatMMSS(
-            DEFAULT_PACE_VAL_SEC[
-              idx
-            ]
-          ),
+        displayPace: formatMMSS(
+          DEFAULT_PACE_VAL_SEC[idx]
+        ),
         targetPaceSec:
-          DEFAULT_PACE_VAL_SEC[
-            idx
-          ],
+          DEFAULT_PACE_VAL_SEC[idx],
         color:
           DEFAULT_PACE_ZONE_COLORS[
             idx %
@@ -947,122 +873,122 @@ export function calculateDynamicPresets(
     );
   }
 
-  return paces.preset_colors.map(
-    (p) => {
-      const label =
-        p.zone_name ||
-        `Zone ${p.zone}`;
+  return paces.preset_colors.map((p) => {
+    const label =
+      p.zone_name ||
+      `Zone ${p.zone}`;
 
-      const color =
-        p.color ||
-        '#cccccc';
+    const color =
+      p.color ||
+      '#cccccc';
 
-      const colorLabel =
-        p.label ||
-        'n/a';
+    const colorLabel =
+      p.label ||
+      'n/a';
 
-      let paceSec =
-        p.pace_val_sec;
+    let paceSec =
+      p.pace_val_sec;
 
-      if (!paceSec) {
-        if (p.pace_fast) {
-          paceSec =
-            parseMMSS(
-              p.pace_fast
-            );
-        } else if (
-          p.pace_value_num
-        ) {
-          paceSec =
-            convertToPaceSec(
-              p.pace_value_num,
-              paces
-            );
-        } else {
-          paceSec =
-            thresholdPaceSec;
-        }
+    if (!paceSec) {
+      if (p.pace_fast) {
+        paceSec =
+          parseMMSS(
+            p.pace_fast
+          );
+      } else if (
+        p.pace_value_num
+      ) {
+        paceSec =
+          convertToPaceSec(
+            p.pace_value_num,
+            paces
+          );
+      } else {
+        paceSec =
+          thresholdPaceSec;
       }
+    }
 
-      let displayPace =
-        formatMMSS(
-          paceSec
+    let displayPace =
+      formatMMSS(paceSec);
+
+    if (
+      paceMethod ===
+      'Threshold %'
+    ) {
+      const pct =
+        p.pace_zone_pct ||
+        Math.round(
+          (thresholdPaceSec /
+            paceSec) *
+            100
         );
 
-      if (
-        paceMethod ===
-        'Threshold %'
-      ) {
-        const pct =
-          p.pace_zone_pct ||
-          Math.round(
-            (thresholdPaceSec /
-              paceSec) *
-              100
-          );
+      displayPace =
+        `${pct}%`;
+    } else if (
+      paceMethod?.includes(
+        'Range'
+      ) &&
+      p.pace_slow &&
+      p.pace_fast
+    ) {
+      displayPace =
+        `${p.pace_slow}-${p.pace_fast}`;
+    } else if (
+      paceMethod?.includes(
+        'Range'
+      )
+    ) {
+      const lowPace =
+        Math.round(
+          paceSec * 0.97
+        );
 
-        displayPace = `${pct}%`;
-      } else if (
-        paceMethod?.includes(
-          'Range'
-        ) &&
-        p.pace_slow &&
-        p.pace_fast
-      ) {
-        displayPace = `${p.pace_slow}-${p.pace_fast}`;
-      } else if (
-        paceMethod?.includes(
-          'Range'
-        )
-      ) {
-        const lowPace =
-          Math.round(
-            paceSec * 0.97
-          );
+      const highPace =
+        Math.round(
+          paceSec * 1.03
+        );
 
-        const highPace =
-          Math.round(
-            paceSec * 1.03
-          );
-
-        displayPace = `${formatMMSS(
+      displayPace =
+        `${formatMMSS(
           lowPace
         )}-${formatMMSS(
           highPace
         )}`;
-      }
-
-      return {
-        zone:
-          p.zone_name,
-        label,
-        displayPace,
-        targetPaceSec:
-          paceSec,
-        color,
-        colorLabel,
-        paceSlow:
-          p.pace_slow,
-        paceFast:
-          p.pace_fast,
-        pct:
-          p.pace_zone_pct,
-      };
     }
-  );
+
+    return {
+      zone: p.zone_name,
+      label,
+      displayPace,
+      targetPaceSec:
+        paceSec,
+      color,
+      colorLabel,
+      paceSlow:
+        p.pace_slow,
+      paceFast:
+        p.pace_fast,
+      pct:
+        p.pace_zone_pct,
+    };
+  });
 }
 
-// ============================================================
-// Step Creation
-// ============================================================
+
+/* =========================================================
+   STEP CREATION
+   ========================================================= */
 
 export const createStep = (
   type,
   mode = 'time'
 ) => {
-  const id = `step-${Date.now()}-${Math.random()
-    .toString(36)
-    .substr(2, 4)}`;
+  const id =
+    `step-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 4)}`;
 
   const durationSec =
     mode === 'time'
@@ -1076,14 +1002,8 @@ export const createStep = (
 
   const metric =
     mode === 'time'
-      ? {
-          duration:
-            durationSec,
-        }
-      : {
-          distance:
-            distanceMiles,
-        };
+      ? { duration: durationSec }
+      : { distance: distanceMiles };
 
   switch (type) {
     case 'warmup':
@@ -1091,8 +1011,7 @@ export const createStep = (
         id,
         warmup: true,
         ...metric,
-        intensity:
-          'warmup',
+        intensity: 'warmup',
         pace: {
           units: 'secs',
           value: 621,
@@ -1103,8 +1022,7 @@ export const createStep = (
       return {
         id,
         ...metric,
-        intensity:
-          'active',
+        intensity: 'active',
         pace: {
           units: 'secs',
           value:
@@ -1116,8 +1034,7 @@ export const createStep = (
       return {
         id,
         ...metric,
-        intensity:
-          'recovery',
+        intensity: 'recovery',
         pace: {
           units: 'secs',
           value: 622,
@@ -1129,8 +1046,7 @@ export const createStep = (
         id,
         cooldown: true,
         ...metric,
-        intensity:
-          'active',
+        intensity: 'active',
         pace: {
           units: 'secs',
           value: 623,
@@ -1145,17 +1061,14 @@ export const createStep = (
         steps: [
           {
             id: `${id}-1`,
-            ...(mode ===
-            'time'
+            ...(mode === 'time'
               ? {
                   duration:
-                    durationSec /
-                    3,
+                    durationSec / 3,
                 }
               : {
                   distance:
-                    distanceMiles /
-                    3,
+                    distanceMiles / 3,
                 }),
             pace: {
               units: 'secs',
@@ -1164,17 +1077,14 @@ export const createStep = (
           },
           {
             id: `${id}-2`,
-            ...(mode ===
-            'time'
+            ...(mode === 'time'
               ? {
                   duration:
-                    durationSec /
-                    3,
+                    durationSec / 3,
                 }
               : {
                   distance:
-                    distanceMiles /
-                    3,
+                    distanceMiles / 3,
                 }),
             pace: {
               units: 'secs',
@@ -1190,8 +1100,7 @@ export const createStep = (
         id,
         type: 'run',
         ...metric,
-        intensity:
-          'active',
+        intensity: 'active',
         pace: {
           units: 'secs',
           value:
@@ -1200,6 +1109,7 @@ export const createStep = (
       };
   }
 };
+
 
 export const createDefaultSteps = (
   mode = 'time'
@@ -1220,16 +1130,16 @@ export const createDefaultSteps = (
   ];
 };
 
-// ============================================================
-// IDs
-// ============================================================
+
+/* =========================================================
+   BASE WORKOUT ID HELPERS
+   ========================================================= */
 
 export const addIdsToBaseWorkout = (
   baseWorkout
 ) => {
   if (
-    !baseWorkout?.workout_doc
-      ?.steps
+    !baseWorkout?.workout_doc?.steps
   ) {
     return baseWorkout;
   }
@@ -1241,19 +1151,13 @@ export const addIdsToBaseWorkout = (
         /[-T:]/g,
         ''
       )
-      .slice(
-        0,
-        14
-      );
+      .slice(0, 14);
 
   const generateStepId =
     (idx) =>
       `step-loaded-${timestamp}-${idx}-${Math.random()
         .toString(36)
-        .substring(
-          2,
-          6
-        )}`;
+        .substring(2, 6)}`;
 
   const processSteps =
     (steps) => {
@@ -1298,12 +1202,12 @@ export const addIdsToBaseWorkout = (
   };
 };
 
+
 export const removeIdsFromBaseWorkout = (
   baseWorkout
 ) => {
   if (
-    !baseWorkout?.workout_doc
-      ?.steps
+    !baseWorkout?.workout_doc?.steps
   ) {
     return baseWorkout;
   }
@@ -1349,17 +1253,17 @@ export const removeIdsFromBaseWorkout = (
   };
 };
 
-// ============================================================
-// ICU Document -> Builder Steps
-// ============================================================
+
+/* =========================================================
+   ICU DOCUMENT -> UI STEPS
+   ========================================================= */
 
 export const mapIcuDocToSteps = (
   workout,
   mode = 'time'
 ) => {
   const stepsSource =
-    workout?.workout_doc
-      ?.steps ||
+    workout?.workout_doc?.steps ||
     workout?.steps;
 
   if (
@@ -1373,117 +1277,107 @@ export const mapIcuDocToSteps = (
     );
   }
 
-  const mapStep = (
-    s,
-    idx
-  ) => {
-    const id = `step-loaded-${new Date()
-      .toISOString()
-      .replace(
-        /[-T:]/g,
-        ''
-      )
-      .slice(
-        0,
-        14
-      )}-${idx}-${Math.random()
-      .toString(36)
-      .substr(
-        2,
-        4
-      )}`;
+  const mapStep =
+    (s, idx) => {
+      const id =
+        `step-loaded-${new Date()
+          .toISOString()
+          .replace(
+            /[-T:]/g,
+            ''
+          )
+          .slice(0, 14)}-${idx}-${Math.random()
+          .toString(36)
+          .substr(2, 4)}`;
 
-    if (
-      s.reps &&
-      Array.isArray(
-        s.steps
-      )
-    ) {
+      if (
+        s.reps &&
+        Array.isArray(
+          s.steps
+        )
+      ) {
+        return {
+          id,
+          type: 'repeat',
+          iterations:
+            s.reps,
+          steps:
+            s.steps.map(
+              mapStep
+            ),
+        };
+      }
+
+      let type = 'run';
+
+      if (
+        s.warmup ||
+        s.intensity ===
+          'warmup'
+      ) {
+        type = 'warmup';
+      } else if (
+        s.cooldown ||
+        s.intensity ===
+          'cooldown'
+      ) {
+        type = 'cooldown';
+      } else if (
+        s.intensity ===
+        'rest'
+      ) {
+        type = 'recovery';
+      }
+
+      let targetPaceSec =
+        DEFAULT_THRESHOLD();
+
+      if (
+        s.pace?.value
+      ) {
+        targetPaceSec =
+          convertToPaceSec(
+            s.pace.value
+          );
+      } else if (
+        s.pace?.start
+      ) {
+        targetPaceSec =
+          convertToPaceSec(
+            s.pace.start
+          );
+      }
+
+      const durationSec =
+        s.duration ||
+        s.durationSec ||
+        300;
+
+      const distanceMiles =
+        s.distance
+          ? s.distance /
+            1609.344
+          : durationSec /
+            targetPaceSec;
+
       return {
         id,
-        type: 'repeat',
-        iterations:
-          s.reps,
-        steps:
-          s.steps.map(
-            mapStep
-          ),
+        type,
+        durationSec,
+        distanceMiles,
+        targetPaceSec,
       };
-    }
-
-    let type =
-      'run';
-
-    if (
-      s.warmup ||
-      s.intensity ===
-        'warmup'
-    ) {
-      type =
-        'warmup';
-    } else if (
-      s.cooldown ||
-      s.intensity ===
-        'cooldown'
-    ) {
-      type =
-        'cooldown';
-    } else if (
-      s.intensity ===
-      'rest'
-    ) {
-      type =
-        'recovery';
-    }
-
-    let targetPaceSec =
-      DEFAULT_THRESHOLD();
-
-    if (
-      s.pace?.value
-    ) {
-      targetPaceSec =
-        convertToPaceSec(
-          s.pace.value
-        );
-    } else if (
-      s.pace?.start
-    ) {
-      targetPaceSec =
-        convertToPaceSec(
-          s.pace.start
-        );
-    }
-
-    const durationSec =
-      s.duration ||
-      s.durationSec ||
-      300;
-
-    const distanceMiles =
-      s.distance
-        ? s.distance /
-          1609.344
-        : durationSec /
-          targetPaceSec;
-
-    return {
-      id,
-      type,
-      durationSec,
-      distanceMiles,
-      targetPaceSec,
     };
-  };
 
   return stepsSource.map(
     mapStep
   );
 };
 
-// ============================================================
-// File Download
-// ============================================================
+
+/* =========================================================
+   FILE DOWNLOAD
+   ========================================================= */
 
 export const downloadFile = (
   content,
@@ -1491,11 +1385,8 @@ export const downloadFile = (
   mimeType
 ) => {
   console.log(
-    '[WorkoutBuilder] downloadFile()',
-    {
-      filename,
-      mimeType,
-    }
+    '[App Debug BuilderHelpers] downloadFile:',
+    filename
   );
 
   const blob =
@@ -1506,7 +1397,6 @@ export const downloadFile = (
       }
     );
 
-  // Correct browser API:
   const url =
     URL.createObjectURL(
       blob
@@ -1536,99 +1426,44 @@ export const downloadFile = (
   );
 };
 
-// ============================================================
-// Convert Steps -> Intervals.icu Text
-//
-// This produces the text description sent to the backend.
-// ============================================================
 
+/* =========================================================
+   INTERVALS.ICU TEXT FORMATTER
+   ========================================================= */
+
+/**
+ * Converts the UI step model into the plain-text workout
+ * description expected by Intervals.icu.
+ */
 export function convertStepsToIcuText(
   steps = []
 ) {
-  console.log(
-    '[WorkoutBuilder] convertStepsToIcuText() called',
-    {
-      stepCount:
-        Array.isArray(
-          steps
-        )
-          ? steps.length
-          : 0,
-    }
-  );
-
   const lineArray = [];
-
-  const parseStep = (
-    step
-  ) => {
-    if (
-      step.type ===
-        'repeat' &&
-      Array.isArray(
-        step.steps
-      )
-    ) {
-      const reps =
-        step.iterations ||
-        step.reps ||
-        1;
-
-      lineArray.push(
-        `${reps}x`
-      );
-
-      step.steps.forEach(
-        (child) => {
-          const line =
-            formatSingleStep(
-              child
-            );
-
-          if (line) {
-            lineArray.push(
-              `- ${line}`
-            );
-          }
-        }
-      );
-    } else {
-      const line =
-        formatSingleStep(
-          step
-        );
-
-      if (line) {
-        lineArray.push(
-          `- ${line}`
-        );
-      }
-    }
-  };
 
   const formatSingleStep =
     (s) => {
-      let durationStr =
-        '';
+      let durationStr = '';
 
-      // Support both the builder's
-      // durationSec representation and
-      // the original duration field.
-      const durationSec =
+      /*
+       * Support both:
+       * durationSec
+       * duration
+       */
+      const durationValue =
         s.durationSec ??
         s.duration;
 
       if (
-        durationSec
+        durationValue
       ) {
         const mins =
           Math.floor(
-            durationSec /
+            durationValue /
               60
           );
 
         const secs =
-          durationSec %
+          durationValue %
           60;
 
         durationStr =
@@ -1638,13 +1473,21 @@ export function convertStepsToIcuText(
       } else if (
         s.distanceMiles
       ) {
-        durationStr = `${s.distanceMiles.toFixed(
-          2
-        )}mi`;
+        durationStr =
+          `${s.distanceMiles.toFixed(
+            2
+          )}mi`;
       } else if (
         s.distance
       ) {
-        durationStr = `${s.distance}mi`;
+        /*
+         * If distance is already
+         * expressed in miles.
+         */
+        durationStr =
+          `${Number(
+            s.distance
+          ).toFixed(2)}mi`;
       } else {
         durationStr =
           '10m';
@@ -1653,41 +1496,25 @@ export function convertStepsToIcuText(
       let intensityLabel =
         s.type
           ? s.type
-              .charAt(
-                0
-              )
+              .charAt(0)
               .toUpperCase() +
-            s.type.slice(
-              1
-            )
+            s.type.slice(1)
           : 'Run';
 
+      /*
+       * Repeat children sometimes don't
+       * have a type. Treat them as Run.
+       */
       if (
-        s.warmup ||
+        !s.type &&
         s.intensity ===
-          'warmup'
-      ) {
-        intensityLabel =
-          'Warmup';
-      } else if (
-        s.cooldown ||
-        s.intensity ===
-          'cooldown'
-      ) {
-        intensityLabel =
-          'Cooldown';
-      } else if (
-        s.intensity ===
-          'recovery' ||
-        s.intensity ===
-          'rest'
+          'recovery'
       ) {
         intensityLabel =
           'Recovery';
       }
 
-      let paceStr =
-        '';
+      let paceStr = '';
 
       if (
         s.targetPaceSec
@@ -1712,27 +1539,61 @@ export function convertStepsToIcuText(
       return `${durationStr} ${intensityLabel} ${paceStr}`.trim();
     };
 
-  if (
-    !Array.isArray(
-      steps
-    )
-  ) {
-    return '';
-  }
+
+  const parseStep =
+    (step) => {
+      if (
+        step.type ===
+          'repeat' &&
+        Array.isArray(
+          step.steps
+        )
+      ) {
+        const reps =
+          step.iterations ||
+          step.reps ||
+          1;
+
+        lineArray.push(
+          `${reps}x`
+        );
+
+        step.steps.forEach(
+          (child) => {
+            const line =
+              formatSingleStep(
+                child
+              );
+
+            if (line) {
+              lineArray.push(
+                `- ${line}`
+              );
+            }
+          }
+        );
+
+        return;
+      }
+
+      const line =
+        formatSingleStep(
+          step
+        );
+
+      if (line) {
+        lineArray.push(
+          `- ${line}`
+        );
+      }
+    };
+
 
   steps.forEach(
     parseStep
   );
 
-  const result =
-    lineArray.join(
-      '\n'
-    );
-
-  console.log(
-    '[WorkoutBuilder] convertStepsToIcuText() result:',
-    result
+  return lineArray.join(
+    '\n'
   );
-
-  return result;
 }
