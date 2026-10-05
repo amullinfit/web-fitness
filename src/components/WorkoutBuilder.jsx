@@ -252,7 +252,6 @@ export default function WorkoutBuilder() {
   };
 
   const OLD_handleDuplicateWorkout = () => {
-    console.log('[App Debug WorkoutBuilder] handleDuplicateWorkout invoked');
     const duplicateTitle = `${workoutTitle} (Copy)`;
     setWorkoutId(null);
     setWorkoutTitle(duplicateTitle);
@@ -264,8 +263,14 @@ export default function WorkoutBuilder() {
   };
 
   const handleDuplicateWorkout = (workoutToDuplicate) => {
+    console.log('[App Debug WorkoutBuilder] handleDuplicateWorkout invoked');
     setSaveTitle(`${workoutToDuplicate.name || workoutToDuplicate.title || 'Workout'} (Copy)`);
+    setWorkoutTitle(`${workoutToDuplicate.name || workoutToDuplicate.title || 'Workout'} (Copy)`);
     setSaveFolderId(workoutToDuplicate.folderId || workoutToDuplicate.folder_id || '');
+
+    setMode('BUILDING');
+    handleOpenSaveModal(true);
+
     setSaveAsNew(true); // Flag as new/duplicate
     setIsSaveModalOpen(true); // Open Modal_Workout_Save
   };
