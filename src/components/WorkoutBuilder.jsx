@@ -272,11 +272,12 @@ export default function WorkoutBuilder() {
 
     const newBase = {
       name: initialTitle,
+      description: buildWorkoutDescription(defaultSteps),
       workout_doc: {
         steps: defaultSteps,
       },
     };
-
+    
     console.log(
       '[App Debug WorkoutBuilder] New baseWorkout created:',
       newBase
