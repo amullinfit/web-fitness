@@ -1,393 +1,582 @@
 import React, { useState, useEffect } from 'react';
-import { saveWorkoutApi, convertStepsToIcuText } from '../utils/WorkoutBuilderHelpers';
+import { 
+  Copy, 
+  FilePlus, 
+  ArrowLeft, 
+  Check, 
+  ChevronUp, 
+  Layers,
+  FileText
+} from 'lucide-react';
 
-// Zero-dependency Unicode / Emoji icon components (replaces lucide-react)
-const Save = ({ className = "inline-block" }) => <span className={className}>💾</span>;
-const Folder = ({ className = "inline-block" }) => <span className={className}>📁</span>;
-const Plus = ({ className = "inline-block" }) => <span className={className}>➕</span>;
-const Trash2 = ({ className = "inline-block" }) => <span className={className}>🗑️</span>;
-const ChevronDown = ({ className = "inline-block" }) => <span className={className}>▼</span>;
-const ChevronUp = ({ className = "inline-block" }) => <span className={className}>▲</span>;
-const X = ({ className = "inline-block" }) => <span className={className}>✖</span>;
-const Edit = ({ className = "inline-block" }) => <span className={className}>✏️</span>;
-const Copy = ({ className = "inline-block" }) => <span className={className}>📋</span>;
+import { saveWorkoutApi, fetchWorkoutsApi } from './workoutsApi';
 
-// Helper functions for time and pace conversions
-const formatSecondsToMMSS = (sec) => {
-  if (!sec && sec !== 0) return '0:00';
-  const m = Math.floor(sec / 60);
-  const s = Math.round(sec % 60);
-  return `${m}:${s < 10 ? '0' : ''}${s}`;
+const addIdsToBaseWorkout = (workout) => {
+  if (!workout) return null;
+  const stepsWithIds = (workout.steps || []).map((step, idx) => ({
+    ...step,
+    id: step.id || `step-${Date.now()}-${idx}`
+  }));
+  return { ...workout, steps: stepsWithIds };
 };
 
-const parsePaceToSec = (paceStr) => {
-  if (!paceStr) return 0;
-  const parts = paceStr.split(':');
-  if (parts.length === 2) {
-    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-  }
-  return parseInt(paceStr, 10) || 0;
-};
-
-export default function WorkoutBuilder({ initialWorkout = null, folders = [], onSaveSuccess }) {
-  const [workout, setWorkout] = useState({
-    id: initialWorkout?.id || null,
-    name: initialWorkout?.name || 'New Structured Workout',
-    folder_id: initialWorkout?.folder_id || null,
-    type: initialWorkout?.type || 'Run',
+const convertWorkoutToTargetFormat = (steps, mode, paceMethod) => {
+  console.log('[Save Flow] [Step 4a] Serializing steps into target document format', {
+    stepCount: steps?.length,
+    mode,
+    paceMethod
   });
+  return steps.map((step) => {
+    let line = `- `;
+    if (step.type === 'warmup') line += 'Warmup ';
+    else if (step.type === 'cooldown') line += 'Cooldown ';
+    else if (step.type === 'rest') line += 'Rest ';
+    
+    if (step.duration) line += `${step.duration} `;
+    if (step.target) line += `@ ${step.target}`;
+    
+    return line.trim();
+  }).join('\n');
+};
+
+export default function WorkoutBuilder({
+  initialWorkout = null,
+  folders = [],
+  saveWorkoutApi,
+  fetchWorkoutsApi,
+  setSavedWorkouts,
+  showToast = () => {},
+  onBack = () => {}
+}) {
+  const [workoutId, setWorkoutId] = useState(initialWorkout?.id || null);
+  const [workoutTitle, setWorkoutTitle] = useState(initialWorkout?.name || initialWorkout?.title || 'New Workout');
+  const [workoutDescription, setWorkoutDescription] = useState(initialWorkout?.description || '');
+  const [selectedFolderId, setSelectedFolderId] = useState(initialWorkout?.folder_id ?? initialWorkout?.folderId ?? null);
+  
+  const [workoutMode, setWorkoutMode] = useState('distance');
+  const [paceMethod, setPaceMethod] = useState('pace');
+  const [mode, setMode] = useState(initialWorkout?.id ? 'SAVED' : 'BUILDING');
+  
+  const [baseWorkout, setBaseWorkout] = useState(addIdsToBaseWorkout(initialWorkout));
+  const [unalteredWorkout, setUnalteredWorkout] = useState(initialWorkout);
 
   const [steps, setSteps] = useState(
-    initialWorkout?.workout_doc?.steps || [
-      { id: 'step-1', type: 'warmup', durationSec: 600, targetPaceSec: 540 },
-      { id: 'step-2', type: 'run', durationSec: 1800, targetPaceSec: 480 },
-      { id: 'step-3', type: 'cooldown', durationSec: 600, targetPaceSec: 570 },
+    initialWorkout?.steps || [
+      { id: 'step-1', type: 'warmup', duration: '10m', target: 'Zone 1 Pace', note: '' },
+      { id: 'step-2', type: 'interval', duration: '1km', target: '5k Pace', note: '' },
+      { id: 'step-3', type: 'rest', duration: '2m', target: 'Easy Jog', note: '' },
+      { id: 'step-4', type: 'cooldown', duration: '10m', target: 'Zone 1 Pace', note: '' }
     ]
   );
 
-  // Save Modal State
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const [saveTitle, setSaveTitle] = useState(workout.name);
-  const [saveFolderId, setSaveFolderId] = useState(workout.folder_id || '');
-  const [saveAsNew, setSaveAsNew] = useState(false);
-  const [apiLoading, setApiLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [isSaveAsMode, setIsSaveAsMode] = useState(false);
+  const [modalTitleInput, setModalTitleInput] = useState('');
+  const [modalFolderInput, setModalFolderInput] = useState(null);
 
   useEffect(() => {
     if (initialWorkout) {
-      setWorkout({
-        id: initialWorkout.id || null,
-        name: initialWorkout.name || 'New Structured Workout',
-        folder_id: initialWorkout.folder_id || null,
-        type: initialWorkout.type || 'Run',
-      });
-      setSaveTitle(initialWorkout.name || 'New Structured Workout');
-      setSaveFolderId(initialWorkout.folder_id || '');
-      if (initialWorkout.workout_doc?.steps) {
-        setSteps(initialWorkout.workout_doc.steps);
-      }
+      const prepared = addIdsToBaseWorkout(initialWorkout);
+      setWorkoutId(initialWorkout.id || null);
+      setWorkoutTitle(initialWorkout.name || initialWorkout.title || 'New Workout');
+      setWorkoutDescription(initialWorkout.description || '');
+      setSelectedFolderId(initialWorkout.folder_id ?? initialWorkout.folderId ?? null);
+      if (initialWorkout.steps) setSteps(prepared.steps);
+      setBaseWorkout(prepared);
+      setUnalteredWorkout(initialWorkout);
+      setMode('SAVED');
     }
   }, [initialWorkout]);
 
-  // Step Operations
-  const addStep = (type = 'run') => {
+  const handleAddStep = (type = 'interval') => {
     const newStep = {
       id: `step-${Date.now()}`,
       type,
-      durationSec: 300,
-      targetPaceSec: 480,
+      duration: type === 'warmup' || type === 'cooldown' ? '10m' : '1km',
+      target: 'Threshold Pace',
+      note: ''
     };
-    setSteps([...steps, newStep]);
+    setSteps((prev) => [...prev, newStep]);
+    setMode('BUILDING');
   };
 
-  const updateStep = (id, field, value) => {
+  const handleUpdateStep = (id, key, value) => {
     setSteps((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, [field]: value } : s))
+      prev.map((step) => (step.id === id ? { ...step, [key]: value } : step))
     );
+    setMode('BUILDING');
   };
 
-  const removeStep = (id) => {
-    setSteps((prev) => prev.filter((s) => s.id !== id));
+  const handleDeleteStep = (id) => {
+    setSteps((prev) => prev.filter((step) => step.id !== id));
+    setMode('BUILDING');
   };
 
-  const moveStep = (index, direction) => {
+  const handleMoveStep = (index, direction) => {
     const targetIndex = index + direction;
     if (targetIndex < 0 || targetIndex >= steps.length) return;
     const newSteps = [...steps];
-    const [movedStep] = newSteps.splice(index, 1);
-    newSteps.splice(targetIndex, 0, movedStep);
+    const [moved] = newSteps.splice(index, 1);
+    newSteps.splice(targetIndex, 0, moved);
     setSteps(newSteps);
+    setMode('BUILDING');
   };
 
-  // Open Modal Handler
-  const handleOpenSaveModal = (asNew = false) => {
-    setSaveAsNew(asNew || !workout.id);
-    setSaveTitle(workout.name);
-    setSaveFolderId(workout.folder_id || '');
-    setErrorMessage('');
-    setSuccessMessage('');
-    setIsSaveModalOpen(true);
-  };
-
-  // Confirm Save Handler
-  const handleConfirmSave = async () => {
-    setApiLoading(true);
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    try {
-      const payload = {
-        id: saveAsNew ? null : workout.id,
-        name: saveTitle,
-        folderId: saveFolderId,
-        type: workout.type,
-        steps: steps,
-        workout_doc: {
-          name: saveTitle,
-          steps: steps,
-        },
-      };
-
-      const savedResult = await saveWorkoutApi(payload, saveAsNew);
-
-      if (savedResult?.id) {
-        setWorkout((prev) => ({
-          ...prev,
-          id: savedResult.id,
-          name: saveTitle,
-          folder_id: saveFolderId,
-        }));
-      }
-
-      setSuccessMessage('Workout saved successfully!');
-      if (onSaveSuccess) onSaveSuccess(savedResult);
-
-      setTimeout(() => {
-        setIsSaveModalOpen(false);
-        setSuccessMessage('');
-      }, 1200);
-    } catch (err) {
-      setErrorMessage(err.message || 'Failed to save workout');
-    } finally {
-      setApiLoading(false);
+  const handleClearAll = () => {
+    if (window.confirm('Are you sure you want to clear all steps?')) {
+      setSteps([]);
+      setMode('BUILDING');
     }
   };
 
-  const totalSeconds = steps.reduce((acc, s) => acc + (s.durationSec || 0), 0);
+  // --- SAVE FLOW HANDLERS WITH LOGGING ---
+
+  const handleOpenSaveModal = (isSaveAs = false) => {
+    console.log('[Save Flow] [Step 2] Opening Save Modal', {
+      isSaveAs,
+      currentWorkoutTitle: workoutTitle,
+      currentFolderId: selectedFolderId
+    });
+    setIsSaveAsMode(isSaveAs);
+    setModalTitleInput(isSaveAs ? `${workoutTitle} (Copy)` : workoutTitle);
+    setModalFolderInput(selectedFolderId);
+    setIsSaveModalOpen(true);
+  };
+
+const handleConfirmSaveWorkout = async () => {
+  setApiLoading(true);
+  setErrorMessage('');
+  setSuccessMessage('');
+
+  try {
+    const payload = {
+      ...activeWorkout,
+      name: saveTitle,
+      saveFolderId: saveFolderId,
+      steps: stepsState,
+      workout_doc: {
+        ...activeWorkout?.workout_doc,
+        name: saveTitle,
+        steps: stepsState,
+      },
+    };
+
+    const savedResult = await saveWorkoutApi(payload, isSaveAsNewMode);
+
+    // Sync saved ID back to active state to enable subsequent updates (PUT)
+    if (savedResult?.id) {
+      setActiveWorkout((prev) => ({
+        ...prev,
+        id: savedResult.id,
+        name: saveTitle,
+        folder_id: saveFolderId,
+      }));
+    }
+
+    setSuccessMessage('Workout saved successfully!');
+    setTimeout(() => {
+      setIsSaveModalOpen(false);
+      setSuccessMessage('');
+    }, 1200);
+  } catch (err) {
+    setErrorMessage(err.message || 'Error saving workout.');
+  } finally {
+    setApiLoading(false);
+  }
+};
+  const handleSaveWorkout = async (overrideTitle, overrideFolderId) => {
+    console.log('[Save Flow] [Step 4] Executing handleSaveWorkout', {
+      overrideTitle,
+      overrideFolderId,
+      isSaveAsMode,
+      currentWorkoutId: workoutId
+    });
+
+    const finalTitle = overrideTitle || workoutTitle;
+    const finalFolderId = overrideFolderId !== undefined ? overrideFolderId : selectedFolderId;
+    const icuDocument = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
+    const targetId = isSaveAsMode ? null : workoutId;
+
+    const payload = {
+      id: targetId,
+      name: finalTitle,
+      description: workoutDescription,
+      folder_id: finalFolderId,
+      document: icuDocument,
+      steps
+    };
+
+    console.log('[Save Flow] [Step 5] Constructed Save Payload:', payload);
+
+    try {
+      let saved = null;
+      if (typeof saveWorkoutApi === 'function') {
+        console.log('[Save Flow] [Step 6] Invoking saveWorkoutApi prop...');
+        saved = await saveWorkoutApi(payload);
+        console.log('[Save Flow] [Step 7] Response received from saveWorkoutApi:', saved);
+      } else {
+        console.warn('[Save Flow] [Step 6-Fallback] saveWorkoutApi prop not provided, using local simulation.');
+        saved = { ...payload, id: targetId || `w-${Date.now()}` };
+      }
+
+      if (saved) {
+        const newId = saved.id || saved.workout_id || targetId;
+        console.log('[Save Flow] [Step 8] Updating component state with saved workout metadata', { newId, finalTitle });
+
+        setWorkoutId(newId);
+        setWorkoutTitle(finalTitle);
+        setSelectedFolderId(finalFolderId);
+
+        const preparedSavedBase = addIdsToBaseWorkout(saved);
+        setUnalteredWorkout(saved);
+        setBaseWorkout({
+          ...preparedSavedBase,
+          name: finalTitle
+        });
+
+        if (typeof fetchWorkoutsApi === 'function' && typeof setSavedWorkouts === 'function') {
+          console.log('[Save Flow] [Step 9] Re-fetching workouts list to synchronize app state...');
+          const updatedData = await fetchWorkoutsApi();
+          const workoutsArray = Array.isArray(updatedData) 
+            ? updatedData 
+            : (updatedData?.workouts || []);
+          console.log('[Save Flow] [Step 10] Synchronized parent workout list state with', workoutsArray.length, 'workouts.');
+          setSavedWorkouts(workoutsArray);
+        }
+
+        setIsSaveModalOpen(false);
+        setIsSaveAsMode(false);
+        setMode('SAVED');
+        showToast(isSaveAsMode ? 'Workout saved as new file!' : 'Workout saved successfully!');
+        console.log('[Save Flow] [SUCCESS] Save process complete.');
+      } else {
+        console.error('[Save Flow] [ERROR] saveWorkoutApi returned null or undefined.');
+        showToast('Failed to save workout: empty response.');
+      }
+    } catch (err) {
+      console.error('[Save Flow] [ERROR] Exception caught during handleSaveWorkout:', err);
+      showToast('Failed to save workout. Please try again.');
+    }
+  };
+
+  const handleDuplicateWorkout = (workoutToDuplicate) => {
+    console.log('[Save Flow] [Step 1-Duplicate] Duplication initiated');
+    const target = workoutToDuplicate || baseWorkout;
+    const sourceTitle = target?.name || target?.title || workoutTitle || 'Workout';
+    const sourceFolderId = target?.folder_id ?? target?.folderId ?? selectedFolderId;
+    const duplicateTitle = `${sourceTitle} (Copy)`;
+
+    setWorkoutId(null);
+    setWorkoutTitle(duplicateTitle);
+    setSelectedFolderId(sourceFolderId);
+    setMode('BUILDING');
+
+    handleOpenSaveModal(true);
+  };
+
+  const handleCopyWorkoutText = () => {
+    console.log('[Save Flow] [Action] Copying plain text');
+    const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
+    const stringified = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
+    navigator.clipboard.writeText(stringified);
+    showToast('Workout plain text copied to clipboard!');
+  };
+
+  const formattedOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 bg-slate-900 text-slate-100 rounded-xl shadow-xl border border-slate-800">
+    <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6 bg-slate-900 text-slate-100 min-h-screen rounded-xl shadow-2xl">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Folder />
-            {workout.name}
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Total Duration: <span className="text-sky-400 font-semibold">{formatSecondsToMMSS(totalSeconds)}</span>
-            {workout.id ? ` • ID: ${workout.id}` : ' • Unsaved Draft'}
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={onBack}
+            className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-100 transition-colors"
+            title="Go Back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={workoutTitle}
+                onChange={(e) => {
+                  setWorkoutTitle(e.target.value);
+                  setMode('BUILDING');
+                }}
+                placeholder="Workout Title"
+                className="bg-transparent text-xl font-bold text-white focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1"
+              />
+              {mode === 'SAVED' && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <Check className="w-3 h-3 mr-1" /> Saved
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              {workoutId ? `ID: ${workoutId}` : 'Unsaved Draft'}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action Buttons */}
+        <div className="flex items-center flex-wrap gap-2">
           <button
-            onClick={() => handleOpenSaveModal(false)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors shadow"
+            onClick={handleCopyWorkoutText}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg border border-slate-700 transition-colors"
           >
-            <Save />
-            Save
+            <Copy className="w-4 h-4" />
+            <span>Copy Text</span>
           </button>
 
-          {workout.id && (
+          <button
+            onClick={() => handleDuplicateWorkout()}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg border border-slate-700 transition-colors"
+          >
+            <FilePlus className="w-4 h-4" />
+            <span>Duplicate</span>
+          </button>
+
+          {workoutId && (
             <button
-              onClick={() => handleOpenSaveModal(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-sm font-medium border border-slate-700 transition-colors"
+              onClick={() => {
+                console.log('[Save Flow] [Step 1-SaveAs] "Save As..." menu button clicked');
+                handleOpenSaveModal(true);
+              }}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg border border-slate-700 transition-colors"
             >
-              <Copy />
-              Save as New
+              <Save className="w-4 h-4" />
+              <span>Save As...</span>
             </button>
           )}
+
+          <button
+            onClick={() => {
+              console.log('[Save Flow] [Step 1-Save] Main Save button clicked', { existingWorkoutId: workoutId });
+              if (workoutId) {
+                handleSaveWorkout(workoutTitle, selectedFolderId);
+              } else {
+                handleOpenSaveModal(false);
+              }
+            }}
+            className="flex items-center space-x-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg shadow transition-colors"
+          >
+            <Save className="w-4 h-4" />
+            <span>{workoutId ? 'Save' : 'Save Workout'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Step List */}
-      <div className="my-6 space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Workout Steps</h2>
-
-        {steps.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 border border-dashed border-slate-800 rounded-lg">
-            No steps added yet. Click below to add your first step.
-          </div>
-        ) : (
-          steps.map((step, idx) => (
-            <div
-              key={step.id || idx}
-              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-slate-800/60 border border-slate-700/60 rounded-lg hover:border-slate-600 transition-all"
-            >
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <div className="flex flex-col gap-0.5">
-                  <button
-                    onClick={() => moveStep(idx, -1)}
-                    disabled={idx === 0}
-                    className="p-1 hover:bg-slate-700 rounded disabled:opacity-30 text-xs"
-                  >
-                    <ChevronUp />
-                  </button>
-                  <button
-                    onClick={() => moveStep(idx, 1)}
-                    disabled={idx === steps.length - 1}
-                    className="p-1 hover:bg-slate-700 rounded disabled:opacity-30 text-xs"
-                  >
-                    <ChevronDown />
-                  </button>
-                </div>
-
-                <select
-                  value={step.type}
-                  onChange={(e) => updateStep(step.id, 'type', e.target.value)}
-                  className="bg-slate-900 text-slate-200 border border-slate-700 rounded px-2 py-1 text-sm font-medium focus:outline-none focus:border-sky-500"
-                >
-                  <option value="warmup">Warmup</option>
-                  <option value="run">Run / Active</option>
-                  <option value="recover">Recover</option>
-                  <option value="cooldown">Cooldown</option>
-                </select>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto text-xs">
-                <div className="flex items-center gap-1.5">
-                  <label className="text-slate-400">Duration (m:s):</label>
-                  <input
-                    type="text"
-                    value={formatSecondsToMMSS(step.durationSec)}
-                    onChange={(e) => updateStep(step.id, 'durationSec', parsePaceToSec(e.target.value))}
-                    className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100 text-center font-mono focus:border-sky-500"
-                  />
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <label className="text-slate-400">Target Pace (/mi):</label>
-                  <input
-                    type="text"
-                    value={formatSecondsToMMSS(step.targetPaceSec)}
-                    onChange={(e) => updateStep(step.id, 'targetPaceSec', parsePaceToSec(e.target.value))}
-                    className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100 text-center font-mono focus:border-sky-500"
-                  />
-                </div>
-
-                <button
-                  onClick={() => removeStep(step.id)}
-                  className="p-1.5 bg-rose-950/40 text-rose-400 hover:bg-rose-900/60 rounded transition-colors ml-auto sm:ml-0"
-                  title="Delete step"
-                >
-                  <Trash2 />
-                </button>
-              </div>
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <Layers className="w-4 h-4" /> Workout Steps ({steps.length})
+              </h2>
+              <button
+                onClick={handleClearAll}
+                className="text-xs text-rose-400 hover:text-rose-300 transition-colors"
+              >
+                Clear All
+              </button>
             </div>
-          ))
-        )}
-      </div>
 
-      {/* Add Step Toolbar */}
-      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800">
-        <span className="text-xs text-slate-400 font-medium mr-1">Add Step:</span>
-        <button
-          onClick={() => addStep('warmup')}
-          className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded text-xs font-medium border border-slate-700"
-        >
-          <Plus /> Warmup
-        </button>
-        <button
-          onClick={() => addStep('run')}
-          className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded text-xs font-medium border border-slate-700"
-        >
-          <Plus /> Run
-        </button>
-        <button
-          onClick={() => addStep('recover')}
-          className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-300 rounded text-xs font-medium border border-slate-700"
-        >
-          <Plus /> Recover
-        </button>
-        <button
-          onClick={() => addStep('cooldown')}
-          className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded text-xs font-medium border border-slate-700"
-        >
-          <Plus /> Cooldown
-        </button>
-      </div>
+            <div className="space-y-3">
+              {steps.map((step, index) => (
+                <div
+                  key={step.id}
+                  className="flex items-center gap-2 bg-slate-900/80 p-3 rounded-lg border border-slate-700/60 hover:border-slate-600 transition-all"
+                >
+                  <div className="flex flex-col gap-1 text-slate-500">
+                    <button
+                      onClick={() => handleMoveStep(index, -1)}
+                      disabled={index === 0}
+                      className="hover:text-slate-200 disabled:opacity-30"
+                    >
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleMoveStep(index, 1)}
+                      disabled={index === steps.length - 1}
+                      className="hover:text-slate-200 disabled:opacity-30"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  </div>
 
-      {/* Intervals.icu DSL Preview */}
-      <div className="mt-8 pt-4 border-t border-slate-800">
-        <details className="group">
-          <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-200 flex items-center justify-between font-medium">
-            <span>View Intervals.icu DSL Text Output</span>
-            <ChevronDown />
-          </summary>
-          <pre className="mt-3 p-3 bg-slate-950 text-emerald-400 font-mono text-xs rounded-lg border border-slate-800 overflow-x-auto">
-            {typeof convertStepsToIcuText === 'function' ? convertStepsToIcuText(steps) : 'DSL converter function unavailable'}
-          </pre>
-        </details>
+                  <select
+                    value={step.type}
+                    onChange={(e) => handleUpdateStep(step.id, 'type', e.target.value)}
+                    className="bg-slate-800 text-xs font-semibold uppercase text-slate-200 border border-slate-700 rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="warmup">Warmup</option>
+                    <option value="interval">Interval</option>
+                    <option value="rest">Rest</option>
+                    <option value="cooldown">Cooldown</option>
+                  </select>
+
+                  <input
+                    type="text"
+                    value={step.duration}
+                    onChange={(e) => handleUpdateStep(step.id, 'duration', e.target.value)}
+                    placeholder="Duration"
+                    className="w-24 bg-slate-800 text-sm text-slate-200 border border-slate-700 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+                  />
+
+                  <input
+                    type="text"
+                    value={step.target}
+                    onChange={(e) => handleUpdateStep(step.id, 'target', e.target.value)}
+                    placeholder="Target"
+                    className="flex-1 bg-slate-800 text-sm text-slate-200 border border-slate-700 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+                  />
+
+                  <button
+                    onClick={() => handleDeleteStep(step.id)}
+                    className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+
+              {steps.length === 0 && (
+                <div className="text-center py-8 text-slate-500 border border-dashed border-slate-800 rounded-lg">
+                  No steps added yet.
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => handleAddStep('warmup')}
+                className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 rounded border border-slate-700 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> <span>Warmup</span>
+              </button>
+              <button
+                onClick={() => handleAddStep('interval')}
+                className="flex items-center space-x-1 px-3 py-1.5 bg-blue-950/60 hover:bg-blue-900/60 text-xs font-medium text-blue-300 rounded border border-blue-800/60 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> <span>Interval</span>
+              </button>
+              <button
+                onClick={() => handleAddStep('rest')}
+                className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 rounded border border-slate-700 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> <span>Rest</span>
+              </button>
+              <button
+                onClick={() => handleAddStep('cooldown')}
+                className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 rounded border border-slate-700 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> <span>Cooldown</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-800 space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <Folder className="w-4 h-4" /> Folder Assignment
+            </h3>
+            <select
+              value={selectedFolderId || ''}
+              onChange={(e) => {
+                const val = e.target.value ? e.target.value : null;
+                setSelectedFolderId(val);
+                setMode('BUILDING');
+              }}
+              className="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500"
+            >
+              <option value="">(No Folder / Root)</option>
+              {folders.map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.name || folder.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-800 space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <FileText className="w-4 h-4" /> Formatted Output Preview
+            </h3>
+            <pre className="bg-slate-950 p-3 rounded-lg text-xs font-mono text-emerald-400 whitespace-pre-wrap overflow-x-auto border border-slate-900 min-h-[160px]">
+              {typeof formattedOutput === 'string'
+                ? formattedOutput
+                : JSON.stringify(formattedOutput, null, 2)}
+            </pre>
+          </div>
+        </div>
       </div>
 
       {/* Save Modal */}
       {isSaveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 shadow-2xl relative">
-            <button
-              onClick={() => setIsSaveModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-100 p-1"
-            >
-              <X />
-            </button>
-
-            <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2 mb-4">
-              <Save />
-              {saveAsNew ? 'Save as New Workout' : 'Save Workout'}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-white">
+              {isSaveAsMode ? 'Save Workout As New Copy' : 'Save Workout'}
             </h3>
-
-            {errorMessage && (
-              <div className="mb-4 p-3 bg-rose-950/80 border border-rose-800 text-rose-200 text-xs rounded-lg">
-                {errorMessage}
-              </div>
-            )}
-
-            {successMessage && (
-              <div className="mb-4 p-3 bg-emerald-950/80 border border-emerald-800 text-emerald-200 text-xs rounded-lg">
-                {successMessage}
-              </div>
-            )}
-
-            <div className="space-y-4">
+            
+            <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Workout Title
+                <label className="block text-xs font-medium text-slate-400 mb-1">
+                  Workout Name
                 </label>
                 <input
                   type="text"
-                  value={saveTitle}
-                  onChange={(e) => setSaveTitle(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-sky-500"
-                  placeholder="e.g., 5x 1km Intervals"
+                  value={modalTitleInput}
+                  onChange={(e) => setModalTitleInput(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Enter workout name..."
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Folder / Category
+                <label className="block text-xs font-medium text-slate-400 mb-1">
+                  Target Folder
                 </label>
                 <select
-                  value={saveFolderId}
-                  onChange={(e) => setSaveFolderId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-sky-500"
+                  value={modalFolderInput || ''}
+                  onChange={(e) => setModalFolderInput(e.target.value ? e.target.value : null)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="">Root (No Folder)</option>
-                  {folders.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
+                  <option value="">(No Folder / Root)</option>
+                  {folders.map((folder) => (
+                    <option key={folder.id} value={folder.id}>
+                      {folder.name || folder.title}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 mt-6">
+            <div className="flex justify-end space-x-3 pt-3 border-t border-slate-800">
               <button
-                onClick={() => setIsSaveModalOpen(false)}
-                disabled={apiLoading}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium"
+                onClick={() => {
+                  console.log('[Save Flow] [Step 3-Cancel] Save Modal cancelled by user');
+                  setIsSaveModalOpen(false);
+                }}
+                className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors"
               >
                 Cancel
               </button>
-
               <button
-                onClick={handleConfirmSave}
-                disabled={apiLoading}
-                className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+                onClick={() => {
+                  console.log('[Save Flow] [Step 3-Confirm] Save confirmed inside Save Modal', {
+                    modalTitleInput,
+                    modalFolderInput
+                  });
+                  handleSaveWorkout(modalTitleInput, modalFolderInput);
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg shadow transition-colors"
               >
-                {apiLoading ? 'Saving...' : 'Confirm & Save'}
+                Save
               </button>
             </div>
           </div>
