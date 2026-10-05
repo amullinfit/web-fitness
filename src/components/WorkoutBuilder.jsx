@@ -411,6 +411,19 @@ export default function WorkoutBuilder() {
   // SAVE WORKOUT
   // ============================================================
 
+  const getCurrentWorkoutDoc = () => {
+    const {
+      description: _workoutDocDescription,
+      ...workoutDocWithoutDescription
+    } = baseWorkout?.workout_doc || {};
+  
+    return {
+      ...workoutDocWithoutDescription,
+      name: workoutTitle,
+      steps: steps || [],
+    };
+  };
+
   const handleSaveWorkout = async (
     overrideTitle,
     overrideFolderId
@@ -451,17 +464,11 @@ export default function WorkoutBuilder() {
     * Remove any legacy description that may already exist
     * inside workout_doc.
     */
-    const {
-      description: _workoutDocDescription,
-      ...workoutDocWithoutDescription
-    } = baseWorkout?.workout_doc || {};
-
     const currentWorkoutDoc = {
-      ...workoutDocWithoutDescription,
+      ...getCurrentWorkoutDoc(),
       name: finalTitle,
-      steps
     };
-  
+      
     const targetId =
       isSaveAsMode
         ? null
@@ -663,18 +670,10 @@ export default function WorkoutBuilder() {
         '../utils/WorkoutConverter.js'
       );
   
-      // Build the same current workout document structure
-      // used by the save flow.
-      const {
-        description: _workoutDocDescription,
-        ...workoutDocWithoutDescription
-      } = baseWorkout?.workout_doc || {};
-  
-      const currentWorkoutDoc = {
-        ...workoutDocWithoutDescription,
-        name: workoutTitle,
-        steps: steps || [],
-      };
+      // Use the exact same current workout document
+      // structure as the Save functionality.
+      const currentWorkoutDoc =
+        getCurrentWorkoutDoc();
   
       console.log(
         '[App Debug WorkoutBuilder] Copying current workout document:',
@@ -715,7 +714,7 @@ export default function WorkoutBuilder() {
       );
     }
   };
-  
+    
   // ============================================================
   // FILE DOWNLOAD
   // ============================================================
