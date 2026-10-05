@@ -57,6 +57,11 @@ export default function WorkoutBuilder() {
   const [workoutMode, setWorkoutMode] = useState('time'); // 'time' or 'distance'
   const [paceMethod, setPaceMethod] = useState('Pace'); 
 
+  // 1. Declare state for workout title and feedback messages
+  const [saveTitle, setSaveTitle] = useState('');
+  const [statusMessage, setStatusMessage] = useState(null); // { type: 'success'|'error', text: string }
+  const [isSaving, setIsSaving] = useState(false);
+
   // --- Custom Hook for Steps State ---
   const { 
     steps, 
@@ -248,6 +253,71 @@ export default function WorkoutBuilder() {
     } catch (err) {
       console.error('Error saving workout:', err);
       showToast('Failed to save workout. Please try again.');
+    }
+  };
+
+  // 2. Handle "Save Workout" (Overwrites existing workout)
+  const handleSave = async () => {
+    setIsSaving(true);
+    setStatusMessage(null);
+    try {
+      const payload = {
+        ...currentWorkout,
+        name: saveTitle || currentWorkout.name,
+      };
+      const response = await saveWorkoutApi(payload, false);
+      setStatusMessage({ type: 'success', text: 'Workout saved successfully!' });
+      // Option: Refresh folder list/workouts list
+      // await fetchWorkoutsApi();
+    } catch (err) {
+      console.error('Save failed:', err);
+      setStatusMessage({ type: 'error', text: `Save failed: ${err.message}` });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 3. Handle "Save As New Workout"
+  const handleSaveAsNew = async () => {
+    setIsSaving(true);
+    setStatusMessage(null);
+    try {
+      const payload = {
+        ...currentWorkout,
+        name: saveTitle || `${currentWorkout.name} (Copy)`,
+      };
+      const response = await saveWorkoutApi(payload, true); // true forces create_workout
+      setStatusMessage({ type: 'success', text: 'New workout created successfully!' });
+    } catch (err) {
+      console.error('Save As New failed:', err);
+      setStatusMessage({ type: 'error', text: `Save As New failed: ${err.message}` });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 4. Handle "Duplicate Workout"
+  const handleDuplicate = async (workoutToDuplicate) => {
+    setIsSaving(true);
+    setStatusMessage(null);
+    try {
+      const duplicateTitle = `${workoutToDuplicate.name || 'Workout'} (Copy)`;
+      
+      // Set save title safely using defined state setter
+      setSaveTitle(duplicateTitle);
+
+      const payload = {
+        ...workoutToDuplicate,
+        name: duplicateTitle,
+      };
+
+      const response = await saveWorkoutApi(payload, true); // true forces new creation
+      setStatusMessage({ type: 'success', text: `Duplicated as "${duplicateTitle}"!` });
+    } catch (err) {
+      console.error('Duplicate failed:', err);
+      setStatusMessage({ type: 'error', text: `Duplicate failed: ${err.message}` });
+    } finally {
+      setIsSaving(false);
     }
   };
 

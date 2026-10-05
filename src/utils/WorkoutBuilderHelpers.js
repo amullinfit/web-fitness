@@ -1,14 +1,7 @@
 //
 // WorkoutBuilderHelpers.js
 //
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-// 
-// 
-// 
 import React from 'react';
-import { usePaces } from '../utils/PacesContext.jsx';
 
 // Module-level fallback constant for threshold in sec/mi
 export const FALLBACK_THRESHOLD = 540; 
@@ -21,147 +14,162 @@ export const DEFAULT_THRESHOLD = (paces) => {
   return paces?.threshold_pace || FALLBACK_THRESHOLD;
 };
 
-// 
-// 
-// 
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-// 
-// 
-// 
 // --- API Functions ---
+
 export async function fetchFoldersApi() {
   console.log('[App Debug BuilderHelpers] fetchFoldersApi called');
-  const res = await fetch(`${VAL_WORKOUTBUILDER_URL}?action=get_folders`, { method: 'GET' });
-  if (!res.ok) throw new Error('Failed to fetch folders');
-  const data = await res.json();
-  return Array.isArray(data) ? data : (data.folders || []);
+  try {
+    const res = await fetch(`${VAL_WORKOUTBUILDER_URL}?action=get_folders`, { method: 'GET' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch folders`);
+    const data = await res.json();
+    return Array.isArray(data) ? data : (data.folders || []);
+  } catch (err) {
+    console.error('[App Debug BuilderHelpers] fetchFoldersApi error:', err);
+    throw err;
+  }
 }
 
 export async function fetchWorkoutsApi(folderId = null) {
   console.log('[App Debug BuilderHelpers] fetchWorkoutsApi called with folderId:', folderId);
-  const url = folderId 
-    ? `${VAL_WORKOUTBUILDER_URL}?action=get_workouts&folder_id=${folderId}` 
-    : `${VAL_WORKOUTBUILDER_URL}?action=get_workouts`;
+  try {
+    const url = folderId 
+      ? `${VAL_WORKOUTBUILDER_URL}?action=get_workouts&folder_id=${folderId}` 
+      : `${VAL_WORKOUTBUILDER_URL}?action=get_workouts`;
 
-  const res = await fetch(url, { method: 'GET' });
-  if (!res.ok) throw new Error('Failed to fetch workouts');
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch workouts`);
 
-  const data = await res.json();
+    const data = await res.json();
 
-  // 1. Extract folders from root 'folders' array
-  const folders = Array.isArray(data?.folders) ? data.folders : [];
+    // Extract folders from root 'folders' array
+    const folders = Array.isArray(data?.folders) ? data.folders : [];
 
-  // 2. Extract all workouts nested inside each folder's 'children' array
-  const workouts = folders.flatMap((folder) =>
-    Array.isArray(folder.children)
-      ? folder.children.map((workout) => ({
-          ...workout,
-          // Guarantee folder_id is attached to every workout
-          folderId: workout.folder_id || folder.id,
-        }))
-      : []
-  );
+    // Extract all workouts nested inside each folder's 'children' array
+    const workouts = folders.flatMap((folder) =>
+      Array.isArray(folder.children)
+        ? folder.children.map((workout) => ({
+            ...workout,
+            folderId: workout.folder_id || folder.id,
+          }))
+        : []
+    );
 
-  // Return formatted payload containing both folders and extracted workouts
-  return {
-    folders,
-    workouts,
-  };
+    return { folders, workouts };
+  } catch (err) {
+    console.error('[App Debug BuilderHelpers] fetchWorkoutsApi error:', err);
+    throw err;
+  }
 }
 
 export async function createFolderApi(folderName) {
   console.log('[App Debug BuilderHelpers] createFolderApi called with folderName:', folderName);
-  const res = await fetch(VAL_WORKOUTBUILDER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'create_folder', name: folderName, type: 'FOLDER' }),
-  });
-  if (!res.ok) {
-    let errorDetails = '';
-    try {
-      const errJson = await res.json();
-      errorDetails = JSON.stringify(errJson.details || errJson, null, 2);
-    } catch {
-      errorDetails = await res.text();
+  try {
+    const res = await fetch(VAL_WORKOUTBUILDER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create_folder', name: folderName, type: 'FOLDER' }),
+    });
+    if (!res.ok) {
+      let errorDetails = '';
+      try {
+        const errJson = await res.json();
+        errorDetails = errJson.error || errJson.details || JSON.stringify(errJson);
+      } catch {
+        errorDetails = await res.text();
+      }
+      throw new Error(`Server status ${res.status}: ${errorDetails}`);
     }
-    throw new Error(`Server returned status ${res.status}:\n${errorDetails}`);
+    return await res.json();
+  } catch (err) {
+    console.error('[App Debug BuilderHelpers] createFolderApi error:', err);
+    throw err;
   }
-  return await res.json();
 }
 
 export async function saveWorkoutApi(payload, isNew = false) {
   console.log('[App Debug BuilderHelpers] saveWorkoutApi called with payload:', payload, 'isNew:', isNew);
   
-  // Clone payload to prevent side-effects on UI state
-  let workoutData = JSON.parse(JSON.stringify(payload));
+  try {
+    // Clone payload to prevent side-effects on UI state
+    let workoutData = JSON.parse(JSON.stringify(payload || {}));
 
-  // If explicitly flagged as new or duplicating, strip top-level ID and refresh step IDs
-  if (isNew) {
-    delete workoutData.id;
-    delete workoutData._id;
-    if (workoutData.workout_doc) {
-      workoutData = addIdsToBaseWorkout(workoutData);
+    // If saving as new or duplicating, strip existing IDs and regenerate step IDs
+    if (isNew) {
+      delete workoutData.id;
+      delete workoutData._id;
+      if (workoutData.workout_doc) {
+        workoutData = addIdsToBaseWorkout(workoutData);
+      }
     }
+
+    const action = workoutData.id ? 'update_workout' : 'create_workout';
+    const method = workoutData.id ? 'PUT' : 'POST';
+
+    // Format folder_id properly
+    let folderId = workoutData.saveFolderId ?? workoutData.folderId ?? workoutData.folder_id ?? null;
+    if (folderId === '' || folderId === 'root' || folderId === undefined) {
+      folderId = null;
+    } else if (typeof folderId === 'string' && /^\d+$/.test(folderId.trim())) {
+      folderId = Number(folderId);
+    }
+
+    // Resolve workout title across sources
+    const workoutName = workoutData.name || workoutData.title || workoutData.workout_doc?.name || 'Untitled Workout';
+
+    // Build/sync workout_doc
+    const steps = workoutData.workout_doc?.steps || workoutData.steps || [];
+    const workoutDoc = {
+      ...(workoutData.workout_doc || {}),
+      name: workoutName,
+      steps: steps,
+    };
+
+    const bodyPayload = {
+      action,
+      ...(workoutData.id ? { id: workoutData.id } : {}),
+      name: workoutName,
+      folder_id: folderId,
+      workout_doc: workoutDoc,
+    };
+
+    const res = await fetch(VAL_WORKOUTBUILDER_URL, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyPayload),
+    });
+
+    if (!res.ok) {
+      let errorText = '';
+      try {
+        const errJson = await res.json();
+        errorText = errJson.error || errJson.message || JSON.stringify(errJson);
+      } catch {
+        errorText = await res.text();
+      }
+      throw new Error(`Failed to save workout (${res.status}): ${errorText || 'Unknown error'}`);
+    }
+
+    const savedResult = await res.json();
+    console.log('[App Debug BuilderHelpers] saveWorkoutApi succeeded:', savedResult);
+    return savedResult;
+  } catch (err) {
+    console.error('[App Debug BuilderHelpers] saveWorkoutApi execution failed:', err);
+    throw err;
   }
-
-  const action = workoutData.id ? 'update_workout' : 'create_workout';
-  const method = workoutData.id ? 'PUT' : 'POST';
-
-  // Format folder_id properly without accidentally corrupting non-numeric/UUID string IDs to NaN
-  let folderId = workoutData.saveFolderId ?? workoutData.folderId ?? workoutData.folder_id ?? null;
-  if (folderId === '' || folderId === 'root' || folderId === undefined) {
-    folderId = null;
-  } else if (typeof folderId === 'string' && /^\d+$/.test(folderId.trim())) {
-    folderId = Number(folderId);
-  }
-
-  // Ensure workout_doc structure exists even if flat steps were passed
-  const steps = workoutData.workout_doc?.steps || workoutData.steps || [];
-  const workoutDoc = workoutData.workout_doc || {
-    name: workoutData.name || workoutData.title || 'Untitled Workout',
-    steps: steps,
-  };
-
-  const bodyPayload = {
-    action,
-    ...(workoutData.id ? { id: workoutData.id } : {}),
-    name: workoutData.name || workoutData.title || workoutDoc.name || 'Untitled Workout',
-    folder_id: folderId,
-    workout_doc: workoutDoc,
-  };
-
-  const res = await fetch(VAL_WORKOUTBUILDER_URL, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(bodyPayload),
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to save workout: ${errorText}`);
-  }
-
-  return await res.json();
 }
 
 export async function fetchMyPacesApi() {
   console.log('[App Debug BuilderHelpers] fetchMyPacesApi called');
-  const res = await fetch(VAL_MY_PACES_URL, { method: 'GET' });
-  if (!res.ok) throw new Error('Failed to fetch paces from Intervals.icu');
-  return await res.json();
+  try {
+    const res = await fetch(VAL_MY_PACES_URL, { method: 'GET' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch paces`);
+    return await res.json();
+  } catch (err) {
+    console.error('[App Debug BuilderHelpers] fetchMyPacesApi error:', err);
+    throw err;
+  }
 }
 
-// 
-// 
-// 
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-// 
-// 
-// 
 // --- Formatting & Parsing Helpers ---
 
 export const formatTime = (totalSeconds) => {
@@ -174,7 +182,6 @@ export const formatTime = (totalSeconds) => {
 };
 
 export const formatMMSS = (totalSeconds) => {
-  // sec/mi -> mm:ss  (ie, 495 -> 8:15)
   const sec = Math.max(0, Math.round(totalSeconds || 0));
   const mins = Math.floor(sec / 60);
   const secs = sec % 60;
@@ -182,7 +189,6 @@ export const formatMMSS = (totalSeconds) => {
 };
 
 export const parseMMSS = (str) => {
-  // mm:ss -> sec/mi (ie, 8:15 -> 495)
   if (!str) return 0;
   let cleanStr = String(str).trim().replace(/\/mi|\/km/g, '');
   if (cleanStr.includes(':')) {
@@ -200,49 +206,31 @@ export const parseMMSS = (str) => {
   return mins * 60 + Math.min(secs, 59);
 };
 
-export const convertToPaceSec = (val) => {
-  // Converts pace to sec/mi (495)
-  if (!val) return DEFAULT_THRESHOLD();
+export const convertToPaceSec = (val, paces = null) => {
+  if (!val) return DEFAULT_THRESHOLD(paces);
   if (typeof val === 'string') {
     return parseMMSS(val);
   }
   if (typeof val === 'number' && val > 0) {
-    // If value is small (< 15), treat as m/s speed from Intervals.icu
     if (val < 15) {
       return Math.round(1609.344 / val);
     }
-    // Otherwise treat as raw seconds
     return Math.round(val);
   }
-  return DEFAULT_THRESHOLD();
+  return DEFAULT_THRESHOLD(paces);
 };
 
 export const formatDistance = (miles) => {
   return (miles || 0).toFixed(2) + ' mi';
 };
 
-// 
-// 
-// 
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-// 
-// 
-// 
-// - Data retrieval & Parsing Helpers ---
+// --- Preset Calculations ---
 
-// Dynamically compute preset values from intervals.icu data
 export function calculateDynamicPresets(paces, thresholdPaceSec, paceMethod) {
-  // If paces or preset_colors array doesn't exist, use fallback logic
   if (!paces || !Array.isArray(paces.preset_colors)) {
-
-    // Fallback zone config if PacesContext is not available
-    const DEFAULT_PACE_ZONE_NAMES  = [  "Zone_1", "Zone_2", "Zone_3", "Zone_4","Zone_5a","Zone_5b","Zone_5c", "Zone 6"];
-    const DEFAULT_PACE_ZONE_COLORS = [ "#b0b0b0","#88d8b0","#28a745","#ffc107","#fd7e14","#ff6b6b","#dc3545","#6f42c1"];
-    const DEFAULT_PACE_ZONES       = [        80,        92,      94.3,       100,     103.4,     111.5,     128.9,       169];
-    const DEFAULT_PACE_VAL_SEC     = [       619,       538,       525,       495,       479,       444,       330,       293];
-    const DEFAULT_PACE_STR         = ["10:19/mi","8:58/mi","8:45/mi","8:15/mi","7:59/mi","7:24/mi","6:24/mi","4:53/mi"];
+    const DEFAULT_PACE_ZONE_NAMES  = ["Zone_1", "Zone_2", "Zone_3", "Zone_4", "Zone_5a", "Zone_5b", "Zone_5c", "Zone 6"];
+    const DEFAULT_PACE_ZONE_COLORS = ["#b0b0b0", "#88d8b0", "#28a745", "#ffc107", "#fd7e14", "#ff6b6b", "#dc3545", "#6f42c1"];
+    const DEFAULT_PACE_VAL_SEC     = [619, 538, 525, 495, 479, 444, 330, 293];
 
     return DEFAULT_PACE_ZONE_NAMES.map((name, idx) => ({
       label: name,
@@ -254,24 +242,21 @@ export function calculateDynamicPresets(paces, thresholdPaceSec, paceMethod) {
   }
 
   return paces.preset_colors.map((p) => {
-    // Extract properties directly from the preset_colors object
     const label = p.zone_name || `Zone ${p.zone}`;
     const color = p.color || '#cccccc';
     const colorLabel = p.label || 'n/a';
     
-    // Determine the base pace seconds (prefer pace_val_sec from JSON if present)
     let paceSec = p.pace_val_sec;
     if (!paceSec) {
       if (p.pace_fast) {
         paceSec = parseMMSS(p.pace_fast);
       } else if (p.pace_value_num) {
-        paceSec = convertToPaceSec(p.pace_value_num);
+        paceSec = convertToPaceSec(p.pace_value_num, paces);
       } else {
         paceSec = thresholdPaceSec;
       }
     }
 
-    // Format display pace based on the requested paceMethod
     let displayPace = formatMMSS(paceSec);
     
     if (paceMethod === 'Threshold %') {
@@ -298,15 +283,7 @@ export function calculateDynamicPresets(paces, thresholdPaceSec, paceMethod) {
     };
   });
 }
-// 
-// 
-// 
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-// 
-// 
-// 
+
 // --- Step Creation & Mapping Helpers ---
 
 export const createStep = (type, mode = 'time') => {
@@ -391,7 +368,6 @@ export const createDefaultSteps = (mode = 'time') => {
 };
 
 export const addIdsToBaseWorkout = (baseWorkout) => {
-  console.log('[App Debug BuilderHelpers] addIdsToBaseWorkout called');
   if (!baseWorkout?.workout_doc?.steps) return baseWorkout;
 
   const timestamp = new Date().toISOString().replace(/[-T:]/g, '').slice(0, 14);
@@ -400,14 +376,12 @@ export const addIdsToBaseWorkout = (baseWorkout) => {
     `step-loaded-${timestamp}-${idx}-${Math.random().toString(36).substring(2, 6)}`;
 
   const processSteps = (steps) => {
-    console.log('[App Debug BuilderHelpers] addIdsToBaseWorkout -> processSteps executing');
     return steps.map((step, idx) => {
       const updatedStep = {
         ...step,
         id: step.id || generateStepId(idx)
       };
 
-      // Recursively add IDs to nested child steps (e.g. inside repeaters)
       if (Array.isArray(updatedStep.steps)) {
         updatedStep.steps = processSteps(updatedStep.steps);
       }
@@ -426,16 +400,12 @@ export const addIdsToBaseWorkout = (baseWorkout) => {
 };
 
 export const removeIdsFromBaseWorkout = (baseWorkout) => {
-  console.log('[App Debug BuilderHelpers] removeIdsFromBaseWorkout called');
   if (!baseWorkout?.workout_doc?.steps) return baseWorkout;
 
   const stripStepId = (steps) => {
-    console.log('[App Debug BuilderHelpers] removeIdsFromBaseWorkout -> stripStepId executing');
     return steps.map((step) => {
-      // Destructure to separate 'id' from the rest of the step properties
       const { id, steps: childSteps, ...cleanStep } = step;
 
-      // Recursively strip IDs from nested child steps if present
       if (Array.isArray(childSteps)) {
         cleanStep.steps = stripStepId(childSteps);
       }
@@ -460,7 +430,6 @@ export const mapIcuDocToSteps = (workout, mode = 'time') => {
   }
 
   const mapStep = (s, idx) => {
-    // step.id = date(YYYYMMSS)-idx-randomstring
     const id = `step-loaded-${new Date().toISOString().replace(/[-T:]/g, '').slice(0, 14)}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
 
     if (s.reps && Array.isArray(s.steps)) {
@@ -497,7 +466,7 @@ export const mapIcuDocToSteps = (workout, mode = 'time') => {
 };
 
 export const downloadFile = (content, filename, mimeType) => {
-  console.log('[App Debug BuilderHelpers] downloadFile called with filename:', filename, 'mimeType:', mimeType);
+  console.log('[App Debug BuilderHelpers] downloadFile called with filename:', filename);
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createElementObjectURL(blob);
   const link = document.createElement('a');
