@@ -90,10 +90,8 @@ export async function saveWorkoutApi(payload, isNew = false) {
   console.log('[App Debug BuilderHelpers] saveWorkoutApi called with payload:', payload, 'isNew:', isNew);
   
   try {
-    // Clone payload to prevent side-effects on UI state
     let workoutData = JSON.parse(JSON.stringify(payload || {}));
 
-    // If saving as new or duplicating, strip existing IDs and regenerate step IDs
     if (isNew) {
       delete workoutData.id;
       delete workoutData._id;
@@ -105,7 +103,6 @@ export async function saveWorkoutApi(payload, isNew = false) {
     const action = workoutData.id ? 'update_workout' : 'create_workout';
     const method = workoutData.id ? 'PUT' : 'POST';
 
-    // Format folder_id properly
     let folderId = workoutData.saveFolderId ?? workoutData.folderId ?? workoutData.folder_id ?? null;
     if (folderId === '' || folderId === 'root' || folderId === undefined) {
       folderId = null;
@@ -113,21 +110,25 @@ export async function saveWorkoutApi(payload, isNew = false) {
       folderId = Number(folderId);
     }
 
-    // Resolve workout title across sources
     const workoutName = workoutData.name || workoutData.title || workoutData.workout_doc?.name || 'Untitled Workout';
-
-    // Build/sync workout_doc
     const steps = workoutData.workout_doc?.steps || workoutData.steps || [];
+    
+    // 1. Generate text description required by Intervals.icu API
+    const icuDescription = convertStepsToIcuText(steps);
+
     const workoutDoc = {
       ...(workoutData.workout_doc || {}),
       name: workoutName,
       steps: steps,
     };
 
+    // 2. Build complete payload for proxy backend / Intervals.icu API
     const bodyPayload = {
       action,
       ...(workoutData.id ? { id: workoutData.id } : {}),
       name: workoutName,
+      description: icuDescription, // Required by Intervals.icu
+      type: workoutData.type || 'Run', // Required by Intervals.icu
       folder_id: folderId,
       workout_doc: workoutDoc,
     };
@@ -157,6 +158,7 @@ export async function saveWorkoutApi(payload, isNew = false) {
     throw err;
   }
 }
+
 
 export async function fetchMyPacesApi() {
   console.log('[App Debug BuilderHelpers] fetchMyPacesApi called');
@@ -477,3 +479,49 @@ export const downloadFile = (content, filename, mimeType) => {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 };
+
+// convert step array into plain text DSL format required by intervals.icu
+export function convertStepsToIcuText(steps = []) {
+  const lineArray = [];
+
+  const parseStep = (step) => {
+    if (step.type === 'repeat' && Array.isArray(step.steps)) {
+      const reps = step.iterations || step.reps || 1;
+      lineArray.push(`${reps}x`);
+      step.steps.forEach((child) => {
+        const line = formatSingleStep(child);
+        if (line) lineArray.push(`- ${line}`);
+      });
+    } else {
+      const line = formatSingleStep(step);
+      if (line) lineArray.push(`- ${line}`);
+    }
+  };
+
+  const formatSingleStep = (s) => {
+    let durationStr = '';
+    if (s.durationSec) {
+      const mins = Math.floor(s.durationSec / 60);
+      const secs = s.durationSec % 60;
+      durationStr = secs > 0 ? `${mins}m${secs}s` : `${mins}m`;
+    } else if (s.distanceMiles) {
+      durationStr = `${s.distanceMiles.toFixed(2)}mi`;
+    } else {
+      durationStr = '10m';
+    }
+
+    let intensityLabel = s.type ? s.type.charAt(0).toUpperCase() + s.type.slice(1) : 'Run';
+    let paceStr = '';
+
+    if (s.targetPaceSec) {
+      paceStr = formatMMSS(s.targetPaceSec) + '/mi';
+    } else if (s.pace?.value) {
+      paceStr = formatMMSS(convertToPaceSec(s.pace.value)) + '/mi';
+    }
+
+    return `${durationStr} ${intensityLabel} ${paceStr}`.trim();
+  };
+
+  steps.forEach(parseStep);
+  return lineArray.join('\n');
+}

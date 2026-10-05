@@ -148,6 +148,47 @@ export default function WorkoutBuilder({
     setIsSaveModalOpen(true);
   };
 
+const handleConfirmSaveWorkout = async () => {
+  setApiLoading(true);
+  setErrorMessage('');
+  setSuccessMessage('');
+
+  try {
+    const payload = {
+      ...activeWorkout,
+      name: saveTitle,
+      saveFolderId: saveFolderId,
+      steps: stepsState,
+      workout_doc: {
+        ...activeWorkout?.workout_doc,
+        name: saveTitle,
+        steps: stepsState,
+      },
+    };
+
+    const savedResult = await saveWorkoutApi(payload, isSaveAsNewMode);
+
+    // Sync saved ID back to active state to enable subsequent updates (PUT)
+    if (savedResult?.id) {
+      setActiveWorkout((prev) => ({
+        ...prev,
+        id: savedResult.id,
+        name: saveTitle,
+        folder_id: saveFolderId,
+      }));
+    }
+
+    setSuccessMessage('Workout saved successfully!');
+    setTimeout(() => {
+      setIsSaveModalOpen(false);
+      setSuccessMessage('');
+    }, 1200);
+  } catch (err) {
+    setErrorMessage(err.message || 'Error saving workout.');
+  } finally {
+    setApiLoading(false);
+  }
+};
   const handleSaveWorkout = async (overrideTitle, overrideFolderId) => {
     console.log('[Save Flow] [Step 4] Executing handleSaveWorkout', {
       overrideTitle,
