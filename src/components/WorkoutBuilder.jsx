@@ -655,18 +655,39 @@ export default function WorkoutBuilder() {
     console.log(
       '[App Debug WorkoutBuilder] handleCopyWorkoutText invoked'
     );
-
+  
     try {
-      const { convertWorkoutToTargetFormat } =
-        await import('../utils/WorkoutConverter.js');
-
+      const {
+        convertWorkoutToTargetFormat,
+      } = await import(
+        '../utils/WorkoutConverter.js'
+      );
+  
+      // Build the same current workout document structure
+      // used by the save flow.
+      const {
+        description: _workoutDocDescription,
+        ...workoutDocWithoutDescription
+      } = baseWorkout?.workout_doc || {};
+  
+      const currentWorkoutDoc = {
+        ...workoutDocWithoutDescription,
+        name: workoutTitle,
+        steps: steps || [],
+      };
+  
+      console.log(
+        '[App Debug WorkoutBuilder] Copying current workout document:',
+        currentWorkoutDoc
+      );
+  
       const textOutput =
         convertWorkoutToTargetFormat(
-          steps,
+          currentWorkoutDoc.steps,
           workoutMode,
           paceMethod
         );
-
+  
       const stringified =
         typeof textOutput === 'object'
           ? JSON.stringify(
@@ -675,11 +696,11 @@ export default function WorkoutBuilder() {
               2
             )
           : textOutput;
-
+  
       await navigator.clipboard.writeText(
         stringified
       );
-
+  
       showToast(
         'Workout plain text copied to clipboard!'
       );
@@ -688,13 +709,13 @@ export default function WorkoutBuilder() {
         '[App Debug WorkoutBuilder] Copy workout failed:',
         err
       );
-
+  
       showToast(
         'Failed to copy workout text.'
       );
     }
   };
-
+  
   // ============================================================
   // FILE DOWNLOAD
   // ============================================================
