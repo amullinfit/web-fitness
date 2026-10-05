@@ -59,7 +59,6 @@ export default function WorkoutBuilder() {
 
   // 1. Declare state for workout title and feedback messages
   const [saveTitle, setSaveTitle] = useState('');
-  const [statusMessage, setStatusMessage] = useState(null); // { type: 'success'|'error', text: string }
   const [isSaving, setIsSaving] = useState(false);
 
   // --- Custom Hook for Steps State ---
