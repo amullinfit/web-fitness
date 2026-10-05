@@ -111,67 +111,60 @@ export default function WorkoutBuilder() {
     handleDrop,
   } = useWorkoutSteps([], workoutMode);
 
-// ------------------------------------------------------------
-// Keep the live workout document AND description synchronized
-// with the current edited steps.
-//
-// RenderStepRow -> updateStepField() -> steps
-//
-// This effect then updates:
-//
-//   baseWorkout.workout_doc.steps
-//   baseWorkout.workout_doc.description
-//   baseWorkout.description
-//
-// The description is generated from the CURRENT step tree.
-// ------------------------------------------------------------
+  // ------------------------------------------------------------
+  // Keep the live workout document AND root description
+  // synchronized with the current edited steps.
+  //
+  // RenderStepRow -> updateStepField() -> steps
+  //
+  // Description belongs ONLY at the root of baseWorkout.
+  // It must NOT exist inside workout_doc.
+  // ------------------------------------------------------------
 
-useEffect(() => {
-  if (!baseWorkout?.workout_doc) {
-    return;
-  }
-
-  const liveDescription =
-    buildWorkoutDescription(steps);
-
-  console.log(
-    '[App Debug WorkoutBuilder] Synchronizing live workout:',
-    {
-      stepCount: Array.isArray(steps)
-        ? steps.length
-        : 0,
-      descriptionLength:
-        liveDescription.length,
-      description:
-        liveDescription,
-    }
-  );
-
-  setBaseWorkout((prev) => {
-    if (!prev?.workout_doc) {
-      return prev;
+  useEffect(() => {
+    if (!baseWorkout?.workout_doc) {
+      return;
     }
 
-    return {
-      ...prev,
+    const liveDescription =
+      buildWorkoutDescription(steps);
 
-      // Root workout description.
-      description:
-        liveDescription,
-
-      workout_doc: {
-        ...prev.workout_doc,
-
-        // Current edited steps.
-        steps,
-
-        // Keep the nested description synchronized too.
+    console.log(
+      '[App Debug WorkoutBuilder] Synchronizing live workout:',
+      {
+        stepCount: Array.isArray(steps)
+          ? steps.length
+          : 0,
+        descriptionLength:
+          liveDescription.length,
         description:
           liveDescription,
+      }
+    );
+
+    // Remove description from workout_doc in the API response,
+    // in case the backend returned the legacy nested property.
+    const {
+      description: _savedWorkoutDocDescription,
+      ...savedWorkoutDocWithoutDescription
+    } = preparedSavedBase?.workout_doc || {};
+
+    setBaseWorkout({
+      ...preparedSavedBase,
+      name: finalTitle,
+
+      // Description exists ONLY at the root.
+      description:
+        saved.description ??
+        finalDescription,
+
+      workout_doc: {
+        ...savedWorkoutDocWithoutDescription,
+        steps,
       },
-    };
-  });
-}, [steps]);
+    });
+    
+  }, [steps]);
 
   // ------------------------------------------------------------
   // Keep baseWorkout.name synchronized with workoutTitle
