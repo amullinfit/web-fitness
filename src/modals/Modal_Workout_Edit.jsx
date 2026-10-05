@@ -55,7 +55,6 @@ export default function Modal_Workout_Edit({
   }, [workouts, selectedFolderId]);
 
   const getWorkoutSummary = (workout) => {
-    console.log('[App Debug Modal_Edit] getWorkoutSummary called for workout:', workout?.id || workout?.name);
     const rawDoc = workout?.workout_doc ?? workout?.document ?? workout?.icu_doc;
     
     let parsedDoc = rawDoc;
@@ -70,7 +69,6 @@ export default function Modal_Workout_Edit({
     const steps = mapIcuDocToSteps(parsedDoc, workoutMode);
 
     const calcTotals = (list) => {
-      console.log('[App Debug Modal_Edit] calcTotals called with list length:', list?.length);
       let timeSec = 0;
       let distMiles = 0;
 
@@ -160,7 +158,6 @@ export default function Modal_Workout_Edit({
                     key={workout.id}
                     className="workout-select-card"
                     onClick={() => {
-                      console.log('[App Debug Modal_Edit] Selected workout card clicked:', workout.id);
                       onSelectWorkout(workout.id);
                     }}
                   >

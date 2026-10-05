@@ -207,8 +207,6 @@ const RenderStepCard = ({ step }) => {
 
   if (!workout) return null;
 
-  console.log('[App Debug] paces: ', paceDetails)
-
   let rawSteps = [];
   if (workout.workout_doc) {
     try {

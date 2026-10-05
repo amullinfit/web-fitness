@@ -34,7 +34,6 @@ import {
 } from '../utils/WorkoutBuilderHelpers.js';
 
 export default function WorkoutBuilder() {
-  console.log('[App Debug WorkoutBuilder] WorkoutBuilder rendering');
 
   const { paces } = usePaces();
 
@@ -71,7 +70,6 @@ export default function WorkoutBuilder() {
 
   // Keep baseWorkout.workout_doc.steps synced with hook steps
   useEffect(() => {
-    console.log('[App Debug WorkoutBuilder] useEffect: syncing steps to baseWorkout');
     if (baseWorkout && baseWorkout.workout_doc) {
       setBaseWorkout((prev) => ({
         ...prev,
@@ -85,7 +83,6 @@ export default function WorkoutBuilder() {
 
   // Sync root 'name' field in baseWorkout with workoutTitle
   useEffect(() => {
-    console.log('[App Debug WorkoutBuilder] useEffect: syncing workoutTitle to baseWorkout');
     if (baseWorkout) {
       setBaseWorkout((prev) => ({
         ...prev,

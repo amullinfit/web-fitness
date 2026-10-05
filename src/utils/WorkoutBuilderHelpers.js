@@ -454,14 +454,12 @@ export const removeIdsFromBaseWorkout = (baseWorkout) => {
 };
 
 export const mapIcuDocToSteps = (workout, mode = 'time') => {
-  console.log('[App Debug BuilderHelpers] mapIcuDocToSteps called with mode:', mode);
   const stepsSource = workout?.workout_doc?.steps || workout?.steps;
   if (!Array.isArray(stepsSource) || stepsSource.length === 0) {
     return createDefaultSteps('time');
   }
 
   const mapStep = (s, idx) => {
-    console.log('[App Debug BuilderHelpers] mapIcuDocToSteps -> mapStep executing at index:', idx);
     // step.id = date(YYYYMMSS)-idx-randomstring
     const id = `step-loaded-${new Date().toISOString().replace(/[-T:]/g, '').slice(0, 14)}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
 
