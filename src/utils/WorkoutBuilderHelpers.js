@@ -1197,3 +1197,386 @@ export function convertStepsToIcuText(
 
   return lineArray.join('\n');
 }
+
+// ============================================================
+// LIVE WORKOUT DESCRIPTION BUILDER
+// ============================================================
+//
+// Converts the current builder steps into the human-readable
+// workout description used by the Workout Builder.
+//
+// IMPORTANT:
+// This is intentionally separate from convertWorkoutToTargetFormat().
+// It is NOT an export/download converter.
+//
+// Its purpose is to keep:
+//
+//   baseWorkout.description
+//
+// and:
+//
+//   baseWorkout.workout_doc.description
+//
+// synchronized with the currently edited steps.
+//
+
+const formatDescriptionDuration = (seconds) => {
+  const totalSeconds = Math.max(0, Math.round(Number(seconds) || 0));
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  const parts = [];
+
+  if (hours > 0) {
+    parts.push(`${hours}h`);
+  }
+
+  if (minutes > 0) {
+    parts.push(`${minutes}m`);
+  }
+
+  if (secs > 0 || parts.length === 0) {
+    parts.push(`${secs}s`);
+  }
+
+  return parts.join('');
+};
+
+
+const formatDescriptionPace = (pace) => {
+  if (pace === undefined || pace === null) {
+    return '';
+  }
+
+  const formatSeconds = (value) => {
+    const totalSeconds = Math.max(
+      0,
+      Math.round(Number(value) || 0)
+    );
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  // ----------------------------------------------------------
+  // Numeric pace
+  // ----------------------------------------------------------
+
+  if (typeof pace === 'number') {
+    return `${formatSeconds(pace)} Pace`;
+  }
+
+  if (typeof pace !== 'object') {
+    return '';
+  }
+
+  const units = pace.units;
+
+  // ----------------------------------------------------------
+  // Seconds / mile
+  // ----------------------------------------------------------
+
+  if (units === 'secs') {
+    const hasStart = pace.start !== undefined;
+    const hasEnd = pace.end !== undefined;
+
+    if (hasStart || hasEnd) {
+      const start = pace.start ?? pace.end;
+      const end = pace.end ?? pace.start;
+
+      return `${formatSeconds(start)}-${formatSeconds(end)} Pace`;
+    }
+
+    if (pace.value !== undefined) {
+      return `${formatSeconds(pace.value)} Pace`;
+    }
+
+    return '';
+  }
+
+  // ----------------------------------------------------------
+  // Threshold percentage
+  // ----------------------------------------------------------
+
+  if (units === '%pace') {
+    const hasStart = pace.start !== undefined;
+    const hasEnd = pace.end !== undefined;
+
+    if (hasStart || hasEnd) {
+      const start = pace.start ?? pace.end;
+      const end = pace.end ?? pace.start;
+
+      return `${start}-${end}% Pace`;
+    }
+
+    if (pace.value !== undefined) {
+      return `${pace.value}% Pace`;
+    }
+
+    return '';
+  }
+
+  // ----------------------------------------------------------
+  // Pace zone
+  // ----------------------------------------------------------
+
+  if (units === 'pace_zone') {
+    const formatZone = (value) => {
+      if (
+        value === undefined ||
+        value === null ||
+        value === ''
+      ) {
+        return '';
+      }
+
+      const stringValue = String(value).trim();
+
+      if (/^z/i.test(stringValue)) {
+        return stringValue.toUpperCase();
+      }
+
+      return `Z${stringValue}`;
+    };
+
+    const hasStart = pace.start !== undefined;
+    const hasEnd = pace.end !== undefined;
+
+    if (hasStart || hasEnd) {
+      const start = formatZone(
+        pace.start ?? pace.end
+      );
+
+      const end = formatZone(
+        pace.end ?? pace.start
+      );
+
+      if (start && end) {
+        return `${start}-${end} Pace`;
+      }
+
+      return `${start || end} Pace`;
+    }
+
+    if (pace.value !== undefined) {
+      return `${formatZone(pace.value)} Pace`;
+    }
+
+    return '';
+  }
+
+  return '';
+};
+
+
+// ------------------------------------------------------------
+// Format a single workout step for description output.
+// ------------------------------------------------------------
+
+const formatDescriptionLeafStep = (step) => {
+  if (!step) {
+    return '';
+  }
+
+  const parts = [];
+
+  // Preserve the human-readable step text.
+  const text =
+    step.text ??
+    step.description ??
+    '';
+
+  if (String(text).trim()) {
+    parts.push(String(text).trim());
+  }
+
+  // Duration.
+  const duration =
+    step.duration ??
+    step.durationSec ??
+    0;
+
+  if (Number(duration) > 0) {
+    parts.push(
+      formatDescriptionDuration(duration)
+    );
+  }
+
+  // Pace.
+  const paceText =
+    formatDescriptionPace(step.pace);
+
+  if (paceText) {
+    parts.push(paceText);
+  }
+
+  // Ramp.
+  if (step.ramp) {
+    parts.push('ramp');
+  }
+
+  // Intensity.
+  if (step.intensity) {
+    parts.push(
+      `intensity=${step.intensity}`
+    );
+  }
+
+  return parts.join(' ');
+};
+
+
+// ------------------------------------------------------------
+// Convert the entire step tree into the workout description.
+// ------------------------------------------------------------
+
+export const buildWorkoutDescription = (
+  steps = []
+) => {
+  if (!Array.isArray(steps) || steps.length === 0) {
+    return '';
+  }
+
+  const lines = [];
+
+  const addBlankLine = () => {
+    if (
+      lines.length > 0 &&
+      lines[lines.length - 1] !== ''
+    ) {
+      lines.push('');
+    }
+  };
+
+  const addLeaf = (step, indent = '') => {
+    const line =
+      formatDescriptionLeafStep(step);
+
+    if (line) {
+      lines.push(
+        `${indent}- ${line}`
+      );
+    }
+  };
+
+  const processSteps = (
+    stepList,
+    options = {}
+  ) => {
+    if (!Array.isArray(stepList)) {
+      return;
+    }
+
+    stepList.forEach((step) => {
+      if (!step) {
+        return;
+      }
+
+      const isRepeat =
+        step.type === 'repeat' ||
+        Array.isArray(step.steps) ||
+        step.reps !== undefined ||
+        step.iterations !== undefined;
+
+      if (isRepeat) {
+        addBlankLine();
+
+        const repetitions =
+          Number(
+            step.reps ??
+            step.iterations ??
+            1
+          ) || 1;
+
+        const repeatText =
+          step.text?.trim() ||
+          `${repetitions}x`;
+
+        lines.push(
+          repeatText
+        );
+
+        processSteps(
+          step.steps || [],
+          {
+            indent: ''
+          }
+        );
+
+        return;
+      }
+
+      const intensity =
+        String(
+          step.intensity || ''
+        ).toLowerCase();
+
+      // --------------------------------------------------------
+      // Warmup
+      // --------------------------------------------------------
+
+      if (
+        intensity === 'warmup' ||
+        step.warmup
+      ) {
+        if (
+          !options.previousWarmup
+        ) {
+          addBlankLine();
+          lines.push('Warmup');
+        }
+
+        addLeaf(step);
+
+        options.previousWarmup = true;
+        return;
+      }
+
+      // --------------------------------------------------------
+      // Cooldown
+      // --------------------------------------------------------
+
+      if (
+        intensity === 'cooldown' ||
+        step.cooldown
+      ) {
+        if (
+          !options.previousCooldown
+        ) {
+          addBlankLine();
+          lines.push('Cooldown');
+        }
+
+        addLeaf(step);
+
+        options.previousCooldown = true;
+        return;
+      }
+
+      // --------------------------------------------------------
+      // Normal / recovery / active step
+      // --------------------------------------------------------
+
+      addLeaf(step);
+
+      options.previousWarmup = false;
+      options.previousCooldown = false;
+    });
+  };
+
+  processSteps(steps);
+
+  // Remove excessive trailing blank lines.
+  while (
+    lines.length > 0 &&
+    lines[lines.length - 1] === ''
+  ) {
+    lines.pop();
+  }
+
+  return lines.join('\n');
+};

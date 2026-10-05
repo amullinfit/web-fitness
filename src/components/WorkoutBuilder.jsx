@@ -28,7 +28,9 @@ import {
   calculateDynamicPresets,
   createDefaultSteps,
   addIdsToBaseWorkout,
+  buildWorkoutDescription,
 } from '../utils/WorkoutBuilderHelpers.js';
+
 
 export default function WorkoutBuilder() {
   const { paces } = usePaces();
@@ -109,36 +111,67 @@ export default function WorkoutBuilder() {
     handleDrop,
   } = useWorkoutSteps([], workoutMode);
 
-  // ------------------------------------------------------------
-  // Keep baseWorkout.workout_doc.steps synchronized with steps
-  // ------------------------------------------------------------
+// ------------------------------------------------------------
+// Keep the live workout document AND description synchronized
+// with the current edited steps.
+//
+// RenderStepRow -> updateStepField() -> steps
+//
+// This effect then updates:
+//
+//   baseWorkout.workout_doc.steps
+//   baseWorkout.workout_doc.description
+//   baseWorkout.description
+//
+// The description is generated from the CURRENT step tree.
+// ------------------------------------------------------------
 
-  useEffect(() => {
-    if (!baseWorkout?.workout_doc) {
-      return;
+useEffect(() => {
+  if (!baseWorkout?.workout_doc) {
+    return;
+  }
+
+  const liveDescription =
+    buildWorkoutDescription(steps);
+
+  console.log(
+    '[App Debug WorkoutBuilder] Synchronizing live workout:',
+    {
+      stepCount: Array.isArray(steps)
+        ? steps.length
+        : 0,
+      descriptionLength:
+        liveDescription.length,
+      description:
+        liveDescription,
+    }
+  );
+
+  setBaseWorkout((prev) => {
+    if (!prev?.workout_doc) {
+      return prev;
     }
 
-    console.log(
-      '[App Debug WorkoutBuilder] Synchronizing baseWorkout.workout_doc.steps',
-      {
-        stepCount: steps.length,
-      }
-    );
+    return {
+      ...prev,
 
-    setBaseWorkout((prev) => {
-      if (!prev?.workout_doc) {
-        return prev;
-      }
+      // Root workout description.
+      description:
+        liveDescription,
 
-      return {
-        ...prev,
-        workout_doc: {
-          ...prev.workout_doc,
-          steps,
-        },
-      };
-    });
-  }, [steps]);
+      workout_doc: {
+        ...prev.workout_doc,
+
+        // Current edited steps.
+        steps,
+
+        // Keep the nested description synchronized too.
+        description:
+          liveDescription,
+      },
+    };
+  });
+}, [steps]);
 
   // ------------------------------------------------------------
   // Keep baseWorkout.name synchronized with workoutTitle
@@ -405,7 +438,7 @@ export default function WorkoutBuilder() {
         overrideTitle,
         overrideFolderId,
         workoutId,
-        isSaveAsMode
+        isSaveAsMode,
       }
     );
   
@@ -418,37 +451,26 @@ export default function WorkoutBuilder() {
         ? overrideFolderId
         : selectedFolderId;
   
-    /*
-     * The description already belongs to the workout.
-     *
-     * Do not regenerate it from the steps.
-     */
-    const finalDescription =
-      baseWorkout?.description ??
-      workoutDescription ??
-      '';
+    // ----------------------------------------------------------
+    // Description is generated from the CURRENT edited steps.
+    //
+    // This guarantees that Save uses exactly what the user
+    // currently sees in the live builder.
+    // ----------------------------------------------------------
   
-    /*
-     * The current edited steps are the source of truth
-     * for workout_doc.steps.
-     */
+    const finalDescription =
+      buildWorkoutDescription(steps);
+  
+    // ----------------------------------------------------------
+    // Current workout document.
+    // ----------------------------------------------------------
+  
     const currentWorkoutDoc = {
       ...(baseWorkout?.workout_doc || {}),
       name: finalTitle,
-      steps: steps
+      steps,
+      description: finalDescription,
     };
-  
-    /*
-     * Preserve any existing workout_doc description too,
-     * but root description takes precedence.
-     */
-    if (
-      currentWorkoutDoc.description === undefined &&
-      finalDescription
-    ) {
-      currentWorkoutDoc.description =
-        finalDescription;
-    }
   
     const targetId =
       isSaveAsMode
@@ -460,7 +482,7 @@ export default function WorkoutBuilder() {
       name: finalTitle,
       description: finalDescription,
       folder_id: finalFolderId,
-      workout_doc: currentWorkoutDoc
+      workout_doc: currentWorkoutDoc,
     };
   
     console.log(
@@ -469,11 +491,11 @@ export default function WorkoutBuilder() {
     );
   
     console.log(
-      '[Save Flow Builder 3/8] Description being preserved:',
+      '[Save Flow Builder 3/8] Generated description:',
       {
         description: finalDescription,
         descriptionLength:
-          finalDescription.length
+          finalDescription.length,
       }
     );
   
@@ -516,40 +538,47 @@ export default function WorkoutBuilder() {
         {
           newId,
           finalTitle,
-          finalFolderId
+          finalFolderId,
         }
       );
   
       setWorkoutId(newId);
       setWorkoutTitle(finalTitle);
+  
+      // Use the description we actually submitted.
       setWorkoutDescription(
         saved.description ??
         finalDescription
       );
+  
       setSelectedFolderId(
         finalFolderId
       );
   
-      /*
-       * The server response becomes the new saved
-       * base workout.
-       */
       const preparedSavedBase =
-        addIdsToBaseWorkout(
-          saved
-        );
+        addIdsToBaseWorkout(saved);
   
       setUnalteredWorkout(saved);
   
       setBaseWorkout({
         ...preparedSavedBase,
-        name: finalTitle
+        name: finalTitle,
+  
+        // Ensure the live UI retains the description even
+        // if the API response omits it at the root.
+        description:
+          saved.description ??
+          finalDescription,
+  
+        workout_doc: {
+          ...(preparedSavedBase?.workout_doc || {}),
+          steps,
+          description:
+            saved.description ??
+            finalDescription,
+        },
       });
   
-      /*
-       * Refresh the workout list so the UI reflects
-       * the saved server state.
-       */
       console.log(
         '[Save Flow Builder 8/8] Refreshing saved workout list...'
       );
@@ -597,7 +626,7 @@ export default function WorkoutBuilder() {
       );
     }
   };
-  
+    
   // ============================================================
   // DUPLICATE WORKOUT
   // ============================================================
