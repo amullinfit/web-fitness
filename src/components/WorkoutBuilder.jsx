@@ -461,15 +461,22 @@ useEffect(() => {
     const finalDescription =
       buildWorkoutDescription(steps);
   
-    // ----------------------------------------------------------
-    // Current workout document.
-    // ----------------------------------------------------------
-  
+    /*
+    * workout_doc should contain the workout structure,
+    * but description belongs at the root workout level.
+    *
+    * Remove any legacy description that may already exist
+    * inside workout_doc.
+    */
+    const {
+      description: _workoutDocDescription,
+      ...workoutDocWithoutDescription
+    } = baseWorkout?.workout_doc || {};
+
     const currentWorkoutDoc = {
-      ...(baseWorkout?.workout_doc || {}),
+      ...workoutDocWithoutDescription,
       name: finalTitle,
-      steps,
-      description: finalDescription,
+      steps
     };
   
     const targetId =
