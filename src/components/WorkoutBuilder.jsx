@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -14,7 +14,8 @@ import {
   FileText
 } from 'lucide-react';
 
-// Helper to ensure step items have unique IDs for React key stability
+import { saveWorkoutApi, fetchWorkoutsApi } from './workoutsApi';
+
 const addIdsToBaseWorkout = (workout) => {
   if (!workout) return null;
   const stepsWithIds = (workout.steps || []).map((step, idx) => ({
@@ -24,8 +25,12 @@ const addIdsToBaseWorkout = (workout) => {
   return { ...workout, steps: stepsWithIds };
 };
 
-// Fallback text serializer in case target format converter is missing or custom
 const convertWorkoutToTargetFormat = (steps, mode, paceMethod) => {
+  console.log('[Save Flow] [Step 4a] Serializing steps into target document format', {
+    stepCount: steps?.length,
+    mode,
+    paceMethod
+  });
   return steps.map((step) => {
     let line = `- `;
     if (step.type === 'warmup') line += 'Warmup ';
@@ -48,20 +53,18 @@ export default function WorkoutBuilder({
   showToast = () => {},
   onBack = () => {}
 }) {
-  // --- Core State ---
   const [workoutId, setWorkoutId] = useState(initialWorkout?.id || null);
   const [workoutTitle, setWorkoutTitle] = useState(initialWorkout?.name || initialWorkout?.title || 'New Workout');
   const [workoutDescription, setWorkoutDescription] = useState(initialWorkout?.description || '');
   const [selectedFolderId, setSelectedFolderId] = useState(initialWorkout?.folder_id ?? initialWorkout?.folderId ?? null);
   
-  const [workoutMode, setWorkoutMode] = useState('distance'); // 'distance' | 'duration'
-  const [paceMethod, setPaceMethod] = useState('pace'); // 'pace' | 'hr' | 'power'
-  const [mode, setMode] = useState(initialWorkout?.id ? 'SAVED' : 'BUILDING'); // 'BUILDING' | 'SAVED' | 'EDITING'
+  const [workoutMode, setWorkoutMode] = useState('distance');
+  const [paceMethod, setPaceMethod] = useState('pace');
+  const [mode, setMode] = useState(initialWorkout?.id ? 'SAVED' : 'BUILDING');
   
   const [baseWorkout, setBaseWorkout] = useState(addIdsToBaseWorkout(initialWorkout));
   const [unalteredWorkout, setUnalteredWorkout] = useState(initialWorkout);
 
-  // Steps state
   const [steps, setSteps] = useState(
     initialWorkout?.steps || [
       { id: 'step-1', type: 'warmup', duration: '10m', target: 'Zone 1 Pace', note: '' },
@@ -71,13 +74,11 @@ export default function WorkoutBuilder({
     ]
   );
 
-  // Modal State
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isSaveAsMode, setIsSaveAsMode] = useState(false);
   const [modalTitleInput, setModalTitleInput] = useState('');
   const [modalFolderInput, setModalFolderInput] = useState(null);
 
-  // Keep state in sync if initialWorkout prop updates
   useEffect(() => {
     if (initialWorkout) {
       const prepared = addIdsToBaseWorkout(initialWorkout);
@@ -92,7 +93,6 @@ export default function WorkoutBuilder({
     }
   }, [initialWorkout]);
 
-  // --- Step Manipulation Handlers ---
   const handleAddStep = (type = 'interval') => {
     const newStep = {
       id: `step-${Date.now()}`,
@@ -134,9 +134,14 @@ export default function WorkoutBuilder({
     }
   };
 
-  // --- Modal & Save Handlers ---
+  // --- SAVE FLOW HANDLERS WITH LOGGING ---
+
   const handleOpenSaveModal = (isSaveAs = false) => {
-    console.log('[App Debug WorkoutBuilder] handleOpenSaveModal invoked with isSaveAs:', isSaveAs);
+    console.log('[Save Flow] [Step 2] Opening Save Modal', {
+      isSaveAs,
+      currentWorkoutTitle: workoutTitle,
+      currentFolderId: selectedFolderId
+    });
     setIsSaveAsMode(isSaveAs);
     setModalTitleInput(isSaveAs ? `${workoutTitle} (Copy)` : workoutTitle);
     setModalFolderInput(selectedFolderId);
@@ -144,8 +149,13 @@ export default function WorkoutBuilder({
   };
 
   const handleSaveWorkout = async (overrideTitle, overrideFolderId) => {
-    console.log('[App Debug WorkoutBuilder] handleSaveWorkout invoked', { overrideTitle, overrideFolderId });
-    
+    console.log('[Save Flow] [Step 4] Executing handleSaveWorkout', {
+      overrideTitle,
+      overrideFolderId,
+      isSaveAsMode,
+      currentWorkoutId: workoutId
+    });
+
     const finalTitle = overrideTitle || workoutTitle;
     const finalFolderId = overrideFolderId !== undefined ? overrideFolderId : selectedFolderId;
     const icuDocument = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
@@ -160,17 +170,23 @@ export default function WorkoutBuilder({
       steps
     };
 
+    console.log('[Save Flow] [Step 5] Constructed Save Payload:', payload);
+
     try {
       let saved = null;
       if (typeof saveWorkoutApi === 'function') {
+        console.log('[Save Flow] [Step 6] Invoking saveWorkoutApi prop...');
         saved = await saveWorkoutApi(payload);
+        console.log('[Save Flow] [Step 7] Response received from saveWorkoutApi:', saved);
       } else {
-        // Local simulation fallback
+        console.warn('[Save Flow] [Step 6-Fallback] saveWorkoutApi prop not provided, using local simulation.');
         saved = { ...payload, id: targetId || `w-${Date.now()}` };
       }
 
       if (saved) {
         const newId = saved.id || saved.workout_id || targetId;
+        console.log('[Save Flow] [Step 8] Updating component state with saved workout metadata', { newId, finalTitle });
+
         setWorkoutId(newId);
         setWorkoutTitle(finalTitle);
         setSelectedFolderId(finalFolderId);
@@ -182,12 +198,13 @@ export default function WorkoutBuilder({
           name: finalTitle
         });
 
-        // Re-fetch workouts list to stay synchronized if API provided
         if (typeof fetchWorkoutsApi === 'function' && typeof setSavedWorkouts === 'function') {
+          console.log('[Save Flow] [Step 9] Re-fetching workouts list to synchronize app state...');
           const updatedData = await fetchWorkoutsApi();
           const workoutsArray = Array.isArray(updatedData) 
             ? updatedData 
             : (updatedData?.workouts || []);
+          console.log('[Save Flow] [Step 10] Synchronized parent workout list state with', workoutsArray.length, 'workouts.');
           setSavedWorkouts(workoutsArray);
         }
 
@@ -195,20 +212,22 @@ export default function WorkoutBuilder({
         setIsSaveAsMode(false);
         setMode('SAVED');
         showToast(isSaveAsMode ? 'Workout saved as new file!' : 'Workout saved successfully!');
+        console.log('[Save Flow] [SUCCESS] Save process complete.');
+      } else {
+        console.error('[Save Flow] [ERROR] saveWorkoutApi returned null or undefined.');
+        showToast('Failed to save workout: empty response.');
       }
     } catch (err) {
-      console.error('Error saving workout:', err);
+      console.error('[Save Flow] [ERROR] Exception caught during handleSaveWorkout:', err);
       showToast('Failed to save workout. Please try again.');
     }
   };
 
   const handleDuplicateWorkout = (workoutToDuplicate) => {
-    console.log('[App Debug WorkoutBuilder] handleDuplicateWorkout invoked');
-
+    console.log('[Save Flow] [Step 1-Duplicate] Duplication initiated');
     const target = workoutToDuplicate || baseWorkout;
     const sourceTitle = target?.name || target?.title || workoutTitle || 'Workout';
     const sourceFolderId = target?.folder_id ?? target?.folderId ?? selectedFolderId;
-
     const duplicateTitle = `${sourceTitle} (Copy)`;
 
     setWorkoutId(null);
@@ -217,11 +236,10 @@ export default function WorkoutBuilder({
     setMode('BUILDING');
 
     handleOpenSaveModal(true);
-    showToast('Workout duplicated! Choose a folder and save your new copy.');
   };
 
   const handleCopyWorkoutText = () => {
-    console.log('[App Debug WorkoutBuilder] handleCopyWorkoutText invoked');
+    console.log('[Save Flow] [Action] Copying plain text');
     const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
     const stringified = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
     navigator.clipboard.writeText(stringified);
@@ -232,7 +250,7 @@ export default function WorkoutBuilder({
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6 bg-slate-900 text-slate-100 min-h-screen rounded-xl shadow-2xl">
-      {/* Top Header / Navigation */}
+      {/* Top Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
         <div className="flex items-center space-x-3">
           <button
@@ -266,7 +284,7 @@ export default function WorkoutBuilder({
           </div>
         </div>
 
-        {/* Action Controls */}
+        {/* Action Buttons */}
         <div className="flex items-center flex-wrap gap-2">
           <button
             onClick={handleCopyWorkoutText}
@@ -286,7 +304,10 @@ export default function WorkoutBuilder({
 
           {workoutId && (
             <button
-              onClick={() => handleOpenSaveModal(true)}
+              onClick={() => {
+                console.log('[Save Flow] [Step 1-SaveAs] "Save As..." menu button clicked');
+                handleOpenSaveModal(true);
+              }}
               className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg border border-slate-700 transition-colors"
             >
               <Save className="w-4 h-4" />
@@ -296,6 +317,7 @@ export default function WorkoutBuilder({
 
           <button
             onClick={() => {
+              console.log('[Save Flow] [Step 1-Save] Main Save button clicked', { existingWorkoutId: workoutId });
               if (workoutId) {
                 handleSaveWorkout(workoutTitle, selectedFolderId);
               } else {
@@ -310,9 +332,8 @@ export default function WorkoutBuilder({
         </div>
       </div>
 
-      {/* Main Grid Layout */}
+      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Workout Builder Controls */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-800 space-y-4">
             <div className="flex items-center justify-between">
@@ -327,7 +348,6 @@ export default function WorkoutBuilder({
               </button>
             </div>
 
-            {/* Steps List */}
             <div className="space-y-3">
               {steps.map((step, index) => (
                 <div
@@ -351,7 +371,6 @@ export default function WorkoutBuilder({
                     </button>
                   </div>
 
-                  {/* Step Type Selector */}
                   <select
                     value={step.type}
                     onChange={(e) => handleUpdateStep(step.id, 'type', e.target.value)}
@@ -363,25 +382,22 @@ export default function WorkoutBuilder({
                     <option value="cooldown">Cooldown</option>
                   </select>
 
-                  {/* Step Duration */}
                   <input
                     type="text"
                     value={step.duration}
                     onChange={(e) => handleUpdateStep(step.id, 'duration', e.target.value)}
-                    placeholder="Duration (e.g. 5m, 1km)"
+                    placeholder="Duration"
                     className="w-24 bg-slate-800 text-sm text-slate-200 border border-slate-700 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
                   />
 
-                  {/* Target Intensity */}
                   <input
                     type="text"
                     value={step.target}
                     onChange={(e) => handleUpdateStep(step.id, 'target', e.target.value)}
-                    placeholder="Target (e.g. Zone 2, 5:00/km)"
+                    placeholder="Target"
                     className="flex-1 bg-slate-800 text-sm text-slate-200 border border-slate-700 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
                   />
 
-                  {/* Delete Step */}
                   <button
                     onClick={() => handleDeleteStep(step.id)}
                     className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
@@ -393,12 +409,11 @@ export default function WorkoutBuilder({
 
               {steps.length === 0 && (
                 <div className="text-center py-8 text-slate-500 border border-dashed border-slate-800 rounded-lg">
-                  No steps added yet. Click below to add your first block.
+                  No steps added yet.
                 </div>
               )}
             </div>
 
-            {/* Add Step Buttons */}
             <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800">
               <button
                 onClick={() => handleAddStep('warmup')}
@@ -428,9 +443,7 @@ export default function WorkoutBuilder({
           </div>
         </div>
 
-        {/* Right Column: Preview & Folder Selection */}
         <div className="space-y-4">
-          {/* Metadata Card */}
           <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-800 space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
               <Folder className="w-4 h-4" /> Folder Assignment
@@ -453,13 +466,10 @@ export default function WorkoutBuilder({
             </select>
           </div>
 
-          {/* Formatted Target Output Preview */}
           <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-800 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <FileText className="w-4 h-4" /> Formatted Output Preview
-              </h3>
-            </div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <FileText className="w-4 h-4" /> Formatted Output Preview
+            </h3>
             <pre className="bg-slate-950 p-3 rounded-lg text-xs font-mono text-emerald-400 whitespace-pre-wrap overflow-x-auto border border-slate-900 min-h-[160px]">
               {typeof formattedOutput === 'string'
                 ? formattedOutput
@@ -469,7 +479,7 @@ export default function WorkoutBuilder({
         </div>
       </div>
 
-      {/* Save / Save-As Modal */}
+      {/* Save Modal */}
       {isSaveModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">
@@ -512,13 +522,22 @@ export default function WorkoutBuilder({
 
             <div className="flex justify-end space-x-3 pt-3 border-t border-slate-800">
               <button
-                onClick={() => setIsSaveModalOpen(false)}
+                onClick={() => {
+                  console.log('[Save Flow] [Step 3-Cancel] Save Modal cancelled by user');
+                  setIsSaveModalOpen(false);
+                }}
                 className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={() => handleSaveWorkout(modalTitleInput, modalFolderInput)}
+                onClick={() => {
+                  console.log('[Save Flow] [Step 3-Confirm] Save confirmed inside Save Modal', {
+                    modalTitleInput,
+                    modalFolderInput
+                  });
+                  handleSaveWorkout(modalTitleInput, modalFolderInput);
+                }}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg shadow transition-colors"
               >
                 Save

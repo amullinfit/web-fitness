@@ -1,7 +1,4 @@
-//
-// APP.JSX
-//
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DailyView from './components/DailyView.jsx';
 import MonthlyView from './components/MonthlyView.jsx';
 import OptionsView from './components/OptionsView.jsx';
@@ -11,20 +8,19 @@ import GearView from './components/GearView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
 
-//const DEFAULT_VIEW = 'workout-builder';
 const DEFAULT_VIEW = 'monthly';
+const APP_TITLE = 'Web Fitness';
 
+// Timestamped logger utility
 const originalLog = console.log;
-
 console.log = (...args) => {
   const now = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   const timestamp = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-
   originalLog(`[${timestamp}]`, ...args);
 };
 
-// [DEBUG Helper] Wrap components to log successful mounts and unmounts
+// Mount/Unmount Debug Wrapper
 const WithDebugLog = ({ name, children }) => {
   useEffect(() => {
     console.log(`[App Debug] ✅ SUCCESS: <${name} /> mounted successfully.`);
@@ -34,7 +30,15 @@ const WithDebugLog = ({ name, children }) => {
   return children;
 };
 
-const APP_TITLE = 'Web Fitness';
+// Navigation Tab Configuration
+const TABS = [
+  { id: 'daily', label: 'Daily View', component: DailyView },
+  { id: 'monthly', label: 'Monthly View', component: MonthlyView },
+  { id: 'overview', label: 'General Overview', component: GeneralOverview },
+  { id: 'workout-builder', label: 'Workout Builder', component: WorkoutBuilder },
+  { id: 'gear', label: 'Gear', component: GearView },
+  { id: 'options', label: 'Options', component: OptionsView },
+];
 
 function HeaderBar({
   menuOpen,
@@ -44,6 +48,7 @@ function HeaderBar({
   themeView,
 }) {
   const { paces, loading } = usePaces();
+  const navRef = useRef(null);
 
   useEffect(() => {
     if (loading) {
@@ -55,22 +60,41 @@ function HeaderBar({
     }
   }, [paces, loading]);
 
-  const handleSelectTab = (tab) => {
-    console.log(`[App Debug] 🎯 Tab select requested: "${tab}"`);
-    setActiveTab(tab);
-    setMenuOpen(false);
-  };
+  // Click Outside to Dismiss Menu
+  useEffect(() => {
+    if (!menuOpen) return;
 
-  const handleTitleClick = () => {
-    console.log('[App Debug] 🏠 Title clicked -> Navigating to Monthly View');
-    setActiveTab('monthly');
+    const handleClickOutside = (e) => {
+      if (navRef.current && !navRef.current.contains(e.target)) {
+        console.log('[App Debug] 🖱️ Clicked outside nav -> Closing menu');
+        setMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [menuOpen, setMenuOpen]);
+
+  const handleSelectTab = (tabId) => {
+    console.log(`[App Debug] 🎯 Tab select requested: "${tabId}"`);
+    setActiveTab(tabId);
+    setMenuOpen(false);
   };
 
   return (
     <header
+      ref={navRef}
       style={{
         display: 'flex',
-        justifyContent: 'space-between',
+        justify: 'space-between',
         alignItems: 'center',
         padding: '12px 20px',
         borderBottom: '1px solid #ccc',
@@ -78,7 +102,10 @@ function HeaderBar({
       }}
     >
       <h1
-        onClick={handleTitleClick}
+        onClick={() => {
+          console.log('[App Debug] 🏠 Title clicked -> Navigating to Monthly View');
+          setActiveTab('monthly');
+        }}
         style={{
           margin: 0,
           fontSize: '20px',
@@ -94,10 +121,7 @@ function HeaderBar({
       </h1>
 
       <button
-        onClick={() => {
-          console.log(`[App Debug] Toggle menu click -> Next state: ${!menuOpen}`);
-          setMenuOpen(!menuOpen);
-        }}
+        onClick={() => setMenuOpen((prev) => !prev)}
         style={{
           background: 'none',
           border: 'none',
@@ -106,11 +130,11 @@ function HeaderBar({
           color: 'var(--text-h, inherit)',
         }}
         aria-label="Options Menu"
+        aria-expanded={menuOpen}
       >
         &#9776;
       </button>
 
-      {/* Dropdown Navigation */}
       {menuOpen && (
         <nav
           style={{
@@ -130,42 +154,24 @@ function HeaderBar({
             minWidth: '160px',
           }}
         >
-          <button
-            onClick={() => handleSelectTab('daily')}
-            style={dropdownBtnStyle(themeView)}
-          >
-            Daily View
-          </button>
-          <button
-            onClick={() => handleSelectTab('monthly')}
-            style={dropdownBtnStyle(themeView)}
-          >
-            Monthly View
-          </button>
-          <button
-            onClick={() => handleSelectTab('overview')}
-            style={dropdownBtnStyle(themeView)}
-          >
-            General Overview
-          </button>
-          <button
-            onClick={() => handleSelectTab('workout-builder')}
-            style={dropdownBtnStyle(themeView)}
-          >
-            Workout Builder
-          </button>
-          <button
-            onClick={() => handleSelectTab('gear')}
-            style={dropdownBtnStyle(themeView)}
-          >
-            Gear
-          </button>
-          <button
-            onClick={() => handleSelectTab('options')}
-            style={dropdownBtnStyle(themeView)}
-          >
-            Options
-          </button>
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => handleSelectTab(tab.id)}
+              style={{
+                ...dropdownBtnStyle(themeView),
+                fontWeight: activeTab === tab.id ? 'bold' : 'normal',
+                backgroundColor:
+                  activeTab === tab.id
+                    ? themeView === 'dark'
+                      ? '#333'
+                      : '#f0f0f0'
+                    : 'transparent',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </nav>
       )}
     </header>
@@ -175,9 +181,7 @@ function HeaderBar({
 export default function App() {
   console.log('[App Debug] 🚀 Render cycle started.');
 
-  // Set the default starting view to DEFAULT_VIEW
   const [activeTab, setActiveTab] = useState(DEFAULT_VIEW);
-
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [layoutVersion, setLayoutVersion] = useState(
@@ -190,27 +194,14 @@ export default function App() {
     () => Number(localStorage.getItem('wf_offset')) || 0
   );
 
-  // Sync state changes to localStorage
   useEffect(() => {
-    console.log('[App Debug] Syncing settings to localStorage...');
     localStorage.setItem('wf_version', layoutVersion);
     localStorage.setItem('wf_theme', themeView);
     localStorage.setItem('wf_offset', rightOffset);
   }, [layoutVersion, themeView, rightOffset]);
 
-  // Auto-close menu timer (4 seconds)
-  useEffect(() => {
-    if (!menuOpen) return;
-    const timer = setTimeout(() => {
-      console.log('[App Debug] ⏱️ Auto-close menu timer triggered');
-      setMenuOpen(false);
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [menuOpen]);
-
   const getThemeStyles = () => {
-    if (themeView === 'dark')
-      return { backgroundColor: '#121212', color: '#ffffff' };
+    if (themeView === 'dark') return { backgroundColor: '#121212', color: '#ffffff' };
     if (themeView === 'bw')
       return {
         backgroundColor: '#ffffff',
@@ -219,6 +210,9 @@ export default function App() {
       };
     return { backgroundColor: '#f9f9f9', color: '#1a1a1a' };
   };
+
+  const activeTabConfig = TABS.find((tab) => tab.id === activeTab) || TABS[1]; // Fallback to Monthly
+  const ActiveComponent = activeTabConfig.component;
 
   return (
     <PacesProvider>
@@ -246,60 +240,22 @@ export default function App() {
             margin: '0 auto',
           }}
         >
-          {activeTab === 'daily' && (
-            <ErrorBoundary key="daily" name="Daily View">
-              <WithDebugLog name="DailyView">
-                <DailyView />
-              </WithDebugLog>
-            </ErrorBoundary>
-          )}
-
-          {activeTab === 'monthly' && (
-            <ErrorBoundary key="monthly" name="Monthly View">
-              <WithDebugLog name="MonthlyView">
-                <MonthlyView />
-              </WithDebugLog>
-            </ErrorBoundary>
-          )}
-
-          {activeTab === 'overview' && (
-            <ErrorBoundary key="overview" name="General Overview">
-              <WithDebugLog name="GeneralOverview">
-                <GeneralOverview />
-              </WithDebugLog>
-            </ErrorBoundary>
-          )}
-
-          {activeTab === 'workout-builder' && (
-            <ErrorBoundary key="workout-builder" name="Workout Builder">
-              <WithDebugLog name="WorkoutBuilder">
-                <WorkoutBuilder />
-              </WithDebugLog>
-            </ErrorBoundary>
-          )}
-
-          {activeTab === 'gear' && (
-            <ErrorBoundary key="gear" name="Gear View">
-              <WithDebugLog name="GearView">
-                <GearView />
-              </WithDebugLog>
-            </ErrorBoundary>
-          )}
-
-          {activeTab === 'options' && (
-            <ErrorBoundary key="options" name="Options View">
-              <WithDebugLog name="OptionsView">
-                <OptionsView
-                  layoutVersion={layoutVersion}
-                  setLayoutVersion={setLayoutVersion}
-                  themeView={themeView}
-                  setThemeView={setThemeView}
-                  rightOffset={rightOffset}
-                  setRightOffset={setRightOffset}
-                />
-              </WithDebugLog>
-            </ErrorBoundary>
-          )}
+          <ErrorBoundary key={activeTabConfig.id} name={activeTabConfig.label}>
+            <WithDebugLog name={ActiveComponent.name || activeTabConfig.label}>
+              <ActiveComponent
+                {...(activeTabConfig.id === 'options'
+                  ? {
+                      layoutVersion,
+                      setLayoutVersion,
+                      themeView,
+                      setThemeView,
+                      rightOffset,
+                      setRightOffset,
+                    }
+                  : {})}
+              />
+            </WithDebugLog>
+          </ErrorBoundary>
         </main>
       </div>
     </PacesProvider>
