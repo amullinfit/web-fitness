@@ -424,6 +424,30 @@ export default function WorkoutBuilder() {
     };
   };
 
+  const getCurrentWorkout = () => {
+    const {
+      description: _workoutDocDescription,
+      ...workoutDocWithoutDescription
+    } = baseWorkout?.workout_doc || {};
+  
+    const currentDescription =
+      buildWorkoutDescription(steps || []);
+  
+    return {
+      ...baseWorkout,
+  
+      name: workoutTitle,
+  
+      description: currentDescription,
+  
+      workout_doc: {
+        ...workoutDocWithoutDescription,
+        name: workoutTitle,
+        steps: steps || [],
+      },
+    };
+  };
+
   const handleSaveWorkout = async (
     overrideTitle,
     overrideFolderId
@@ -464,11 +488,14 @@ export default function WorkoutBuilder() {
     * Remove any legacy description that may already exist
     * inside workout_doc.
     */
+    const currentWorkout =
+      getCurrentWorkout();
+  
     const currentWorkoutDoc = {
-      ...getCurrentWorkoutDoc(),
+      ...currentWorkout.workout_doc,
       name: finalTitle,
     };
-      
+        
     const targetId =
       isSaveAsMode
         ? null
@@ -664,44 +691,27 @@ export default function WorkoutBuilder() {
     );
   
     try {
-      const {
-        convertWorkoutToTargetFormat,
-      } = await import(
-        '../utils/WorkoutConverter.js'
-      );
-  
-      // Use the exact same current workout document
-      // structure as the Save functionality.
-      const currentWorkoutDoc =
-        getCurrentWorkoutDoc();
+      const currentWorkout =
+        getCurrentWorkout();
   
       console.log(
-        '[App Debug WorkoutBuilder] Copying current workout document:',
-        currentWorkoutDoc
+        '[App Debug WorkoutBuilder] Copying complete current workout:',
+        currentWorkout
       );
   
-      const textOutput =
-        convertWorkoutToTargetFormat(
-          currentWorkoutDoc.steps,
-          workoutMode,
-          paceMethod
-        );
-  
       const stringified =
-        typeof textOutput === 'object'
-          ? JSON.stringify(
-              textOutput,
-              null,
-              2
-            )
-          : textOutput;
+        JSON.stringify(
+          currentWorkout,
+          null,
+          2
+        );
   
       await navigator.clipboard.writeText(
         stringified
       );
   
       showToast(
-        'Workout plain text copied to clipboard!'
+        'Complete workout JSON copied to clipboard!'
       );
     } catch (err) {
       console.error(
@@ -714,7 +724,7 @@ export default function WorkoutBuilder() {
       );
     }
   };
-    
+      
   // ============================================================
   // FILE DOWNLOAD
   // ============================================================
