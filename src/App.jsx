@@ -90,17 +90,19 @@ function HeaderBar({
   };
 
   return (
-    <header
-      ref={navRef}
-      style={{
-        display: 'flex',
-        justify: 'space-between',
-        alignItems: 'center',
-        padding: '12px 20px',
-        borderBottom: '1px solid #ccc',
-        position: 'relative',
-      }}
-    >
+      <header
+        ref={navRef}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          padding: '12px 20px',
+          borderBottom: '1px solid #ccc',
+          position: 'relative',
+          flexShrink: 0,
+          zIndex: 1000,
+          backgroundColor: themeView === 'dark' ? '#121212' : '#f9f9f9',
+        }}
+      >
       <h1
         onClick={() => {
           console.log('[App Debug] 🏠 Title clicked -> Navigating to Monthly View');
@@ -225,10 +227,13 @@ export default function App() {
       <div
         style={{
           ...getThemeStyles(),
-          minHeight: '100vh',
+          height: '100vh',
           marginRight: `${rightOffset}px`,
           boxSizing: 'border-box',
           transition: 'all 0.2s ease',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
         <HeaderBar
@@ -243,7 +248,12 @@ export default function App() {
           style={{
             padding: layoutVersion === 'mobile' ? '10px' : '20px',
             maxWidth: layoutVersion === 'mobile' ? '480px' : '100%',
+            width: '100%',
             margin: '0 auto',
+            boxSizing: 'border-box',
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'hidden',
           }}
         >
           <ErrorBoundary key={activeTabConfig.id} name={activeTabConfig.label}>
