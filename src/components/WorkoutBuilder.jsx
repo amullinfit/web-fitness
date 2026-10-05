@@ -400,212 +400,204 @@ export default function WorkoutBuilder() {
     overrideFolderId
   ) => {
     console.log(
-      '[Save Flow] Step 3: Save modal confirmed'
+      '[Save Flow Builder 1/8] handleSaveWorkout invoked',
+      {
+        overrideTitle,
+        overrideFolderId,
+        workoutId,
+        isSaveAsMode
+      }
     );
-
+  
     const finalTitle =
-      String(
-        overrideTitle ??
-        saveTitle ??
-        workoutTitle ??
-        ''
-      ).trim();
-
+      overrideTitle?.trim() ||
+      workoutTitle;
+  
     const finalFolderId =
       overrideFolderId !== undefined
         ? overrideFolderId
-        : saveFolderId;
-
+        : selectedFolderId;
+  
+    /*
+     * The description already belongs to the workout.
+     *
+     * Do not regenerate it from the steps.
+     */
+    const finalDescription =
+      baseWorkout?.description ??
+      workoutDescription ??
+      '';
+  
+    /*
+     * The current edited steps are the source of truth
+     * for workout_doc.steps.
+     */
+    const currentWorkoutDoc = {
+      ...(baseWorkout?.workout_doc || {}),
+      name: finalTitle,
+      steps: steps
+    };
+  
+    /*
+     * Preserve any existing workout_doc description too,
+     * but root description takes precedence.
+     */
+    if (
+      currentWorkoutDoc.description === undefined &&
+      finalDescription
+    ) {
+      currentWorkoutDoc.description =
+        finalDescription;
+    }
+  
+    const targetId =
+      isSaveAsMode
+        ? null
+        : workoutId;
+  
+    const payload = {
+      id: targetId,
+      name: finalTitle,
+      description: finalDescription,
+      folder_id: finalFolderId,
+      workout_doc: currentWorkoutDoc
+    };
+  
     console.log(
-      '[Save Flow] Step 4: Save values resolved',
+      '[Save Flow Builder 2/8] Final builder save payload:',
+      payload
+    );
+  
+    console.log(
+      '[Save Flow Builder 3/8] Description being preserved:',
       {
-        finalTitle,
-        finalFolderId,
-        isSaveAsMode,
-        workoutId,
+        description: finalDescription,
+        descriptionLength:
+          finalDescription.length
       }
     );
-
-    if (!finalTitle) {
-      console.error(
-        '[Save Flow] STOP: Workout title is empty'
-      );
-
-      showToast('Please enter a workout name.');
-      return;
-    }
-
-    if (!baseWorkout) {
-      console.error(
-        '[Save Flow] STOP: baseWorkout is null'
-      );
-
-      showToast('No workout is currently loaded.');
-      return;
-    }
-
-    if (!Array.isArray(steps)) {
-      console.error(
-        '[Save Flow] STOP: steps is not an array:',
-        steps
-      );
-
-      showToast('Workout steps are invalid.');
-      return;
-    }
-
-    setIsSaving(true);
-
+  
+    console.log(
+      '[Save Flow Builder 4/8] Current step count:',
+      Array.isArray(steps)
+        ? steps.length
+        : 0
+    );
+  
     try {
-      // --------------------------------------------------------
-      // Build the current workout document.
-      //
-      // IMPORTANT:
-      // baseWorkout is the working document and steps is the
-      // latest hook state. We explicitly combine them here
-      // instead of relying on a previous React render.
-      // --------------------------------------------------------
-
-      const currentWorkoutDocument = {
-        ...baseWorkout,
-        name: finalTitle,
-        workout_doc: {
-          ...(baseWorkout.workout_doc || {}),
-          steps,
-        },
-      };
-
       console.log(
-        '[Save Flow] Step 5: Current workout document prepared',
-        currentWorkoutDocument
+        '[Save Flow Builder 5/8] Calling saveWorkoutApi...'
       );
-
-      const payload = {
-        ...currentWorkoutDocument,
-        id: isSaveAsMode ? null : workoutId,
-        name: finalTitle,
-        description: workoutDescription,
-        folder_id: finalFolderId,
-      };
-
+  
+      const saved =
+        await saveWorkoutApi(
+          payload,
+          isSaveAsMode
+        );
+  
       console.log(
-        '[Save Flow] Step 6: Payload prepared for saveWorkoutApi',
-        payload
-      );
-
-      console.log(
-        '[Save Flow] Step 7: Calling saveWorkoutApi...'
-      );
-
-      const saved = await saveWorkoutApi(
-        payload,
-        isSaveAsMode
-      );
-
-      console.log(
-        '[Save Flow] Step 8: saveWorkoutApi returned successfully:',
+        '[Save Flow Builder 6/8] saveWorkoutApi returned:',
         saved
       );
-
+  
       if (!saved) {
         throw new Error(
           'Save API returned no workout data.'
         );
       }
-
+  
       const newId =
         saved.id ||
         saved.workout_id ||
-        saved._id ||
-        workoutId;
-
+        targetId;
+  
       console.log(
-        '[Save Flow] Step 9: Saved workout ID resolved:',
-        newId
+        '[Save Flow Builder 7/8] Updating local builder state:',
+        {
+          newId,
+          finalTitle,
+          finalFolderId
+        }
       );
-
+  
       setWorkoutId(newId);
       setWorkoutTitle(finalTitle);
-      setSelectedFolderId(finalFolderId);
-      setSaveTitle(finalTitle);
-      setSaveFolderId(finalFolderId);
-
+      setWorkoutDescription(
+        saved.description ??
+        finalDescription
+      );
+      setSelectedFolderId(
+        finalFolderId
+      );
+  
+      /*
+       * The server response becomes the new saved
+       * base workout.
+       */
       const preparedSavedBase =
-        addIdsToBaseWorkout(saved);
-
+        addIdsToBaseWorkout(
+          saved
+        );
+  
       setUnalteredWorkout(saved);
-
+  
       setBaseWorkout({
         ...preparedSavedBase,
-        name: finalTitle,
+        name: finalTitle
       });
-
-      // --------------------------------------------------------
-      // Refresh saved workouts list
-      // --------------------------------------------------------
-
+  
+      /*
+       * Refresh the workout list so the UI reflects
+       * the saved server state.
+       */
       console.log(
-        '[Save Flow] Step 10: Refreshing workout list...'
+        '[Save Flow Builder 8/8] Refreshing saved workout list...'
       );
-
+  
       const updatedData =
         await fetchWorkoutsApi();
-
+  
       const workoutsArray =
         Array.isArray(updatedData)
           ? updatedData
-          : updatedData?.workouts || [];
-
-      setSavedWorkouts(workoutsArray);
-
-      console.log(
-        '[Save Flow] Step 11: Workout list refreshed',
-        {
-          workoutCount: workoutsArray.length,
-        }
+          : (
+              updatedData?.workouts ||
+              []
+            );
+  
+      setSavedWorkouts(
+        workoutsArray
       );
-
+  
       setIsSaveModalOpen(false);
       setIsSaveAsMode(false);
       setMode('SAVED');
-
-      console.log(
-        '[Save Flow] Step 12: SAVE COMPLETE'
-      );
-
+  
       showToast(
         isSaveAsMode
           ? 'Workout saved as new file!'
           : 'Workout saved successfully!'
       );
+  
+      console.log(
+        '[Save Flow SUCCESS] Workout save flow completed successfully.'
+      );
+  
     } catch (err) {
       console.error(
-        '[Save Flow] SAVE FAILED:',
+        '[Save Flow ERROR] handleSaveWorkout failed:',
         err
       );
-
-      console.error(
-        '[Save Flow] Error details:',
-        {
-          message: err?.message,
-          stack: err?.stack,
-        }
-      );
-
+  
       showToast(
         `Failed to save workout: ${
-          err?.message || 'Unknown error'
+          err?.message ||
+          'Unknown error'
         }`
-      );
-    } finally {
-      setIsSaving(false);
-
-      console.log(
-        '[Save Flow] Save operation finished; isSaving reset'
       );
     }
   };
-
+  
   // ============================================================
   // DUPLICATE WORKOUT
   // ============================================================
