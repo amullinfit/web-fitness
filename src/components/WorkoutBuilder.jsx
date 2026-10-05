@@ -1,13 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Copy, 
-  FilePlus, 
-  ArrowLeft, 
-  Check, 
-  ChevronUp, 
-  Layers,
-  FileText
-} from 'lucide-react';
 
 import { saveWorkoutApi, fetchWorkoutsApi } from './workoutsApi';
 
@@ -143,47 +134,48 @@ export default function WorkoutBuilder({
     setIsSaveModalOpen(true);
   };
 
-const handleConfirmSaveWorkout = async () => {
-  setApiLoading(true);
-  setErrorMessage('');
-  setSuccessMessage('');
+  const handleConfirmSaveWorkout = async () => {
+    setApiLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
 
-  try {
-    const payload = {
-      ...activeWorkout,
-      name: saveTitle,
-      saveFolderId: saveFolderId,
-      steps: stepsState,
-      workout_doc: {
-        ...activeWorkout?.workout_doc,
+    try {
+      const payload = {
+        ...activeWorkout,
         name: saveTitle,
+        saveFolderId: saveFolderId,
         steps: stepsState,
-      },
-    };
+        workout_doc: {
+          ...activeWorkout?.workout_doc,
+          name: saveTitle,
+          steps: stepsState,
+        },
+      };
 
-    const savedResult = await saveWorkoutApi(payload, isSaveAsNewMode);
+      const savedResult = await saveWorkoutApi(payload, isSaveAsNewMode);
 
-    // Sync saved ID back to active state to enable subsequent updates (PUT)
-    if (savedResult?.id) {
-      setActiveWorkout((prev) => ({
-        ...prev,
-        id: savedResult.id,
-        name: saveTitle,
-        folder_id: saveFolderId,
-      }));
+      // Sync saved ID back to active state to enable subsequent updates (PUT)
+      if (savedResult?.id) {
+        setActiveWorkout((prev) => ({
+          ...prev,
+          id: savedResult.id,
+          name: saveTitle,
+          folder_id: saveFolderId,
+        }));
+      }
+
+      setSuccessMessage('Workout saved successfully!');
+      setTimeout(() => {
+        setIsSaveModalOpen(false);
+        setSuccessMessage('');
+      }, 1200);
+    } catch (err) {
+      setErrorMessage(err.message || 'Error saving workout.');
+    } finally {
+      setApiLoading(false);
     }
+  };
 
-    setSuccessMessage('Workout saved successfully!');
-    setTimeout(() => {
-      setIsSaveModalOpen(false);
-      setSuccessMessage('');
-    }, 1200);
-  } catch (err) {
-    setErrorMessage(err.message || 'Error saving workout.');
-  } finally {
-    setApiLoading(false);
-  }
-};
   const handleSaveWorkout = async (overrideTitle, overrideFolderId) => {
     console.log('[Save Flow] [Step 4] Executing handleSaveWorkout', {
       overrideTitle,
@@ -294,7 +286,7 @@ const handleConfirmSaveWorkout = async () => {
             className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-100 transition-colors"
             title="Go Back"
           >
-            <ArrowLeft className="w-5 h-5" />
+            ←
           </button>
           <div>
             <div className="flex items-center space-x-2">
@@ -310,7 +302,7 @@ const handleConfirmSaveWorkout = async () => {
               />
               {mode === 'SAVED' && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <Check className="w-3 h-3 mr-1" /> Saved
+                  <span className="mr-1">✓</span> Saved
                 </span>
               )}
             </div>
@@ -326,7 +318,7 @@ const handleConfirmSaveWorkout = async () => {
             onClick={handleCopyWorkoutText}
             className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg border border-slate-700 transition-colors"
           >
-            <Copy className="w-4 h-4" />
+            📋
             <span>Copy Text</span>
           </button>
 
@@ -334,7 +326,7 @@ const handleConfirmSaveWorkout = async () => {
             onClick={() => handleDuplicateWorkout()}
             className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg border border-slate-700 transition-colors"
           >
-            <FilePlus className="w-4 h-4" />
+            📄
             <span>Duplicate</span>
           </button>
 
@@ -346,7 +338,7 @@ const handleConfirmSaveWorkout = async () => {
               }}
               className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg border border-slate-700 transition-colors"
             >
-              <Save className="w-4 h-4" />
+              💾
               <span>Save As...</span>
             </button>
           )}
@@ -362,7 +354,7 @@ const handleConfirmSaveWorkout = async () => {
             }}
             className="flex items-center space-x-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg shadow transition-colors"
           >
-            <Save className="w-4 h-4" />
+            💾
             <span>{workoutId ? 'Save' : 'Save Workout'}</span>
           </button>
         </div>
@@ -374,7 +366,7 @@ const handleConfirmSaveWorkout = async () => {
           <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-800 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <Layers className="w-4 h-4" /> Workout Steps ({steps.length})
+                🥞 Workout Steps ({steps.length})
               </h2>
               <button
                 onClick={handleClearAll}
@@ -396,14 +388,14 @@ const handleConfirmSaveWorkout = async () => {
                       disabled={index === 0}
                       className="hover:text-slate-200 disabled:opacity-30"
                     >
-                      <ChevronUp className="w-4 h-4" />
+                      ▲
                     </button>
                     <button
                       onClick={() => handleMoveStep(index, 1)}
                       disabled={index === steps.length - 1}
                       className="hover:text-slate-200 disabled:opacity-30"
                     >
-                      <ChevronDown className="w-4 h-4" />
+                      ▼
                     </button>
                   </div>
 
@@ -438,7 +430,7 @@ const handleConfirmSaveWorkout = async () => {
                     onClick={() => handleDeleteStep(step.id)}
                     className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    🗑️
                   </button>
                 </div>
               ))}
@@ -455,25 +447,25 @@ const handleConfirmSaveWorkout = async () => {
                 onClick={() => handleAddStep('warmup')}
                 className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 rounded border border-slate-700 transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" /> <span>Warmup</span>
+                <span>+</span> <span>Warmup</span>
               </button>
               <button
                 onClick={() => handleAddStep('interval')}
                 className="flex items-center space-x-1 px-3 py-1.5 bg-blue-950/60 hover:bg-blue-900/60 text-xs font-medium text-blue-300 rounded border border-blue-800/60 transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" /> <span>Interval</span>
+                <span>+</span> <span>Interval</span>
               </button>
               <button
                 onClick={() => handleAddStep('rest')}
                 className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 rounded border border-slate-700 transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" /> <span>Rest</span>
+                <span>+</span> <span>Rest</span>
               </button>
               <button
                 onClick={() => handleAddStep('cooldown')}
                 className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 rounded border border-slate-700 transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" /> <span>Cooldown</span>
+                <span>+</span> <span>Cooldown</span>
               </button>
             </div>
           </div>
@@ -482,7 +474,7 @@ const handleConfirmSaveWorkout = async () => {
         <div className="space-y-4">
           <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-800 space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <Folder className="w-4 h-4" /> Folder Assignment
+              📁 Folder Assignment
             </h3>
             <select
               value={selectedFolderId || ''}
@@ -504,7 +496,7 @@ const handleConfirmSaveWorkout = async () => {
 
           <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-800 space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <FileText className="w-4 h-4" /> Formatted Output Preview
+              📄 Formatted Output Preview
             </h3>
             <pre className="bg-slate-950 p-3 rounded-lg text-xs font-mono text-emerald-400 whitespace-pre-wrap overflow-x-auto border border-slate-900 min-h-[160px]">
               {typeof formattedOutput === 'string'
