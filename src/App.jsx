@@ -123,11 +123,16 @@ function HeaderBar({
       <button
         onClick={() => setMenuOpen((prev) => !prev)}
         style={{
+          position: 'absolute',
+          top: '10px',
+          right: '20px',
           background: 'none',
           border: 'none',
           cursor: 'pointer',
           fontSize: '24px',
           color: 'var(--text-h, inherit)',
+          padding: '4px 8px',
+          lineHeight: 1,
         }}
         aria-label="Options Menu"
         aria-expanded={menuOpen}
@@ -140,7 +145,7 @@ function HeaderBar({
           style={{
             position: 'absolute',
             top: '100%',
-            right: '15px',
+            right: '20px',
             backgroundColor: themeView === 'dark' ? '#1e1e1e' : '#ffffff',
             color: themeView === 'dark' ? '#ffffff' : '#000000',
             border: '1px solid #ccc',
@@ -174,6 +179,7 @@ function HeaderBar({
           ))}
         </nav>
       )}
+
     </header>
   );
 }
