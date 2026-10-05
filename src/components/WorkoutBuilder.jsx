@@ -1,220 +1,231 @@
-import React, { useState, useEffect } from 'react';
+//
+// WorkoutBuilder.jsx
+//
+import React, { useState, useEffect, useMemo } from 'react';
+import { usePaces } from '../utils/PacesContext.jsx'; 
+import '../CSS/WorkoutBuilder.css';
 
-import { saveWorkoutApi, fetchWorkoutsApi } from './workoutsApi';
+import { useWorkoutSteps } from '../hooks/useWorkoutSteps';
 
-const addIdsToBaseWorkout = (workout) => {
-  if (!workout) return null;
-  const stepsWithIds = (workout.steps || []).map((step, idx) => ({
-    ...step,
-    id: step.id || `step-${Date.now()}-${idx}`
-  }));
-  return { ...workout, steps: stepsWithIds };
-};
+import WorkoutChart from './WorkoutChart';
+import WorkoutTextSection from '../utils/WorkoutTextSection';
 
-const convertWorkoutToTargetFormat = (steps, mode, paceMethod) => {
-  console.log('[Save Flow] [Step 4a] Serializing steps into target document format', {
-    stepCount: steps?.length,
-    mode,
-    paceMethod
-  });
-  return steps.map((step) => {
-    let line = `- `;
-    if (step.type === 'warmup') line += 'Warmup ';
-    else if (step.type === 'cooldown') line += 'Cooldown ';
-    else if (step.type === 'rest') line += 'Rest ';
-    
-    if (step.duration) line += `${step.duration} `;
-    if (step.target) line += `@ ${step.target}`;
-    
-    return line.trim();
-  }).join('\n');
-};
+import RenderStepRow from '../utils/RenderStepRow';
 
-export default function WorkoutBuilder({
-  initialWorkout = null,
-  folders = [],
-  saveWorkoutApi,
-  fetchWorkoutsApi,
-  setSavedWorkouts,
-  showToast = () => {},
-  onBack = () => {}
-}) {
-  const [workoutId, setWorkoutId] = useState(initialWorkout?.id || null);
-  const [workoutTitle, setWorkoutTitle] = useState(initialWorkout?.name || initialWorkout?.title || 'New Workout');
-  const [workoutDescription, setWorkoutDescription] = useState(initialWorkout?.description || '');
-  const [selectedFolderId, setSelectedFolderId] = useState(initialWorkout?.folder_id ?? initialWorkout?.folderId ?? null);
-  
-  const [workoutMode, setWorkoutMode] = useState('distance');
-  const [paceMethod, setPaceMethod] = useState('pace');
-  const [mode, setMode] = useState(initialWorkout?.id ? 'SAVED' : 'BUILDING');
-  
-  const [baseWorkout, setBaseWorkout] = useState(addIdsToBaseWorkout(initialWorkout));
-  const [unalteredWorkout, setUnalteredWorkout] = useState(initialWorkout);
+import { OptionsMenu } from '../utils/WorkoutBuilderMenus';
 
-  const [steps, setSteps] = useState(
-    initialWorkout?.steps || [
-      { id: 'step-1', type: 'warmup', duration: '10m', target: 'Zone 1 Pace', note: '' },
-      { id: 'step-2', type: 'interval', duration: '1km', target: '5k Pace', note: '' },
-      { id: 'step-3', type: 'rest', duration: '2m', target: 'Easy Jog', note: '' },
-      { id: 'step-4', type: 'cooldown', duration: '10m', target: 'Zone 1 Pace', note: '' }
-    ]
-  );
+import { 
+  convertWorkoutToTargetFormat,
+} from '../utils/WorkoutConverter.js';
 
-  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const [isSaveAsMode, setIsSaveAsMode] = useState(false);
-  const [modalTitleInput, setModalTitleInput] = useState('');
-  const [modalFolderInput, setModalFolderInput] = useState(null);
+import Modal_Folder_Create from '../modals/Modal_Folder_Create';
+import Modal_Workout_Edit from '../modals/Modal_Workout_Edit';
+import Modal_Workout_Save from '../modals/Modal_Workout_Save';
+import Modal_Workout_Zoom from '../modals/Modal_Workout_Zoom';
 
+import { 
+  fetchFoldersApi, 
+  fetchWorkoutsApi, 
+  createFolderApi, 
+  saveWorkoutApi, 
+  calculateDynamicPresets, 
+  createDefaultSteps, 
+  addIdsToBaseWorkout
+} from '../utils/WorkoutBuilderHelpers.js';
+
+export default function WorkoutBuilder() {
+
+  const { paces } = usePaces();
+
+  // --- Core State ---
+  const [mode, setMode] = useState('EMPTY'); // 'EMPTY', 'BUILDING', 'SAVED'
+
+  // Panel collapse state
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+
+  // Metadata
+  const [workoutId, setWorkoutId] = useState(null);
+  const [workoutTitle, setWorkoutTitle] = useState('New Workout');
+  const [workoutDescription, setWorkoutDescription] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState('');
+
+  // Raw document state
+  const [unalteredWorkout, setUnalteredWorkout] = useState('');
+  const [baseWorkout, setBaseWorkout] = useState(null);
+
+  // Mode Options
+  const [workoutMode, setWorkoutMode] = useState('time'); // 'time' or 'distance'
+  const [paceMethod, setPaceMethod] = useState('Pace'); 
+
+  // 1. Declare state for workout title and feedback messages
+  const [saveTitle, setSaveTitle] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // --- Custom Hook for Steps State ---
+  const { 
+    steps, 
+    setSteps, 
+    addStep, 
+    removeStep, 
+    updateStepField, 
+    handleDragStart, 
+    handleDrop 
+  } = useWorkoutSteps([], workoutMode);
+
+  // Keep baseWorkout.workout_doc.steps synced with hook steps
   useEffect(() => {
-    if (initialWorkout) {
-      const prepared = addIdsToBaseWorkout(initialWorkout);
-      setWorkoutId(initialWorkout.id || null);
-      setWorkoutTitle(initialWorkout.name || initialWorkout.title || 'New Workout');
-      setWorkoutDescription(initialWorkout.description || '');
-      setSelectedFolderId(initialWorkout.folder_id ?? initialWorkout.folderId ?? null);
-      if (initialWorkout.steps) setSteps(prepared.steps);
-      setBaseWorkout(prepared);
-      setUnalteredWorkout(initialWorkout);
-      setMode('SAVED');
+    if (baseWorkout && baseWorkout.workout_doc) {
+      setBaseWorkout((prev) => ({
+        ...prev,
+        workout_doc: {
+          ...prev.workout_doc,
+          steps: steps
+        }
+      }));
     }
-  }, [initialWorkout]);
+  }, [steps]);
 
-  const handleAddStep = (type = 'interval') => {
-    const newStep = {
-      id: `step-${Date.now()}`,
-      type,
-      duration: type === 'warmup' || type === 'cooldown' ? '10m' : '1km',
-      target: 'Threshold Pace',
-      note: ''
+  // Sync root 'name' field in baseWorkout with workoutTitle
+  useEffect(() => {
+    if (baseWorkout) {
+      setBaseWorkout((prev) => ({
+        ...prev,
+        name: workoutTitle
+      }));
+    }
+  }, [workoutTitle]);
+
+  // --- Data / Folders / Workouts State ---
+  const [folders, setFolders] = useState([]);
+  const [savedWorkouts, setSavedWorkouts] = useState([]);
+
+  // --- Modal Visibility States ---
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
+  const [isSaveAsMode, setIsSaveAsMode] = useState(false);
+
+  // Status/Toast Message
+  const [statusMessage, setStatusMessage] = useState('');
+
+  const showToast = (msg) => {
+    console.log('[App Debug WorkoutBuilder] showToast triggered with message:', msg);
+    setStatusMessage(msg);
+    setTimeout(() => {
+      console.log('[App Debug WorkoutBuilder] showToast timeout clear message');
+      setStatusMessage('');
+    }, 3000);
+  };
+
+  // Initial Load
+  useEffect(() => {
+    console.log('[App Debug WorkoutBuilder] useEffect: initial data fetch starting');
+    async function initData() {
+      console.log('[App Debug WorkoutBuilder] initData executing');
+      try {
+        const fetchedFolders = await fetchFoldersApi();
+        setFolders(fetchedFolders || []);
+        const fetchedWorkouts = await fetchWorkoutsApi();
+        const workoutsArray = Array.isArray(fetchedWorkouts) 
+          ? fetchedWorkouts 
+          : (fetchedWorkouts?.workouts || []);
+        setSavedWorkouts(workoutsArray);
+        console.log('[App Debug WorkoutBuilder] initData successfully fetched folders and workouts');
+      } catch (err) {
+        console.error('Failed to initialize workout builder data:', err);
+      }
+    }
+    initData();
+  }, []);
+
+  // Presets & Totals
+  const dynamicPresets = useMemo(() => {
+    console.log('[App Debug WorkoutBuilder] useMemo: calculating dynamicPresets');
+    return calculateDynamicPresets(paces, paces?.threshold_pace || 360, paceMethod);
+  }, [paces, paceMethod]);
+
+  // --- Handlers for Options Menu ---
+
+  const handleNewWorkout = () => {
+    console.log('[App Debug WorkoutBuilder] handleNewWorkout invoked');
+    const initialTitle = 'New Workout';
+    setWorkoutId(null);
+    setWorkoutTitle(initialTitle);
+    setWorkoutDescription('');
+    setUnalteredWorkout('');
+    const defaultSteps = createDefaultSteps(workoutMode);    
+    const newBase = { 
+      name: initialTitle, // Root element
+      workout_doc: { 
+        steps: defaultSteps 
+      } 
     };
-    setSteps((prev) => [...prev, newStep]);
+    setBaseWorkout(newBase);
+    setSteps(defaultSteps);
     setMode('BUILDING');
   };
-
-  const handleUpdateStep = (id, key, value) => {
-    setSteps((prev) =>
-      prev.map((step) => (step.id === id ? { ...step, [key]: value } : step))
-    );
-    setMode('BUILDING');
-  };
-
-  const handleDeleteStep = (id) => {
-    setSteps((prev) => prev.filter((step) => step.id !== id));
-    setMode('BUILDING');
-  };
-
-  const handleMoveStep = (index, direction) => {
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= steps.length) return;
-    const newSteps = [...steps];
-    const [moved] = newSteps.splice(index, 1);
-    newSteps.splice(targetIndex, 0, moved);
-    setSteps(newSteps);
-    setMode('BUILDING');
-  };
-
-  const handleClearAll = () => {
-    if (window.confirm('Are you sure you want to clear all steps?')) {
-      setSteps([]);
+  
+  const handleSelectWorkout = (id) => {
+    console.log('[App Debug WorkoutBuilder] handleSelectWorkout invoked with id:', id);
+    const found = savedWorkouts.find((w) => String(w.id) === String(id));
+    if (found) {
+      const title = found.name || found.title || 'Untitled';
+      setWorkoutId(found.id);
+      setWorkoutTitle(title);
+      setWorkoutDescription(found.description || '');
+      setSelectedFolderId(found.folder_id ?? found.folderId ?? '');
+  
+      const rawDocObj = found;
+      const parsedObj = typeof rawDocObj === 'string' 
+        ? (() => {
+            console.log('[App Debug WorkoutBuilder] handleSelectWorkout parsing JSON string document');
+            try { return JSON.parse(rawDocObj); } catch { return null; }
+          })() 
+        : rawDocObj;
+  
+      const preparedBase = addIdsToBaseWorkout(parsedObj);
+      
+      // Set root 'name' property
+      const baseWithTitle = {
+        ...preparedBase,
+        name: title
+      };
+  
+      setUnalteredWorkout(parsedObj);
+      setBaseWorkout(baseWithTitle);
+      setSteps(preparedBase?.workout_doc?.steps || []);
+  
       setMode('BUILDING');
+      setIsEditModalOpen(false);
     }
   };
-
-  // --- SAVE FLOW HANDLERS WITH LOGGING ---
 
   const handleOpenSaveModal = (isSaveAs = false) => {
-    console.log('[Save Flow] [Step 2] Opening Save Modal', {
-      isSaveAs,
-      currentWorkoutTitle: workoutTitle,
-      currentFolderId: selectedFolderId
-    });
+    console.log('[App Debug WorkoutBuilder] handleOpenSaveModal invoked with isSaveAs:', isSaveAs);
     setIsSaveAsMode(isSaveAs);
-    setModalTitleInput(isSaveAs ? `${workoutTitle} (Copy)` : workoutTitle);
-    setModalFolderInput(selectedFolderId);
     setIsSaveModalOpen(true);
   };
 
-  const handleConfirmSaveWorkout = async () => {
-    setApiLoading(true);
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    try {
-      const payload = {
-        ...activeWorkout,
-        name: saveTitle,
-        saveFolderId: saveFolderId,
-        steps: stepsState,
-        workout_doc: {
-          ...activeWorkout?.workout_doc,
-          name: saveTitle,
-          steps: stepsState,
-        },
-      };
-
-      const savedResult = await saveWorkoutApi(payload, isSaveAsNewMode);
-
-      // Sync saved ID back to active state to enable subsequent updates (PUT)
-      if (savedResult?.id) {
-        setActiveWorkout((prev) => ({
-          ...prev,
-          id: savedResult.id,
-          name: saveTitle,
-          folder_id: saveFolderId,
-        }));
-      }
-
-      setSuccessMessage('Workout saved successfully!');
-      setTimeout(() => {
-        setIsSaveModalOpen(false);
-        setSuccessMessage('');
-      }, 1200);
-    } catch (err) {
-      setErrorMessage(err.message || 'Error saving workout.');
-    } finally {
-      setApiLoading(false);
-    }
-  };
-
   const handleSaveWorkout = async (overrideTitle, overrideFolderId) => {
-    console.log('[Save Flow] [Step 4] Executing handleSaveWorkout', {
-      overrideTitle,
-      overrideFolderId,
-      isSaveAsMode,
-      currentWorkoutId: workoutId
-    });
-
-    const finalTitle = overrideTitle || workoutTitle;
-    const finalFolderId = overrideFolderId !== undefined ? overrideFolderId : selectedFolderId;
+    console.log('[App Debug WorkoutBuilder] handleSaveWorkout invoked', { overrideTitle, overrideFolderId });
     const icuDocument = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
     const targetId = isSaveAsMode ? null : workoutId;
+    const finalTitle = overrideTitle || workoutTitle;
+    const finalFolderId = overrideFolderId !== undefined ? overrideFolderId : selectedFolderId;
 
     const payload = {
       id: targetId,
       name: finalTitle,
       description: workoutDescription,
       folder_id: finalFolderId,
-      document: icuDocument,
-      steps
+      document: icuDocument
     };
 
-    console.log('[Save Flow] [Step 5] Constructed Save Payload:', payload);
-
     try {
-      let saved = null;
-      if (typeof saveWorkoutApi === 'function') {
-        console.log('[Save Flow] [Step 6] Invoking saveWorkoutApi prop...');
-        saved = await saveWorkoutApi(payload);
-        console.log('[Save Flow] [Step 7] Response received from saveWorkoutApi:', saved);
-      } else {
-        console.warn('[Save Flow] [Step 6-Fallback] saveWorkoutApi prop not provided, using local simulation.');
-        saved = { ...payload, id: targetId || `w-${Date.now()}` };
-      }
-
+      const saved = await saveWorkoutApi(payload);
       if (saved) {
         const newId = saved.id || saved.workout_id || targetId;
-        console.log('[Save Flow] [Step 8] Updating component state with saved workout metadata', { newId, finalTitle });
-
         setWorkoutId(newId);
         setWorkoutTitle(finalTitle);
         setSelectedFolderId(finalFolderId);
@@ -226,353 +237,473 @@ export default function WorkoutBuilder({
           name: finalTitle
         });
 
-        if (typeof fetchWorkoutsApi === 'function' && typeof setSavedWorkouts === 'function') {
-          console.log('[Save Flow] [Step 9] Re-fetching workouts list to synchronize app state...');
-          const updatedData = await fetchWorkoutsApi();
-          const workoutsArray = Array.isArray(updatedData) 
-            ? updatedData 
-            : (updatedData?.workouts || []);
-          console.log('[Save Flow] [Step 10] Synchronized parent workout list state with', workoutsArray.length, 'workouts.');
-          setSavedWorkouts(workoutsArray);
-        }
+        // Re-fetch workouts list to stay synchronized
+        const updatedData = await fetchWorkoutsApi();
+        const workoutsArray = Array.isArray(updatedData) 
+          ? updatedData 
+          : (updatedData?.workouts || []);
+        setSavedWorkouts(workoutsArray);
 
         setIsSaveModalOpen(false);
         setIsSaveAsMode(false);
         setMode('SAVED');
         showToast(isSaveAsMode ? 'Workout saved as new file!' : 'Workout saved successfully!');
-        console.log('[Save Flow] [SUCCESS] Save process complete.');
-      } else {
-        console.error('[Save Flow] [ERROR] saveWorkoutApi returned null or undefined.');
-        showToast('Failed to save workout: empty response.');
       }
     } catch (err) {
-      console.error('[Save Flow] [ERROR] Exception caught during handleSaveWorkout:', err);
+      console.error('Error saving workout:', err);
       showToast('Failed to save workout. Please try again.');
     }
   };
 
-  const handleDuplicateWorkout = (workoutToDuplicate) => {
-    console.log('[Save Flow] [Step 1-Duplicate] Duplication initiated');
-    const target = workoutToDuplicate || baseWorkout;
-    const sourceTitle = target?.name || target?.title || workoutTitle || 'Workout';
-    const sourceFolderId = target?.folder_id ?? target?.folderId ?? selectedFolderId;
-    const duplicateTitle = `${sourceTitle} (Copy)`;
-
-    setWorkoutId(null);
-    setWorkoutTitle(duplicateTitle);
-    setSelectedFolderId(sourceFolderId);
-    setMode('BUILDING');
-
-    handleOpenSaveModal(true);
+  // 2. Handle "Save Workout" (Overwrites existing workout)
+  const handleSave = async () => {
+    setIsSaving(true);
+    setStatusMessage(null);
+    try {
+      const payload = {
+        ...currentWorkout,
+        name: saveTitle || currentWorkout.name,
+      };
+      const response = await saveWorkoutApi(payload, false);
+      setStatusMessage({ type: 'success', text: 'Workout saved successfully!' });
+      // Option: Refresh folder list/workouts list
+      // await fetchWorkoutsApi();
+    } catch (err) {
+      console.error('Save failed:', err);
+      setStatusMessage({ type: 'error', text: `Save failed: ${err.message}` });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
+  // 3. Handle "Save As New Workout"
+  const handleSaveAsNew = async () => {
+    setIsSaving(true);
+    setStatusMessage(null);
+    try {
+      const payload = {
+        ...currentWorkout,
+        name: saveTitle || `${currentWorkout.name} (Copy)`,
+      };
+      const response = await saveWorkoutApi(payload, true); // true forces create_workout
+      setStatusMessage({ type: 'success', text: 'New workout created successfully!' });
+    } catch (err) {
+      console.error('Save As New failed:', err);
+      setStatusMessage({ type: 'error', text: `Save As New failed: ${err.message}` });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 4. Handle "Duplicate Workout"
+  const handleDuplicate = async (workoutToDuplicate) => {
+    setIsSaving(true);
+    setStatusMessage(null);
+    try {
+      const duplicateTitle = `${workoutToDuplicate.name || 'Workout'} (Copy)`;
+      
+      // Set save title safely using defined state setter
+      setSaveTitle(duplicateTitle);
+
+      const payload = {
+        ...workoutToDuplicate,
+        name: duplicateTitle,
+      };
+
+      const response = await saveWorkoutApi(payload, true); // true forces new creation
+      setStatusMessage({ type: 'success', text: `Duplicated as "${duplicateTitle}"!` });
+    } catch (err) {
+      console.error('Duplicate failed:', err);
+      setStatusMessage({ type: 'error', text: `Duplicate failed: ${err.message}` });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const OLD_handleDuplicateWorkout = () => {
+    const duplicateTitle = `${workoutTitle} (Copy)`;
+    setWorkoutId(null);
+    setWorkoutTitle(duplicateTitle);
+    setMode('BUILDING');
+    
+    // Automatically trigger Save As modal so the user can save the duplicate
+    handleOpenSaveModal(true);
+    showToast('Workout duplicated! Choose a folder and save your new copy.');
+  };
+
+  const handleDuplicateWorkout = (workoutToDuplicate) => {
+    console.log('[App Debug WorkoutBuilder] handleDuplicateWorkout invoked');
+    setSaveTitle(`${workoutToDuplicate.name || workoutToDuplicate.title || 'Workout'} (Copy)`);
+    setWorkoutTitle(`${workoutToDuplicate.name || workoutToDuplicate.title || 'Workout'} (Copy)`);
+    setSaveFolderId(workoutToDuplicate.folderId || workoutToDuplicate.folder_id || '');
+
+    setMode('BUILDING');
+    handleOpenSaveModal(true);
+
+    setSaveAsNew(true); // Flag as new/duplicate
+    setIsSaveModalOpen(true); // Open Modal_Workout_Save
+  };
+  
   const handleCopyWorkoutText = () => {
-    console.log('[Save Flow] [Action] Copying plain text');
+    console.log('[App Debug WorkoutBuilder] handleCopyWorkoutText invoked');
     const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
     const stringified = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
     navigator.clipboard.writeText(stringified);
     showToast('Workout plain text copied to clipboard!');
   };
 
-  const formattedOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
+  const handleConfirmSaveWorkout = async () => {
+    setApiLoading(true);
+    setErrorMessage('');
+    
+    try {
+      const payload = {
+        name: saveTitle,
+        saveFolderId,
+        workout_doc: { steps },
+        ...(saveAsNew ? {} : { id: currentWorkoutId }),
+      };
+  
+      await saveWorkoutApi(payload, saveAsNew);
+      
+      // Success feedback
+      setIsOpen(false); // or show success message before closing
+    } catch (err) {
+      console.error('Save workout error:', err);
+      setErrorMessage(err.message || 'Failed to save workout. Please try again.');
+    } finally {
+      setApiLoading(false);
+    }
+  };
+  
+  
+  const triggerFileDownload = (content, fileName, mimeType) => {
+    console.log('[App Debug WorkoutBuilder] triggerFileDownload invoked', { fileName, mimeType });
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadIcu = () => {
+    console.log('[App Debug WorkoutBuilder] handleDownloadIcu invoked');
+    const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
+    const content = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
+    const cleanTitle = workoutTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    triggerFileDownload(content, `${cleanTitle}.icu`, 'text/plain');
+  };
+
+  const handleDownloadZwo = () => {
+    console.log('[App Debug WorkoutBuilder] handleDownloadZwo invoked');
+    const zwoContent = convertWorkoutToTargetFormat(steps, workoutMode, 'ZWO');
+    const cleanTitle = workoutTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    triggerFileDownload(zwoContent, `${cleanTitle}.zwo`, 'application/xml');
+  };
+
+  const handleCreateFolder = async (folderName) => {
+    console.log('[App Debug WorkoutBuilder] handleCreateFolder invoked with folderName:', folderName);
+    try {
+      const newFolder = await createFolderApi(folderName);
+      if (newFolder) {
+        const newId = newFolder.id || newFolder._id;
+        setFolders((prev) => [...prev, newFolder]);
+        setSelectedFolderId(newId);
+        setIsFolderModalOpen(false);
+        showToast(`Folder "${folderName}" created.`);
+      }
+    } catch (err) {
+      console.error('Error creating folder:', err);
+    }
+  };
+
+  const handleCancelEdits = () => {
+    console.log('[App Debug WorkoutBuilder] handleCancelEdits invoked');
+    if (workoutId) {
+      handleSelectWorkout(workoutId);
+      showToast('Reverted edits back to saved state.');
+    } else {
+      handleNewWorkout();
+    }
+  };
+
+  const handleCloseWorkout = () => {
+    console.log('[App Debug WorkoutBuilder] handleCloseWorkout invoked');
+    setWorkoutId(null);
+    setMode('EMPTY');
+  };
 
   return (
-    <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6 bg-slate-900 text-slate-100 min-h-screen rounded-xl shadow-2xl">
-      {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-100 transition-colors"
-            title="Go Back"
+    <div className="workout-builder-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      {statusMessage && <div className="status-message-banner">{statusMessage}</div>}
+
+      {/* --- MAIN PAGE SPLIT CONTAINER --- */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+        {/* LEFT MAIN PANEL (Header + Chart + Scrollable Steps) */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          
+          {/* FIXED / STICKY TOP HEADER & CHART SECTION */}
+          <div 
+            className="builder-fixed-header-section" 
+            style={{ 
+              backgroundColor: '#fff', 
+              boxShadow: '0px 2px 5px rgba(0,0,0,0.05)',
+              paddingBottom: '8px',
+              paddingLeft: '16px',
+              paddingRight: '16px'
+            }}
           >
-            ←
-          </button>
-          <div>
-            <div className="flex items-center space-x-2">
+          <div className="builder-header-bar">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <h1 className="builder-header-title">Workout Builder:</h1>
               <input
                 type="text"
                 value={workoutTitle}
                 onChange={(e) => {
+                  console.log('[App Debug WorkoutBuilder] workoutTitle input changed:', e.target.value);
                   setWorkoutTitle(e.target.value);
-                  setMode('BUILDING');
                 }}
                 placeholder="Workout Title"
-                className="bg-transparent text-xl font-bold text-white focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1"
+                className="workout-title-input"
+                style={{ fontSize: '18px', padding: '4px 8px', fontWeight: 'bold' }}
               />
-              {mode === 'SAVED' && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <span className="mr-1">✓</span> Saved
-                </span>
-              )}
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              {workoutId ? `ID: ${workoutId}` : 'Unsaved Draft'}
-            </p>
+              <OptionsMenu
+                mode={mode}
+                onStartCreateNew={handleNewWorkout}
+                onOpenSelectModal={() => {
+                  console.log('[App Debug WorkoutBuilder] OptionsMenu -> onOpenSelectModal');
+                  setIsEditModalOpen(true);
+                }}
+                onOpenCreateFolderModal={() => {
+                  console.log('[App Debug WorkoutBuilder] OptionsMenu -> onOpenCreateFolderModal');
+                  setIsFolderModalOpen(true);
+                }}
+                onSaveWorkout={() => handleSaveWorkout()}
+                onOpenSaveModal={handleOpenSaveModal}
+                onDuplicateWorkout={handleDuplicateWorkout}
+                onCopyWorkoutText={handleCopyWorkoutText}
+                onDownloadIcu={handleDownloadIcu}
+                onDownloadZwo={handleDownloadZwo}
+                onCancelEdits={handleCancelEdits}
+                onCloseWorkout={handleCloseWorkout}
+              />
+            </div>
+
+            {mode !== 'EMPTY' && (
+              <div className="chart-preview-container" style={{ margin: '8px 0', cursor: 'pointer' }}>
+                <WorkoutChart
+                  workout={baseWorkout}
+                  thresholdPace={paces?.threshold_pace || 400}
+                  chartHeight={"140px"}
+                  showBarPace={false}
+                />
+                <WorkoutTextSection 
+                  workout={baseWorkout}
+                  threshold={paces?.threshold_pace}
+                  paceDetails={paces}
+                  />
+              </div>
+            )}
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center flex-wrap gap-2">
-          <button
-            onClick={handleCopyWorkoutText}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg border border-slate-700 transition-colors"
-          >
-            📋
-            <span>Copy Text</span>
-          </button>
-
-          <button
-            onClick={() => handleDuplicateWorkout()}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg border border-slate-700 transition-colors"
-          >
-            📄
-            <span>Duplicate</span>
-          </button>
-
-          {workoutId && (
-            <button
-              onClick={() => {
-                console.log('[Save Flow] [Step 1-SaveAs] "Save As..." menu button clicked');
-                handleOpenSaveModal(true);
-              }}
-              className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg border border-slate-700 transition-colors"
-            >
-              💾
-              <span>Save As...</span>
-            </button>
-          )}
-
-          <button
-            onClick={() => {
-              console.log('[Save Flow] [Step 1-Save] Main Save button clicked', { existingWorkoutId: workoutId });
-              if (workoutId) {
-                handleSaveWorkout(workoutTitle, selectedFolderId);
-              } else {
-                handleOpenSaveModal(false);
-              }
+          {/* SCROLLABLE STEPS SECTION */}
+          <div 
+            className="builder-scrollable-content" 
+            style={{ 
+              flex: 1, 
+              overflowY: 'auto', 
+              padding: '16px' 
             }}
-            className="flex items-center space-x-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg shadow transition-colors"
           >
-            💾
-            <span>{workoutId ? 'Save' : 'Save Workout'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-800 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                🥞 Workout Steps ({steps.length})
-              </h2>
-              <button
-                onClick={handleClearAll}
-                className="text-xs text-rose-400 hover:text-rose-300 transition-colors"
-              >
-                Clear All
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {steps.map((step, index) => (
-                <div
-                  key={step.id}
-                  className="flex items-center gap-2 bg-slate-900/80 p-3 rounded-lg border border-slate-700/60 hover:border-slate-600 transition-all"
+            {mode === 'EMPTY' ? (
+              <div className="empty-state-card">
+                <h3>No Workout Selected</h3>
+                <p>Select an existing workout from Options or create a new one to get started.</p>
+                <button className="btn-primary" onClick={handleNewWorkout}>
+                  + Create New Workout
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div 
+                  className="steps-list-container" 
+                  onDragOver={(e) => {
+                    console.log('[App Debug WorkoutBuilder] onDragOver steps container');
+                    e.preventDefault();
+                  }} 
+                  onDrop={(e) => {
+                    console.log('[App Debug WorkoutBuilder] onDrop root steps container');
+                    handleDrop(e, null, baseWorkout?.workout_doc?.steps?.length || 0);
+                  }}
                 >
-                  <div className="flex flex-col gap-1 text-slate-500">
-                    <button
-                      onClick={() => handleMoveStep(index, -1)}
-                      disabled={index === 0}
-                      className="hover:text-slate-200 disabled:opacity-30"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      onClick={() => handleMoveStep(index, 1)}
-                      disabled={index === steps.length - 1}
-                      className="hover:text-slate-200 disabled:opacity-30"
-                    >
-                      ▼
-                    </button>
-                  </div>
+                  {baseWorkout?.workout_doc?.steps?.map((step, index) => (
+                    <RenderStepRow
+                      key={step.id || `step-${index}`}
+                      step={step}
+                      index={index}
+                      parentId={null}
+                      paceDetails={paces}
+                      onRemove={removeStep}
+                      onUpdate={updateStepField}
+                      onAddChild={addStep}
+                      onDragStart={handleDragStart}
+                      onDrop={handleDrop}
+                    />
+                  ))}
+                </div>
 
-                  <select
-                    value={step.type}
-                    onChange={(e) => handleUpdateStep(step.id, 'type', e.target.value)}
-                    className="bg-slate-800 text-xs font-semibold uppercase text-slate-200 border border-slate-700 rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="warmup">Warmup</option>
-                    <option value="interval">Interval</option>
-                    <option value="rest">Rest</option>
-                    <option value="cooldown">Cooldown</option>
-                  </select>
-
-                  <input
-                    type="text"
-                    value={step.duration}
-                    onChange={(e) => handleUpdateStep(step.id, 'duration', e.target.value)}
-                    placeholder="Duration"
-                    className="w-24 bg-slate-800 text-sm text-slate-200 border border-slate-700 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
-                  />
-
-                  <input
-                    type="text"
-                    value={step.target}
-                    onChange={(e) => handleUpdateStep(step.id, 'target', e.target.value)}
-                    placeholder="Target"
-                    className="flex-1 bg-slate-800 text-sm text-slate-200 border border-slate-700 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
-                  />
-
-                  <button
-                    onClick={() => handleDeleteStep(step.id)}
-                    className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
-                  >
-                    🗑️
+                <div className="root-add-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+                  <button className="btn-add-step" onClick={() => {
+                    console.log('[App Debug WorkoutBuilder] Add Run button clicked');
+                    addStep('run', null);
+                  }}>
+                    + Add Run
+                  </button>
+                  <button className="btn-add-step" onClick={() => {
+                    console.log('[App Debug WorkoutBuilder] Add Recovery button clicked');
+                    addStep('recovery', null);
+                  }}>
+                    + Add Recovery
+                  </button>
+                  <button className="btn-add-step" onClick={() => {
+                    console.log('[App Debug WorkoutBuilder] Add Repeat Block button clicked');
+                    addStep('repeat', null);
+                  }}>
+                    + Add Repeat Block
                   </button>
                 </div>
-              ))}
-
-              {steps.length === 0 && (
-                <div className="text-center py-8 text-slate-500 border border-dashed border-slate-800 rounded-lg">
-                  No steps added yet.
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800">
-              <button
-                onClick={() => handleAddStep('warmup')}
-                className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 rounded border border-slate-700 transition-colors"
-              >
-                <span>+</span> <span>Warmup</span>
-              </button>
-              <button
-                onClick={() => handleAddStep('interval')}
-                className="flex items-center space-x-1 px-3 py-1.5 bg-blue-950/60 hover:bg-blue-900/60 text-xs font-medium text-blue-300 rounded border border-blue-800/60 transition-colors"
-              >
-                <span>+</span> <span>Interval</span>
-              </button>
-              <button
-                onClick={() => handleAddStep('rest')}
-                className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 rounded border border-slate-700 transition-colors"
-              >
-                <span>+</span> <span>Rest</span>
-              </button>
-              <button
-                onClick={() => handleAddStep('cooldown')}
-                className="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 rounded border border-slate-700 transition-colors"
-              >
-                <span>+</span> <span>Cooldown</span>
-              </button>
-            </div>
+              </div>
+            )}
           </div>
+
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-800 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              📁 Folder Assignment
-            </h3>
-            <select
-              value={selectedFolderId || ''}
-              onChange={(e) => {
-                const val = e.target.value ? e.target.value : null;
-                setSelectedFolderId(val);
-                setMode('BUILDING');
+        {/* RIGHT PANEL: Full-Height "Updated Live" View (Collapsible) */}
+        <div 
+          className="baseworkout-column-container" 
+          style={{ 
+            width: isRightPanelCollapsed ? '40px' : '400px', 
+            display: 'flex', 
+            flexDirection: 'column',
+            backgroundColor: '#fafafa',
+            borderLeft: '1px solid #e0e0e0',
+            padding: isRightPanelCollapsed ? '16px 8px' : '16px',
+            transition: 'width 0.2s ease-in-out',
+            overflow: 'hidden'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isRightPanelCollapsed ? '0px' : '8px' }}>
+            {!isRightPanelCollapsed && (
+              <label 
+                htmlFor="baseworkout-input" 
+                style={{ fontWeight: 'bold', fontSize: '14px', whiteSpace: 'nowrap' }}
+              >
+                Updated Live
+              </label>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                console.log('[App Debug WorkoutBuilder] Toggle panel collapse button clicked');
+                setIsRightPanelCollapsed((prev) => !prev);
               }}
-              className="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-lg p-2 text-sm focus:outline-none focus:border-blue-500"
+              title={isRightPanelCollapsed ? 'Expand Panel' : 'Collapse Panel'}
+              style={{
+                background: 'none',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                padding: '2px 6px',
+                fontSize: '12px',
+                marginLeft: isRightPanelCollapsed ? 'auto' : '0',
+                marginRight: isRightPanelCollapsed ? 'auto' : '0'
+              }}
             >
-              <option value="">(No Folder / Root)</option>
-              {folders.map((folder) => (
-                <option key={folder.id} value={folder.id}>
-                  {folder.name || folder.title}
-                </option>
-              ))}
-            </select>
+              {isRightPanelCollapsed ? '◀' : '▶'}
+            </button>
           </div>
 
-          <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-800 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              📄 Formatted Output Preview
-            </h3>
-            <pre className="bg-slate-950 p-3 rounded-lg text-xs font-mono text-emerald-400 whitespace-pre-wrap overflow-x-auto border border-slate-900 min-h-[160px]">
-              {typeof formattedOutput === 'string'
-                ? formattedOutput
-                : JSON.stringify(formattedOutput, null, 2)}
-            </pre>
-          </div>
+          {!isRightPanelCollapsed && (
+            <textarea
+              id="baseworkout-input"
+              readOnly
+              value={JSON.stringify(baseWorkout || {}, null, 2)}
+              placeholder="No baseWorkout payload available..."
+              style={{
+                width: '100%',
+                flex: 1,
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                padding: '12px',
+                backgroundColor: '#f4f4f6',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                resize: 'none',
+                overflowY: 'auto'
+              }}
+            />
+          )}
         </div>
+
       </div>
 
-      {/* Save Modal */}
+      {/* Modals */}
+      {isFolderModalOpen && (
+        <Modal_Folder_Create
+          onClose={() => {
+            console.log('[App Debug WorkoutBuilder] Modal_Folder_Create onClose');
+            setIsFolderModalOpen(false);
+          }}
+          onCreate={handleCreateFolder}
+        />
+      )}
+
+      {isEditModalOpen && (
+        <Modal_Workout_Edit
+          isOpen={isEditModalOpen}
+          workouts={savedWorkouts}
+          folders={folders}
+          currentFolderId={selectedFolderId}
+          workoutMode={workoutMode}
+          presets={dynamicPresets}
+          onSelectWorkout={handleSelectWorkout}
+          onClose={() => {
+            console.log('[App Debug WorkoutBuilder] Modal_Workout_Edit onClose');
+            setIsEditModalOpen(false);
+          }}
+        />
+      )}
+
       {isSaveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <h3 className="text-lg font-bold text-white">
-              {isSaveAsMode ? 'Save Workout As New Copy' : 'Save Workout'}
-            </h3>
-            
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
-                  Workout Name
-                </label>
-                <input
-                  type="text"
-                  value={modalTitleInput}
-                  onChange={(e) => setModalTitleInput(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Enter workout name..."
-                />
-              </div>
+        <Modal_Workout_Save
+          title={workoutTitle}
+          folders={folders}
+          selectedFolderId={selectedFolderId}
+          onConfirmSave={handleSaveWorkout}
+          onClose={() => {
+            console.log('[App Debug WorkoutBuilder] Modal_Workout_Save onClose');
+            setIsSaveModalOpen(false);
+            setIsSaveAsMode(false);
+          }}
+        />
+      )}
 
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
-                  Target Folder
-                </label>
-                <select
-                  value={modalFolderInput || ''}
-                  onChange={(e) => setModalFolderInput(e.target.value ? e.target.value : null)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="">(No Folder / Root)</option>
-                  {folders.map((folder) => (
-                    <option key={folder.id} value={folder.id}>
-                      {folder.name || folder.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-3 border-t border-slate-800">
-              <button
-                onClick={() => {
-                  console.log('[Save Flow] [Step 3-Cancel] Save Modal cancelled by user');
-                  setIsSaveModalOpen(false);
-                }}
-                className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  console.log('[Save Flow] [Step 3-Confirm] Save confirmed inside Save Modal', {
-                    modalTitleInput,
-                    modalFolderInput
-                  });
-                  handleSaveWorkout(modalTitleInput, modalFolderInput);
-                }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg shadow transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+      {isZoomModalOpen && (
+        <Modal_Workout_Zoom
+          steps={steps}
+          workoutMode={workoutMode}
+          presets={dynamicPresets}
+          onClose={() => {
+            console.log('[App Debug WorkoutBuilder] Modal_Workout_Zoom onClose');
+            setIsZoomModalOpen(false);
+          }}
+        />
       )}
     </div>
   );
