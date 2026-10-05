@@ -1,47 +1,127 @@
 //
 // Modal_Workout_Save.jsx
 //
+
 import React from 'react';
-import { modalOverlayStyle, modalContentStyle } from './modalStyles';
+import {
+  modalOverlayStyle,
+  modalContentStyle,
+} from './modalStyles';
 
 export default function Modal_Workout_Save({
   isOpen,
   onClose,
+
   saveAsNew = false,
+
   saveTitle = '',
   setSaveTitle,
+
   saveFolderId = '',
   setSaveFolderId,
-  folders = [],
-  showInlineFolderInput = false,
-  setShowInlineFolderInput,
-  inlineFolderInput = '',
-  setInlineFolderInput,
-  handleCreateInlineFolder,
-  handleConfirmSaveWorkout,
-  apiLoading = false,
-  errorMessage = '', // Optional: pass down error string from parent state
-  successMessage = '', // Optional: pass down success string from parent state
-}) {
 
-  console.log('[App Debug Modal_Save] Render State:', {
-    isOpen,
-    saveTitle,
-    isTitleValid: Boolean(saveTitle?.trim()),
-    apiLoading,
-    isHandlerFunction: typeof handleConfirmSaveWorkout === 'function'
-  });
-  
-  if (!isOpen) return null;
+  folders = [],
+
+  onConfirmSave,
+
+  apiLoading = false,
+
+  errorMessage = '',
+  successMessage = '',
+}) {
+  console.log(
+    '[App Debug Modal_Save] Render State:',
+    {
+      isOpen,
+      saveAsNew,
+      saveTitle,
+      saveFolderId,
+      isTitleValid:
+        Boolean(saveTitle?.trim()),
+      apiLoading,
+      hasConfirmHandler:
+        typeof onConfirmSave === 'function',
+    }
+  );
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const handleSaveClick = () => {
+    console.log(
+      '[Save Flow] Step 3a: Save button clicked in Modal_Workout_Save',
+      {
+        saveTitle,
+        saveFolderId,
+        saveAsNew,
+        apiLoading,
+        hasConfirmHandler:
+          typeof onConfirmSave === 'function',
+      }
+    );
+
+    if (apiLoading) {
+      console.warn(
+        '[Save Flow] Save click ignored because a save is already in progress.'
+      );
+      return;
+    }
+
+    if (!saveTitle?.trim()) {
+      console.warn(
+        '[Save Flow] Save blocked because workout title is empty.'
+      );
+      return;
+    }
+
+    if (
+      typeof onConfirmSave !==
+      'function'
+    ) {
+      console.error(
+        '[Save Flow] CRITICAL: onConfirmSave handler was not supplied to Modal_Workout_Save.'
+      );
+      return;
+    }
+
+    console.log(
+      '[Save Flow] Step 3b: Calling parent onConfirmSave'
+    );
+
+    onConfirmSave(
+      saveTitle.trim(),
+      saveFolderId
+    );
+  };
 
   return (
-    <div style={modalOverlayStyle} onClick={onClose}>
-      <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ marginTop: 0, marginBottom: '16px' }}>
-          {saveAsNew ? 'Save As New Workout / Duplicate' : 'Save Workout'}
+    <div
+      style={modalOverlayStyle}
+      onClick={() => {
+        if (!apiLoading) {
+          onClose?.();
+        }
+      }}
+    >
+      <div
+        style={modalContentStyle}
+        onClick={(e) =>
+          e.stopPropagation()
+        }
+      >
+        <h3
+          style={{
+            marginTop: 0,
+            marginBottom: '16px',
+          }}
+        >
+          {saveAsNew
+            ? 'Save As New Workout'
+            : 'Save Workout'}
         </h3>
 
-        {/* --- Error Display --- */}
+        {/* ERROR */}
         {errorMessage && (
           <div
             style={{
@@ -51,14 +131,18 @@ export default function Modal_Workout_Save({
               borderRadius: '4px',
               marginBottom: '16px',
               fontSize: '13px',
-              border: '1px solid #f5c6cb',
+              border:
+                '1px solid #f5c6cb',
             }}
           >
-            <strong>Error:</strong> {errorMessage}
+            <strong>
+              Error:
+            </strong>{' '}
+            {errorMessage}
           </div>
         )}
 
-        {/* --- Success Display --- */}
+        {/* SUCCESS */}
         {successMessage && (
           <div
             style={{
@@ -68,85 +152,175 @@ export default function Modal_Workout_Save({
               borderRadius: '4px',
               marginBottom: '16px',
               fontSize: '13px',
-              border: '1px solid #c3e6cb',
+              border:
+                '1px solid #c3e6cb',
             }}
           >
             {successMessage}
           </div>
         )}
 
-        <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', fontSize: '13px' }}>
+        {/* WORKOUT NAME */}
+        <label
+          style={{
+            display: 'block',
+            marginBottom: '4px',
+            fontWeight: 'bold',
+            fontSize: '13px',
+          }}
+        >
           Workout Name:
         </label>
+
         <input
           type="text"
           value={saveTitle}
-          onChange={(e) => setSaveTitle(e.target.value)}
+          onChange={(e) => {
+            console.log(
+              '[App Debug Modal_Save] Save title changed:',
+              e.target.value
+            );
+
+            setSaveTitle(
+              e.target.value
+            );
+          }}
           placeholder="Enter workout name..."
-          style={{ width: '100%', padding: '8px', marginBottom: '16px', boxSizing: 'border-box' }}
+          disabled={apiLoading}
+          autoFocus
+          style={{
+            width: '100%',
+            padding: '8px',
+            marginBottom: '16px',
+            boxSizing: 'border-box',
+          }}
         />
 
-        <label style={{ display: 'block', marginBottom: '4px', fontWeight: 'bold', fontSize: '13px' }}>
+        {/* FOLDER */}
+        <label
+          style={{
+            display: 'block',
+            marginBottom: '4px',
+            fontWeight: 'bold',
+            fontSize: '13px',
+          }}
+        >
           Select Folder:
         </label>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          <select
-            value={saveFolderId ?? ''}
-            onChange={(e) => setSaveFolderId(e.target.value)}
-            style={{ flex: 1, padding: '8px' }}
-          >
-            <option value="">(No Folder / Root)</option>
-            {Array.isArray(folders) &&
-              folders.map((f, idx) => {
-                const fId = f.id !== undefined ? f.id : (f._id !== undefined ? f._id : idx);
-                const fName = f.name || f.title || f.folderName || 'Untitled Folder';
+
+        <select
+          value={saveFolderId ?? ''}
+          onChange={(e) => {
+            console.log(
+              '[App Debug Modal_Save] Folder changed:',
+              e.target.value
+            );
+
+            setSaveFolderId(
+              e.target.value
+            );
+          }}
+          disabled={apiLoading}
+          style={{
+            width: '100%',
+            padding: '8px',
+            marginBottom: '20px',
+          }}
+        >
+          <option value="">
+            (No Folder / Root)
+          </option>
+
+          {Array.isArray(folders) &&
+            folders.map(
+              (folder, idx) => {
+                const folderId =
+                  folder.id !==
+                  undefined
+                    ? folder.id
+                    : folder._id !==
+                      undefined
+                    ? folder._id
+                    : idx;
+
+                const folderName =
+                  folder.name ||
+                  folder.title ||
+                  folder.folderName ||
+                  'Untitled Folder';
+
                 return (
-                  <option key={fId} value={fId}>
-                    📁 {fName}
+                  <option
+                    key={folderId}
+                    value={folderId}
+                  >
+                    📁 {folderName}
                   </option>
                 );
-              })}
-          </select>
+              }
+            )}
+        </select>
+
+        {/* BUTTONS */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent:
+              'flex-end',
+            gap: '8px',
+          }}
+        >
           <button
             type="button"
-            onClick={() => setShowInlineFolderInput(!showInlineFolderInput)}
-            style={{ padding: '8px 12px', cursor: 'pointer' }}
+            onClick={() => {
+              console.log(
+                '[Save Flow] Save modal Cancel clicked'
+              );
+
+              onClose?.();
+            }}
+            disabled={apiLoading}
+            style={{
+              padding:
+                '8px 16px',
+              cursor: apiLoading
+                ? 'default'
+                : 'pointer',
+            }}
           >
-            {showInlineFolderInput ? 'Cancel' : '+ New Folder'}
-          </button>
-        </div>
-
-        {showInlineFolderInput && (
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', padding: '8px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
-            <input
-              type="text"
-              placeholder="New Folder Name"
-              value={inlineFolderInput}
-              onChange={(e) => setInlineFolderInput(e.target.value)}
-              style={{ flex: 1, padding: '6px' }}
-            />
-            <button
-              type="button"
-              onClick={handleCreateInlineFolder}
-              disabled={apiLoading || !inlineFolderInput.trim()}
-              style={{ padding: '6px 12px', cursor: 'pointer' }}
-            >
-              Create
-            </button>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-          <button type="button" onClick={onClose} disabled={apiLoading} style={{ padding: '8px 16px', cursor: 'pointer' }}>
             Cancel
           </button>
+
           <button
             type="button"
-            onClick={handleConfirmSaveWorkout}
-            disabled={apiLoading || !saveTitle.trim()}
-            style={{ backgroundColor: '#007bff', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}
+            onClick={handleSaveClick}
+            disabled={
+              apiLoading ||
+              !saveTitle?.trim()
+            }
+            style={{
+              backgroundColor:
+                apiLoading ||
+                !saveTitle?.trim()
+                  ? '#999'
+                  : '#007bff',
+              color: '#fff',
+              border: 'none',
+              padding:
+                '8px 16px',
+              borderRadius: '4px',
+              cursor:
+                apiLoading ||
+                !saveTitle?.trim()
+                  ? 'default'
+                  : 'pointer',
+            }}
           >
-            {apiLoading ? 'Saving...' : saveAsNew ? 'Save As New' : 'Save'}
+            {apiLoading
+              ? 'Saving...'
+              : saveAsNew
+              ? 'Save As New'
+              : 'Save'}
           </button>
         </div>
       </div>

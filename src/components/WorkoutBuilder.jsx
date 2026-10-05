@@ -1,8 +1,9 @@
 //
 // WorkoutBuilder.jsx
 //
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { usePaces } from '../utils/PacesContext.jsx'; 
+import { usePaces } from '../utils/PacesContext.jsx';
 import '../CSS/WorkoutBuilder.css';
 
 import { useWorkoutSteps } from '../hooks/useWorkoutSteps';
@@ -14,618 +15,1239 @@ import RenderStepRow from '../utils/RenderStepRow';
 
 import { OptionsMenu } from '../utils/WorkoutBuilderMenus';
 
-import { 
-  convertWorkoutToTargetFormat,
-} from '../utils/WorkoutConverter.js';
-
 import Modal_Folder_Create from '../modals/Modal_Folder_Create';
 import Modal_Workout_Edit from '../modals/Modal_Workout_Edit';
 import Modal_Workout_Save from '../modals/Modal_Workout_Save';
 import Modal_Workout_Zoom from '../modals/Modal_Workout_Zoom';
 
-import { 
-  fetchFoldersApi, 
-  fetchWorkoutsApi, 
-  createFolderApi, 
-  saveWorkoutApi, 
-  calculateDynamicPresets, 
-  createDefaultSteps, 
-  addIdsToBaseWorkout
+import {
+  fetchFoldersApi,
+  fetchWorkoutsApi,
+  createFolderApi,
+  saveWorkoutApi,
+  calculateDynamicPresets,
+  createDefaultSteps,
+  addIdsToBaseWorkout,
 } from '../utils/WorkoutBuilderHelpers.js';
 
 export default function WorkoutBuilder() {
-
   const { paces } = usePaces();
 
-  // --- Core State ---
-  const [mode, setMode] = useState('EMPTY'); // 'EMPTY', 'BUILDING', 'SAVED'
+  // ------------------------------------------------------------
+  // Core State
+  // ------------------------------------------------------------
 
-  // Panel collapse state
+  const [mode, setMode] = useState('EMPTY');
+
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
 
-  // Metadata
+  // ------------------------------------------------------------
+  // Workout Metadata
+  // ------------------------------------------------------------
+
   const [workoutId, setWorkoutId] = useState(null);
   const [workoutTitle, setWorkoutTitle] = useState('New Workout');
   const [workoutDescription, setWorkoutDescription] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState('');
 
-  // Raw document state
+  // ------------------------------------------------------------
+  // Raw / Working Workout Document
+  // ------------------------------------------------------------
+
   const [unalteredWorkout, setUnalteredWorkout] = useState('');
   const [baseWorkout, setBaseWorkout] = useState(null);
 
-  // Mode Options
-  const [workoutMode, setWorkoutMode] = useState('time'); // 'time' or 'distance'
-  const [paceMethod, setPaceMethod] = useState('Pace'); 
+  // ------------------------------------------------------------
+  // Workout Options
+  // ------------------------------------------------------------
 
-  // 1. Declare state for workout title and feedback messages
+  const [workoutMode, setWorkoutMode] = useState('time');
+  const [paceMethod, setPaceMethod] = useState('Pace');
+
+  // ------------------------------------------------------------
+  // Save Modal State
+  // ------------------------------------------------------------
+
   const [saveTitle, setSaveTitle] = useState('');
+  const [saveFolderId, setSaveFolderId] = useState('');
+  const [isSaveAsMode, setIsSaveAsMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // --- Custom Hook for Steps State ---
-  const { 
-    steps, 
-    setSteps, 
-    addStep, 
-    removeStep, 
-    updateStepField, 
-    handleDragStart, 
-    handleDrop 
-  } = useWorkoutSteps([], workoutMode);
+  // ------------------------------------------------------------
+  // Status / Toast
+  // ------------------------------------------------------------
 
-  // Keep baseWorkout.workout_doc.steps synced with hook steps
-  useEffect(() => {
-    if (baseWorkout && baseWorkout.workout_doc) {
-      setBaseWorkout((prev) => ({
-        ...prev,
-        workout_doc: {
-          ...prev.workout_doc,
-          steps: steps
-        }
-      }));
-    }
-  }, [steps]);
-
-  // Sync root 'name' field in baseWorkout with workoutTitle
-  useEffect(() => {
-    if (baseWorkout) {
-      setBaseWorkout((prev) => ({
-        ...prev,
-        name: workoutTitle
-      }));
-    }
-  }, [workoutTitle]);
-
-  // --- Data / Folders / Workouts State ---
-  const [folders, setFolders] = useState([]);
-  const [savedWorkouts, setSavedWorkouts] = useState([]);
-
-  // --- Modal Visibility States ---
-  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
-  const [isSaveAsMode, setIsSaveAsMode] = useState(false);
-
-  // Status/Toast Message
   const [statusMessage, setStatusMessage] = useState('');
 
   const showToast = (msg) => {
-    console.log('[App Debug WorkoutBuilder] showToast triggered with message:', msg);
+    console.log(
+      '[App Debug WorkoutBuilder] showToast triggered with message:',
+      msg
+    );
+
     setStatusMessage(msg);
+
     setTimeout(() => {
-      console.log('[App Debug WorkoutBuilder] showToast timeout clear message');
+      console.log(
+        '[App Debug WorkoutBuilder] showToast timeout clear message'
+      );
       setStatusMessage('');
     }, 3000);
   };
 
-  // Initial Load
+  // ------------------------------------------------------------
+  // Custom Hook for Workout Steps
+  // ------------------------------------------------------------
+
+  const {
+    steps,
+    setSteps,
+    addStep,
+    removeStep,
+    updateStepField,
+    handleDragStart,
+    handleDrop,
+  } = useWorkoutSteps([], workoutMode);
+
+  // ------------------------------------------------------------
+  // Keep baseWorkout.workout_doc.steps synchronized with steps
+  // ------------------------------------------------------------
+
   useEffect(() => {
-    console.log('[App Debug WorkoutBuilder] useEffect: initial data fetch starting');
+    if (!baseWorkout?.workout_doc) {
+      return;
+    }
+
+    console.log(
+      '[App Debug WorkoutBuilder] Synchronizing baseWorkout.workout_doc.steps',
+      {
+        stepCount: steps.length,
+      }
+    );
+
+    setBaseWorkout((prev) => {
+      if (!prev?.workout_doc) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        workout_doc: {
+          ...prev.workout_doc,
+          steps,
+        },
+      };
+    });
+  }, [steps]);
+
+  // ------------------------------------------------------------
+  // Keep baseWorkout.name synchronized with workoutTitle
+  // ------------------------------------------------------------
+
+  useEffect(() => {
+    if (!baseWorkout) {
+      return;
+    }
+
+    setBaseWorkout((prev) => ({
+      ...prev,
+      name: workoutTitle,
+    }));
+  }, [workoutTitle]);
+
+  // ------------------------------------------------------------
+  // Folders / Saved Workouts
+  // ------------------------------------------------------------
+
+  const [folders, setFolders] = useState([]);
+  const [savedWorkouts, setSavedWorkouts] = useState([]);
+
+  // ------------------------------------------------------------
+  // Modal Visibility
+  // ------------------------------------------------------------
+
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
+
+  // ------------------------------------------------------------
+  // Initial Data Load
+  // ------------------------------------------------------------
+
+  useEffect(() => {
+    console.log(
+      '[App Debug WorkoutBuilder] Initial data fetch starting'
+    );
+
     async function initData() {
-      console.log('[App Debug WorkoutBuilder] initData executing');
       try {
+        console.log(
+          '[App Debug WorkoutBuilder] Fetching folders...'
+        );
+
         const fetchedFolders = await fetchFoldersApi();
+
+        console.log(
+          '[App Debug WorkoutBuilder] Folders received:',
+          fetchedFolders
+        );
+
         setFolders(fetchedFolders || []);
+
+        console.log(
+          '[App Debug WorkoutBuilder] Fetching workouts...'
+        );
+
         const fetchedWorkouts = await fetchWorkoutsApi();
-        const workoutsArray = Array.isArray(fetchedWorkouts) 
-          ? fetchedWorkouts 
-          : (fetchedWorkouts?.workouts || []);
+
+        console.log(
+          '[App Debug WorkoutBuilder] Workouts response received:',
+          fetchedWorkouts
+        );
+
+        const workoutsArray = Array.isArray(fetchedWorkouts)
+          ? fetchedWorkouts
+          : fetchedWorkouts?.workouts || [];
+
         setSavedWorkouts(workoutsArray);
-        console.log('[App Debug WorkoutBuilder] initData successfully fetched folders and workouts');
+
+        console.log(
+          '[App Debug WorkoutBuilder] Initial data load complete'
+        );
       } catch (err) {
-        console.error('Failed to initialize workout builder data:', err);
+        console.error(
+          '[App Debug WorkoutBuilder] Failed to initialize workout builder:',
+          err
+        );
       }
     }
+
     initData();
   }, []);
 
-  // Presets & Totals
+  // ------------------------------------------------------------
+  // Dynamic Presets
+  // ------------------------------------------------------------
+
   const dynamicPresets = useMemo(() => {
-    console.log('[App Debug WorkoutBuilder] useMemo: calculating dynamicPresets');
-    return calculateDynamicPresets(paces, paces?.threshold_pace || 360, paceMethod);
+    console.log(
+      '[App Debug WorkoutBuilder] Calculating dynamicPresets'
+    );
+
+    return calculateDynamicPresets(
+      paces,
+      paces?.threshold_pace || 360,
+      paceMethod
+    );
   }, [paces, paceMethod]);
 
-  // --- Handlers for Options Menu ---
+  // ============================================================
+  // CREATE NEW WORKOUT
+  // ============================================================
 
   const handleNewWorkout = () => {
-    console.log('[App Debug WorkoutBuilder] handleNewWorkout invoked');
+    console.log(
+      '[App Debug WorkoutBuilder] Step 1: handleNewWorkout invoked'
+    );
+
     const initialTitle = 'New Workout';
+
+    const defaultSteps = createDefaultSteps(workoutMode);
+
+    const newBase = {
+      name: initialTitle,
+      workout_doc: {
+        steps: defaultSteps,
+      },
+    };
+
+    console.log(
+      '[App Debug WorkoutBuilder] New baseWorkout created:',
+      newBase
+    );
+
     setWorkoutId(null);
     setWorkoutTitle(initialTitle);
     setWorkoutDescription('');
     setUnalteredWorkout('');
-    const defaultSteps = createDefaultSteps(workoutMode);    
-    const newBase = { 
-      name: initialTitle, // Root element
-      workout_doc: { 
-        steps: defaultSteps 
-      } 
-    };
     setBaseWorkout(newBase);
     setSteps(defaultSteps);
+    setSelectedFolderId('');
     setMode('BUILDING');
   };
-  
+
+  // ============================================================
+  // SELECT EXISTING WORKOUT
+  // ============================================================
+
   const handleSelectWorkout = (id) => {
-    console.log('[App Debug WorkoutBuilder] handleSelectWorkout invoked with id:', id);
-    const found = savedWorkouts.find((w) => String(w.id) === String(id));
-    if (found) {
-      const title = found.name || found.title || 'Untitled';
-      setWorkoutId(found.id);
-      setWorkoutTitle(title);
-      setWorkoutDescription(found.description || '');
-      setSelectedFolderId(found.folder_id ?? found.folderId ?? '');
-  
-      const rawDocObj = found;
-      const parsedObj = typeof rawDocObj === 'string' 
-        ? (() => {
-            console.log('[App Debug WorkoutBuilder] handleSelectWorkout parsing JSON string document');
-            try { return JSON.parse(rawDocObj); } catch { return null; }
-          })() 
-        : rawDocObj;
-  
-      const preparedBase = addIdsToBaseWorkout(parsedObj);
-      
-      // Set root 'name' property
-      const baseWithTitle = {
-        ...preparedBase,
-        name: title
-      };
-  
-      setUnalteredWorkout(parsedObj);
-      setBaseWorkout(baseWithTitle);
-      setSteps(preparedBase?.workout_doc?.steps || []);
-  
-      setMode('BUILDING');
-      setIsEditModalOpen(false);
+    console.log(
+      '[App Debug WorkoutBuilder] handleSelectWorkout invoked with id:',
+      id
+    );
+
+    const found = savedWorkouts.find(
+      (w) => String(w.id) === String(id)
+    );
+
+    if (!found) {
+      console.warn(
+        '[App Debug WorkoutBuilder] No workout found for id:',
+        id
+      );
+      return;
     }
-  };
 
-  const handleOpenSaveModal = (isSaveAs = false) => {
-    console.log('[App Debug WorkoutBuilder] handleOpenSaveModal invoked with isSaveAs:', isSaveAs);
-    setIsSaveAsMode(isSaveAs);
-    setIsSaveModalOpen(true);
-  };
+    const title =
+      found.name ||
+      found.title ||
+      'Untitled';
 
-  const handleSaveWorkout = async (overrideTitle, overrideFolderId) => {
-    console.log('[App Debug WorkoutBuilder] handleSaveWorkout invoked', { overrideTitle, overrideFolderId });
-    const icuDocument = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
-    const targetId = isSaveAsMode ? null : workoutId;
-    const finalTitle = overrideTitle || workoutTitle;
-    const finalFolderId = overrideFolderId !== undefined ? overrideFolderId : selectedFolderId;
+    const folderId =
+      found.folder_id ??
+      found.folderId ??
+      '';
 
-    const payload = {
-      id: targetId,
-      name: finalTitle,
-      description: workoutDescription,
-      folder_id: finalFolderId,
-      document: icuDocument
+    let parsedObj = found;
+
+    if (typeof found === 'string') {
+      console.log(
+        '[App Debug WorkoutBuilder] Parsing workout JSON string'
+      );
+
+      try {
+        parsedObj = JSON.parse(found);
+      } catch (err) {
+        console.error(
+          '[App Debug WorkoutBuilder] Failed to parse workout JSON:',
+          err
+        );
+        return;
+      }
+    }
+
+    const preparedBase = addIdsToBaseWorkout(parsedObj);
+
+    const baseWithTitle = {
+      ...preparedBase,
+      name: title,
     };
 
-    try {
-      const saved = await saveWorkoutApi(payload);
-      if (saved) {
-        const newId = saved.id || saved.workout_id || targetId;
-        setWorkoutId(newId);
-        setWorkoutTitle(finalTitle);
-        setSelectedFolderId(finalFolderId);
+    console.log(
+      '[App Debug WorkoutBuilder] Loaded workout into baseWorkout:',
+      baseWithTitle
+    );
 
-        const preparedSavedBase = addIdsToBaseWorkout(saved);
-        setUnalteredWorkout(saved);
-        setBaseWorkout({
-          ...preparedSavedBase,
-          name: finalTitle
-        });
+    setWorkoutId(found.id);
+    setWorkoutTitle(title);
+    setWorkoutDescription(found.description || '');
+    setSelectedFolderId(folderId);
+    setSaveTitle(title);
+    setSaveFolderId(folderId);
 
-        // Re-fetch workouts list to stay synchronized
-        const updatedData = await fetchWorkoutsApi();
-        const workoutsArray = Array.isArray(updatedData) 
-          ? updatedData 
-          : (updatedData?.workouts || []);
-        setSavedWorkouts(workoutsArray);
+    setUnalteredWorkout(parsedObj);
+    setBaseWorkout(baseWithTitle);
 
-        setIsSaveModalOpen(false);
-        setIsSaveAsMode(false);
-        setMode('SAVED');
-        showToast(isSaveAsMode ? 'Workout saved as new file!' : 'Workout saved successfully!');
+    setSteps(
+      preparedBase?.workout_doc?.steps || []
+    );
+
+    setMode('BUILDING');
+    setIsEditModalOpen(false);
+  };
+
+  // ============================================================
+  // OPEN SAVE MODAL
+  // ============================================================
+
+  const handleOpenSaveModal = (isSaveAs = false) => {
+    console.log(
+      '[Save Flow] Step 1: Save menu option selected',
+      {
+        isSaveAs,
+        workoutId,
+        workoutTitle,
+        selectedFolderId,
       }
-    } catch (err) {
-      console.error('Error saving workout:', err);
-      showToast('Failed to save workout. Please try again.');
-    }
+    );
+
+    const initialTitle = isSaveAs
+      ? `${workoutTitle} (Copy)`
+      : workoutTitle;
+
+    setIsSaveAsMode(isSaveAs);
+    setSaveTitle(initialTitle);
+    setSaveFolderId(selectedFolderId || '');
+    setIsSaveModalOpen(true);
+
+    console.log(
+      '[Save Flow] Step 2: Save modal opening',
+      {
+        saveTitle: initialTitle,
+        saveFolderId: selectedFolderId || '',
+        isSaveAs,
+      }
+    );
   };
 
-  // 2. Handle "Save Workout" (Overwrites existing workout)
-  const handleSave = async () => {
+  // ============================================================
+  // SAVE WORKOUT
+  // ============================================================
+
+  const handleSaveWorkout = async (
+    overrideTitle,
+    overrideFolderId
+  ) => {
+    console.log(
+      '[Save Flow] Step 3: Save modal confirmed'
+    );
+
+    const finalTitle =
+      String(
+        overrideTitle ??
+        saveTitle ??
+        workoutTitle ??
+        ''
+      ).trim();
+
+    const finalFolderId =
+      overrideFolderId !== undefined
+        ? overrideFolderId
+        : saveFolderId;
+
+    console.log(
+      '[Save Flow] Step 4: Save values resolved',
+      {
+        finalTitle,
+        finalFolderId,
+        isSaveAsMode,
+        workoutId,
+      }
+    );
+
+    if (!finalTitle) {
+      console.error(
+        '[Save Flow] STOP: Workout title is empty'
+      );
+
+      showToast('Please enter a workout name.');
+      return;
+    }
+
+    if (!baseWorkout) {
+      console.error(
+        '[Save Flow] STOP: baseWorkout is null'
+      );
+
+      showToast('No workout is currently loaded.');
+      return;
+    }
+
+    if (!Array.isArray(steps)) {
+      console.error(
+        '[Save Flow] STOP: steps is not an array:',
+        steps
+      );
+
+      showToast('Workout steps are invalid.');
+      return;
+    }
+
     setIsSaving(true);
-    setStatusMessage(null);
+
     try {
-      const payload = {
-        ...currentWorkout,
-        name: saveTitle || currentWorkout.name,
+      // --------------------------------------------------------
+      // Build the current workout document.
+      //
+      // IMPORTANT:
+      // baseWorkout is the working document and steps is the
+      // latest hook state. We explicitly combine them here
+      // instead of relying on a previous React render.
+      // --------------------------------------------------------
+
+      const currentWorkoutDocument = {
+        ...baseWorkout,
+        name: finalTitle,
+        workout_doc: {
+          ...(baseWorkout.workout_doc || {}),
+          steps,
+        },
       };
-      const response = await saveWorkoutApi(payload, false);
-      setStatusMessage({ type: 'success', text: 'Workout saved successfully!' });
-      // Option: Refresh folder list/workouts list
-      // await fetchWorkoutsApi();
+
+      console.log(
+        '[Save Flow] Step 5: Current workout document prepared',
+        currentWorkoutDocument
+      );
+
+      const payload = {
+        ...currentWorkoutDocument,
+        id: isSaveAsMode ? null : workoutId,
+        name: finalTitle,
+        description: workoutDescription,
+        folder_id: finalFolderId,
+      };
+
+      console.log(
+        '[Save Flow] Step 6: Payload prepared for saveWorkoutApi',
+        payload
+      );
+
+      console.log(
+        '[Save Flow] Step 7: Calling saveWorkoutApi...'
+      );
+
+      const saved = await saveWorkoutApi(
+        payload,
+        isSaveAsMode
+      );
+
+      console.log(
+        '[Save Flow] Step 8: saveWorkoutApi returned successfully:',
+        saved
+      );
+
+      if (!saved) {
+        throw new Error(
+          'Save API returned no workout data.'
+        );
+      }
+
+      const newId =
+        saved.id ||
+        saved.workout_id ||
+        saved._id ||
+        workoutId;
+
+      console.log(
+        '[Save Flow] Step 9: Saved workout ID resolved:',
+        newId
+      );
+
+      setWorkoutId(newId);
+      setWorkoutTitle(finalTitle);
+      setSelectedFolderId(finalFolderId);
+      setSaveTitle(finalTitle);
+      setSaveFolderId(finalFolderId);
+
+      const preparedSavedBase =
+        addIdsToBaseWorkout(saved);
+
+      setUnalteredWorkout(saved);
+
+      setBaseWorkout({
+        ...preparedSavedBase,
+        name: finalTitle,
+      });
+
+      // --------------------------------------------------------
+      // Refresh saved workouts list
+      // --------------------------------------------------------
+
+      console.log(
+        '[Save Flow] Step 10: Refreshing workout list...'
+      );
+
+      const updatedData =
+        await fetchWorkoutsApi();
+
+      const workoutsArray =
+        Array.isArray(updatedData)
+          ? updatedData
+          : updatedData?.workouts || [];
+
+      setSavedWorkouts(workoutsArray);
+
+      console.log(
+        '[Save Flow] Step 11: Workout list refreshed',
+        {
+          workoutCount: workoutsArray.length,
+        }
+      );
+
+      setIsSaveModalOpen(false);
+      setIsSaveAsMode(false);
+      setMode('SAVED');
+
+      console.log(
+        '[Save Flow] Step 12: SAVE COMPLETE'
+      );
+
+      showToast(
+        isSaveAsMode
+          ? 'Workout saved as new file!'
+          : 'Workout saved successfully!'
+      );
     } catch (err) {
-      console.error('Save failed:', err);
-      setStatusMessage({ type: 'error', text: `Save failed: ${err.message}` });
+      console.error(
+        '[Save Flow] SAVE FAILED:',
+        err
+      );
+
+      console.error(
+        '[Save Flow] Error details:',
+        {
+          message: err?.message,
+          stack: err?.stack,
+        }
+      );
+
+      showToast(
+        `Failed to save workout: ${
+          err?.message || 'Unknown error'
+        }`
+      );
     } finally {
       setIsSaving(false);
+
+      console.log(
+        '[Save Flow] Save operation finished; isSaving reset'
+      );
     }
   };
 
-  // 3. Handle "Save As New Workout"
-  const handleSaveAsNew = async () => {
-    setIsSaving(true);
-    setStatusMessage(null);
-    try {
-      const payload = {
-        ...currentWorkout,
-        name: saveTitle || `${currentWorkout.name} (Copy)`,
-      };
-      const response = await saveWorkoutApi(payload, true); // true forces create_workout
-      setStatusMessage({ type: 'success', text: 'New workout created successfully!' });
-    } catch (err) {
-      console.error('Save As New failed:', err);
-      setStatusMessage({ type: 'error', text: `Save As New failed: ${err.message}` });
-    } finally {
-      setIsSaving(false);
+  // ============================================================
+  // DUPLICATE WORKOUT
+  // ============================================================
+
+  const handleDuplicateWorkout = () => {
+    console.log(
+      '[App Debug WorkoutBuilder] handleDuplicateWorkout invoked'
+    );
+
+    if (!baseWorkout) {
+      showToast('No workout is currently loaded.');
+      return;
     }
-  };
 
-  // 4. Handle "Duplicate Workout"
-  const handleDuplicate = async (workoutToDuplicate) => {
-    setIsSaving(true);
-    setStatusMessage(null);
-    try {
-      const duplicateTitle = `${workoutToDuplicate.name || 'Workout'} (Copy)`;
-      
-      // Set save title safely using defined state setter
-      setSaveTitle(duplicateTitle);
+    const duplicateTitle =
+      `${workoutTitle || 'Workout'} (Copy)`;
 
-      const payload = {
-        ...workoutToDuplicate,
-        name: duplicateTitle,
-      };
-
-      const response = await saveWorkoutApi(payload, true); // true forces new creation
-      setStatusMessage({ type: 'success', text: `Duplicated as "${duplicateTitle}"!` });
-    } catch (err) {
-      console.error('Duplicate failed:', err);
-      setStatusMessage({ type: 'error', text: `Duplicate failed: ${err.message}` });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const OLD_handleDuplicateWorkout = () => {
-    const duplicateTitle = `${workoutTitle} (Copy)`;
-    setWorkoutId(null);
+    setSaveTitle(duplicateTitle);
+    setSaveFolderId(selectedFolderId || '');
     setWorkoutTitle(duplicateTitle);
-    setMode('BUILDING');
-    
-    // Automatically trigger Save As modal so the user can save the duplicate
-    handleOpenSaveModal(true);
-    showToast('Workout duplicated! Choose a folder and save your new copy.');
-  };
-
-  const handleDuplicateWorkout = (workoutToDuplicate) => {
-    console.log('[App Debug WorkoutBuilder] handleDuplicateWorkout invoked');
-    setSaveTitle(`${workoutToDuplicate.name || workoutToDuplicate.title || 'Workout'} (Copy)`);
-    setWorkoutTitle(`${workoutToDuplicate.name || workoutToDuplicate.title || 'Workout'} (Copy)`);
-    setSaveFolderId(workoutToDuplicate.folderId || workoutToDuplicate.folder_id || '');
 
     setMode('BUILDING');
+
     handleOpenSaveModal(true);
-
-    setSaveAsNew(true); // Flag as new/duplicate
-    setIsSaveModalOpen(true); // Open Modal_Workout_Save
-  };
-  
-  const handleCopyWorkoutText = () => {
-    console.log('[App Debug WorkoutBuilder] handleCopyWorkoutText invoked');
-    const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
-    const stringified = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
-    navigator.clipboard.writeText(stringified);
-    showToast('Workout plain text copied to clipboard!');
   };
 
-  const handleConfirmSaveWorkout = async () => {
-    setApiLoading(true);
-    setErrorMessage('');
-    
+  // ============================================================
+  // COPY WORKOUT TEXT
+  // ============================================================
+
+  const handleCopyWorkoutText = async () => {
+    console.log(
+      '[App Debug WorkoutBuilder] handleCopyWorkoutText invoked'
+    );
+
     try {
-      const payload = {
-        name: saveTitle,
-        saveFolderId,
-        workout_doc: { steps },
-        ...(saveAsNew ? {} : { id: currentWorkoutId }),
-      };
-  
-      await saveWorkoutApi(payload, saveAsNew);
-      
-      // Success feedback
-      setIsOpen(false); // or show success message before closing
+      const { convertWorkoutToTargetFormat } =
+        await import('../utils/WorkoutConverter.js');
+
+      const textOutput =
+        convertWorkoutToTargetFormat(
+          steps,
+          workoutMode,
+          paceMethod
+        );
+
+      const stringified =
+        typeof textOutput === 'object'
+          ? JSON.stringify(
+              textOutput,
+              null,
+              2
+            )
+          : textOutput;
+
+      await navigator.clipboard.writeText(
+        stringified
+      );
+
+      showToast(
+        'Workout plain text copied to clipboard!'
+      );
     } catch (err) {
-      console.error('Save workout error:', err);
-      setErrorMessage(err.message || 'Failed to save workout. Please try again.');
-    } finally {
-      setApiLoading(false);
+      console.error(
+        '[App Debug WorkoutBuilder] Copy workout failed:',
+        err
+      );
+
+      showToast(
+        'Failed to copy workout text.'
+      );
     }
   };
-  
-  
-  const triggerFileDownload = (content, fileName, mimeType) => {
-    console.log('[App Debug WorkoutBuilder] triggerFileDownload invoked', { fileName, mimeType });
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+
+  // ============================================================
+  // FILE DOWNLOAD
+  // ============================================================
+
+  const triggerFileDownload = (
+    content,
+    fileName,
+    mimeType
+  ) => {
+    console.log(
+      '[App Debug WorkoutBuilder] triggerFileDownload invoked',
+      {
+        fileName,
+        mimeType,
+      }
+    );
+
+    const blob = new Blob(
+      [content],
+      { type: mimeType }
+    );
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const a =
+      document.createElement('a');
+
     a.href = url;
     a.download = fileName;
+
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadIcu = () => {
-    console.log('[App Debug WorkoutBuilder] handleDownloadIcu invoked');
-    const textOutput = convertWorkoutToTargetFormat(steps, workoutMode, paceMethod);
-    const content = typeof textOutput === 'object' ? JSON.stringify(textOutput, null, 2) : textOutput;
-    const cleanTitle = workoutTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    triggerFileDownload(content, `${cleanTitle}.icu`, 'text/plain');
+  const handleDownloadIcu = async () => {
+    console.log(
+      '[App Debug WorkoutBuilder] handleDownloadIcu invoked'
+    );
+
+    const {
+      convertWorkoutToTargetFormat,
+    } = await import(
+      '../utils/WorkoutConverter.js'
+    );
+
+    const textOutput =
+      convertWorkoutToTargetFormat(
+        steps,
+        workoutMode,
+        paceMethod
+      );
+
+    const content =
+      typeof textOutput === 'object'
+        ? JSON.stringify(
+            textOutput,
+            null,
+            2
+          )
+        : textOutput;
+
+    const cleanTitle =
+      workoutTitle
+        .replace(/[^a-z0-9]/gi, '_')
+        .toLowerCase();
+
+    triggerFileDownload(
+      content,
+      `${cleanTitle}.icu`,
+      'text/plain'
+    );
   };
 
-  const handleDownloadZwo = () => {
-    console.log('[App Debug WorkoutBuilder] handleDownloadZwo invoked');
-    const zwoContent = convertWorkoutToTargetFormat(steps, workoutMode, 'ZWO');
-    const cleanTitle = workoutTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    triggerFileDownload(zwoContent, `${cleanTitle}.zwo`, 'application/xml');
+  const handleDownloadZwo = async () => {
+    console.log(
+      '[App Debug WorkoutBuilder] handleDownloadZwo invoked'
+    );
+
+    const {
+      convertWorkoutToTargetFormat,
+    } = await import(
+      '../utils/WorkoutConverter.js'
+    );
+
+    const zwoContent =
+      convertWorkoutToTargetFormat(
+        steps,
+        workoutMode,
+        'ZWO'
+      );
+
+    const cleanTitle =
+      workoutTitle
+        .replace(/[^a-z0-9]/gi, '_')
+        .toLowerCase();
+
+    triggerFileDownload(
+      zwoContent,
+      `${cleanTitle}.zwo`,
+      'application/xml'
+    );
   };
 
-  const handleCreateFolder = async (folderName) => {
-    console.log('[App Debug WorkoutBuilder] handleCreateFolder invoked with folderName:', folderName);
+  // ============================================================
+  // CREATE FOLDER
+  // ============================================================
+
+  const handleCreateFolder = async (
+    folderName
+  ) => {
+    console.log(
+      '[App Debug WorkoutBuilder] handleCreateFolder invoked:',
+      folderName
+    );
+
     try {
-      const newFolder = await createFolderApi(folderName);
+      const newFolder =
+        await createFolderApi(
+          folderName
+        );
+
       if (newFolder) {
-        const newId = newFolder.id || newFolder._id;
-        setFolders((prev) => [...prev, newFolder]);
+        const newId =
+          newFolder.id ||
+          newFolder._id;
+
+        setFolders((prev) => [
+          ...prev,
+          newFolder,
+        ]);
+
         setSelectedFolderId(newId);
+        setSaveFolderId(newId);
         setIsFolderModalOpen(false);
-        showToast(`Folder "${folderName}" created.`);
+
+        showToast(
+          `Folder "${folderName}" created.`
+        );
       }
     } catch (err) {
-      console.error('Error creating folder:', err);
+      console.error(
+        '[App Debug WorkoutBuilder] Error creating folder:',
+        err
+      );
     }
   };
 
+  // ============================================================
+  // CANCEL EDITS
+  // ============================================================
+
   const handleCancelEdits = () => {
-    console.log('[App Debug WorkoutBuilder] handleCancelEdits invoked');
+    console.log(
+      '[App Debug WorkoutBuilder] handleCancelEdits invoked'
+    );
+
     if (workoutId) {
       handleSelectWorkout(workoutId);
-      showToast('Reverted edits back to saved state.');
+      showToast(
+        'Reverted edits back to saved state.'
+      );
     } else {
       handleNewWorkout();
     }
   };
 
+  // ============================================================
+  // CLOSE WORKOUT
+  // ============================================================
+
   const handleCloseWorkout = () => {
-    console.log('[App Debug WorkoutBuilder] handleCloseWorkout invoked');
+    console.log(
+      '[App Debug WorkoutBuilder] handleCloseWorkout invoked'
+    );
+
     setWorkoutId(null);
+    setBaseWorkout(null);
+    setSteps([]);
+    setWorkoutTitle('New Workout');
+    setWorkoutDescription('');
+    setSelectedFolderId('');
     setMode('EMPTY');
   };
 
+  // ============================================================
+  // RENDER
+  // ============================================================
+
   return (
-    <div className="workout-builder-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      {statusMessage && <div className="status-message-banner">{statusMessage}</div>}
+    <div
+      className="workout-builder-container"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        overflow: 'hidden',
+      }}
+    >
+      {statusMessage && (
+        <div className="status-message-banner">
+          {statusMessage}
+        </div>
+      )}
 
-      {/* --- MAIN PAGE SPLIT CONTAINER --- */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-
-        {/* LEFT MAIN PANEL (Header + Chart + Scrollable Steps) */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          
-          {/* FIXED / STICKY TOP HEADER & CHART SECTION */}
-          <div 
-            className="builder-fixed-header-section" 
-            style={{ 
-              backgroundColor: '#fff', 
-              boxShadow: '0px 2px 5px rgba(0,0,0,0.05)',
+      <div
+        style={{
+          display: 'flex',
+          flex: 1,
+          overflow: 'hidden',
+        }}
+      >
+        {/* LEFT MAIN PANEL */}
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          {/* HEADER */}
+          <div
+            className="builder-fixed-header-section"
+            style={{
+              backgroundColor: '#fff',
+              boxShadow:
+                '0px 2px 5px rgba(0,0,0,0.05)',
               paddingBottom: '8px',
               paddingLeft: '16px',
-              paddingRight: '16px'
+              paddingRight: '16px',
             }}
           >
-          <div className="builder-header-bar">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <h1 className="builder-header-title">Workout Builder:</h1>
-              <input
-                type="text"
-                value={workoutTitle}
-                onChange={(e) => {
-                  console.log('[App Debug WorkoutBuilder] workoutTitle input changed:', e.target.value);
-                  setWorkoutTitle(e.target.value);
+            <div className="builder-header-bar">
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
                 }}
-                placeholder="Workout Title"
-                className="workout-title-input"
-                style={{ fontSize: '18px', padding: '4px 8px', fontWeight: 'bold' }}
-              />
-            </div>
+              >
+                <h1 className="builder-header-title">
+                  Workout Builder:
+                </h1>
+
+                <input
+                  type="text"
+                  value={workoutTitle}
+                  onChange={(e) => {
+                    console.log(
+                      '[App Debug WorkoutBuilder] workoutTitle changed:',
+                      e.target.value
+                    );
+
+                    setWorkoutTitle(
+                      e.target.value
+                    );
+
+                    setSaveTitle(
+                      e.target.value
+                    );
+                  }}
+                  placeholder="Workout Title"
+                  className="workout-title-input"
+                  style={{
+                    fontSize: '18px',
+                    padding: '4px 8px',
+                    fontWeight: 'bold',
+                  }}
+                />
+              </div>
+
               <OptionsMenu
                 mode={mode}
-                onStartCreateNew={handleNewWorkout}
+                onStartCreateNew={
+                  handleNewWorkout
+                }
                 onOpenSelectModal={() => {
-                  console.log('[App Debug WorkoutBuilder] OptionsMenu -> onOpenSelectModal');
+                  console.log(
+                    '[App Debug WorkoutBuilder] OptionsMenu -> Open Select'
+                  );
+
                   setIsEditModalOpen(true);
                 }}
                 onOpenCreateFolderModal={() => {
-                  console.log('[App Debug WorkoutBuilder] OptionsMenu -> onOpenCreateFolderModal');
+                  console.log(
+                    '[App Debug WorkoutBuilder] OptionsMenu -> Create Folder'
+                  );
+
                   setIsFolderModalOpen(true);
                 }}
-                onSaveWorkout={() => handleSaveWorkout()}
-                onOpenSaveModal={handleOpenSaveModal}
-                onDuplicateWorkout={handleDuplicateWorkout}
-                onCopyWorkoutText={handleCopyWorkoutText}
-                onDownloadIcu={handleDownloadIcu}
-                onDownloadZwo={handleDownloadZwo}
-                onCancelEdits={handleCancelEdits}
-                onCloseWorkout={handleCloseWorkout}
+                onOpenSaveModal={
+                  handleOpenSaveModal
+                }
+                onDuplicateWorkout={
+                  handleDuplicateWorkout
+                }
+                onCopyWorkoutText={
+                  handleCopyWorkoutText
+                }
+                onDownloadIcu={
+                  handleDownloadIcu
+                }
+                onDownloadZwo={
+                  handleDownloadZwo
+                }
+                onCancelEdits={
+                  handleCancelEdits
+                }
+                onCloseWorkout={
+                  handleCloseWorkout
+                }
               />
             </div>
 
             {mode !== 'EMPTY' && (
-              <div className="chart-preview-container" style={{ margin: '8px 0', cursor: 'pointer' }}>
+              <div
+                className="chart-preview-container"
+                style={{
+                  margin: '8px 0',
+                  cursor: 'pointer',
+                }}
+              >
                 <WorkoutChart
                   workout={baseWorkout}
-                  thresholdPace={paces?.threshold_pace || 400}
-                  chartHeight={"140px"}
+                  thresholdPace={
+                    paces?.threshold_pace || 400
+                  }
+                  chartHeight="140px"
                   showBarPace={false}
                 />
-                <WorkoutTextSection 
+
+                <WorkoutTextSection
                   workout={baseWorkout}
-                  threshold={paces?.threshold_pace}
+                  threshold={
+                    paces?.threshold_pace
+                  }
                   paceDetails={paces}
-                  />
+                />
               </div>
             )}
           </div>
 
-          {/* SCROLLABLE STEPS SECTION */}
-          <div 
-            className="builder-scrollable-content" 
-            style={{ 
-              flex: 1, 
-              overflowY: 'auto', 
-              padding: '16px' 
+          {/* SCROLLABLE STEPS */}
+          <div
+            className="builder-scrollable-content"
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '16px',
             }}
           >
             {mode === 'EMPTY' ? (
               <div className="empty-state-card">
-                <h3>No Workout Selected</h3>
-                <p>Select an existing workout from Options or create a new one to get started.</p>
-                <button className="btn-primary" onClick={handleNewWorkout}>
+                <h3>
+                  No Workout Selected
+                </h3>
+
+                <p>
+                  Select an existing workout
+                  from Options or create a
+                  new one to get started.
+                </p>
+
+                <button
+                  className="btn-primary"
+                  onClick={
+                    handleNewWorkout
+                  }
+                >
                   + Create New Workout
                 </button>
               </div>
             ) : (
               <div>
-                <div 
-                  className="steps-list-container" 
+                <div
+                  className="steps-list-container"
                   onDragOver={(e) => {
-                    console.log('[App Debug WorkoutBuilder] onDragOver steps container');
                     e.preventDefault();
-                  }} 
+                  }}
                   onDrop={(e) => {
-                    console.log('[App Debug WorkoutBuilder] onDrop root steps container');
-                    handleDrop(e, null, baseWorkout?.workout_doc?.steps?.length || 0);
+                    console.log(
+                      '[App Debug WorkoutBuilder] Root steps drop'
+                    );
+
+                    handleDrop(
+                      e,
+                      null,
+                      baseWorkout?.workout_doc
+                        ?.steps?.length || 0
+                    );
                   }}
                 >
-                  {baseWorkout?.workout_doc?.steps?.map((step, index) => (
-                    <RenderStepRow
-                      key={step.id || `step-${index}`}
-                      step={step}
-                      index={index}
-                      parentId={null}
-                      paceDetails={paces}
-                      onRemove={removeStep}
-                      onUpdate={updateStepField}
-                      onAddChild={addStep}
-                      onDragStart={handleDragStart}
-                      onDrop={handleDrop}
-                    />
-                  ))}
+                  {baseWorkout?.workout_doc?.steps?.map(
+                    (step, index) => (
+                      <RenderStepRow
+                        key={
+                          step.id ||
+                          `step-${index}`
+                        }
+                        step={step}
+                        index={index}
+                        parentId={null}
+                        paceDetails={paces}
+                        onRemove={removeStep}
+                        onUpdate={
+                          updateStepField
+                        }
+                        onAddChild={addStep}
+                        onDragStart={
+                          handleDragStart
+                        }
+                        onDrop={
+                          handleDrop
+                        }
+                      />
+                    )
+                  )}
                 </div>
 
-                <div className="root-add-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-                  <button className="btn-add-step" onClick={() => {
-                    console.log('[App Debug WorkoutBuilder] Add Run button clicked');
-                    addStep('run', null);
-                  }}>
+                <div
+                  className="root-add-actions"
+                  style={{
+                    marginTop: '16px',
+                    display: 'flex',
+                    gap: '8px',
+                  }}
+                >
+                  <button
+                    className="btn-add-step"
+                    onClick={() => {
+                      console.log(
+                        '[App Debug WorkoutBuilder] Add Run'
+                      );
+
+                      addStep(
+                        'run',
+                        null
+                      );
+                    }}
+                  >
                     + Add Run
                   </button>
-                  <button className="btn-add-step" onClick={() => {
-                    console.log('[App Debug WorkoutBuilder] Add Recovery button clicked');
-                    addStep('recovery', null);
-                  }}>
+
+                  <button
+                    className="btn-add-step"
+                    onClick={() => {
+                      console.log(
+                        '[App Debug WorkoutBuilder] Add Recovery'
+                      );
+
+                      addStep(
+                        'recovery',
+                        null
+                      );
+                    }}
+                  >
                     + Add Recovery
                   </button>
-                  <button className="btn-add-step" onClick={() => {
-                    console.log('[App Debug WorkoutBuilder] Add Repeat Block button clicked');
-                    addStep('repeat', null);
-                  }}>
+
+                  <button
+                    className="btn-add-step"
+                    onClick={() => {
+                      console.log(
+                        '[App Debug WorkoutBuilder] Add Repeat'
+                      );
+
+                      addStep(
+                        'repeat',
+                        null
+                      );
+                    }}
+                  >
                     + Add Repeat Block
                   </button>
                 </div>
               </div>
             )}
           </div>
-
         </div>
 
-        {/* RIGHT PANEL: Full-Height "Updated Live" View (Collapsible) */}
-        <div 
-          className="baseworkout-column-container" 
-          style={{ 
-            width: isRightPanelCollapsed ? '40px' : '400px', 
-            display: 'flex', 
+        {/* RIGHT LIVE BASEWORKOUT PANEL */}
+        <div
+          className="baseworkout-column-container"
+          style={{
+            width:
+              isRightPanelCollapsed
+                ? '40px'
+                : '400px',
+            display: 'flex',
             flexDirection: 'column',
             backgroundColor: '#fafafa',
-            borderLeft: '1px solid #e0e0e0',
-            padding: isRightPanelCollapsed ? '16px 8px' : '16px',
-            transition: 'width 0.2s ease-in-out',
-            overflow: 'hidden'
+            borderLeft:
+              '1px solid #e0e0e0',
+            padding:
+              isRightPanelCollapsed
+                ? '16px 8px'
+                : '16px',
+            transition:
+              'width 0.2s ease-in-out',
+            overflow: 'hidden',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isRightPanelCollapsed ? '0px' : '8px' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent:
+                'space-between',
+              marginBottom:
+                isRightPanelCollapsed
+                  ? '0px'
+                  : '8px',
+            }}
+          >
             {!isRightPanelCollapsed && (
-              <label 
-                htmlFor="baseworkout-input" 
-                style={{ fontWeight: 'bold', fontSize: '14px', whiteSpace: 'nowrap' }}
+              <label
+                htmlFor="baseworkout-input"
+                style={{
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  whiteSpace: 'nowrap',
+                }}
               >
                 Updated Live
               </label>
             )}
+
             <button
               type="button"
               onClick={() => {
-                console.log('[App Debug WorkoutBuilder] Toggle panel collapse button clicked');
-                setIsRightPanelCollapsed((prev) => !prev);
+                console.log(
+                  '[App Debug WorkoutBuilder] Toggle panel collapse'
+                );
+
+                setIsRightPanelCollapsed(
+                  (prev) => !prev
+                );
               }}
-              title={isRightPanelCollapsed ? 'Expand Panel' : 'Collapse Panel'}
+              title={
+                isRightPanelCollapsed
+                  ? 'Expand Panel'
+                  : 'Collapse Panel'
+              }
               style={{
                 background: 'none',
-                border: '1px solid #ccc',
+                border:
+                  '1px solid #ccc',
                 borderRadius: '4px',
                 cursor: 'pointer',
                 padding: '2px 6px',
                 fontSize: '12px',
-                marginLeft: isRightPanelCollapsed ? 'auto' : '0',
-                marginRight: isRightPanelCollapsed ? 'auto' : '0'
+                marginLeft:
+                  isRightPanelCollapsed
+                    ? 'auto'
+                    : '0',
+                marginRight:
+                  isRightPanelCollapsed
+                    ? 'auto'
+                    : '0',
               }}
             >
-              {isRightPanelCollapsed ? '◀' : '▶'}
+              {isRightPanelCollapsed
+                ? '◀'
+                : '▶'}
             </button>
           </div>
 
@@ -633,74 +1255,100 @@ export default function WorkoutBuilder() {
             <textarea
               id="baseworkout-input"
               readOnly
-              value={JSON.stringify(baseWorkout || {}, null, 2)}
+              value={JSON.stringify(
+                baseWorkout || {},
+                null,
+                2
+              )}
               placeholder="No baseWorkout payload available..."
               style={{
                 width: '100%',
                 flex: 1,
-                fontFamily: 'monospace',
+                fontFamily:
+                  'monospace',
                 fontSize: '12px',
                 padding: '12px',
-                backgroundColor: '#f4f4f6',
-                border: '1px solid #ccc',
+                backgroundColor:
+                  '#f4f4f6',
+                border:
+                  '1px solid #ccc',
                 borderRadius: '4px',
                 resize: 'none',
-                overflowY: 'auto'
+                overflowY: 'auto',
               }}
             />
           )}
         </div>
-
       </div>
 
-      {/* Modals */}
+      {/* FOLDER MODAL */}
       {isFolderModalOpen && (
         <Modal_Folder_Create
           onClose={() => {
-            console.log('[App Debug WorkoutBuilder] Modal_Folder_Create onClose');
             setIsFolderModalOpen(false);
           }}
-          onCreate={handleCreateFolder}
+          onCreate={
+            handleCreateFolder
+          }
         />
       )}
 
+      {/* EDIT MODAL */}
       {isEditModalOpen && (
         <Modal_Workout_Edit
           isOpen={isEditModalOpen}
           workouts={savedWorkouts}
           folders={folders}
-          currentFolderId={selectedFolderId}
+          currentFolderId={
+            selectedFolderId
+          }
           workoutMode={workoutMode}
           presets={dynamicPresets}
-          onSelectWorkout={handleSelectWorkout}
+          onSelectWorkout={
+            handleSelectWorkout
+          }
           onClose={() => {
-            console.log('[App Debug WorkoutBuilder] Modal_Workout_Edit onClose');
             setIsEditModalOpen(false);
           }}
         />
       )}
 
+      {/* SAVE MODAL */}
       {isSaveModalOpen && (
         <Modal_Workout_Save
-          title={workoutTitle}
+          isOpen={isSaveModalOpen}
+          saveAsNew={isSaveAsMode}
+          saveTitle={saveTitle}
+          setSaveTitle={setSaveTitle}
+          saveFolderId={saveFolderId}
+          setSaveFolderId={
+            setSaveFolderId
+          }
           folders={folders}
-          selectedFolderId={selectedFolderId}
-          onConfirmSave={handleSaveWorkout}
+          apiLoading={isSaving}
+          onConfirmSave={
+            handleSaveWorkout
+          }
           onClose={() => {
-            console.log('[App Debug WorkoutBuilder] Modal_Workout_Save onClose');
-            setIsSaveModalOpen(false);
-            setIsSaveAsMode(false);
+            console.log(
+              '[Save Flow] Save modal cancelled'
+            );
+
+            if (!isSaving) {
+              setIsSaveModalOpen(false);
+              setIsSaveAsMode(false);
+            }
           }}
         />
       )}
 
+      {/* ZOOM MODAL */}
       {isZoomModalOpen && (
         <Modal_Workout_Zoom
           steps={steps}
           workoutMode={workoutMode}
           presets={dynamicPresets}
           onClose={() => {
-            console.log('[App Debug WorkoutBuilder] Modal_Workout_Zoom onClose');
             setIsZoomModalOpen(false);
           }}
         />
