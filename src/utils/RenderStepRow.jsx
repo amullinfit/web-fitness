@@ -172,6 +172,9 @@ export default function RenderStepRow({
   const childSteps = step.steps || [];
   const iterations = step.reps ?? step.iterations ?? 1;
   const repeatTotals = calculateStepTotals(step, thresholdSecPerMile, zoneList);
+  const durationSec = step.duration ?? step.durationSec ?? 0;
+  const targetPaceSec = getStepPaceInSeconds(step.pace, thresholdSecPerMile, zoneList);
+  const distanceMiles = step.distanceMiles ?? (targetPaceSec > 0 ? durationSec / targetPaceSec : 0);
 
   if (readOnly) {
     const paceText = (() => {
@@ -331,11 +334,6 @@ export default function RenderStepRow({
   }
 
   // Leaf Step values
-  const durationSec = step.duration ?? step.durationSec ?? 0;
-  const targetPaceSec = getStepPaceInSeconds(step.pace, thresholdSecPerMile, zoneList);
-
-  const distanceMiles = step.distanceMiles ?? (targetPaceSec > 0 ? durationSec / targetPaceSec : 0);
-
   const handleDurationChange = (newSec) => {
     onUpdate(step.id, 'duration', newSec);
     onUpdate(step.id, 'durationSec', newSec);
