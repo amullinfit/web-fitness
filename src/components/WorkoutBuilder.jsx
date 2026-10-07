@@ -3,6 +3,7 @@
 //
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useReadOnly } from '../context/ReadOnlyContext.jsx';
 import { usePaces } from '../utils/PacesContext.jsx';
 import '../CSS/WorkoutBuilder.css';
 
@@ -34,6 +35,7 @@ import {
 
 export default function WorkoutBuilder() {
   const { paces } = usePaces();
+  const readOnly = useReadOnly();
 
   // ------------------------------------------------------------
   // Core State
@@ -992,6 +994,7 @@ export default function WorkoutBuilder() {
                   }}
                   placeholder="Workout Title"
                   className="workout-title-input"
+                  disabled={readOnly}
                   style={{
                     fontSize: '18px',
                     padding: '4px 8px',
@@ -1092,14 +1095,14 @@ export default function WorkoutBuilder() {
                   new one to get started.
                 </p>
 
-                <button
-                  className="btn-primary"
-                  onClick={
-                    handleNewWorkout
-                  }
-                >
-                  + Create New Workout
-                </button>
+                {!readOnly && (
+                  <button
+                    className="btn-primary"
+                    onClick={handleNewWorkout}
+                  >
+                    + Create New Workout
+                  </button>
+                )}
               </div>
             ) : (
               <div>
@@ -1132,10 +1135,9 @@ export default function WorkoutBuilder() {
                         index={index}
                         parentId={null}
                         paceDetails={paces}
+                        readOnly={readOnly}
                         onRemove={removeStep}
-                        onUpdate={
-                          updateStepField
-                        }
+                        onUpdate={updateStepField}
                         onAddChild={addStep}
                         onDragStart={
                           handleDragStart
@@ -1148,7 +1150,7 @@ export default function WorkoutBuilder() {
                   )}
                 </div>
 
-                <div
+                {!readOnly && <div
                   className="root-add-actions"
                   style={{
                     marginTop: '16px',
