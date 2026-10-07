@@ -148,7 +148,8 @@ export default function RenderStepRow({
   onUpdate,
   onAddChild,
   onDragStart,
-  onDrop
+  onDrop,
+  readOnly = false
 }) {
   if (!step) return null;
 
@@ -166,6 +167,61 @@ export default function RenderStepRow({
     () => calculateDynamicPresets(paceDetails, thresholdSecPerMile, paceMethod),
     [paceDetails, thresholdSecPerMile, paceMethod]
   );
+
+  if (readOnly) {
+    const paceText = (() => {
+      if (!step.pace) return 'No pace target';
+      if (typeof step.pace === 'number') return formatMMSS(step.pace);
+      if (step.pace.units === 'secs') {
+        if (step.pace.start !== undefined || step.pace.end !== undefined) {
+          return `${formatMMSS(Math.min(step.pace.start ?? 0, step.pace.end ?? 0))} - ${formatMMSS(Math.max(step.pace.start ?? 0, step.pace.end ?? 0))}`;
+        }
+        return formatMMSS(step.pace.value ?? 0);
+      }
+      if (step.pace.units === '%pace') return `${step.pace.value ?? step.pace.start ?? '--'}% threshold`;
+      if (step.pace.units === 'pace_zone') return `Zone ${step.pace.value ?? step.pace.start ?? '--'}`;
+      return String(step.pace.value ?? step.pace.start ?? 'No pace target');
+    })();
+
+    if (isRepeat) {
+      return (
+        <div className="repeat-block-container">
+          <div className="repeat-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <strong className="repeat-type-title">Repeat Block × {iterations}</strong>
+            <div className="repeat-summary-badge" style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: '600' }}>
+              Total: {formatTime(repeatTotals.totalSec)} ({formatDistanceFixed(repeatTotals.totalMiles)})
+            </div>
+          </div>
+          <div>
+            {childSteps.map((childStep, childIdx) => (
+              <RenderStepRow
+                key={childStep.id || `child-${childIdx}`}
+                step={childStep}
+                index={childIdx}
+                parentId={step.id}
+                paceDetails={paceDetails}
+                onRemove={onRemove}
+                onUpdate={onUpdate}
+                onAddChild={onAddChild}
+                onDragStart={onDragStart}
+                onDrop={onDrop}
+                readOnly
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    const durationText = stepMode === 'time' ? formatTime(durationSec) : formatDistanceFixed(distanceMiles);
+    return (
+      <div className="workout-step-row read-only-step-row" style={{ padding: '8px 12px', borderBottom: '1px solid #ddd' }}>
+        <strong>{step.type || 'Step'}</strong>
+        <span style={{ marginLeft: '12px' }}>{durationText}</span>
+        <span style={{ marginLeft: '12px' }}>{paceText}</span>
+      </div>
+    );
+  }
 
   const setStepMode = (newMode) => {
     onUpdate(step.id, 'stepMode', newMode);
