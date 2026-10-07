@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react';
 import '../CSS/WorkoutBuilder.css';
+import { useReadOnly } from '../context/ReadOnlyContext.jsx';
 
 export function OptionsMenu({
   mode,
@@ -20,6 +21,7 @@ export function OptionsMenu({
   onCancelEdits,
   onCloseWorkout,
 }) {
+  const readOnly = useReadOnly();
   const [isOpen, setIsOpen] =
     useState(false);
 
@@ -75,19 +77,16 @@ export function OptionsMenu({
       {isOpen && (
         <div className="options-menu-dropdown">
 
-          <button
-            type="button"
-            className="options-menu-item"
-            style={menuButtonStyle}
-            onClick={() =>
-              handleAction(
-                'Create New Workout',
-                onStartCreateNew
-              )
-            }
-          >
-            ➕ Create New Workout
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              className="options-menu-item"
+              style={menuButtonStyle}
+              onClick={() => handleAction('Create New Workout', onStartCreateNew)}
+            >
+              ➕ Create New Workout
+            </button>
+          )}
 
           <button
             type="button"
@@ -103,25 +102,22 @@ export function OptionsMenu({
             📂 Open Existing Workout
           </button>
 
-          <button
-            type="button"
-            className="options-menu-item"
-            style={menuButtonStyle}
-            onClick={() =>
-              handleAction(
-                'Create New Folder',
-                onOpenCreateFolderModal
-              )
-            }
-          >
-            📁 Create New Folder
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              className="options-menu-item"
+              style={menuButtonStyle}
+              onClick={() => handleAction('Create New Folder', onOpenCreateFolderModal)}
+            >
+              📁 Create New Folder
+            </button>
+          )}
 
-          {isEditingOrCreating && (
+          {isEditingOrCreating && !readOnly && (
             <div className="menu-divider" />
           )}
 
-          {isEditingOrCreating && (
+          {isEditingOrCreating && !readOnly && (
             <button
               type="button"
               className="options-menu-item"
@@ -159,17 +155,12 @@ export function OptionsMenu({
             </button>
           )}
 
-          {isEditingOrCreating && (
+          {isEditingOrCreating && !readOnly && (
             <button
               type="button"
               className="options-menu-item"
               style={menuButtonStyle}
-              onClick={() =>
-                handleAction(
-                  'Duplicate Workout',
-                  onDuplicateWorkout
-                )
-              }
+              onClick={() => handleAction('Duplicate Workout', onDuplicateWorkout)}
             >
               📄 Duplicate Workout
             </button>
@@ -225,24 +216,16 @@ export function OptionsMenu({
             </>
           )}
 
-          {isEditingOrCreating && (
+          {isEditingOrCreating && !readOnly && (
             <div className="menu-divider" />
           )}
 
-          {isEditingOrCreating && (
+          {isEditingOrCreating && !readOnly && (
             <button
               type="button"
               className="options-menu-item"
-              style={{
-                ...menuButtonStyle,
-                color: '#dc3545',
-              }}
-              onClick={() =>
-                handleAction(
-                  'Cancel Edits',
-                  onCancelEdits
-                )
-              }
+              style={{ ...menuButtonStyle, color: '#dc3545' }}
+              onClick={() => handleAction('Cancel Edits', onCancelEdits)}
             >
               ↩️ Cancel Edits
             </button>
