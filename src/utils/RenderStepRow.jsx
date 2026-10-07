@@ -168,6 +168,11 @@ export default function RenderStepRow({
     [paceDetails, thresholdSecPerMile, paceMethod]
   );
 
+  const isRepeat = step.type === 'repeat' || Boolean(step.reps) || Array.isArray(step.steps);
+  const childSteps = step.steps || [];
+  const iterations = step.reps ?? step.iterations ?? 1;
+  const repeatTotals = calculateStepTotals(step, thresholdSecPerMile, zoneList);
+
   if (readOnly) {
     const paceText = (() => {
       if (!step.pace) return 'No pace target';
@@ -240,14 +245,8 @@ export default function RenderStepRow({
     onUpdate(step.id, 'pace', updatedPaceObj);
   };
 
-  const isRepeat = step.type === 'repeat' || Boolean(step.reps) || Array.isArray(step.steps);
-
   if (isRepeat) {
-    const childSteps = step.steps || [];
-    const iterations = step.reps ?? step.iterations ?? 1;
-
     // Dynamically recalculate aggregate totals for all child iterations
-    const repeatTotals = calculateStepTotals(step, thresholdSecPerMile, zoneList);
 
     return (
       <div
