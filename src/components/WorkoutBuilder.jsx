@@ -1205,7 +1205,7 @@ export default function WorkoutBuilder() {
                   >
                     + Add Repeat Block
                   </button>
-                </div>
+                </div>}
               </div>
             )}
           </div>
