@@ -136,20 +136,12 @@ export function OptionsMenu({
             </button>
           )}
 
-          {isEditingOrCreating && (
+          {isEditingOrCreating && !readOnly && (
             <button
               type="button"
               className="options-menu-item"
               style={menuButtonStyle}
-              onClick={() =>
-                handleAction(
-                  'Save As New Workout',
-                  () =>
-                    onOpenSaveModal?.(
-                      true
-                    )
-                )
-              }
+              onClick={() => handleAction('Save As New Workout', () => onOpenSaveModal?.(true))}
             >
               📋 Save As New Workout
             </button>
