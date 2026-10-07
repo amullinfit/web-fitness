@@ -9,7 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
 
 const DEFAULT_VIEW = 'monthly';
-const APP_TITLE = 'Web Fitness';
+const APP_TITLE = 'Web Fitness-Branch';
 
 // Timestamped logger utility
 const originalLog = console.log;
