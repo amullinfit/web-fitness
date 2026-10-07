@@ -7,7 +7,6 @@ export const FALLBACK_THRESHOLD = 540;
 
 // Declare API endpoints
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
-const VAL_MY_PACES_URL = '/api/val-my-paces';
 
 const isReadOnlyMode = () =>
   typeof window !== 'undefined' &&
@@ -456,36 +455,6 @@ export async function saveWorkoutApi(payload, isNew = false) {
   }
 }
 
-export async function fetchMyPacesApi() {
-  console.log(
-    '[App Debug BuilderHelpers] fetchMyPacesApi called'
-  );
-
-  try {
-    const res = await fetch(
-      VAL_MY_PACES_URL,
-      {
-        method: 'GET'
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error(
-        `HTTP ${res.status}: Failed to fetch paces`
-      );
-    }
-
-    return await res.json();
-  } catch (err) {
-    console.error(
-      '[App Debug BuilderHelpers] fetchMyPacesApi error:',
-      err
-    );
-
-    throw err;
-  }
-}
-
 // ============================================================
 // FORMATTING & PARSING HELPERS
 // ============================================================
@@ -919,43 +888,6 @@ export const addIdsToBaseWorkout = (
     workout_doc: {
       ...baseWorkout.workout_doc,
       steps: processSteps(
-        baseWorkout.workout_doc.steps
-      )
-    }
-  };
-};
-
-export const removeIdsFromBaseWorkout = (
-  baseWorkout
-) => {
-  if (
-    !baseWorkout?.workout_doc?.steps
-  ) {
-    return baseWorkout;
-  }
-
-  const stripStepId = (steps) => {
-    return steps.map((step) => {
-      const {
-        id,
-        steps: childSteps,
-        ...cleanStep
-      } = step;
-
-      if (Array.isArray(childSteps)) {
-        cleanStep.steps =
-          stripStepId(childSteps);
-      }
-
-      return cleanStep;
-    });
-  };
-
-  return {
-    ...baseWorkout,
-    workout_doc: {
-      ...baseWorkout.workout_doc,
-      steps: stripStepId(
         baseWorkout.workout_doc.steps
       )
     }
