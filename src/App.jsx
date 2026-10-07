@@ -7,10 +7,10 @@ import WorkoutBuilder from './components/WorkoutBuilder.jsx';
 import GearView from './components/GearView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
-import { ReadOnlyProvider } from './context/ReadOnlyContext.jsx';
+import { ReadOnlyProvider, useReadOnly } from './context/ReadOnlyContext.jsx';
 
 const DEFAULT_VIEW = 'monthly';
-const APP_TITLE = 'Web Fitness-Stage 2';
+const APP_TITLE = 'Web Fitness - Stage 3';
 
 // Timestamped logger utility
 const originalLog = console.log;
@@ -49,6 +49,7 @@ function HeaderBar({
   themeView,
 }) {
   const { paces, loading } = usePaces();
+  const readOnly = useReadOnly();
   const navRef = useRef(null);
 
   useEffect(() => {
@@ -118,7 +119,7 @@ function HeaderBar({
         }}
         title="Go to Monthly View"
       >
-        {APP_TITLE}
+        {APP_TITLE}{readOnly ? ' - Read-Only' : ''}
         {loading && ' (Loading...)'}
         {!loading && paces?.name && ` - ${paces.name}`}
       </h1>

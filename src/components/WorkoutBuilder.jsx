@@ -454,6 +454,7 @@ export default function WorkoutBuilder() {
     overrideTitle,
     overrideFolderId
   ) => {
+    if (readOnly) return;
     console.log(
       '[Save Flow Builder 1/8] handleSaveWorkout invoked',
       {
@@ -662,6 +663,7 @@ export default function WorkoutBuilder() {
   // ============================================================
 
   const handleDuplicateWorkout = () => {
+    if (readOnly) return;
     console.log(
       '[App Debug WorkoutBuilder] handleDuplicateWorkout invoked'
     );
@@ -841,6 +843,7 @@ export default function WorkoutBuilder() {
   const handleCreateFolder = async (
     folderName
   ) => {
+    if (readOnly) return;
     console.log(
       '[App Debug WorkoutBuilder] handleCreateFolder invoked:',
       folderName

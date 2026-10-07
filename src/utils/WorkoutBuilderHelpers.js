@@ -9,6 +9,10 @@ export const FALLBACK_THRESHOLD = 540;
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
 const VAL_MY_PACES_URL = '/api/val-my-paces';
 
+const isReadOnlyMode = () =>
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('readonly') === 'true';
+
 export const DEFAULT_THRESHOLD = (paces) => {
   return paces?.threshold_pace || FALLBACK_THRESHOLD;
 };
@@ -108,6 +112,7 @@ export async function fetchWorkoutsApi(folderId = null) {
 }
 
 export async function createFolderApi(folderName) {
+  if (isReadOnlyMode()) throw new Error('Read-only mode prevents creating folders.');
   console.log(
     '[App Debug BuilderHelpers] createFolderApi called with folderName:',
     folderName
@@ -172,6 +177,7 @@ export async function createFolderApi(folderName) {
  * workout document/description as the user edits the workout.
  */
 export async function saveWorkoutApi(payload, isNew = false) {
+  if (isReadOnlyMode()) throw new Error('Read-only mode prevents saving workouts.');
   console.log(
     '[Save Flow 1/8] saveWorkoutApi called',
     {

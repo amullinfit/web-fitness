@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useReadOnly } from '../context/ReadOnlyContext.jsx';
 
 const GEAR_REMOVE_URL = "/api/val-gear-remove";
 const GEAR_ADD_URL = "/api/val-gear-add";
@@ -54,6 +55,7 @@ export const getGearInfo = (workout) => {
 };
 
 export function useGearManagement(workouts, setWorkouts) {
+  const readOnly = useReadOnly();
   const [removingGearId, setRemovingGearId] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [modalWorkoutId, setModalWorkoutId] = useState(null);
@@ -69,6 +71,7 @@ export function useGearManagement(workouts, setWorkouts) {
   };
 
   const handleRemoveGear = async (workoutId, gearId) => {
+    if (readOnly) return;
     if (!workoutId || !gearId) {
       console.warn("Cannot remove gear: missing workoutId or gearId", { workoutId, gearId });
       showErrorMessage("Cannot remove gear: Missing Workout ID or Gear ID.");
@@ -157,6 +160,7 @@ export function useGearManagement(workouts, setWorkouts) {
   };
 
   const handleAddGear = async (workoutId, gearId) => {
+    if (readOnly) return;
     if (!workoutId || !gearId) {
       showErrorMessage("Cannot add gear: Missing Workout ID or Gear ID.");
       return;
