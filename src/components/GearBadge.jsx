@@ -32,7 +32,7 @@ export default function GearBadge({ workout, removingGearId, onRemoveGear, onOpe
           </div>
         </span>
       ) : (
-        {!readOnly && (
+        readOnly ? null : (
           <button
             type="button"
             className="add-btn"
