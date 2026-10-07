@@ -7,6 +7,7 @@ import WorkoutBuilder from './components/WorkoutBuilder.jsx';
 import GearView from './components/GearView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
+import { ReadOnlyProvider } from './context/ReadOnlyContext.jsx';
 
 const DEFAULT_VIEW = 'monthly';
 const APP_TITLE = 'Web Fitness-Branch';
@@ -223,7 +224,8 @@ export default function App() {
   const ActiveComponent = activeTabConfig.component;
 
   return (
-    <PacesProvider>
+    <ReadOnlyProvider>
+      <PacesProvider>
       <div
         style={{
           ...getThemeStyles(),
@@ -274,7 +276,8 @@ export default function App() {
           </ErrorBoundary>
         </main>
       </div>
-    </PacesProvider>
+      </PacesProvider>
+    </ReadOnlyProvider>
   );
 }
 
