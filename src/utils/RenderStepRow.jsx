@@ -177,19 +177,43 @@ export default function RenderStepRow({
   const distanceMiles = step.distanceMiles ?? (targetPaceSec > 0 ? durationSec / targetPaceSec : 0);
 
   if (readOnly) {
-    const paceText = (() => {
-      if (!step.pace) return 'No pace target';
-      if (typeof step.pace === 'number') return formatMMSS(step.pace);
-      if (step.pace.units === 'secs') {
-        if (step.pace.start !== undefined || step.pace.end !== undefined) {
-          return `${formatMMSS(Math.min(step.pace.start ?? 0, step.pace.end ?? 0))} - ${formatMMSS(Math.max(step.pace.start ?? 0, step.pace.end ?? 0))}`;
-        }
-        return formatMMSS(step.pace.value ?? 0);
+    const isRange = step.pace && typeof step.pace === 'object' &&
+      (step.pace.start !== undefined || step.pace.end !== undefined);
+    let paceText = 'No pace target';
+    let descriptivePace = '';
+
+    if (step.pace) {
+      if (step.pace.units === '%pace') {
+        const startPct = step.pace.start ?? step.pace.value ?? 100;
+        const endPct = step.pace.end;
+        paceText = isRange ? `${startPct}%–${endPct}% threshold` : `${step.pace.value ?? startPct}% threshold`;
+        const startPace = formatMMSS(calculatePaceFromPct(startPct, thresholdSecPerMile));
+        const endPace = endPct !== undefined ? formatMMSS(calculatePaceFromPct(endPct, thresholdSecPerMile)) : '';
+        descriptivePace = endPace ? `${startPace}–${endPace} /mi` : `${startPace} /mi`;
+      } else if (step.pace.units === 'pace_zone') {
+        const startZoneValue = step.pace.start ?? step.pace.value;
+        const endZoneValue = step.pace.end;
+        const startZone = findZoneItem(zoneList, startZoneValue);
+        const endZone = endZoneValue !== undefined ? findZoneItem(zoneList, endZoneValue) : null;
+        const zoneLabel = (value, zone) => zone?.zone_name || zone?.name || zone?.label || `Zone ${value ?? '--'}`;
+        const startPace = getZoneTargetPaceSec(startZone);
+        const endPace = getZoneTargetPaceSec(endZone);
+        paceText = endZoneValue !== undefined
+          ? `${zoneLabel(startZoneValue, startZone)}–${zoneLabel(endZoneValue, endZone)}`
+          : zoneLabel(startZoneValue, startZone);
+        descriptivePace = endZoneValue !== undefined
+          ? `${startPace > 0 ? formatMMSS(startPace) : '--:--'}–${endPace > 0 ? formatMMSS(endPace) : '--:--'} /mi`
+          : `${startPace > 0 ? formatMMSS(startPace) : '--:--'} /mi`;
+      } else if (step.pace.units === 'secs') {
+        paceText = isRange
+          ? `${formatMMSS(Math.min(step.pace.start ?? 0, step.pace.end ?? 0))}–${formatMMSS(Math.max(step.pace.start ?? 0, step.pace.end ?? 0))} /mi`
+          : `${formatMMSS(step.pace.value ?? 0)} /mi`;
+      } else if (typeof step.pace === 'number') {
+        paceText = `${formatMMSS(step.pace)} /mi`;
+      } else {
+        paceText = String(step.pace.value ?? step.pace.start ?? 'No pace target');
       }
-      if (step.pace.units === '%pace') return `${step.pace.value ?? step.pace.start ?? '--'}% threshold`;
-      if (step.pace.units === 'pace_zone') return `Zone ${step.pace.value ?? step.pace.start ?? '--'}`;
-      return String(step.pace.value ?? step.pace.start ?? 'No pace target');
-    })();
+    }
 
     if (isRepeat) {
       return (
@@ -221,12 +245,19 @@ export default function RenderStepRow({
       );
     }
 
-    const durationText = stepMode === 'time' ? formatTime(durationSec) : formatDistanceFixed(distanceMiles);
+    const totalDistanceMiles = stepMode === 'time'
+      ? (targetPaceSec > 0 ? durationSec / targetPaceSec : 0)
+      : distanceMiles;
+    const totalDurationSec = stepMode === 'time'
+      ? durationSec
+      : distanceMiles * targetPaceSec;
+
     return (
-      <div className="workout-step-row read-only-step-row" style={{ padding: '8px 12px', borderBottom: '1px solid #ddd' }}>
-        <strong>{step.type || 'Step'}</strong>
-        <span style={{ marginLeft: '12px' }}>{durationText}</span>
-        <span style={{ marginLeft: '12px' }}>{paceText}</span>
+      <div className="workout-step-row read-only-step-row" style={{ padding: '8px 12px', borderBottom: '1px solid #ddd', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <strong className="step-type-label">{step.intensity || step.type || 'step'}</strong>
+        <span><strong>Time:</strong> {formatTime(totalDurationSec)}</span>
+        <span><strong>Pace:</strong> {paceText}{descriptivePace ? ` (${descriptivePace})` : ''}</span>
+        <span><strong>Distance:</strong> {formatDistanceFixed(totalDistanceMiles)}</span>
       </div>
     );
   }
