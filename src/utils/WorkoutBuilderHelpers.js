@@ -21,34 +21,6 @@ export const DEFAULT_THRESHOLD = (paces) => {
 // API FUNCTIONS
 // ============================================================
 
-export async function fetchFoldersApi() {
-  console.log('[App Debug BuilderHelpers] fetchFoldersApi called');
-
-  try {
-    const res = await fetch(
-      `${VAL_WORKOUTBUILDER_URL}?action=get_folders`,
-      { method: 'GET' }
-    );
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: Failed to fetch folders`);
-    }
-
-    const data = await res.json();
-
-    return Array.isArray(data)
-      ? data
-      : (data.folders || []);
-  } catch (err) {
-    console.error(
-      '[App Debug BuilderHelpers] fetchFoldersApi error:',
-      err
-    );
-
-    throw err;
-  }
-}
-
 export async function fetchWorkoutsApi(folderId = null) {
   console.log(
     '[App Debug BuilderHelpers] fetchWorkoutsApi called with folderId:',
