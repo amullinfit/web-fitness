@@ -10,7 +10,8 @@ import {
   calculatePaceFromPct,
   calculatePctFromPace,
   calculatePaceFromZone,
-  convertStepPaceTarget
+  convertStepPaceTarget,
+  getDescriptiveText
 } from '../utils/WorkoutConverter.js';
 
 const METERS_PER_MILE = 1609.344;
@@ -203,7 +204,7 @@ export default function RenderStepRow({
           : zoneLabel(startZoneValue, startZone);
         descriptivePace = endZoneValue !== undefined
           ? `${startPace > 0 ? formatMMSS(startPace) : '--:--'}–${endPace > 0 ? formatMMSS(endPace) : '--:--'} /mi`
-          : `${startPace > 0 ? formatMMSS(startPace) : '--:--'} /mi`;
+          : `${getDescriptiveText(step.pace, zoneList) || (startPace > 0 ? formatMMSS(startPace) : '--:--')} /mi`;
       } else if (step.pace.units === 'secs') {
         paceText = isRange
           ? `${formatMMSS(Math.min(step.pace.start ?? 0, step.pace.end ?? 0))}–${formatMMSS(Math.max(step.pace.start ?? 0, step.pace.end ?? 0))} /mi`
@@ -525,7 +526,7 @@ export default function RenderStepRow({
         const currentZoneKey = String(matchedZone?.zone ?? matchedZone?.id ?? rawZoneVal ?? defaultZoneVal);
 
         const zonePaceSec = getZoneTargetPaceSec(matchedZone);
-        const displayPaceStr = zonePaceSec > 0 ? formatMMSS(zonePaceSec) : '--:--';
+        const displayPaceStr = getDescriptiveText(step.pace, zoneList) || (zonePaceSec > 0 ? formatMMSS(zonePaceSec) : '--:--');
 
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
