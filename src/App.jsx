@@ -10,7 +10,7 @@ import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
 import { ReadOnlyProvider, useReadOnly } from './context/ReadOnlyContext.jsx';
 
 const DEFAULT_VIEW = 'monthly';
-const APP_TITLE = 'Web Fitness - Stage 4D-6: Consolidate Daily/Monthly feed merging';
+const APP_TITLE = 'Web Fitness - Stage 4D-8: Build and deploy test';
 
 // Timestamped logger utility
 const originalLog = console.log;
