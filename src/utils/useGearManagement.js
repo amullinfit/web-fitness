@@ -1,34 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useReadOnly } from '../context/ReadOnlyContext.jsx';
+import {
+  getDistanceInMiles,
+  hasRetiredDate,
+  isShoeGear,
+  isUnassignedActivity,
+  sortByDistanceDesc,
+} from './GearHelpers.js';
 
 const GEAR_REMOVE_URL = "/api/val-gear-remove";
 const GEAR_ADD_URL = "/api/val-gear-add";
 const GEAR_URL = "/api/val-gear";
-
-const getDistanceInMiles = (gear) => {
-  if (gear.distance_miles !== undefined) return gear.distance_miles;
-  if (gear.distance_m !== undefined) return gear.distance_m / 1609.34;
-  if (gear.distance !== undefined) {
-    return gear.distance > 5000 ? gear.distance / 1609.34 : gear.distance;
-  }
-  return 0;
-};
-
-const isShoeGear = (gear) => {
-  const type = (gear.type || '').toLowerCase();
-  return type.includes('shoe');
-};
-
-const isUnassignedActivity = (gear) => {
-  const name = (gear.name || '').toUpperCase();
-  return name.includes('NOT ASSIGNED A SHOE') || name.includes('NOT TRACKED');
-};
-
-const hasRetiredDate = (gear) => Boolean(gear.retired);
-
-const sortByDistanceDesc = (items) => {
-  return [...items].sort((a, b) => getDistanceInMiles(b) - getDistanceInMiles(a));
-};
 
 export const isWorkoutCompleted = (workout) => {
   if (workout?.feedSource === 'HISTORICAL') return true;
