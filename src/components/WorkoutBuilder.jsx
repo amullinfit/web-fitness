@@ -22,7 +22,6 @@ import Modal_Workout_Save from '../modals/Modal_Workout_Save';
 import Modal_Workout_Zoom from '../modals/Modal_Workout_Zoom';
 
 import {
-  fetchFoldersApi,
   fetchWorkoutsApi,
   createFolderApi,
   saveWorkoutApi,
@@ -200,34 +199,18 @@ export default function WorkoutBuilder() {
     async function initData() {
       try {
         console.log(
-          '[App Debug WorkoutBuilder] Fetching folders...'
+          '[App Debug WorkoutBuilder] Fetching folders and workouts...'
         );
 
-        const fetchedFolders = await fetchFoldersApi();
+        const fetchedData = await fetchWorkoutsApi();
 
         console.log(
-          '[App Debug WorkoutBuilder] Folders received:',
-          fetchedFolders
+          '[App Debug WorkoutBuilder] Folders and workouts received:',
+          fetchedData
         );
 
-        setFolders(fetchedFolders || []);
-
-        console.log(
-          '[App Debug WorkoutBuilder] Fetching workouts...'
-        );
-
-        const fetchedWorkouts = await fetchWorkoutsApi();
-
-        console.log(
-          '[App Debug WorkoutBuilder] Workouts response received:',
-          fetchedWorkouts
-        );
-
-        const workoutsArray = Array.isArray(fetchedWorkouts)
-          ? fetchedWorkouts
-          : fetchedWorkouts?.workouts || [];
-
-        setSavedWorkouts(workoutsArray);
+        setFolders(fetchedData?.folders || []);
+        setSavedWorkouts(fetchedData?.workouts || []);
 
         console.log(
           '[App Debug WorkoutBuilder] Initial data load complete'
