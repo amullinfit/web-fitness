@@ -397,6 +397,18 @@ const getZoneList = (pacesInput) => {
     const secs = Math.round(totalSec % 60);
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   }
+
+  // Pace values are seconds per mile, so lower values are faster.
+  export function formatPaceRange(fastSec, slowSec, suffix = "") {
+    if (!fastSec && !slowSec) return "";
+    if (!fastSec) return `${formatSecPerMileToStr(slowSec)}${suffix}`;
+    if (!slowSec) return `${formatSecPerMileToStr(fastSec)}${suffix}`;
+
+    const fast = Math.min(fastSec, slowSec);
+    const slow = Math.max(fastSec, slowSec);
+    if (fast === slow) return `${formatSecPerMileToStr(fast)}${suffix}`;
+    return `${formatSecPerMileToStr(fast)} - ${formatSecPerMileToStr(slow)}${suffix}`;
+  }
   
   /**
    * Finds matching zone number (1..N) from preset_colors for a given pace in seconds per mile.
@@ -481,7 +493,7 @@ const getZoneList = (pacesInput) => {
         fastSec = Math.min(stepPace.start, stepPace.end);
         slowSec = Math.max(stepPace.start, stepPace.end);
         midSec  = Math.round((fastSec + slowSec)/2);
-        descriptiveLabel = `${formatSecPerMileToStr(slowSec)} - ${formatSecPerMileToStr(fastSec)}/mi`;
+        descriptiveLabel = formatPaceRange(fastSec, slowSec, "/mi");
       }
     }
   
@@ -498,7 +510,7 @@ const getZoneList = (pacesInput) => {
           let slowStr = cleanPaceStr(zObj.pace_slow);
           if (!slowStr || slowStr === "0:00") slowStr = formatSecPerMileToStr(slowSec);
   
-          descriptiveLabel = `Zone ${stepPace.value} (${slowStr} - ${fastStr})`;
+          descriptiveLabel = `Zone ${stepPace.value} (${formatPaceRange(parsePaceStrToSec(fastStr), parsePaceStrToSec(slowStr))})`;
         }
       } else if (stepPace.start != null && stepPace.end != null && zones.length) {
         const slowZ = findZone(Math.min(stepPace.start, stepPace.end));
@@ -513,7 +525,7 @@ const getZoneList = (pacesInput) => {
           let slowPaceStr = cleanPaceStr(slowZ.pace_slow);
           if (!slowPaceStr || slowPaceStr === "0:00") slowPaceStr = formatSecPerMileToStr(slowSec);
   
-          descriptiveLabel = `Z${stepPace.start}-${stepPace.end} (${slowPaceStr} - ${fastPaceStr})`;
+          descriptiveLabel = `Z${stepPace.start}-${stepPace.end} (${formatPaceRange(parsePaceStrToSec(fastPaceStr), parsePaceStrToSec(slowPaceStr))})`;
         }
       }
     }
@@ -533,7 +545,7 @@ const getZoneList = (pacesInput) => {
         slowSec = convertPctToPaceSec(slowPct, thresholdSec);
         midSec  = Math.round((fastSec + slowSec)/2);
   
-        descriptiveLabel = `${slowPct}%-${fastPct}% Threshold (${formatSecPerMileToStr(slowSec)} - ${formatSecPerMileToStr(fastSec)}/mi)`;
+        descriptiveLabel = `${slowPct}%-${fastPct}% Threshold (${formatPaceRange(fastSec, slowSec, "/mi")})`;
       }
     }
   

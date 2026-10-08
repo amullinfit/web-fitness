@@ -1,6 +1,7 @@
 //
 // WorkoutBuilderHelpers.js
 //
+import { formatPaceRange } from './WorkoutChartHelpers.js';
 
 // Module-level fallback constant for threshold in sec/mi
 export const FALLBACK_THRESHOLD = 540;
@@ -670,8 +671,7 @@ export function calculateDynamicPresets(
       p.pace_slow &&
       p.pace_fast
     ) {
-      displayPace =
-        `${p.pace_slow}-${p.pace_fast}`;
+      displayPace = formatPaceRange(parseMMSS(p.pace_fast), parseMMSS(p.pace_slow));
 
     } else if (
       paceMethod?.includes('Range')
@@ -682,8 +682,7 @@ export function calculateDynamicPresets(
       const highPace =
         Math.round(paceSec * 1.03);
 
-      displayPace =
-        `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
+      displayPace = formatPaceRange(lowPace, highPace);
     }
 
     return {

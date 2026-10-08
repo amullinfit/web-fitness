@@ -3,7 +3,8 @@
  */
 
 import {
-  formatSecPerMileToStr
+  formatSecPerMileToStr,
+  formatPaceRange
 } from './WorkoutChartHelpers.js'
 
 export function convertStepsToWorkout(steps) {
@@ -440,9 +441,7 @@ export function getDescriptiveText(step, pacesInput) {
 
     if (secA === secB) return formatSecPerMileToStr(secA);
 
-    const fastSec = Math.min(secA, secB);
-    const slowSec = Math.max(secA, secB);
-    return `${formatSecPerMileToStr(fastSec)} - ${formatSecPerMileToStr(slowSec)}`;
+    return formatPaceRange(secA, secB);
   };
 
   // -------------------------------------------------------------------------

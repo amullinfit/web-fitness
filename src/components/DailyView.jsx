@@ -4,55 +4,17 @@ import WorkoutTextSection from '../utils/WorkoutTextSection';
 import Modal_AddGear from '../modals/Modal_AddGear';
 import GearBadge from './GearBadge';
 import { useGearManagement, isWorkoutCompleted } from '../utils/useGearManagement';
+import { useIsMobile, safeStringLower, getLocalDateString } from '../utils/MonthlyViewHelpers.jsx';
 import '../CSS/DailyView.css';
 import { usePaces } from '../utils/PacesContext.jsx'; 
 
 const VAL_WORKOUTS_URL = "/api/val-workouts";
 const HISTORICAL_URL = "/api/val-historical";
 
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth < breakpoint
-  );
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
-    const handleChange = (e) => setIsMobile(e.matches);
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [breakpoint]);
-
-  return isMobile;
-}
-
-const safeStringLower = (val) => {
-  if (!val) return "";
-  if (typeof val === 'string') return val.toLowerCase();
-  return String(val.id || val.type || val.name || val).toLowerCase();
-};
-
 const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
   return contextPaces?.threshold_pace || null;
 };
 
-const getLocalDateString = (dateInput) => {
-  if (!dateInput) return '';
-
-  if (typeof dateInput === 'string') {
-    if (dateInput.includes('T')) return dateInput.split('T')[0];
-    if (dateInput.length >= 10) return dateInput.slice(0, 10);
-  }
-
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return '';
-
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-};
 
 export default function DailyView() {
   const { paces } = usePaces();
