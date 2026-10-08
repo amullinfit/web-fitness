@@ -14,6 +14,38 @@ import '../CSS/GearView.css';
 const GEAR_URL = "/api/val-gear";
 const DEFAULT_MAX_SHOE_MILES = 400;
 
+/**
+ * Extracts threshold distance (in miles) from gear reminders.
+ * Scans for reminder names starting with "Max Usage", "Max Dist", or "Max Distance".
+ */
+const getThresholdFromReminders = (gear) => {
+  if (!Array.isArray(gear?.reminders)) return null;
+
+  const targetPrefixes = ['max usage', 'max dist', 'max distance'];
+
+  const match = gear.reminders.find((r) => {
+    if (!r || !r.name) return false;
+    const lowerName = r.name.toLowerCase().trim();
+    return targetPrefixes.some((prefix) => lowerName.startsWith(prefix));
+  });
+
+  if (match && typeof match.distance === 'number' && match.distance > 0) {
+    return match.distance > 5000 ? match.distance / 1609.34 : match.distance;
+  }
+
+  return null;
+};
+
+/**
+ * Helper to format date strings cleanly
+ */
+const formatRetiredDate = (dateVal) => {
+  if (typeof dateVal === 'boolean') return 'Retired';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return String(dateVal);
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+};
+
 export default function GearView({ gearList: initialGearList }) {
   const [gearData, setGearData] = useState(initialGearList || []);
   const [loading, setLoading] = useState(!initialGearList || initialGearList.length === 0);
