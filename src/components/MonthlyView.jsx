@@ -9,15 +9,16 @@ import { usePaces } from '../utils/PacesContext.jsx';
 
 import {
   useIsMobile,
-  safeStringLower,
   getSportCategory,
   getThresholdPaceForSport,
   getLocalDateString,
   isWorkoutCompleted,
   getMondayOfWeek,
   getFourWeeksDates,
-  metersToMilesNum
+  metersToMilesNum,
+  safeStringLower
 } from '../utils/MonthlyViewHelpers.jsx';
+import { mergeMonthlyWorkoutFeeds } from '../utils/WorkoutFeedHelpers.js';
 
 import {
   WeeklyFrameChart,
@@ -81,115 +82,12 @@ export default function MonthlyView() {
         if (valRes.status === 'rejected') console.error(valRes.reason);
         if (histRes.status === 'rejected') console.error(histRes.reason);
   
-        const valList = (valJson?.planned || valJson?.workouts || (Array.isArray(valJson) ? valJson : []))
-          .map((item) => ({ ...item, feedSource: 'WORKOUTS' }));
-  
-        const historicalList = (historicalJson?.activities || historicalJson?.workouts || (Array.isArray(historicalJson) ? historicalJson : []))
-          .map((item) => ({ ...item, feedSource: 'HISTORICAL' }));
-  
-        const settings = Array.isArray(valJson?.sportSettings)
-          ? valJson.sportSettings
-          : Array.isArray(historicalJson?.sportSettings)
-          ? historicalJson.sportSettings
-          : [];
-  
-        // 1. Pre-index planned workouts
-        const plannedWorkoutsById = new Map();
-        const plannedWorkoutsByDateType = new Map(); // Key -> Array of workouts
-  
-        for (const workout of valList) {
-          if (!workout) continue;
-  
-          if (workout.id != null) {
-            plannedWorkoutsById.set(String(workout.id), workout);
-          }
-  
-          const dateStr = workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date;
-          const itemDate = dateStr ? getLocalDateString(dateStr) : '';
-          const itemType = safeStringLower(workout.type || workout.sport || 'workout');
-  
-          if (itemDate) {
-            const key = `${itemDate}-${itemType}`;
-            const existing = plannedWorkoutsByDateType.get(key) || [];
-            existing.push(workout);
-            plannedWorkoutsByDateType.set(key, existing);
-          }
-        }
-  
-        const pairedEventIds = new Set();
-  
-        // 2. Process historical items
-        const updatedHistoricalList = historicalList.map((item) => {
-          if (!item) return item;
-        
-          let plannedMatch = null;
-        
-          if (item.paired_event_id !== null && item.paired_event_id !== undefined) {
-            const pairedIdStr = String(item.paired_event_id);
-            pairedEventIds.add(pairedIdStr);
-            plannedMatch = plannedWorkoutsById.get(pairedIdStr);
-          }
-        
-          if (!plannedMatch) {
-            const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
-            const itemType = safeStringLower(item.type || item.sport || 'workout');
-            plannedMatch = plannedWorkoutsByDateType.get(`${itemDate}-${itemType}`);
-        
-            if (plannedMatch && plannedMatch.id) {
-              pairedEventIds.add(String(plannedMatch.id));
-            }
-          }
-        
-          if (plannedMatch) {
-            const plannedName = plannedMatch.name || plannedMatch.title;
-            return {
-              ...item,
-              // Preserve or override name/title
-              name: plannedName || item.name || item.title,
-              title: plannedName || item.title || item.name,
-              
-              // Explicitly pull workout_doc from historical first, falling back to planned
-              workout_doc: item.workout_doc || plannedMatch.workout_doc || null,
-              
-              // FIX: Explicitly preserve intervals from historical first, falling back to planned match
-              intervals: (item.intervals && item.intervals.length > 0) 
-                ? item.intervals 
-                : (plannedMatch.intervals || item.intervals || null),
-                
-              // Explicitly pull description from historical first, falling back to planned
-              description: item.description || plannedMatch.description || ''
-            };
-          }
-        
-          return item;
-        });
-          
-        // 3. Filter out paired planned workouts
-        const remainingValList = valList.filter((workout) => {
-          if (!workout || workout.id == null) return true;
-          return !pairedEventIds.has(String(workout.id));
-        });
-  
-        // 4. Merge and deduplicate in a single pass
-        const mergedList = [];
-        const seenKeys = new Set();
-  
-        for (const item of [...updatedHistoricalList, ...remainingValList]) {
-          if (!item) continue;
-          const dateStr = item.start_date_local || item.icu_start_date || item.start_date || item.date;
-          const itemDate = dateStr ? getLocalDateString(dateStr) : '';
-          const itemType = safeStringLower(item.type || item.sport || 'workout');
-  
-          const uniqueKey = item.id != null
-            ? String(item.id)
-            : `${item.name || itemType}-${itemDate}-${item.feedSource}`;
-  
-          if (!seenKeys.has(uniqueKey)) {
-            seenKeys.add(uniqueKey);
-            mergedList.push(item);
-          }
-        }
-  
+        const { workouts: mergedList, sportSettings: settings } = mergeMonthlyWorkoutFeeds(
+          valJson,
+          historicalJson,
+          { getLocalDateString, safeStringLower }
+        );
+
         setWorkouts(mergedList);
         setSportSettings(settings);
       } catch (err) {

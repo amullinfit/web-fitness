@@ -5,6 +5,7 @@ import Modal_AddGear from '../modals/Modal_AddGear';
 import GearBadge from './GearBadge';
 import { useGearManagement, isWorkoutCompleted } from '../utils/useGearManagement';
 import { useIsMobile, safeStringLower, getLocalDateString } from '../utils/MonthlyViewHelpers.jsx';
+import { mergeDailyWorkoutFeeds } from '../utils/WorkoutFeedHelpers.js';
 import '../CSS/DailyView.css';
 import { usePaces } from '../utils/PacesContext.jsx'; 
 
@@ -58,93 +59,11 @@ export default function DailyView() {
       .then(([valJson, historicalJson]) => {
         if (!isMounted) return;
 
-        const valList = (valJson?.planned || valJson?.workouts || (Array.isArray(valJson) ? valJson : []))
-          .map((item) => ({ ...item, feedSource: 'WORKOUTS' }));
-
-        const historicalList = (historicalJson?.activities || historicalJson?.workouts || (Array.isArray(historicalJson) ? historicalJson : []))
-          .map((item) => ({ ...item, feedSource: 'HISTORICAL' }));
-
-        const settings = Array.isArray(valJson?.sportSettings)
-          ? valJson.sportSettings
-          : Array.isArray(historicalJson?.sportSettings)
-          ? historicalJson.sportSettings
-          : [];
-
-        const plannedWorkoutsById = new Map();
-        const plannedWorkoutsByDateType = new Map();
-
-        valList.forEach((workout) => {
-          if (!workout) return;
-
-          if (workout.id !== undefined && workout.id !== null) {
-            plannedWorkoutsById.set(String(workout.id), workout);
-          }
-
-          const itemDate = getLocalDateString(workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date);
-          const itemType = safeStringLower(workout.type || workout.sport || 'workout');
-          if (itemDate) {
-            plannedWorkoutsByDateType.set(`${itemDate}-${itemType}`, workout);
-          }
-        });
-
-        const pairedEventIds = new Set();
-
-        const updatedHistoricalList = historicalList.map((item) => {
-          if (!item) return item;
-
-          let plannedMatch = null;
-
-          if (item.paired_event_id !== null && item.paired_event_id !== undefined) {
-            const pairedIdStr = String(item.paired_event_id);
-            pairedEventIds.add(pairedIdStr);
-            plannedMatch = plannedWorkoutsById.get(pairedIdStr);
-          }
-
-          if (!plannedMatch) {
-            const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
-            const itemType = safeStringLower(item.type || item.sport || 'workout');
-            plannedMatch = plannedWorkoutsByDateType.get(`${itemDate}-${itemType}`);
-
-            if (plannedMatch && plannedMatch.id) {
-              pairedEventIds.add(String(plannedMatch.id));
-            }
-          }
-
-          if (plannedMatch) {
-            const plannedName = plannedMatch.name || plannedMatch.title;
-            if (plannedName) {
-              return {
-                ...item,
-                name: plannedName,
-                title: plannedName,
-                workout_doc: item.workout_doc || plannedMatch.workout_doc
-              };
-            }
-          }
-
-          return item;
-        });
-
-        const filteredValList = valList.filter((workout) => {
-          if (!workout || workout.id === undefined || workout.id === null) return true;
-          return !pairedEventIds.has(String(workout.id));
-        });
-
-        const rawMerged = [...updatedHistoricalList, ...filteredValList];
-        const seenKeys = new Set();
-        const mergedList = [];
-
-        for (const item of rawMerged) {
-          if (!item) continue;
-          const itemDate = getLocalDateString(item.start_date_local || item.icu_start_date || item.start_date || item.date);
-          const itemType = safeStringLower(item.type || item.sport || 'workout');
-          const uniqueKey = item.id ? String(item.id) : `${item.name || itemType}-${itemDate}-${item.feedSource}`;
-
-          if (!seenKeys.has(uniqueKey)) {
-            seenKeys.add(uniqueKey);
-            mergedList.push(item);
-          }
-        }
+        const { workouts: mergedList, sportSettings: settings } = mergeDailyWorkoutFeeds(
+          valJson,
+          historicalJson,
+          { getLocalDateString, safeStringLower }
+        );
 
         setWorkouts(mergedList);
         setSportSettings(settings);
