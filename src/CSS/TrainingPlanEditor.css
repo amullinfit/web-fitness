@@ -78,7 +78,10 @@
 .tpe-workout-title-row strong { font-size: 12px; line-height: 1.3; }
 .tpe-workout-title-row span { flex: 0 0 auto; color: #64748b; font-size: 10px; }
 .tpe-library-workout .workout-chart-container { margin-top: 5px; }
-.tpe-workout-meta { color: #6b7280; font-size: 10px; margin-top: 3px; }
+.tpe-workout-meta { color: #6b7280; font-size: 10px; margin-top: 3px; min-width: 0; }
+.tpe-workout-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin-top: 3px; }
+.tpe-quick-add { flex: 0 0 auto; border: 1px solid #a9c4e7; border-radius: 4px; background: rgba(82, 133, 197, .08); color: #315e98; padding: 3px 6px; font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
+.tpe-quick-add:hover { background: rgba(82, 133, 197, .16); border-color: #7ca3d6; }
 .tpe-empty { color: #8992a0; text-align: center; padding: 18px 10px; font-size: 12px; }
 .tpe-library-collapsed { grid-template-columns: 44px minmax(0, 1fr); }
 .tpe-library-collapsed .tpe-library { max-height: none; }
