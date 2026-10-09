@@ -4,6 +4,7 @@ import MonthlyView from './components/MonthlyView.jsx';
 import OptionsView from './components/OptionsView.jsx';
 import GeneralOverview from './components/GeneralOverview.jsx';
 import WorkoutBuilder from './components/WorkoutBuilder.jsx';
+import TrainingPlanEditor from './components/TrainingPlanEditor.jsx';
 import GearView from './components/GearView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
@@ -37,6 +38,7 @@ const TABS = [
   { id: 'monthly', label: 'Monthly View', component: MonthlyView },
   { id: 'overview', label: 'General Overview', component: GeneralOverview },
   { id: 'workout-builder', label: 'Workout Builder', component: WorkoutBuilder },
+  { id: 'training-plan-editor', label: 'Training Plan Editor', component: TrainingPlanEditor },
   { id: 'gear', label: 'Gear', component: GearView },
   { id: 'options', label: 'Options', component: OptionsView },
 ];
