@@ -3,8 +3,8 @@ import WorkoutChart from './WorkoutChart';
 import { fetchWorkoutsApi } from '../utils/WorkoutBuilderHelpers.js';
 import '../CSS/TrainingPlanEditor.css';
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-const WEEKDAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const WEEKDAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const INITIAL_WEEKS = 4;
 
 const makeEmptyWeeks = (count) =>
@@ -205,34 +205,65 @@ export default function TrainingPlanEditor() {
     }
   };
 
-  const handleDrop = (event, weekIndex, dayIndex) => {
+  const handleDrop = (event, targetWeekIndex, targetDayIndex) => {
     event.preventDefault();
-    const raw = event.dataTransfer.getData('application/x-training-plan-workout');
-    if (raw) {
-      try {
-        const payload = JSON.parse(raw);
-        if (payload.source === 'plan') {
-          if (payload.weekIndex === weekIndex && payload.dayIndex === dayIndex) return;
-          const moving = plan.weeks[payload.weekIndex]?.days[payload.dayIndex]?.workouts
-            .find((entry) => entry.entryId === payload.entryId);
-          if (moving) {
-            updateDay(payload.weekIndex, payload.dayIndex, (day) => ({
-              ...day,
-              workouts: day.workouts.filter((entry) => entry.entryId !== payload.entryId),
-            }));
-            addWorkoutToDay(moving.workout, weekIndex, dayIndex);
-          }
-        } else if (payload.source === 'library') {
-          const workout = libraryWorkouts.find((item) => String(item.id) === String(payload.workoutId));
-          if (workout) addWorkoutToDay(workout, weekIndex, dayIndex);
-        }
-      } catch {
-        setStatusMessage('That workout could not be added. Please try dragging it again.');
-      }
-    } else if (draggedWorkout) {
-      addWorkoutToDay(draggedWorkout, weekIndex, dayIndex);
+    event.stopPropagation();
+
+    // Use both a custom MIME type and text/plain: some browsers only preserve
+    // the plain-text payload during native drag-and-drop.
+    const raw = event.dataTransfer.getData('application/x-training-plan-workout')
+      || event.dataTransfer.getData('text/plain');
+
+    if (!raw) {
+      setDraggedWorkout(null);
+      return;
     }
-    setDraggedWorkout(null);
+
+    try {
+      const payload = JSON.parse(raw);
+
+      if (payload.source === 'plan') {
+        const sourceWeekIndex = Number(payload.weekIndex);
+        const sourceDayIndex = Number(payload.dayIndex);
+        const sameDay = sourceWeekIndex === targetWeekIndex && sourceDayIndex === targetDayIndex;
+        if (sameDay) {
+          setDraggedWorkout(null);
+          return;
+        }
+
+        // Move in a single functional state update so the source removal and
+        // destination insertion cannot race or use a stale render's plan.
+        setPlan((current) => {
+          const sourceWeek = current.weeks[sourceWeekIndex];
+          const sourceDay = sourceWeek?.days[sourceDayIndex];
+          const moving = sourceDay?.workouts.find((entry) => entry.entryId === payload.entryId);
+          if (!moving) return current;
+
+          return {
+            ...current,
+            weeks: current.weeks.map((week, wi) => ({
+              ...week,
+              days: week.days.map((day, di) => {
+                if (wi === sourceWeekIndex && di === sourceDayIndex) {
+                  return { ...day, workouts: day.workouts.filter((entry) => entry.entryId !== payload.entryId) };
+                }
+                if (wi === targetWeekIndex && di === targetDayIndex) {
+                  return { ...day, workouts: [...day.workouts, moving] };
+                }
+                return day;
+              }),
+            })),
+          };
+        });
+      } else if (payload.source === 'library') {
+        const workout = libraryWorkouts.find((item) => String(item.id) === String(payload.workoutId));
+        if (workout) addWorkoutToDay(workout, targetWeekIndex, targetDayIndex);
+      }
+    } catch {
+      setStatusMessage('That workout could not be added. Please try dragging it again.');
+    } finally {
+      setDraggedWorkout(null);
+    }
   };
 
   const removeWorkout = (weekIndex, dayIndex, entryId) => {
@@ -361,7 +392,9 @@ export default function TrainingPlanEditor() {
                         onDragStart={(event) => {
                           setDraggedWorkout(workout);
                           event.dataTransfer.effectAllowed = 'copy';
-                          event.dataTransfer.setData('application/x-training-plan-workout', JSON.stringify({ source: 'library', workoutId: workout.id }));
+                          const payload = JSON.stringify({ source: 'library', workoutId: workout.id });
+                          event.dataTransfer.setData('application/x-training-plan-workout', payload);
+                          event.dataTransfer.setData('text/plain', payload);
                         }}
                         title="Drag this workout to a day in the plan"
                       >
@@ -392,7 +425,7 @@ export default function TrainingPlanEditor() {
 
         <section className="tpe-plan-grid-section">
           <div className="tpe-grid-heading">
-            <div><h2>Training Schedule</h2><span>{plan.weeks.length} weeks · Monday–Friday</span></div>
+            <div><h2>Training Schedule</h2><span>{plan.weeks.length} weeks · Monday–Sunday</span></div>
             <button type="button" className="tpe-add-weeks" onClick={addFourWeeks}>+ Add 4 Weeks</button>
           </div>
           <div className="tpe-week-grid-scroll">
@@ -409,7 +442,7 @@ export default function TrainingPlanEditor() {
                       <div
                         key={day.day}
                         className={`tpe-day-dropzone ${day.workouts.length ? 'has-workouts' : ''}`}
-                        onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = draggedWorkout ? 'copy' : 'move'; }}
+                        onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }}
                         onDrop={(event) => handleDrop(event, weekIndex, dayIndex)}
                       >
                         <div className="tpe-day-fullname">{day.day}</div>
@@ -425,13 +458,15 @@ export default function TrainingPlanEditor() {
                                   onDragStart={(event) => {
                                     setDraggedWorkout(entry.workout);
                                     event.dataTransfer.effectAllowed = 'move';
-                                    event.dataTransfer.setData('application/x-training-plan-workout', JSON.stringify({
+                                    const payload = JSON.stringify({
                                       source: 'plan',
                                       workoutId: entry.workout.id,
                                       entryId: entry.entryId,
                                       weekIndex,
                                       dayIndex,
-                                    }));
+                                    });
+                                    event.dataTransfer.setData('application/x-training-plan-workout', payload);
+                                    event.dataTransfer.setData('text/plain', payload);
                                   }}
                                 >
                                   <div className="tpe-planned-workout-heading">
@@ -466,13 +501,13 @@ export default function TrainingPlanEditor() {
               })}
             </div>
           </div>
-          <div className="tpe-grid-footnote">Drag from the library to add a workout. Drag a scheduled workout to another day to move it. Weekends are intentionally omitted from this plan grid.</div>
+          <div className="tpe-grid-footnote">Drag from the library to add a workout. Drag a scheduled workout to any other day to move it.</div>
         </section>
       </div>
 
       <section className="tpe-summary-section">
         <div className="tpe-summary-heading">
-          <div><h2>Weekly Mileage Summary</h2><p>Estimated miles planned each week, for easy comparison.</p></div>
+          <div><h2>Totals</h2><p>Estimated miles planned each week, for easy comparison.</p></div>
           <div className="tpe-summary-total"><span>Plan total</span><strong>{formatMiles(totalMiles)} mi</strong><small>{formatDuration(totalSeconds)} estimated</small></div>
         </div>
         <div className="tpe-mileage-chart" role="img" aria-label="Bar chart comparing estimated planned miles by week">
