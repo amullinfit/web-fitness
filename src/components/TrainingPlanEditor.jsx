@@ -367,7 +367,7 @@ export default function TrainingPlanEditor() {
             onChange={handleRenamePlan}
             placeholder="Training plan name"
           />
-          <div className="tpe-subtitle">Drag saved workouts onto any day, or use + Add to place one on Monday of Week 1 and move it afterward.</div>
+          <div className="tpe-subtitle">Drag workouts from the library onto any day, or drag scheduled workouts to move them.</div>
         </div>
         <div className="tpe-plan-actions">
           <button type="button" onClick={handleNewPlan}>New Plan</button>
@@ -444,7 +444,6 @@ export default function TrainingPlanEditor() {
                         />
                         <div className="tpe-workout-card-footer">
                           <div className="tpe-workout-meta">{formatMiles(estimate.miles)} mi est. · {workout.type || workout.sport || 'Workout'}</div>
-                          <button type="button" className="tpe-quick-add" onClick={() => addWorkoutToDay(workout, 0, 0)} title="Add to Monday of Week 1">+ Add</button>
                         </div>
                       </div>
                     );
@@ -538,7 +537,7 @@ export default function TrainingPlanEditor() {
               })}
             </div>
           </div>
-          <div className="tpe-grid-footnote">Drag from the library to add a workout, or use + Add on a library card to place it on Monday of Week 1. Drag scheduled workouts to another day to move them.</div>
+          <div className="tpe-grid-footnote">Drag workouts from the library onto a day to add them, or drag scheduled workouts to another day to move them.</div>
         </section>
       </div>
 
