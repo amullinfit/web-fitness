@@ -93,7 +93,7 @@
 .tpe-summary-heading h2 { margin: 0; font-size: 16px; letter-spacing: 0; font-weight: 700; }
 .tpe-grid-heading span { display: block; margin-top: 2px; color: #7b8491; font-size: 11px; }
 .tpe-add-weeks { white-space: nowrap; font-weight: 700; color: #315e98; border-color: #a9c4e7; }
-.tpe-week-grid-scroll { overflow-x: auto; padding-bottom: 3px; }
+.tpe-week-grid-scroll { overflow: auto; max-height: 68vh; padding-bottom: 3px; overscroll-behavior: contain; }
 .tpe-week-grid {
   display: grid;
   grid-template-columns: 66px repeat(7, minmax(110px, 1fr));
