@@ -112,6 +112,9 @@
 .tpe-day-dropzone:focus-within,
 .tpe-day-dropzone:hover { border-color: #7ca3d6; background: rgba(82, 133, 197, .055); }
 .tpe-day-dropzone.has-workouts { border-style: solid; border-color: #d8e0ea; }
+.tpe-day-dropzone.is-drag-target,
+.tpe-day-dropzone.is-drag-target.has-workouts { border: 2px solid #3979c3; padding: 4px; background: rgba(59, 130, 246, .16); box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .16), 0 0 0 2px rgba(59, 130, 246, .1); }
+.tpe-day-dropzone.is-drag-target .tpe-drop-hint { color: #245b99; font-weight: 800; }
 .tpe-day-fullname { display: none; font-size: 10px; color: #8a94a2; }
 .tpe-drop-hint { display: flex; flex: 1; min-height: 72px; justify-content: center; align-items: center; color: #a1aab6; font-size: 10px; text-align: center; padding: 5px; }
 .tpe-day-workouts { display: flex; flex-direction: column; gap: 5px; }
