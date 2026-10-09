@@ -89,8 +89,7 @@
 .tpe-plan-area { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .tpe-plan-grid-section { padding: 10px; display: flex; flex-direction: column; min-height: 360px; }
 .tpe-grid-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-.tpe-grid-heading h2,
-.tpe-summary-heading h2 { margin: 0; font-size: 16px; letter-spacing: 0; font-weight: 700; }
+.tpe-grid-heading h2 { margin: 0; font-size: 16px; letter-spacing: 0; font-weight: 700; }
 .tpe-grid-heading span { display: block; margin-top: 2px; color: #7b8491; font-size: 11px; }
 .tpe-add-weeks { white-space: nowrap; font-weight: 700; color: #315e98; border-color: #a9c4e7; }
 .tpe-week-grid-scroll { overflow: auto; max-height: 68vh; padding-bottom: 3px; overscroll-behavior: contain; }
@@ -128,20 +127,20 @@
 .tpe-planned-meta { color: #6b7280; font-size: 9px; }
 .tpe-grid-footnote { color: #8a94a2; font-size: 10px; margin-top: 8px; }
 
-.tpe-summary-section { padding: 8px 12px 6px; position: relative; z-index: 2; }
-.tpe-summary-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.tpe-summary-heading p { margin: 2px 0 0; color: #7b8491; font-size: 10px; }
-.tpe-summary-total { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-.tpe-summary-total span,
-.tpe-summary-total small { color: #7b8491; font-size: 10px; }
-.tpe-summary-total strong { font-size: 15px; color: #23805c; }
-.tpe-mileage-chart { height: 76px; display: flex; align-items: stretch; gap: 8px; padding: 5px 3px 0; overflow-x: auto; }
-.tpe-mileage-bar-column { display: flex; flex: 1 0 34px; min-width: 34px; flex-direction: column; align-items: center; gap: 4px; }
-.tpe-mileage-bar-column > strong { color: #5b6675; font-size: 10px; }
-.tpe-mileage-bar-track { flex: 1; width: min(100%, 32px); min-height: 28px; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid #cbd5e1; background: linear-gradient(to top, rgba(120, 140, 165, .07), transparent); }
+.tpe-summary-section { display: grid; grid-template-columns: 126px minmax(0, 1fr); align-items: stretch; gap: 10px; padding: 8px 10px; position: relative; z-index: 2; min-width: 0; }
+.tpe-summary-fixed-totals { display: flex; flex-direction: column; justify-content: center; gap: 8px; padding-right: 10px; border-right: 1px solid var(--border, #e1e5eb); }
+.tpe-summary-fixed-totals h2 { margin: 0 0 2px; font-size: 14px; font-weight: 700; }
+.tpe-summary-fixed-totals > div { display: flex; flex-direction: column; gap: 1px; }
+.tpe-summary-fixed-totals span { color: #7b8491; font-size: 10px; }
+.tpe-summary-fixed-totals strong { color: #23805c; font-size: 14px; line-height: 1.2; }
+.tpe-mileage-chart { height: 78px; min-width: 0; display: flex; align-items: stretch; gap: 8px; padding: 2px 3px 0; overflow-x: auto; overflow-y: hidden; }
+.tpe-mileage-bar-column { display: flex; flex: 0 0 38px; min-width: 38px; flex-direction: column; align-items: center; gap: 3px; }
+.tpe-mileage-week-label { min-height: 20px; display: flex; align-items: center; justify-content: center; }
+.tpe-mileage-week-label > span { color: #667085; font-size: 9px; white-space: nowrap; padding: 2px 4px; border: 1px solid transparent; border-radius: 4px; }
+.tpe-mileage-week-label > span.is-visible-week { color: #245b99; background: #e8f3ff; border-color: #9cc9fa; font-weight: 800; }
+.tpe-mileage-bar-column > strong { color: #5b6675; font-size: 9px; white-space: nowrap; }
+.tpe-mileage-bar-track { flex: 1; width: min(100%, 28px); min-height: 24px; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid #cbd5e1; background: linear-gradient(to top, rgba(120, 140, 165, .07), transparent); }
 .tpe-mileage-bar { width: 72%; min-height: 2px; border-radius: 4px 4px 0 0; background: #6b98d0; transition: height .18s ease; }
-.tpe-mileage-bar-column > span { color: #667085; font-size: 9px; white-space: nowrap; padding: 2px 4px; border: 1px solid transparent; border-radius: 4px; }
-.tpe-mileage-bar-column > span.is-visible-week { color: #245b99; background: #e8f3ff; border-color: #9cc9fa; font-weight: 800; }
 
 @media (max-width: 900px) {
   .tpe-workspace { grid-template-columns: minmax(190px, 230px) minmax(0, 1fr); }
@@ -157,7 +156,10 @@
   .tpe-header { gap: 10px; }
   .tpe-plan-actions { justify-content: flex-start; }
   .tpe-plan-actions select { max-width: 150px; }
-  .tpe-summary-heading { align-items: flex-start; }
-  .tpe-grid-heading h2,
-  .tpe-summary-heading h2 { font-size: 15px; }
+  .tpe-summary-section { grid-template-columns: 100px minmax(0, 1fr); gap: 7px; padding: 7px; }
+  .tpe-summary-fixed-totals { padding-right: 7px; gap: 6px; }
+  .tpe-summary-fixed-totals h2 { font-size: 12px; }
+  .tpe-summary-fixed-totals strong { font-size: 12px; }
+  .tpe-mileage-chart { height: 74px; gap: 5px; }
+  .tpe-grid-heading h2 { font-size: 15px; }
 }
