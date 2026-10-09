@@ -129,6 +129,8 @@ export default function TrainingPlanEditor() {
   const [draggedPayload, setDraggedPayload] = useState(null);
   const draggedPayloadRef = useRef(null);
   const [activeDropTarget, setActiveDropTarget] = useState('');
+  const [visibleWeekNumbers, setVisibleWeekNumbers] = useState([]);
+  const weekGridScrollRef = useRef(null);
   const [statusMessage, setStatusMessage] = useState('Plan editing is local for now. Save/open actions do not call Val Town yet.');
 
   useEffect(() => {
@@ -171,6 +173,27 @@ export default function TrainingPlanEditor() {
     }, { seconds: 0, miles: 0 });
     return { weekNumber: week.weekNumber, ...totals };
   }), [plan.weeks]);
+
+  useEffect(() => {
+    const root = weekGridScrollRef.current;
+    if (!root || typeof IntersectionObserver === 'undefined') return undefined;
+
+    const observer = new IntersectionObserver((entries) => {
+      setVisibleWeekNumbers((current) => {
+        const next = new Set(current);
+        entries.forEach((entry) => {
+          const weekNumber = Number(entry.target.getAttribute('data-week-number'));
+          if (!weekNumber) return;
+          if (entry.isIntersecting) next.add(weekNumber);
+          else next.delete(weekNumber);
+        });
+        return [...next].sort((a, b) => a - b);
+      });
+    }, { root, threshold: 0.01 });
+
+    root.querySelectorAll('[data-week-number]').forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [plan.weeks.length]);
 
   const updateDay = (weekIndex, dayIndex, updater) => {
     setPlan((current) => ({
@@ -454,21 +477,43 @@ export default function TrainingPlanEditor() {
           )}
         </aside>
 
+        <div className="tpe-plan-area">
+        <section className="tpe-summary-section">
+          <div className="tpe-summary-heading">
+            <div><h2>Weekly Summary</h2><p>Estimated miles by week.</p></div>
+            <div className="tpe-summary-total"><span>Plan total</span><strong>{formatMiles(totalMiles)} mi</strong><small>{formatDuration(totalSeconds)} estimated</small></div>
+          </div>
+          <div className="tpe-mileage-chart" role="img" aria-label="Bar chart comparing estimated planned miles by week">
+            {weekTotals.map((week) => {
+              const maxMiles = Math.max(1, ...weekTotals.map((item) => item.miles));
+              const height = week.miles > 0 ? Math.max(4, (week.miles / maxMiles) * 100) : 2;
+              return (
+                <div className="tpe-mileage-bar-column" key={week.weekNumber}>
+                  <strong>{formatMiles(week.miles)}</strong>
+                  <div className="tpe-mileage-bar-track"><div className="tpe-mileage-bar" style={{ height: `${height}%` }} /></div>
+                  <span className={visibleWeekNumbers.includes(week.weekNumber) ? 'is-visible-week' : ''}>Week {week.weekNumber}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
         <section className="tpe-plan-grid-section">
           <div className="tpe-grid-heading">
             <div><h2>Training Schedule</h2><span>{plan.weeks.length} weeks · Monday–Sunday</span></div>
             <button type="button" className="tpe-add-weeks" onClick={addFourWeeks}>+ Add 4 Weeks</button>
           </div>
-          <div className="tpe-week-grid-scroll">
+          <div className="tpe-week-grid-scroll" ref={weekGridScrollRef}>
             <div className="tpe-week-grid">
               <div className="tpe-grid-corner">Week</div>
               {WEEKDAY_SHORT.map((day) => <div className="tpe-day-heading" key={day}>{day}</div>)}
-              <div className="tpe-total-heading">Weekly totals</div>
               {plan.weeks.map((week, weekIndex) => {
                 const totals = weekTotals[weekIndex] || { seconds: 0, miles: 0 };
                 return (
                   <React.Fragment key={week.weekNumber}>
-                    <div className="tpe-week-number"><span>Week</span><strong>{week.weekNumber}</strong></div>
+                    <div className="tpe-week-number" data-week-number={week.weekNumber}>
+                      <span>Week</span><strong>{week.weekNumber}</strong>
+                      <div className="tpe-week-total-inline"><strong>{formatDuration(totals.seconds)}</strong><span>{formatMiles(totals.miles)} mi</span></div>
+                    </div>
                     {week.days.map((day, dayIndex) => (
                       <div
                         key={day.day}
@@ -528,10 +573,6 @@ export default function TrainingPlanEditor() {
                         )}
                       </div>
                     ))}
-                    <div className="tpe-week-totals">
-                      <strong>{formatDuration(totals.seconds)}</strong>
-                      <span>{formatMiles(totals.miles)} mi</span>
-                    </div>
                   </React.Fragment>
                 );
               })}
@@ -539,27 +580,8 @@ export default function TrainingPlanEditor() {
           </div>
           <div className="tpe-grid-footnote">Drag workouts from the library onto a day to add them, or drag scheduled workouts to another day to move them.</div>
         </section>
+        </div>
       </div>
-
-      <section className="tpe-summary-section">
-        <div className="tpe-summary-heading">
-          <div><h2>Totals</h2><p>Estimated miles planned each week, for easy comparison.</p></div>
-          <div className="tpe-summary-total"><span>Plan total</span><strong>{formatMiles(totalMiles)} mi</strong><small>{formatDuration(totalSeconds)} estimated</small></div>
-        </div>
-        <div className="tpe-mileage-chart" role="img" aria-label="Bar chart comparing estimated planned miles by week">
-          {weekTotals.map((week) => {
-            const maxMiles = Math.max(1, ...weekTotals.map((item) => item.miles));
-            const height = week.miles > 0 ? Math.max(4, (week.miles / maxMiles) * 100) : 2;
-            return (
-              <div className="tpe-mileage-bar-column" key={week.weekNumber}>
-                <strong>{formatMiles(week.miles)}</strong>
-                <div className="tpe-mileage-bar-track"><div className="tpe-mileage-bar" style={{ height: `${height}%` }} /></div>
-                <span>Week {week.weekNumber}</span>
-              </div>
-            );
-          })}
-        </div>
-      </section>
     </div>
   );
 }
