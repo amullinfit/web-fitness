@@ -479,9 +479,10 @@ export default function TrainingPlanEditor() {
 
         <div className="tpe-plan-area">
         <section className="tpe-summary-section">
-          <div className="tpe-summary-heading">
-            <div><h2>Weekly Summary</h2><p>Estimated miles by week.</p></div>
-            <div className="tpe-summary-total"><span>Plan total</span><strong>{formatMiles(totalMiles)} mi</strong><small>{formatDuration(totalSeconds)} estimated</small></div>
+          <div className="tpe-summary-fixed-totals">
+            <h2>Weekly Summary</h2>
+            <div><span>Plan distance</span><strong>{formatMiles(totalMiles)} mi</strong></div>
+            <div><span>Plan time</span><strong>{formatDuration(totalSeconds)}</strong></div>
           </div>
           <div className="tpe-mileage-chart" role="img" aria-label="Bar chart comparing estimated planned miles by week">
             {weekTotals.map((week) => {
@@ -489,9 +490,9 @@ export default function TrainingPlanEditor() {
               const height = week.miles > 0 ? Math.max(4, (week.miles / maxMiles) * 100) : 2;
               return (
                 <div className="tpe-mileage-bar-column" key={week.weekNumber}>
-                  <strong>{formatMiles(week.miles)}</strong>
+                  <div className="tpe-mileage-week-label"><span className={visibleWeekNumbers.includes(week.weekNumber) ? 'is-visible-week' : ''}>Week {week.weekNumber}</span></div>
                   <div className="tpe-mileage-bar-track"><div className="tpe-mileage-bar" style={{ height: `${height}%` }} /></div>
-                  <span className={visibleWeekNumbers.includes(week.weekNumber) ? 'is-visible-week' : ''}>Week {week.weekNumber}</span>
+                  <strong>{formatMiles(week.miles)} mi</strong>
                 </div>
               );
             })}
