@@ -126,6 +126,7 @@ export default function TrainingPlanEditor() {
   const [savedPlans, setSavedPlans] = useState([]);
   const [selectedSavedPlanId, setSelectedSavedPlanId] = useState('');
   const [draggedWorkout, setDraggedWorkout] = useState(null);
+  const [draggedPayload, setDraggedPayload] = useState(null);
   const [activeDropTarget, setActiveDropTarget] = useState('');
   const [statusMessage, setStatusMessage] = useState('Plan editing is local for now. Save/open actions do not call Val Town yet.');
 
@@ -219,12 +220,15 @@ export default function TrainingPlanEditor() {
     try {
       // Some browsers suppress custom drag payloads for nested/complex cards.
       // The in-memory drag state is a fallback so a valid drop still works.
-      const payload = raw ? JSON.parse(raw) : null;
-      if (!payload && draggedWorkout) {
+      const payload = (raw ? JSON.parse(raw) : null) || draggedPayload;
+      if (!payload) {
+        setStatusMessage('Could not identify the dragged workout. Please try again.');
+        return;
+      }
+      if (payload.source === 'library' && !raw && draggedWorkout) {
         addWorkoutToDay(draggedWorkout, targetWeekIndex, targetDayIndex);
         return;
       }
-      if (!payload) return;
 
       if (payload.source === 'plan') {
         const sourceWeekIndex = Number(payload.weekIndex);
@@ -271,6 +275,7 @@ export default function TrainingPlanEditor() {
       setStatusMessage('That workout could not be added. Please try dragging it again.');
     } finally {
       setDraggedWorkout(null);
+      setDraggedPayload(null);
       setActiveDropTarget('');
     }
   };
@@ -402,7 +407,9 @@ export default function TrainingPlanEditor() {
                           setDraggedWorkout(workout);
                           setActiveDropTarget('');
                           event.dataTransfer.effectAllowed = 'copy';
-                          const payload = JSON.stringify({ source: 'library', workoutId: workout.id });
+                          const dragPayload = { source: 'library', workoutId: workout.id };
+                          setDraggedPayload(dragPayload);
+                          const payload = JSON.stringify(dragPayload);
                           event.dataTransfer.setData('application/x-training-plan-workout', payload);
                           event.dataTransfer.setData('text/plain', payload);
                         }}
@@ -473,13 +480,15 @@ export default function TrainingPlanEditor() {
                                   onDragStart={(event) => {
                                     setDraggedWorkout(entry.workout);
                                     event.dataTransfer.effectAllowed = 'move';
-                                    const payload = JSON.stringify({
+                                    const dragPayload = {
                                       source: 'plan',
                                       workoutId: entry.workout.id,
                                       entryId: entry.entryId,
                                       weekIndex,
                                       dayIndex,
-                                    });
+                                    };
+                                    setDraggedPayload(dragPayload);
+                                    const payload = JSON.stringify(dragPayload);
                                     event.dataTransfer.setData('application/x-training-plan-workout', payload);
                                     event.dataTransfer.setData('text/plain', payload);
                                   }}
