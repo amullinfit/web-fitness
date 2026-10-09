@@ -14,70 +14,31 @@ const indexFeeds = (valJson, historicalJson) => {
   return { valList, historicalList, sportSettings };
 };
 
-const indexPlannedWorkouts = (valList, getLocalDateString, safeStringLower) => {
+const indexPlannedWorkouts = (valList) => {
   const byId = new Map();
-  const byDateType = new Map();
 
   for (const workout of valList) {
-    if (!workout) continue;
-
-    if (workout.id !== undefined && workout.id !== null) {
-      byId.set(String(workout.id), workout);
-    }
-
-    const itemDate = getLocalDateString(
-      workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date
-    );
-    const itemType = safeStringLower(workout.type || workout.sport || 'workout');
-
-    if (itemDate) {
-      const key = `${itemDate}-${itemType}`;
-      const matches = byDateType.get(key) || [];
-      matches.push(workout);
-      byDateType.set(key, matches);
-    }
+    if (!workout || workout.id === undefined || workout.id === null) continue;
+    byId.set(String(workout.id), workout);
   }
 
-  return { byId, byDateType };
+  return byId;
 };
 
-const buildMergedWorkouts = (
-  valList,
-  historicalList,
-  plannedById,
-  plannedByDateType,
-  getLocalDateString,
-  safeStringLower,
-  findDateTypeMatch,
-  mergeHistorical,
-  hasDedupeId
-) => {
+const buildMergedWorkouts = (valList, historicalList, plannedById, mergeHistorical) => {
   const pairedEventIds = new Set();
-  const pairedPlannedWorkouts = new Set();
 
   const updatedHistoricalList = historicalList.map((item) => {
     if (!item) return item;
 
-    let plannedMatch = null;
+    const pairedId = item.paired_event_id;
+    const plannedMatch = pairedId === undefined || pairedId === null
+      ? null
+      : plannedById.get(String(pairedId));
 
-    if (item.paired_event_id !== null && item.paired_event_id !== undefined) {
-      const pairedId = String(item.paired_event_id);
-      pairedEventIds.add(pairedId);
-      plannedMatch = plannedById.get(pairedId);
-    }
-
-    if (!plannedMatch) {
-      const itemDate = getLocalDateString(
-        item.start_date_local || item.icu_start_date || item.start_date || item.date
-      );
-      const itemType = safeStringLower(item.type || item.sport || 'workout');
-      const matches = plannedByDateType.get(`${itemDate}-${itemType}`) || [];
-      plannedMatch = findDateTypeMatch(matches, pairedPlannedWorkouts);
-    }
-
-    if (plannedMatch) {
-      pairedPlannedWorkouts.add(plannedMatch);
-      if (plannedMatch.id) pairedEventIds.add(String(plannedMatch.id));
+    // Only suppress a planned event when its ID successfully matched this activity.
+    if (plannedMatch && plannedMatch.id !== undefined && plannedMatch.id !== null) {
+      pairedEventIds.add(String(plannedMatch.id));
     }
 
     return plannedMatch ? mergeHistorical(item, plannedMatch) : item;
@@ -93,12 +54,12 @@ const buildMergedWorkouts = (
 
   for (const item of [...updatedHistoricalList, ...remainingValList]) {
     if (!item) continue;
-    const rawDate = item.start_date_local || item.icu_start_date || item.start_date || item.date;
-    const itemDate = rawDate ? getLocalDateString(rawDate) : '';
-    const itemType = safeStringLower(item.type || item.sport || 'workout');
-    const uniqueKey = hasDedupeId(item.id)
-      ? String(item.id)
-      : `${item.name || itemType}-${itemDate}-${item.feedSource}`;
+
+    // IDs from the planned-event and activity feeds are separate namespaces.
+    // Include the feed source so unrelated records with coincidentally equal IDs survive.
+    const uniqueKey = item.id !== undefined && item.id !== null
+      ? `${item.feedSource}:${String(item.id)}`
+      : `${item.feedSource}:${item.name || item.title || 'workout'}:${item.start_date_local || item.icu_start_date || item.start_date || item.date || ''}`;
 
     if (!seenKeys.has(uniqueKey)) {
       seenKeys.add(uniqueKey);
@@ -109,19 +70,14 @@ const buildMergedWorkouts = (
   return mergedList;
 };
 
-export const mergeDailyWorkoutFeeds = (valJson, historicalJson, helpers) => {
-  const { getLocalDateString, safeStringLower } = helpers;
+export const mergeDailyWorkoutFeeds = (valJson, historicalJson) => {
   const { valList, historicalList, sportSettings } = indexFeeds(valJson, historicalJson);
-  const { byId, byDateType } = indexPlannedWorkouts(valList, getLocalDateString, safeStringLower);
+  const plannedById = indexPlannedWorkouts(valList);
 
   const workouts = buildMergedWorkouts(
     valList,
     historicalList,
-    byId,
-    byDateType,
-    getLocalDateString,
-    safeStringLower,
-    (matches) => matches[matches.length - 1] || null,
+    plannedById,
     (item, plannedMatch) => {
       const plannedName = plannedMatch.name || plannedMatch.title;
       return plannedName
@@ -132,26 +88,20 @@ export const mergeDailyWorkoutFeeds = (valJson, historicalJson, helpers) => {
             workout_doc: item.workout_doc || plannedMatch.workout_doc
           }
         : item;
-    },
-    (id) => Boolean(id)
+    }
   );
 
   return { workouts, sportSettings };
 };
 
-export const mergeMonthlyWorkoutFeeds = (valJson, historicalJson, helpers) => {
-  const { getLocalDateString, safeStringLower } = helpers;
+export const mergeMonthlyWorkoutFeeds = (valJson, historicalJson) => {
   const { valList, historicalList, sportSettings } = indexFeeds(valJson, historicalJson);
-  const { byId, byDateType } = indexPlannedWorkouts(valList, getLocalDateString, safeStringLower);
+  const plannedById = indexPlannedWorkouts(valList);
 
   const workouts = buildMergedWorkouts(
     valList,
     historicalList,
-    byId,
-    byDateType,
-    getLocalDateString,
-    safeStringLower,
-    (matches, pairedWorkouts) => matches.find((workout) => !pairedWorkouts.has(workout)) || null,
+    plannedById,
     (item, plannedMatch) => {
       const plannedName = plannedMatch.name || plannedMatch.title;
       return {
@@ -164,8 +114,7 @@ export const mergeMonthlyWorkoutFeeds = (valJson, historicalJson, helpers) => {
           : (plannedMatch.intervals || item.intervals || null),
         description: item.description || plannedMatch.description || ''
       };
-    },
-    (id) => id !== null && id !== undefined
+    }
   );
 
   return { workouts, sportSettings };
