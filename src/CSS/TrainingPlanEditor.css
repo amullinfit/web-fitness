@@ -94,9 +94,9 @@
 .tpe-week-grid-scroll { overflow-x: auto; padding-bottom: 3px; }
 .tpe-week-grid {
   display: grid;
-  grid-template-columns: 52px repeat(5, minmax(120px, 1fr)) minmax(105px, .72fr);
+  grid-template-columns: 52px repeat(7, minmax(110px, 1fr)) minmax(105px, .72fr);
   gap: 5px;
-  min-width: 790px;
+  min-width: 1040px;
   align-items: stretch;
 }
 .tpe-grid-corner,
@@ -141,7 +141,7 @@
 @media (max-width: 900px) {
   .tpe-workspace { grid-template-columns: minmax(190px, 230px) minmax(0, 1fr); }
   .tpe-plan-grid-section { padding: 8px; }
-  .tpe-week-grid { grid-template-columns: 42px repeat(5, minmax(112px, 1fr)) minmax(94px, .7fr); min-width: 720px; }
+  .tpe-week-grid { grid-template-columns: 42px repeat(7, minmax(105px, 1fr)) minmax(94px, .7fr); min-width: 960px; }
 }
 @media (max-width: 650px) {
   .tpe-workspace,
