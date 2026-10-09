@@ -126,6 +126,7 @@ export default function TrainingPlanEditor() {
   const [savedPlans, setSavedPlans] = useState([]);
   const [selectedSavedPlanId, setSelectedSavedPlanId] = useState('');
   const [draggedWorkout, setDraggedWorkout] = useState(null);
+  const [activeDropTarget, setActiveDropTarget] = useState('');
   const [statusMessage, setStatusMessage] = useState('Plan editing is local for now. Save/open actions do not call Val Town yet.');
 
   useEffect(() => {
@@ -208,6 +209,7 @@ export default function TrainingPlanEditor() {
   const handleDrop = (event, targetWeekIndex, targetDayIndex) => {
     event.preventDefault();
     event.stopPropagation();
+    setActiveDropTarget('');
 
     // Use both a custom MIME type and text/plain: some browsers only preserve
     // the plain-text payload during native drag-and-drop.
@@ -258,13 +260,18 @@ export default function TrainingPlanEditor() {
           };
         });
       } else if (payload.source === 'library') {
-        const workout = libraryWorkouts.find((item) => String(item.id) === String(payload.workoutId));
+        // Prefer the matching library record, but fall back to the exact card
+        // being dragged if an API uses a nonstandard/missing id field.
+        const workout = libraryWorkouts.find((item) => String(item.id ?? item._id) === String(payload.workoutId))
+          || draggedWorkout;
         if (workout) addWorkoutToDay(workout, targetWeekIndex, targetDayIndex);
+        else setStatusMessage('Could not identify that library workout. Please try again.');
       }
     } catch {
       setStatusMessage('That workout could not be added. Please try dragging it again.');
     } finally {
       setDraggedWorkout(null);
+      setActiveDropTarget('');
     }
   };
 
@@ -393,6 +400,7 @@ export default function TrainingPlanEditor() {
                         draggable
                         onDragStart={(event) => {
                           setDraggedWorkout(workout);
+                          setActiveDropTarget('');
                           event.dataTransfer.effectAllowed = 'copy';
                           const payload = JSON.stringify({ source: 'library', workoutId: workout.id });
                           event.dataTransfer.setData('application/x-training-plan-workout', payload);
@@ -446,8 +454,10 @@ export default function TrainingPlanEditor() {
                     {week.days.map((day, dayIndex) => (
                       <div
                         key={day.day}
-                        className={`tpe-day-dropzone ${day.workouts.length ? 'has-workouts' : ''}`}
-                        onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }}
+                        className={`tpe-day-dropzone ${day.workouts.length ? 'has-workouts' : ''} ${activeDropTarget === `${weekIndex}-${dayIndex}` ? 'is-drag-target' : ''}`}
+                        onDragEnter={(event) => { event.preventDefault(); setActiveDropTarget(`${weekIndex}-${dayIndex}`); }}
+                        onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = draggedWorkout ? 'copy' : 'move'; setActiveDropTarget(`${weekIndex}-${dayIndex}`); }}
+                        onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setActiveDropTarget(''); }}
                         onDrop={(event) => handleDrop(event, weekIndex, dayIndex)}
                       >
                         <div className="tpe-day-fullname">{day.day}</div>
