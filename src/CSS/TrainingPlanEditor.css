@@ -80,14 +80,13 @@
 .tpe-library-workout .workout-chart-container { margin-top: 5px; }
 .tpe-workout-meta { color: #6b7280; font-size: 10px; margin-top: 3px; min-width: 0; }
 .tpe-workout-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin-top: 3px; }
-.tpe-quick-add { flex: 0 0 auto; border: 1px solid #a9c4e7; border-radius: 4px; background: rgba(82, 133, 197, .08); color: #315e98; padding: 3px 6px; font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
-.tpe-quick-add:hover { background: rgba(82, 133, 197, .16); border-color: #7ca3d6; }
 .tpe-empty { color: #8992a0; text-align: center; padding: 18px 10px; font-size: 12px; }
 .tpe-library-collapsed { grid-template-columns: 44px minmax(0, 1fr); }
 .tpe-library-collapsed .tpe-library { max-height: none; }
 .tpe-library-collapsed .tpe-panel-heading { padding: 7px; justify-content: center; align-items: flex-start; }
 .tpe-library-collapsed .tpe-collapse-btn { margin: 0 auto; }
 
+.tpe-plan-area { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .tpe-plan-grid-section { padding: 10px; display: flex; flex-direction: column; min-height: 360px; }
 .tpe-grid-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .tpe-grid-heading h2,
@@ -97,17 +96,19 @@
 .tpe-week-grid-scroll { overflow-x: auto; padding-bottom: 3px; }
 .tpe-week-grid {
   display: grid;
-  grid-template-columns: 52px repeat(7, minmax(110px, 1fr)) minmax(105px, .72fr);
+  grid-template-columns: 66px repeat(7, minmax(110px, 1fr));
   gap: 5px;
-  min-width: 1040px;
+  min-width: 840px;
   align-items: stretch;
 }
 .tpe-grid-corner,
-.tpe-day-heading,
-.tpe-total-heading { padding: 8px 5px; border-radius: 4px; background: #eef2f7; color: #475569; text-align: center; font-weight: 800; font-size: 11px; }
-.tpe-week-number { border: 1px solid #e0e6ee; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 8px 2px; background: rgba(120, 140, 165, .07); }
-.tpe-week-number span { color: #778394; font-size: 9px; text-transform: uppercase; }
-.tpe-week-number strong { font-size: 17px; margin-top: 4px; }
+.tpe-day-heading { padding: 8px 5px; border-radius: 4px; background: #eef2f7; color: #475569; text-align: center; font-weight: 800; font-size: 11px; }
+.tpe-week-number { border: 1px solid #e0e6ee; border-radius: 5px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px; padding: 8px 2px; background: rgba(120, 140, 165, .07); }
+.tpe-week-number > span { color: #778394; font-size: 9px; text-transform: uppercase; }
+.tpe-week-number > strong { font-size: 17px; margin-top: 1px; }
+.tpe-week-total-inline { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 6px; padding-top: 6px; width: 100%; border-top: 1px solid #d9e1eb; }
+.tpe-week-total-inline strong { color: #315e98; font-size: 9px; line-height: 1.2; text-align: center; }
+.tpe-week-total-inline span { color: #23805c; font-size: 10px; line-height: 1.2; font-weight: 800; text-align: center; }
 .tpe-day-dropzone { min-height: 122px; border: 1px dashed #cbd5e1; border-radius: 5px; padding: 5px; display: flex; flex-direction: column; gap: 5px; background: rgba(120, 140, 165, .025); transition: background .12s, border-color .12s; }
 .tpe-day-dropzone:focus-within,
 .tpe-day-dropzone:hover { border-color: #7ca3d6; background: rgba(82, 133, 197, .055); }
@@ -125,29 +126,27 @@
 .tpe-planned-workout-heading button { flex: 0 0 auto; border: 0; background: transparent; color: #c24141; padding: 0 2px; line-height: 1; font-size: 16px; cursor: pointer; }
 .tpe-planned-workout .workout-chart-container { margin-top: 3px; }
 .tpe-planned-meta { color: #6b7280; font-size: 9px; }
-.tpe-week-totals { border: 1px solid #dfe5ec; border-radius: 5px; padding: 9px 7px; display: flex; flex-direction: column; gap: 4px; background: rgba(120, 140, 165, .06); }
-.tpe-week-totals strong { color: #315e98; font-size: 11px; }
-.tpe-week-totals span { color: #23805c; font-size: 12px; font-weight: 800; }
 .tpe-grid-footnote { color: #8a94a2; font-size: 10px; margin-top: 8px; }
 
-.tpe-summary-section { padding: 12px 14px 10px; }
+.tpe-summary-section { padding: 8px 12px 6px; position: relative; z-index: 2; }
 .tpe-summary-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.tpe-summary-heading p { margin-top: 3px; color: #7b8491; font-size: 11px; }
+.tpe-summary-heading p { margin: 2px 0 0; color: #7b8491; font-size: 10px; }
 .tpe-summary-total { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .tpe-summary-total span,
 .tpe-summary-total small { color: #7b8491; font-size: 10px; }
-.tpe-summary-total strong { font-size: 17px; color: #23805c; }
-.tpe-mileage-chart { height: 150px; display: flex; align-items: stretch; gap: 8px; padding: 14px 3px 0; overflow-x: auto; }
+.tpe-summary-total strong { font-size: 15px; color: #23805c; }
+.tpe-mileage-chart { height: 76px; display: flex; align-items: stretch; gap: 8px; padding: 5px 3px 0; overflow-x: auto; }
 .tpe-mileage-bar-column { display: flex; flex: 1 0 34px; min-width: 34px; flex-direction: column; align-items: center; gap: 4px; }
 .tpe-mileage-bar-column > strong { color: #5b6675; font-size: 10px; }
-.tpe-mileage-bar-track { flex: 1; width: min(100%, 32px); min-height: 65px; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid #cbd5e1; background: linear-gradient(to top, rgba(120, 140, 165, .07), transparent); }
+.tpe-mileage-bar-track { flex: 1; width: min(100%, 32px); min-height: 28px; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid #cbd5e1; background: linear-gradient(to top, rgba(120, 140, 165, .07), transparent); }
 .tpe-mileage-bar { width: 72%; min-height: 2px; border-radius: 4px 4px 0 0; background: #6b98d0; transition: height .18s ease; }
-.tpe-mileage-bar-column > span { color: #667085; font-size: 10px; white-space: nowrap; }
+.tpe-mileage-bar-column > span { color: #667085; font-size: 9px; white-space: nowrap; padding: 2px 4px; border: 1px solid transparent; border-radius: 4px; }
+.tpe-mileage-bar-column > span.is-visible-week { color: #245b99; background: #e8f3ff; border-color: #9cc9fa; font-weight: 800; }
 
 @media (max-width: 900px) {
   .tpe-workspace { grid-template-columns: minmax(190px, 230px) minmax(0, 1fr); }
   .tpe-plan-grid-section { padding: 8px; }
-  .tpe-week-grid { grid-template-columns: 42px repeat(7, minmax(105px, 1fr)) minmax(94px, .7fr); min-width: 960px; }
+  .tpe-week-grid { grid-template-columns: 58px repeat(7, minmax(105px, 1fr)); min-width: 810px; }
 }
 @media (max-width: 650px) {
   .tpe-workspace,
