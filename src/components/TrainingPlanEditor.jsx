@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import WorkoutChart from './WorkoutChart';
 import { fetchWorkoutsApi } from '../utils/WorkoutBuilderHelpers.js';
 import '../CSS/TrainingPlanEditor.css';
@@ -127,6 +127,7 @@ export default function TrainingPlanEditor() {
   const [selectedSavedPlanId, setSelectedSavedPlanId] = useState('');
   const [draggedWorkout, setDraggedWorkout] = useState(null);
   const [draggedPayload, setDraggedPayload] = useState(null);
+  const draggedPayloadRef = useRef(null);
   const [activeDropTarget, setActiveDropTarget] = useState('');
   const [statusMessage, setStatusMessage] = useState('Plan editing is local for now. Save/open actions do not call Val Town yet.');
 
@@ -220,7 +221,10 @@ export default function TrainingPlanEditor() {
     try {
       // Some browsers suppress custom drag payloads for nested/complex cards.
       // The in-memory drag state is a fallback so a valid drop still works.
-      const payload = (raw ? JSON.parse(raw) : null) || draggedPayload;
+      const parsedPayload = raw ? JSON.parse(raw) : null;
+      // A ref is written synchronously in dragstart, avoiding state timing and
+      // browser MIME-payload differences when moving a scheduled workout.
+      const payload = draggedPayloadRef.current || parsedPayload || draggedPayload;
       if (!payload) {
         setStatusMessage('Could not identify the dragged workout. Please try again.');
         return;
@@ -231,34 +235,40 @@ export default function TrainingPlanEditor() {
       }
 
       if (payload.source === 'plan') {
-        const sourceWeekIndex = Number(payload.weekIndex);
-        const sourceDayIndex = Number(payload.dayIndex);
-        const sameDay = sourceWeekIndex === targetWeekIndex && sourceDayIndex === targetDayIndex;
-        if (sameDay) {
-          setDraggedWorkout(null);
-          return;
-        }
-
-        // Move in a single functional state update so the source removal and
-        // destination insertion cannot race or use a stale render's plan.
+        // Find the source by its unique entry ID rather than trusting stored
+        // grid indexes. This survives re-renders and avoids losing a move if
+        // a payload's week/day coordinates are stale.
         setPlan((current) => {
-          const sourceWeek = current.weeks[sourceWeekIndex];
-          const sourceDay = sourceWeek?.days[sourceDayIndex];
-          const moving = sourceDay?.workouts.find((entry) => entry.entryId === payload.entryId);
-          if (!moving) return current;
+          let moving = null;
+          let sourceWeekIndex = -1;
+          let sourceDayIndex = -1;
+
+          current.weeks.some((week, wi) => week.days.some((day, di) => {
+            const match = day.workouts.find((entry) => entry.entryId === payload.entryId);
+            if (!match) return false;
+            moving = match;
+            sourceWeekIndex = wi;
+            sourceDayIndex = di;
+            return true;
+          }));
+
+          if (!moving) {
+            setStatusMessage('Could not find that scheduled workout to move. Please try again.');
+            return current;
+          }
+          if (sourceWeekIndex === targetWeekIndex && sourceDayIndex === targetDayIndex) return current;
 
           return {
             ...current,
             weeks: current.weeks.map((week, wi) => ({
               ...week,
               days: week.days.map((day, di) => {
-                if (wi === sourceWeekIndex && di === sourceDayIndex) {
-                  return { ...day, workouts: day.workouts.filter((entry) => entry.entryId !== payload.entryId) };
-                }
-                if (wi === targetWeekIndex && di === targetDayIndex) {
-                  return { ...day, workouts: [...day.workouts, moving] };
-                }
-                return day;
+                const withoutMoving = day.workouts.filter((entry) => entry.entryId !== payload.entryId);
+                return wi === targetWeekIndex && di === targetDayIndex
+                  ? { ...day, workouts: [...withoutMoving, moving] }
+                  : withoutMoving.length === day.workouts.length
+                    ? day
+                    : { ...day, workouts: withoutMoving };
               }),
             })),
           };
@@ -276,6 +286,7 @@ export default function TrainingPlanEditor() {
     } finally {
       setDraggedWorkout(null);
       setDraggedPayload(null);
+      draggedPayloadRef.current = null;
       setActiveDropTarget('');
     }
   };
@@ -408,6 +419,7 @@ export default function TrainingPlanEditor() {
                           setActiveDropTarget('');
                           event.dataTransfer.effectAllowed = 'copy';
                           const dragPayload = { source: 'library', workoutId: workout.id };
+                          draggedPayloadRef.current = dragPayload;
                           setDraggedPayload(dragPayload);
                           const payload = JSON.stringify(dragPayload);
                           event.dataTransfer.setData('application/x-training-plan-workout', payload);
@@ -463,7 +475,7 @@ export default function TrainingPlanEditor() {
                         key={day.day}
                         className={`tpe-day-dropzone ${day.workouts.length ? 'has-workouts' : ''} ${activeDropTarget === `${weekIndex}-${dayIndex}` ? 'is-drag-target' : ''}`}
                         onDragEnter={(event) => { event.preventDefault(); setActiveDropTarget(`${weekIndex}-${dayIndex}`); }}
-                        onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = draggedWorkout ? 'copy' : 'move'; setActiveDropTarget(`${weekIndex}-${dayIndex}`); }}
+                        onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = (draggedPayloadRef.current || draggedPayload)?.source === 'library' ? 'copy' : 'move'; setActiveDropTarget(`${weekIndex}-${dayIndex}`); }}
                         onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setActiveDropTarget(''); }}
                         onDrop={(event) => handleDrop(event, weekIndex, dayIndex)}
                       >
@@ -487,6 +499,7 @@ export default function TrainingPlanEditor() {
                                       weekIndex,
                                       dayIndex,
                                     };
+                                    draggedPayloadRef.current = dragPayload;
                                     setDraggedPayload(dragPayload);
                                     const payload = JSON.stringify(dragPayload);
                                     event.dataTransfer.setData('application/x-training-plan-workout', payload);
