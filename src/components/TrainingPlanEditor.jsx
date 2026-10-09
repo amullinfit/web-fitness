@@ -480,11 +480,11 @@ export default function TrainingPlanEditor() {
         <div className="tpe-plan-area">
         <section className="tpe-summary-section">
           <div className="tpe-summary-fixed-totals">
-            <h2>Weekly Summary</h2>
-            <div><span>Plan distance</span><strong>{formatMiles(totalMiles)} mi</strong></div>
-            <div><span>Plan time</span><strong>{formatDuration(totalSeconds)}</strong></div>
+            <h2>Plan Totals</h2>
+            <div><strong aria-label={`Plan time: ${formatDuration(totalSeconds)}`}>{formatDuration(totalSeconds)}</strong></div>
+            <div><strong aria-label={`Plan distance: ${formatMiles(totalMiles)} miles`}>{formatMiles(totalMiles)} mi</strong></div>
           </div>
-          <div className="tpe-mileage-chart" role="img" aria-label="Bar chart comparing estimated planned miles by week">
+          <div className="tpe-mileage-chart" style={{ height: '96px', paddingBottom: '14px' }} role="img" aria-label="Bar chart comparing estimated planned miles by week">
             {weekTotals.map((week) => {
               const maxMiles = Math.max(1, ...weekTotals.map((item) => item.miles));
               const height = week.miles > 0 ? Math.max(4, (week.miles / maxMiles) * 100) : 2;
