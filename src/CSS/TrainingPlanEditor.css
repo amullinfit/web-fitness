@@ -195,7 +195,7 @@
   font-size: 27px;
   line-height: 1;
   cursor: pointer;
-  opacity: 0;
+  opacity: .65;
   transition: color .15s, opacity .15s;
 }
 .tpe-mileage-scroll-arrow-left { left: 0; }
@@ -204,7 +204,7 @@
 .tpe-mileage-scroll-arrow:focus-visible {
   opacity: 1;
 }
-.tpe-mileage-scroll-arrow:disabled { cursor: default; }
+.tpe-mileage-scroll-arrow:disabled { opacity: 0; cursor: default; }
 .tpe-mileage-scroll-arrow.has-calendar-weeks:not(:disabled) {
   color: #075fae;
   opacity: 1;
