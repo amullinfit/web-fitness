@@ -186,13 +186,13 @@
   z-index: 1;
   top: 50%;
   transform: translateY(-50%);
-  width: 20px;
-  height: 30px;
+  width: 24px;
+  height: 34px;
   padding: 0;
   border: 0;
   background: rgba(255, 255, 255, .88);
-  color: #9bc6ef;
-  font-size: 23px;
+  color: #78afe5;
+  font-size: 27px;
   line-height: 1;
   cursor: pointer;
   opacity: 0;
@@ -206,6 +206,6 @@
 }
 .tpe-mileage-scroll-arrow:disabled { cursor: default; }
 .tpe-mileage-scroll-arrow.has-calendar-weeks:not(:disabled) {
-  color: #2879c8;
+  color: #075fae;
   opacity: 1;
 }
