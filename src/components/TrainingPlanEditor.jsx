@@ -210,7 +210,9 @@ export default function TrainingPlanEditor() {
   const draggedPayloadRef = useRef(null);
   const [activeDropTarget, setActiveDropTarget] = useState('');
   const [visibleWeekNumbers, setVisibleWeekNumbers] = useState([]);
+  const [summaryScrollState, setSummaryScrollState] = useState({ left: false, right: false, visibleWeeks: [] });
   const weekGridScrollRef = useRef(null);
+  const mileageChartRef = useRef(null);
   const [statusMessage, setStatusMessage] = useState('Loading training plans from Intervals.icu…');
 
   useEffect(() => {
@@ -306,6 +308,47 @@ export default function TrainingPlanEditor() {
     root.querySelectorAll('[data-week-number]').forEach((element) => observer.observe(element));
     return () => observer.disconnect();
   }, [plan.weeks.length]);
+
+  const updateSummaryScrollState = () => {
+    const chart = mileageChartRef.current;
+    if (!chart) return;
+    const canScrollLeft = chart.scrollLeft > 1;
+    const canScrollRight = chart.scrollLeft + chart.clientWidth < chart.scrollWidth - 1;
+    const chartBounds = chart.getBoundingClientRect();
+    const visibleWeeks = [...chart.querySelectorAll('[data-summary-week-number]')]
+      .filter((column) => {
+        const bounds = column.getBoundingClientRect();
+        return bounds.right > chartBounds.left + 1 && bounds.left < chartBounds.right - 1;
+      })
+      .map((column) => Number(column.getAttribute('data-summary-week-number')))
+      .filter(Number.isFinite);
+    setSummaryScrollState((current) => (
+      current.left === canScrollLeft
+      && current.right === canScrollRight
+      && current.visibleWeeks.length === visibleWeeks.length
+      && current.visibleWeeks.every((week, index) => week === visibleWeeks[index])
+        ? current
+        : { left: canScrollLeft, right: canScrollRight, visibleWeeks }
+    ));
+  };
+
+  useEffect(() => {
+    const chart = mileageChartRef.current;
+    if (!chart) return undefined;
+    updateSummaryScrollState();
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(updateSummaryScrollState);
+    resizeObserver?.observe(chart);
+    if (chart.firstElementChild) resizeObserver?.observe(chart.firstElementChild);
+    return () => resizeObserver?.disconnect();
+  }, [weekTotals.length]);
+
+  const scrollMileageChart = (direction) => {
+    const chart = mileageChartRef.current;
+    if (!chart) return;
+    chart.scrollBy({ left: direction * Math.max(120, chart.clientWidth * 0.8), behavior: 'smooth' });
+  };
 
   const updateDay = (weekIndex, dayIndex, updater) => {
     setPlan((current) => ({
@@ -654,18 +697,45 @@ export default function TrainingPlanEditor() {
             <div><strong aria-label={`Plan time: ${formatDuration(totalSeconds)}`}>{formatDuration(totalSeconds)}</strong></div>
             <div><strong aria-label={`Plan distance: ${formatMiles(totalMiles)} miles`}>{formatMiles(totalMiles)} mi</strong></div>
           </div>
-          <div className="tpe-mileage-chart" style={{ height: '96px', paddingBottom: '14px' }} role="img" aria-label="Bar chart comparing estimated planned miles by week">
-            {weekTotals.map((week) => {
-              const maxMiles = Math.max(1, ...weekTotals.map((item) => item.miles));
-              const height = week.miles > 0 ? Math.max(4, (week.miles / maxMiles) * 100) : 2;
-              return (
-                <div className="tpe-mileage-bar-column" key={week.weekNumber}>
-                  <div className="tpe-mileage-week-label"><span className={visibleWeekNumbers.includes(week.weekNumber) ? 'is-visible-week' : ''}>Week {week.weekNumber}</span></div>
-                  <div className="tpe-mileage-bar-track"><div className="tpe-mileage-bar" style={{ height: `${height}%` }} /></div>
-                  <strong>{formatMiles(week.miles)} mi</strong>
-                </div>
-              );
-            })}
+          <div className="tpe-mileage-chart-wrap">
+            <button
+              type="button"
+              className={`tpe-mileage-scroll-arrow tpe-mileage-scroll-arrow-left${visibleWeekNumbers.some((week) => summaryScrollState.visibleWeeks.length && week < Math.min(...summaryScrollState.visibleWeeks)) ? ' has-calendar-weeks' : ''}`}
+              aria-label="Scroll to earlier plan weeks"
+              disabled={!summaryScrollState.left}
+              aria-hidden={!summaryScrollState.left}
+              tabIndex={summaryScrollState.left ? 0 : -1}
+              onClick={() => scrollMileageChart(-1)}
+            >‹</button>
+            <div
+              className="tpe-mileage-chart"
+              ref={mileageChartRef}
+              onScroll={updateSummaryScrollState}
+              style={{ height: '96px', paddingBottom: '14px' }}
+              role="img"
+              aria-label="Bar chart comparing estimated planned miles by week"
+            >
+              {weekTotals.map((week) => {
+                const maxMiles = Math.max(1, ...weekTotals.map((item) => item.miles));
+                const height = week.miles > 0 ? Math.max(4, (week.miles / maxMiles) * 100) : 2;
+                return (
+                  <div className="tpe-mileage-bar-column" data-summary-week-number={week.weekNumber} key={week.weekNumber}>
+                    <div className="tpe-mileage-week-label"><span className={visibleWeekNumbers.includes(week.weekNumber) ? 'is-visible-week' : ''}>Week {week.weekNumber}</span></div>
+                    <div className="tpe-mileage-bar-track"><div className="tpe-mileage-bar" style={{ height: `${height}%` }} /></div>
+                    <strong>{formatMiles(week.miles)} mi</strong>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              className={`tpe-mileage-scroll-arrow tpe-mileage-scroll-arrow-right${visibleWeekNumbers.some((week) => summaryScrollState.visibleWeeks.length && week > Math.max(...summaryScrollState.visibleWeeks)) ? ' has-calendar-weeks' : ''}`}
+              aria-label="Scroll to later plan weeks"
+              disabled={!summaryScrollState.right}
+              aria-hidden={!summaryScrollState.right}
+              tabIndex={summaryScrollState.right ? 0 : -1}
+              onClick={() => scrollMileageChart(1)}
+            >›</button>
           </div>
         </section>
         <section className="tpe-plan-grid-section">
