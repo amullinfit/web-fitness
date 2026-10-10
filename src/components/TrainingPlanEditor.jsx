@@ -711,7 +711,7 @@ export default function TrainingPlanEditor() {
               className="tpe-mileage-chart"
               ref={mileageChartRef}
               onScroll={updateSummaryScrollState}
-              style={{ height: '134px', paddingBottom: '14px' }}
+              style={{ height: '134px', paddingBottom: '0px' }}
               role="img"
               aria-label="Bar chart comparing estimated planned miles by week"
             >
