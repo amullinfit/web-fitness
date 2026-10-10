@@ -14,7 +14,7 @@ const makeEmptyWeeks = (count) =>
   }));
 
 const makePlan = (name = 'New Training Plan', weekCount = INITIAL_WEEKS) => ({
-  id: `plan-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  id: null,
   name,
   weeks: makeEmptyWeeks(weekCount),
 });
@@ -97,9 +97,67 @@ const formatMiles = (miles) => miles > 0 ? miles.toFixed(1) : '—';
 const normalizeFolderId = (workout) =>
   String(workout?.folderId ?? workout?.folder_id ?? '');
 
+const TRAINING_PLANS_API_URL =
+  import.meta.env.VITE_API_TRAININGPLANS_URL
+  || 'https://amullinfit--e90bd68ec43911f188781607ee4eb77e.web.val.run';
+
+async function requestTrainingPlans(action, { method = 'GET', id, plan } = {}) {
+  const url = new URL(TRAINING_PLANS_API_URL);
+  url.searchParams.set('action', action);
+  if (id != null) url.searchParams.set('id', String(id));
+
+  const response = await fetch(url, {
+    method,
+    headers: plan ? { 'Content-Type': 'application/json' } : undefined,
+    body: plan ? JSON.stringify({ action, plan }) : undefined,
+  });
+  let result = {};
+  try {
+    result = await response.json();
+  } catch {
+    // Report a useful HTTP error below when the val returns a non-JSON body.
+  }
+  if (!response.ok) {
+    throw new Error(result?.error || `Training plan request failed (HTTP ${response.status}).`);
+  }
+  return result;
+}
+
+function planFromIntervals(folder) {
+  const workouts = Array.isArray(folder?.children) ? folder.children : [];
+  const lastDay = workouts.reduce((maxDay, workout) => {
+    const day = workout?.day == null ? 0 : Number(workout.day);
+    return Number.isFinite(day) ? Math.max(maxDay, day) : maxDay;
+  }, 0);
+  const weekCount = Math.max(
+    1,
+    Number(folder?.duration_weeks) || 0,
+    Math.ceil((lastDay + 1) / 7),
+  );
+  const weeks = makeEmptyWeeks(weekCount);
+
+  workouts.forEach((workout, index) => {
+    const rawDay = workout?.day == null ? 0 : Number(workout.day);
+    const dayNumber = Number.isFinite(rawDay) ? Math.max(0, Math.floor(rawDay)) : 0;
+    const weekIndex = Math.floor(dayNumber / 7);
+    const dayIndex = dayNumber % 7;
+    weeks[weekIndex].days[dayIndex].workouts.push({
+      entryId: String(workout?.id ?? `entry-${index}-${Date.now()}`),
+      workout,
+    });
+  });
+
+  return {
+    ...folder,
+    id: String(folder?.id ?? ''),
+    name: folder?.name || 'Untitled Plan',
+    weeks,
+  };
+}
+
 const clonePlan = (plan, name = plan.name) => ({
   ...plan,
-  id: `plan-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  id: null,
   name,
   weeks: plan.weeks.map((week, weekIndex) => ({
     ...week,
@@ -125,13 +183,15 @@ export default function TrainingPlanEditor() {
   const [plan, setPlan] = useState(() => makePlan());
   const [savedPlans, setSavedPlans] = useState([]);
   const [selectedSavedPlanId, setSelectedSavedPlanId] = useState('');
+  const [loadingPlans, setLoadingPlans] = useState(true);
+  const [savingPlan, setSavingPlan] = useState(false);
   const [draggedWorkout, setDraggedWorkout] = useState(null);
   const [draggedPayload, setDraggedPayload] = useState(null);
   const draggedPayloadRef = useRef(null);
   const [activeDropTarget, setActiveDropTarget] = useState('');
   const [visibleWeekNumbers, setVisibleWeekNumbers] = useState([]);
   const weekGridScrollRef = useRef(null);
-  const [statusMessage, setStatusMessage] = useState('Plan editing is local for now. Save/open actions do not call Val Town yet.');
+  const [statusMessage, setStatusMessage] = useState('Loading training plans from Intervals.icu…');
 
   useEffect(() => {
     let active = true;
@@ -153,6 +213,29 @@ export default function TrainingPlanEditor() {
       }
     };
     loadLibrary();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadPlans = async () => {
+      setLoadingPlans(true);
+      try {
+        const result = await requestTrainingPlans('list_plans');
+        if (active) {
+          const plans = Array.isArray(result?.plans) ? result.plans : [];
+          setSavedPlans(plans);
+          setStatusMessage(plans.length
+            ? 'Loaded ' + plans.length + ' plan' + (plans.length === 1 ? '' : 's') + ' from Intervals.icu.'
+            : 'Connected to Intervals.icu. Save a new plan to get started.');
+        }
+      } catch (error) {
+        if (active) setStatusMessage(error?.message || 'Could not load plans from Intervals.icu.');
+      } finally {
+        if (active) setLoadingPlans(false);
+      }
+    };
+    loadPlans();
     return () => { active = false; };
   }, []);
 
@@ -321,39 +404,85 @@ export default function TrainingPlanEditor() {
     }));
   };
 
+  const refreshSavedPlans = async (preferredId = '') => {
+    const result = await requestTrainingPlans('list_plans');
+    const nextPlans = Array.isArray(result?.plans) ? result.plans : [];
+    setSavedPlans(nextPlans);
+    const nextId = String(preferredId || '');
+    setSelectedSavedPlanId(nextPlans.some((item) => String(item.id) === nextId) ? nextId : '');
+    return nextPlans;
+  };
+
   const handleNewPlan = () => {
     setPlan(makePlan());
     setSelectedSavedPlanId('');
-    setStatusMessage('New blank plan created. It has not been saved to a backend.');
+    setStatusMessage('New plan draft. Save it to create a plan in Intervals.icu.');
   };
 
-  const handleSavePlan = () => {
-    const snapshot = clonePlan(plan);
-    setSavedPlans((current) => {
-      const existingIndex = current.findIndex((item) => item.id === plan.id);
-      if (existingIndex < 0) return [...current, { ...snapshot, id: plan.id }];
-      return current.map((item) => item.id === plan.id ? { ...snapshot, id: plan.id } : item);
-    });
-    setSelectedSavedPlanId(plan.id);
-    setStatusMessage('Plan saved in this page session only. Val Town persistence is not connected yet.');
+  const handleSavePlan = async () => {
+    const isExistingPlan = /^\d+$/.test(String(plan.id || ''));
+    setSavingPlan(true);
+    setStatusMessage(isExistingPlan ? 'Saving changes to Intervals.icu…' : 'Creating plan in Intervals.icu…');
+    try {
+      const result = await requestTrainingPlans(isExistingPlan ? 'update_plan' : 'create_plan', {
+        method: isExistingPlan ? 'PUT' : 'POST',
+        plan,
+      });
+      const savedId = String(result?.plan?.id ?? plan.id ?? '');
+      if (!savedId) throw new Error('Intervals.icu did not return a plan ID.');
+      const refreshed = await requestTrainingPlans('get_plan', { id: savedId });
+      const savedPlan = planFromIntervals(refreshed.plan);
+      setPlan(savedPlan);
+      await refreshSavedPlans(savedId);
+      setStatusMessage(`Saved “${savedPlan.name}” to Intervals.icu.`);
+    } catch (error) {
+      setStatusMessage(error?.message || 'Could not save the plan to Intervals.icu.');
+    } finally {
+      setSavingPlan(false);
+    }
   };
 
-  const handleOpenPlan = () => {
-    const found = savedPlans.find((item) => item.id === selectedSavedPlanId);
-    if (!found) {
-      setStatusMessage('Save a plan in this session first, or connect the future Val Town plan API.');
+  const handleOpenPlan = async () => {
+    if (!selectedSavedPlanId) {
+      setStatusMessage('Choose a plan from Intervals.icu to open.');
       return;
     }
-    setPlan(clonePlan(found, found.name));
-    setPlan((current) => ({ ...current, id: found.id, name: found.name }));
-    setStatusMessage(`Opened “${found.name}” from this page session.`);
+    setSavingPlan(true);
+    setStatusMessage('Opening plan from Intervals.icu…');
+    try {
+      const result = await requestTrainingPlans('get_plan', { id: selectedSavedPlanId });
+      const openedPlan = planFromIntervals(result.plan);
+      setPlan(openedPlan);
+      setSelectedSavedPlanId(openedPlan.id);
+      setStatusMessage(`Opened “${openedPlan.name}” from Intervals.icu.`);
+    } catch (error) {
+      setStatusMessage(error?.message || 'Could not open that plan from Intervals.icu.');
+    } finally {
+      setSavingPlan(false);
+    }
   };
 
-  const handleCopyPlan = () => {
+  const handleCopyPlan = async () => {
     const copy = clonePlan(plan, `${plan.name} (Copy)`);
-    setPlan(copy);
-    setSelectedSavedPlanId('');
-    setStatusMessage('Plan copied in the editor. Save it to keep it in this page session.');
+    setSavingPlan(true);
+    setStatusMessage('Copying plan to Intervals.icu…');
+    try {
+      const result = await requestTrainingPlans('copy_plan', {
+        method: 'POST',
+        plan: copy,
+      });
+      const copiedId = String(result?.plan?.id ?? '');
+      if (!copiedId) throw new Error('Intervals.icu did not return the copied plan ID.');
+      const refreshed = await requestTrainingPlans('get_plan', { id: copiedId });
+      const copiedPlan = planFromIntervals(refreshed.plan);
+      setPlan(copiedPlan);
+      await refreshSavedPlans(copiedId);
+      setStatusMessage(`Created “${copiedPlan.name}” in Intervals.icu.`);
+    } catch (error) {
+      setStatusMessage(error?.message || 'Could not copy the plan to Intervals.icu.');
+    } finally {
+      setSavingPlan(false);
+    }
   };
 
   const handleRenamePlan = (event) => {
@@ -395,16 +524,17 @@ export default function TrainingPlanEditor() {
         <div className="tpe-plan-actions">
           <button type="button" onClick={handleNewPlan}>New Plan</button>
           <select
-            aria-label="Saved plans in this session"
+            aria-label="Plans in Intervals.icu"
             value={selectedSavedPlanId}
             onChange={(event) => setSelectedSavedPlanId(event.target.value)}
+            disabled={loadingPlans || savingPlan}
           >
-            <option value="">Choose saved plan…</option>
-            {savedPlans.map((saved) => <option key={saved.id} value={saved.id}>{saved.name || 'Untitled Plan'}</option>)}
+            <option value="">{loadingPlans ? 'Loading plans…' : 'Choose a plan…'}</option>
+            {savedPlans.map((saved) => <option key={saved.id} value={String(saved.id)}>{saved.name || 'Untitled Plan'}</option>)}
           </select>
-          <button type="button" onClick={handleOpenPlan}>Open</button>
-          <button type="button" onClick={handleSavePlan}>Save</button>
-          <button type="button" onClick={handleCopyPlan}>Copy</button>
+          <button type="button" onClick={handleOpenPlan} disabled={savingPlan || !selectedSavedPlanId}>Open</button>
+          <button type="button" onClick={handleSavePlan} disabled={savingPlan}>{savingPlan ? 'Saving…' : 'Save'}</button>
+          <button type="button" onClick={handleCopyPlan} disabled={savingPlan}>Copy</button>
         </div>
       </div>
 
