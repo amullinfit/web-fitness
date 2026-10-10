@@ -4,12 +4,14 @@ import MonthlyView from './components/MonthlyView.jsx';
 import OptionsView from './components/OptionsView.jsx';
 import GeneralOverview from './components/GeneralOverview.jsx';
 import WorkoutBuilder from './components/WorkoutBuilder.jsx';
+import TrainingPlanEditor from './components/TrainingPlanEditor.jsx';
 import GearView from './components/GearView.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
+import { ReadOnlyProvider, useReadOnly } from './context/ReadOnlyContext.jsx';
 
 const DEFAULT_VIEW = 'monthly';
-const APP_TITLE = 'Web Fitness';
+const APP_TITLE = 'Web Fitness - 4E-22';
 
 // Timestamped logger utility
 const originalLog = console.log;
@@ -36,6 +38,7 @@ const TABS = [
   { id: 'monthly', label: 'Monthly View', component: MonthlyView },
   { id: 'overview', label: 'General Overview', component: GeneralOverview },
   { id: 'workout-builder', label: 'Workout Builder', component: WorkoutBuilder },
+  { id: 'training-plan-editor', label: 'Training Plan Editor', component: TrainingPlanEditor },
   { id: 'gear', label: 'Gear', component: GearView },
   { id: 'options', label: 'Options', component: OptionsView },
 ];
@@ -48,6 +51,7 @@ function HeaderBar({
   themeView,
 }) {
   const { paces, loading } = usePaces();
+  const readOnly = useReadOnly();
   const navRef = useRef(null);
 
   useEffect(() => {
@@ -117,7 +121,7 @@ function HeaderBar({
         }}
         title="Go to Monthly View"
       >
-        {APP_TITLE}
+        {APP_TITLE}{readOnly ? ' - Read-Only' : ''}
         {loading && ' (Loading...)'}
         {!loading && paces?.name && ` - ${paces.name}`}
       </h1>
@@ -223,7 +227,8 @@ export default function App() {
   const ActiveComponent = activeTabConfig.component;
 
   return (
-    <PacesProvider>
+    <ReadOnlyProvider>
+      <PacesProvider>
       <div
         style={{
           ...getThemeStyles(),
@@ -274,7 +279,8 @@ export default function App() {
           </ErrorBoundary>
         </main>
       </div>
-    </PacesProvider>
+      </PacesProvider>
+    </ReadOnlyProvider>
   );
 }
 

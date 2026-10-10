@@ -1,13 +1,17 @@
 //
 // WorkoutBuilderHelpers.js
 //
+import { formatPaceRange } from './WorkoutChartHelpers.js';
 
 // Module-level fallback constant for threshold in sec/mi
 export const FALLBACK_THRESHOLD = 540;
 
 // Declare API endpoints
 const VAL_WORKOUTBUILDER_URL = '/api/val-workoutbuilder';
-const VAL_MY_PACES_URL = '/api/val-my-paces';
+
+const isReadOnlyMode = () =>
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('readonly') === 'true';
 
 export const DEFAULT_THRESHOLD = (paces) => {
   return paces?.threshold_pace || FALLBACK_THRESHOLD;
@@ -16,34 +20,6 @@ export const DEFAULT_THRESHOLD = (paces) => {
 // ============================================================
 // API FUNCTIONS
 // ============================================================
-
-export async function fetchFoldersApi() {
-  console.log('[App Debug BuilderHelpers] fetchFoldersApi called');
-
-  try {
-    const res = await fetch(
-      `${VAL_WORKOUTBUILDER_URL}?action=get_folders`,
-      { method: 'GET' }
-    );
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: Failed to fetch folders`);
-    }
-
-    const data = await res.json();
-
-    return Array.isArray(data)
-      ? data
-      : (data.folders || []);
-  } catch (err) {
-    console.error(
-      '[App Debug BuilderHelpers] fetchFoldersApi error:',
-      err
-    );
-
-    throw err;
-  }
-}
 
 export async function fetchWorkoutsApi(folderId = null) {
   console.log(
@@ -108,6 +84,7 @@ export async function fetchWorkoutsApi(folderId = null) {
 }
 
 export async function createFolderApi(folderName) {
+  if (isReadOnlyMode()) throw new Error('Read-only mode prevents creating folders.');
   console.log(
     '[App Debug BuilderHelpers] createFolderApi called with folderName:',
     folderName
@@ -172,6 +149,7 @@ export async function createFolderApi(folderName) {
  * workout document/description as the user edits the workout.
  */
 export async function saveWorkoutApi(payload, isNew = false) {
+  if (isReadOnlyMode()) throw new Error('Read-only mode prevents saving workouts.');
   console.log(
     '[Save Flow 1/8] saveWorkoutApi called',
     {
@@ -450,36 +428,6 @@ export async function saveWorkoutApi(payload, isNew = false) {
   }
 }
 
-export async function fetchMyPacesApi() {
-  console.log(
-    '[App Debug BuilderHelpers] fetchMyPacesApi called'
-  );
-
-  try {
-    const res = await fetch(
-      VAL_MY_PACES_URL,
-      {
-        method: 'GET'
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error(
-        `HTTP ${res.status}: Failed to fetch paces`
-      );
-    }
-
-    return await res.json();
-  } catch (err) {
-    console.error(
-      '[App Debug BuilderHelpers] fetchMyPacesApi error:',
-      err
-    );
-
-    throw err;
-  }
-}
-
 // ============================================================
 // FORMATTING & PARSING HELPERS
 // ============================================================
@@ -695,8 +643,7 @@ export function calculateDynamicPresets(
       p.pace_slow &&
       p.pace_fast
     ) {
-      displayPace =
-        `${p.pace_slow}-${p.pace_fast}`;
+      displayPace = formatPaceRange(parseMMSS(p.pace_fast), parseMMSS(p.pace_slow));
 
     } else if (
       paceMethod?.includes('Range')
@@ -707,8 +654,7 @@ export function calculateDynamicPresets(
       const highPace =
         Math.round(paceSec * 1.03);
 
-      displayPace =
-        `${formatMMSS(lowPace)}-${formatMMSS(highPace)}`;
+      displayPace = formatPaceRange(lowPace, highPace);
     }
 
     return {
@@ -913,43 +859,6 @@ export const addIdsToBaseWorkout = (
     workout_doc: {
       ...baseWorkout.workout_doc,
       steps: processSteps(
-        baseWorkout.workout_doc.steps
-      )
-    }
-  };
-};
-
-export const removeIdsFromBaseWorkout = (
-  baseWorkout
-) => {
-  if (
-    !baseWorkout?.workout_doc?.steps
-  ) {
-    return baseWorkout;
-  }
-
-  const stripStepId = (steps) => {
-    return steps.map((step) => {
-      const {
-        id,
-        steps: childSteps,
-        ...cleanStep
-      } = step;
-
-      if (Array.isArray(childSteps)) {
-        cleanStep.steps =
-          stripStepId(childSteps);
-      }
-
-      return cleanStep;
-    });
-  };
-
-  return {
-    ...baseWorkout,
-    workout_doc: {
-      ...baseWorkout.workout_doc,
-      steps: stripStepId(
         baseWorkout.workout_doc.steps
       )
     }

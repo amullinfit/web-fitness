@@ -3,6 +3,7 @@
 //
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useReadOnly } from '../context/ReadOnlyContext.jsx';
 import { usePaces } from '../utils/PacesContext.jsx';
 import '../CSS/WorkoutBuilder.css';
 
@@ -21,7 +22,6 @@ import Modal_Workout_Save from '../modals/Modal_Workout_Save';
 import Modal_Workout_Zoom from '../modals/Modal_Workout_Zoom';
 
 import {
-  fetchFoldersApi,
   fetchWorkoutsApi,
   createFolderApi,
   saveWorkoutApi,
@@ -34,6 +34,7 @@ import {
 
 export default function WorkoutBuilder() {
   const { paces } = usePaces();
+  const readOnly = useReadOnly();
 
   // ------------------------------------------------------------
   // Core State
@@ -198,34 +199,18 @@ export default function WorkoutBuilder() {
     async function initData() {
       try {
         console.log(
-          '[App Debug WorkoutBuilder] Fetching folders...'
+          '[App Debug WorkoutBuilder] Fetching folders and workouts...'
         );
 
-        const fetchedFolders = await fetchFoldersApi();
+        const fetchedData = await fetchWorkoutsApi();
 
         console.log(
-          '[App Debug WorkoutBuilder] Folders received:',
-          fetchedFolders
+          '[App Debug WorkoutBuilder] Folders and workouts received:',
+          fetchedData
         );
 
-        setFolders(fetchedFolders || []);
-
-        console.log(
-          '[App Debug WorkoutBuilder] Fetching workouts...'
-        );
-
-        const fetchedWorkouts = await fetchWorkoutsApi();
-
-        console.log(
-          '[App Debug WorkoutBuilder] Workouts response received:',
-          fetchedWorkouts
-        );
-
-        const workoutsArray = Array.isArray(fetchedWorkouts)
-          ? fetchedWorkouts
-          : fetchedWorkouts?.workouts || [];
-
-        setSavedWorkouts(workoutsArray);
+        setFolders(fetchedData?.folders || []);
+        setSavedWorkouts(fetchedData?.workouts || []);
 
         console.log(
           '[App Debug WorkoutBuilder] Initial data load complete'
@@ -452,6 +437,7 @@ export default function WorkoutBuilder() {
     overrideTitle,
     overrideFolderId
   ) => {
+    if (readOnly) return;
     console.log(
       '[Save Flow Builder 1/8] handleSaveWorkout invoked',
       {
@@ -660,6 +646,7 @@ export default function WorkoutBuilder() {
   // ============================================================
 
   const handleDuplicateWorkout = () => {
+    if (readOnly) return;
     console.log(
       '[App Debug WorkoutBuilder] handleDuplicateWorkout invoked'
     );
@@ -839,6 +826,7 @@ export default function WorkoutBuilder() {
   const handleCreateFolder = async (
     folderName
   ) => {
+    if (readOnly) return;
     console.log(
       '[App Debug WorkoutBuilder] handleCreateFolder invoked:',
       folderName
@@ -992,6 +980,7 @@ export default function WorkoutBuilder() {
                   }}
                   placeholder="Workout Title"
                   className="workout-title-input"
+                  disabled={readOnly}
                   style={{
                     fontSize: '18px',
                     padding: '4px 8px',
@@ -1092,14 +1081,14 @@ export default function WorkoutBuilder() {
                   new one to get started.
                 </p>
 
-                <button
-                  className="btn-primary"
-                  onClick={
-                    handleNewWorkout
-                  }
-                >
-                  + Create New Workout
-                </button>
+                {!readOnly && (
+                  <button
+                    className="btn-primary"
+                    onClick={handleNewWorkout}
+                  >
+                    + Create New Workout
+                  </button>
+                )}
               </div>
             ) : (
               <div>
@@ -1132,10 +1121,9 @@ export default function WorkoutBuilder() {
                         index={index}
                         parentId={null}
                         paceDetails={paces}
+                        readOnly={readOnly}
                         onRemove={removeStep}
-                        onUpdate={
-                          updateStepField
-                        }
+                        onUpdate={updateStepField}
                         onAddChild={addStep}
                         onDragStart={
                           handleDragStart
@@ -1148,7 +1136,7 @@ export default function WorkoutBuilder() {
                   )}
                 </div>
 
-                <div
+                {!readOnly && <div
                   className="root-add-actions"
                   style={{
                     marginTop: '16px',
@@ -1203,7 +1191,7 @@ export default function WorkoutBuilder() {
                   >
                     + Add Repeat Block
                   </button>
-                </div>
+                </div>}
               </div>
             )}
           </div>

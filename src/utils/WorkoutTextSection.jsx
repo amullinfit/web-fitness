@@ -3,6 +3,7 @@
 //
 import React, { useState } from 'react';
 import './WorkoutTextSection.css';
+import { formatPaceRange, parsePaceStrToSec } from './WorkoutChartHelpers.js';
 
 import {
   detectPaceMethod,
@@ -92,11 +93,15 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
         const startZone = zoneList?.find((z) => z.zone === Number(start));
         const endZone = zoneList?.find((z) => z.zone === Number(end));
 
-        // Pull pace_slow from lower zone and pace_fast from upper zone
+        // Display pace ranges from fastest (lower seconds) to slowest.
         const slowPace = startZone?.pace_slow ?? `Zone ${start}`;
         const fastPace = endZone?.pace_fast ?? `Zone ${end}`;
 
-        paceStr = `${slowPace} - ${fastPace}`;
+        const fastSec = parsePaceStrToSec(fastPace);
+        const slowSec = parsePaceStrToSec(slowPace);
+        paceStr = fastSec && slowSec
+          ? formatPaceRange(fastSec, slowSec)
+          : `${fastPace} - ${slowPace}`;
         paceMethodStr = `(Zone ${start}-${end})`;
       }
       break;

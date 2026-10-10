@@ -10,7 +10,8 @@ import {
   calculatePaceFromPct,
   calculatePctFromPace,
   calculatePaceFromZone,
-  convertStepPaceTarget
+  convertStepPaceTarget,
+  getDescriptiveText
 } from '../utils/WorkoutConverter.js';
 
 const METERS_PER_MILE = 1609.344;
@@ -148,7 +149,8 @@ export default function RenderStepRow({
   onUpdate,
   onAddChild,
   onDragStart,
-  onDrop
+  onDrop,
+  readOnly = false
 }) {
   if (!step) return null;
 
@@ -167,6 +169,100 @@ export default function RenderStepRow({
     [paceDetails, thresholdSecPerMile, paceMethod]
   );
 
+  const isRepeat = step.type === 'repeat' || Boolean(step.reps) || Array.isArray(step.steps);
+  const childSteps = step.steps || [];
+  const iterations = step.reps ?? step.iterations ?? 1;
+  const repeatTotals = calculateStepTotals(step, thresholdSecPerMile, zoneList);
+  const durationSec = step.duration ?? step.durationSec ?? 0;
+  const targetPaceSec = getStepPaceInSeconds(step.pace, thresholdSecPerMile, zoneList);
+  const distanceMiles = step.distanceMiles ?? (targetPaceSec > 0 ? durationSec / targetPaceSec : 0);
+
+  if (readOnly) {
+    const isRange = step.pace && typeof step.pace === 'object' &&
+      (step.pace.start !== undefined || step.pace.end !== undefined);
+    let paceText = 'No pace target';
+    let descriptivePace = '';
+
+    if (step.pace) {
+      if (step.pace.units === '%pace') {
+        const startPct = step.pace.start ?? step.pace.value ?? 100;
+        const endPct = step.pace.end;
+        paceText = isRange ? `${startPct}%–${endPct}% threshold` : `${step.pace.value ?? startPct}% threshold`;
+        const startPace = formatMMSS(calculatePaceFromPct(startPct, thresholdSecPerMile));
+        const endPace = endPct !== undefined ? formatMMSS(calculatePaceFromPct(endPct, thresholdSecPerMile)) : '';
+        descriptivePace = endPace ? `${startPace}–${endPace} /mi` : `${startPace} /mi`;
+      } else if (step.pace.units === 'pace_zone') {
+        const startZoneValue = step.pace.start ?? step.pace.value;
+        const endZoneValue = step.pace.end;
+        const startZone = findZoneItem(zoneList, startZoneValue);
+        const endZone = endZoneValue !== undefined ? findZoneItem(zoneList, endZoneValue) : null;
+        const zoneLabel = (value, zone) => zone?.zone_name || zone?.name || zone?.label || `Zone ${value ?? '--'}`;
+        const startPace = getZoneTargetPaceSec(startZone);
+        const endPace = getZoneTargetPaceSec(endZone);
+        paceText = endZoneValue !== undefined
+          ? `${zoneLabel(startZoneValue, startZone)}–${zoneLabel(endZoneValue, endZone)}`
+          : zoneLabel(startZoneValue, startZone);
+        descriptivePace = endZoneValue !== undefined
+          ? `${startPace > 0 ? formatMMSS(startPace) : '--:--'}–${endPace > 0 ? formatMMSS(endPace) : '--:--'} /mi`
+          : `${getDescriptiveText(step.pace, zoneList) || (startPace > 0 ? formatMMSS(startPace) : '--:--')} /mi`;
+      } else if (step.pace.units === 'secs') {
+        paceText = isRange
+          ? `${formatMMSS(Math.min(step.pace.start ?? 0, step.pace.end ?? 0))}–${formatMMSS(Math.max(step.pace.start ?? 0, step.pace.end ?? 0))} /mi`
+          : `${formatMMSS(step.pace.value ?? 0)} /mi`;
+      } else if (typeof step.pace === 'number') {
+        paceText = `${formatMMSS(step.pace)} /mi`;
+      } else {
+        paceText = String(step.pace.value ?? step.pace.start ?? 'No pace target');
+      }
+    }
+
+    if (isRepeat) {
+      return (
+        <div className="repeat-block-container">
+          <div className="repeat-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <strong className="repeat-type-title">Repeat Block × {iterations}</strong>
+            <div className="repeat-summary-badge" style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: '600' }}>
+              Total: {formatTime(repeatTotals.totalSec)} ({formatDistanceFixed(repeatTotals.totalMiles)})
+            </div>
+          </div>
+          <div>
+            {childSteps.map((childStep, childIdx) => (
+              <RenderStepRow
+                key={childStep.id || `child-${childIdx}`}
+                step={childStep}
+                index={childIdx}
+                parentId={step.id}
+                paceDetails={paceDetails}
+                onRemove={onRemove}
+                onUpdate={onUpdate}
+                onAddChild={onAddChild}
+                onDragStart={onDragStart}
+                onDrop={onDrop}
+                readOnly
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    const totalDistanceMiles = stepMode === 'time'
+      ? (targetPaceSec > 0 ? durationSec / targetPaceSec : 0)
+      : distanceMiles;
+    const totalDurationSec = stepMode === 'time'
+      ? durationSec
+      : distanceMiles * targetPaceSec;
+
+    return (
+      <div className="workout-step-row read-only-step-row" style={{ padding: '8px 12px', borderBottom: '1px solid #ddd', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <strong className="step-type-label">{step.intensity || step.type || 'step'}</strong>
+        <span><strong>Time:</strong> {formatTime(totalDurationSec)}</span>
+        <span><strong>Pace:</strong> {paceText}{descriptivePace ? ` (${descriptivePace})` : ''}</span>
+        <span><strong>Distance:</strong> {formatDistanceFixed(totalDistanceMiles)}</span>
+      </div>
+    );
+  }
+
   const setStepMode = (newMode) => {
     onUpdate(step.id, 'stepMode', newMode);
   };
@@ -184,14 +280,8 @@ export default function RenderStepRow({
     onUpdate(step.id, 'pace', updatedPaceObj);
   };
 
-  const isRepeat = step.type === 'repeat' || Boolean(step.reps) || Array.isArray(step.steps);
-
   if (isRepeat) {
-    const childSteps = step.steps || [];
-    const iterations = step.reps ?? step.iterations ?? 1;
-
     // Dynamically recalculate aggregate totals for all child iterations
-    const repeatTotals = calculateStepTotals(step, thresholdSecPerMile, zoneList);
 
     return (
       <div
@@ -276,11 +366,6 @@ export default function RenderStepRow({
   }
 
   // Leaf Step values
-  const durationSec = step.duration ?? step.durationSec ?? 0;
-  const targetPaceSec = getStepPaceInSeconds(step.pace, thresholdSecPerMile, zoneList);
-
-  const distanceMiles = step.distanceMiles ?? (targetPaceSec > 0 ? durationSec / targetPaceSec : 0);
-
   const handleDurationChange = (newSec) => {
     onUpdate(step.id, 'duration', newSec);
     onUpdate(step.id, 'durationSec', newSec);
@@ -441,7 +526,7 @@ export default function RenderStepRow({
         const currentZoneKey = String(matchedZone?.zone ?? matchedZone?.id ?? rawZoneVal ?? defaultZoneVal);
 
         const zonePaceSec = getZoneTargetPaceSec(matchedZone);
-        const displayPaceStr = zonePaceSec > 0 ? formatMMSS(zonePaceSec) : '--:--';
+        const displayPaceStr = getDescriptiveText(step.pace, zoneList) || (zonePaceSec > 0 ? formatMMSS(zonePaceSec) : '--:--');
 
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

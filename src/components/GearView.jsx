@@ -2,22 +2,17 @@
 // GEARVIEW.JSX
 //
 import React, { useState, useEffect } from 'react';
+import {
+  getDistanceInMiles,
+  hasRetiredDate,
+  isShoeGear,
+  isUnassignedActivity,
+  sortByDistanceDesc,
+} from '../utils/GearHelpers.js';
 import '../CSS/GearView.css';
 
 const GEAR_URL = "/api/val-gear";
 const DEFAULT_MAX_SHOE_MILES = 400;
-
-/**
- * Normalizes distance values to miles.
- */
-const getDistanceInMiles = (gear) => {
-  if (gear.distance_miles !== undefined) return gear.distance_miles;
-  if (gear.distance_m !== undefined) return gear.distance_m / 1609.34;
-  if (gear.distance !== undefined) {
-    return gear.distance > 5000 ? gear.distance / 1609.34 : gear.distance;
-  }
-  return 0;
-};
 
 /**
  * Extracts threshold distance (in miles) from gear reminders.
@@ -42,27 +37,6 @@ const getThresholdFromReminders = (gear) => {
 };
 
 /**
- * Checks if item is a shoe based on type/category/name attributes.
- */
-const isShoeGear = (gear) => {
-  const type = (gear.type || '').toLowerCase();
-  return type.includes('shoe');
-};
-
-/**
- * Checks if item represents unassigned activities ("NOT ASSIGNED A SHOE" or "NOT TRACKED")
- */
-const isUnassignedActivity = (gear) => {
-  const name = (gear.name || '').toUpperCase();
-  return name.includes('NOT ASSIGNED A SHOE') || name.includes('NOT TRACKED');
-};
-
-/**
- * Checks whether retired contains a valid date value or string
- */
-const hasRetiredDate = (gear) => Boolean(gear.retired);
-
-/**
  * Helper to format date strings cleanly
  */
 const formatRetiredDate = (dateVal) => {
@@ -70,13 +44,6 @@ const formatRetiredDate = (dateVal) => {
   const d = new Date(dateVal);
   if (isNaN(d.getTime())) return String(dateVal);
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-};
-
-/**
- * Helper to sort array of gear by distance descending
- */
-const sortByDistanceDesc = (items) => {
-  return [...items].sort((a, b) => getDistanceInMiles(b) - getDistanceInMiles(a));
 };
 
 export default function GearView({ gearList: initialGearList }) {
