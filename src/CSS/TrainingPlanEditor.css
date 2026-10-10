@@ -123,7 +123,7 @@
 .tpe-planned-workout-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 3px; }
 .tpe-planned-workout-heading strong { font-size: 10px; line-height: 1.25; overflow-wrap: anywhere; }
 .tpe-planned-workout-heading button { flex: 0 0 auto; border: 0; background: transparent; color: #c24141; padding: 0 2px; line-height: 1; font-size: 16px; cursor: pointer; }
-.tpe-planned-workout .workout-chart-container { margin-top: 3px; }
+.tpe-planned-workout .workout-chart-container { margin: 3px 0 1px; padding: 4px 5px 2px; }
 .tpe-planned-meta { color: #6b7280; font-size: 9px; }
 .tpe-grid-footnote { color: #8a94a2; font-size: 10px; margin-top: 8px; }
 
