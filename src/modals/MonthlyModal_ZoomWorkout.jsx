@@ -14,20 +14,23 @@ export function WorkoutZoomContent({
   removingGearId,
   onRemoveGear,
   onOpenAddGear,
+  readOnly = false,
 }) {
   return (
     <div className="monthly-zoom-body">
-      <div
-        className="monthly-zoom-header-gear"
-        style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 20px 0 20px' }}
-      >
-        <GearBadge
-          workout={workout}
-          removingGearId={removingGearId}
-          onRemoveGear={(gearId) => onRemoveGear(workout.id, gearId)}
-          onOpenAddGear={() => onOpenAddGear(workout.id)}
-        />
-      </div>
+      {!readOnly && (
+        <div
+          className="monthly-zoom-header-gear"
+          style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 20px 0 20px' }}
+        >
+          <GearBadge
+            workout={workout}
+            removingGearId={removingGearId}
+            onRemoveGear={(gearId) => onRemoveGear(workout.id, gearId)}
+            onOpenAddGear={() => onOpenAddGear(workout.id)}
+          />
+        </div>
+      )}
 
       <div className="monthly-zoom-chart-container">
         <WorkoutChart
@@ -52,7 +55,7 @@ export function WorkoutZoomContent({
   );
 }
 
-export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMobile, setWorkouts }) {
+export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMobile, setWorkouts, readOnly = false }) {
   const [activeWorkoutIndex, setActiveWorkoutIndex] = useState(0);
 
   const {
@@ -143,9 +146,10 @@ export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMo
           removingGearId={removingGearId}
           onRemoveGear={handleRemoveGear}
           onOpenAddGear={handleOpenAddGearModal}
+          readOnly={readOnly}
         />
 
-        <Modal_AddGear
+        {!readOnly && <Modal_AddGear
           isOpen={Boolean(modalWorkoutId)}
           onClose={() => {
             setModalWorkoutId(null);
@@ -156,7 +160,7 @@ export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMo
           selectedGearId={selectedGearId}
           setSelectedGearId={setSelectedGearId}
           onConfirmAdd={() => handleAddGear(modalWorkoutId, selectedGearId)}
-        />
+        />}
         
       </div>
     </div>

@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import WorkoutChart from './WorkoutChart';
+import { WorkoutZoomModal } from '../modals/MonthlyModal_ZoomWorkout.jsx';
+import { usePaces } from '../utils/PacesContext.jsx';
+import { useIsMobile } from '../utils/MonthlyViewHelpers.jsx';
+import { extractStepPaceRange, getThresholdSecFromPaces } from '../utils/WorkoutChartHelpers.js';
 import { fetchWorkoutsApi } from '../utils/WorkoutBuilderHelpers.js';
 import '../CSS/TrainingPlanEditor.css';
 
@@ -24,26 +28,39 @@ const asNumber = (value) => {
   return Number.isFinite(number) && number > 0 ? number : 0;
 };
 
-const paceSecondsPerMile = (step) => {
+const paceSecondsPerMile = (step, paces) => {
   const pace = step?.pace;
   if (!pace) return 0;
-  const value = asNumber(pace.value ?? pace);
-  if (!value) return 0;
   const units = String(pace.units || '').toLowerCase();
+  const values = [pace.value, pace.start, pace.end].map(asNumber).filter((value) => value > 0);
+  if (!values.length) return 0;
+  const value = values.reduce((sum, item) => sum + item, 0) / values.length;
+
   if (units.includes('sec')) return value;
   if (units.includes('min')) return value * 60;
+  if (units.includes('%') || units.includes('pct')) {
+    const threshold = asNumber(paces?.run_pace_sec) || getThresholdSecFromPaces(paces);
+    return threshold / (value / 100);
+  }
+  if (units.includes('zone')) {
+    const range = extractStepPaceRange(pace, paces);
+    const fast = asNumber(range?.fastSec);
+    const slow = asNumber(range?.slowSec);
+    if (fast && slow) return (fast + slow) / 2;
+    return fast || slow;
+  }
   return 0;
 };
 
 // Estimate duration and mileage from the workout document. Repeat blocks are
 // multiplied by their iteration count; distance-based steps use miles as
 // represented by the existing Workout Builder data model.
-const estimateStep = (step, sport = 'Run') => {
+const estimateStep = (step, sport = 'Run', paces = null) => {
   if (!step || typeof step !== 'object') return { seconds: 0, miles: 0 };
 
   if (Array.isArray(step.steps)) {
     const childTotals = step.steps.reduce((total, child) => {
-      const estimate = estimateStep(child, sport);
+      const estimate = estimateStep(child, sport, paces);
       total.seconds += estimate.seconds;
       total.miles += estimate.miles;
       return total;
@@ -54,7 +71,7 @@ const estimateStep = (step, sport = 'Run') => {
 
   const duration = asNumber(step.duration ?? step.duration_seconds);
   const distance = asNumber(step.distance ?? step.distanceMiles ?? step.distance_miles);
-  const pace = paceSecondsPerMile(step);
+  const pace = paceSecondsPerMile(step, paces);
   const isRun = /run|running/i.test(String(sport || 'Run'));
 
   if (duration) {
@@ -66,12 +83,12 @@ const estimateStep = (step, sport = 'Run') => {
   return { seconds: 0, miles: 0 };
 };
 
-const estimateWorkout = (workout) => {
+const estimateWorkout = (workout, paces) => {
   const sport = workout?.type || workout?.sport || workout?.workout_doc?.type || 'Run';
   const steps = workout?.workout_doc?.steps || workout?.steps || [];
   const totals = Array.isArray(steps)
     ? steps.reduce((total, step) => {
-        const estimate = estimateStep(step, sport);
+        const estimate = estimateStep(step, sport, paces);
         total.seconds += estimate.seconds;
         total.miles += estimate.miles;
         return total;
@@ -174,6 +191,9 @@ const clonePlan = (plan, name = plan.name) => ({
 });
 
 export default function TrainingPlanEditor() {
+  const { paces } = usePaces();
+  const isMobile = useIsMobile(768);
+  const [zoomWorkout, setZoomWorkout] = useState(null);
   const [folders, setFolders] = useState([]);
   const [libraryWorkouts, setLibraryWorkouts] = useState([]);
   const [selectedFolderId, setSelectedFolderId] = useState('');
@@ -192,6 +212,15 @@ export default function TrainingPlanEditor() {
   const [visibleWeekNumbers, setVisibleWeekNumbers] = useState([]);
   const weekGridScrollRef = useRef(null);
   const [statusMessage, setStatusMessage] = useState('Loading training plans from Intervals.icu…');
+
+  useEffect(() => {
+    if (!zoomWorkout) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setZoomWorkout(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [zoomWorkout]);
 
   useEffect(() => {
     let active = true;
@@ -248,14 +277,14 @@ export default function TrainingPlanEditor() {
   const weekTotals = useMemo(() => plan.weeks.map((week) => {
     const totals = week.days.reduce((sum, day) => {
       day.workouts.forEach((entry) => {
-        const estimate = estimateWorkout(entry.workout);
+        const estimate = estimateWorkout(entry.workout, paces);
         sum.seconds += estimate.seconds;
         sum.miles += estimate.miles;
       });
       return sum;
     }, { seconds: 0, miles: 0 });
     return { weekNumber: week.weekNumber, ...totals };
-  }), [plan.weeks]);
+  }), [plan.weeks, paces]);
 
   useEffect(() => {
     const root = weekGridScrollRef.current;
@@ -561,11 +590,22 @@ export default function TrainingPlanEditor() {
                   {!selectedFolderId && <div className="tpe-empty">Choose a folder to browse its workouts.</div>}
                   {selectedFolderId && visibleWorkouts.length === 0 && <div className="tpe-empty">No workouts found in {selectedFolder?.name || 'this folder'}.</div>}
                   {visibleWorkouts.map((workout) => {
-                    const estimate = estimateWorkout(workout);
+                    const estimate = estimateWorkout(workout, paces);
                     return (
                       <div
                         className="tpe-library-workout"
                         key={workout.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Zoom in on ${workout.name || workout.title || 'workout'}`}
+                        onClick={() => setZoomWorkout(workout)}
+                        onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget) return;
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            setZoomWorkout(workout);
+                          }
+                        }}
                         draggable
                         onDragStart={(event) => {
                           setDraggedWorkout(workout);
@@ -578,7 +618,7 @@ export default function TrainingPlanEditor() {
                           event.dataTransfer.setData('application/x-training-plan-workout', payload);
                           event.dataTransfer.setData('text/plain', payload);
                         }}
-                        title="Drag this workout to a day in the plan"
+                        title="Click to zoom or drag this workout to a day in the plan"
                       >
                         <div className="tpe-workout-title-row">
                           <strong>{workout.name || workout.title || 'Untitled workout'}</strong>
@@ -658,11 +698,22 @@ export default function TrainingPlanEditor() {
                         {day.workouts.length === 0 ? <div className="tpe-drop-hint">Drop workout here</div> : (
                           <div className="tpe-day-workouts">
                             {day.workouts.map((entry) => {
-                              const estimate = estimateWorkout(entry.workout);
+                              const estimate = estimateWorkout(entry.workout, paces);
                               return (
                                 <div
                                   className="tpe-planned-workout"
                                   key={entry.entryId}
+                                  role="button"
+                                  tabIndex={0}
+                                  aria-label={`Zoom in on ${entry.workout.name || entry.workout.title || 'workout'}`}
+                                  onClick={() => setZoomWorkout(entry.workout)}
+                                  onKeyDown={(event) => {
+                                    if (event.target !== event.currentTarget) return;
+                                    if (event.key === 'Enter' || event.key === ' ') {
+                                      event.preventDefault();
+                                      setZoomWorkout(entry.workout);
+                                    }
+                                  }}
                                   draggable
                                   onDragStart={(event) => {
                                     setDraggedWorkout(entry.workout);
@@ -683,7 +734,7 @@ export default function TrainingPlanEditor() {
                                 >
                                   <div className="tpe-planned-workout-heading">
                                     <strong>{entry.workout.name || entry.workout.title || 'Workout'}</strong>
-                                    <button type="button" aria-label={`Remove ${entry.workout.name || 'workout'} from week ${week.weekNumber} ${day.day}`} onClick={() => removeWorkout(weekIndex, dayIndex, entry.entryId)}>×</button>
+                                    <button type="button" aria-label={`Remove ${entry.workout.name || 'workout'} from week ${week.weekNumber} ${day.day}`} onClick={(event) => { event.stopPropagation(); removeWorkout(weekIndex, dayIndex, entry.entryId); }}>×</button>
                                   </div>
                                   <WorkoutChart
                                     workout={entry.workout}
@@ -713,6 +764,16 @@ export default function TrainingPlanEditor() {
         </section>
         </div>
       </div>
+      {zoomWorkout && (
+        <WorkoutZoomModal
+          workouts={[zoomWorkout]}
+          onClose={() => setZoomWorkout(null)}
+          sportSettings={[]}
+          paces={paces}
+          isMobile={isMobile}
+          readOnly
+        />
+      )}
     </div>
   );
 }
