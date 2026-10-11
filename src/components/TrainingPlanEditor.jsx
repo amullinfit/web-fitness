@@ -238,6 +238,15 @@ export default function TrainingPlanEditor() {
   const weekGridScrollRef = useRef(null);
   const mileageChartRef = useRef(null);
   const optionsMenuRef = useRef(null);
+  useEffect(() => {
+    const closeOptionsOnOutsideClick = (event) => {
+      if (optionsMenuRef.current && !optionsMenuRef.current.contains(event.target)) {
+        optionsMenuRef.current.open = false;
+      }
+    };
+    document.addEventListener('pointerdown', closeOptionsOnOutsideClick);
+    return () => document.removeEventListener('pointerdown', closeOptionsOnOutsideClick);
+  }, []);
   const runOption = (action) => {
     if (optionsMenuRef.current) optionsMenuRef.current.open = false;
     action();
