@@ -216,6 +216,7 @@ export default function TrainingPlanEditor() {
   const [loadError, setLoadError] = useState('');
   const [plan, setPlan] = useState(() => makePlan());
   const [hasActivePlan, setHasActivePlan] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [savedPlans, setSavedPlans] = useState([]);
   const [selectedSavedPlanId, setSelectedSavedPlanId] = useState('');
   const [loadingPlans, setLoadingPlans] = useState(true);
@@ -525,6 +526,7 @@ export default function TrainingPlanEditor() {
   const handleNewPlan = () => {
     setPlan(makePlan());
     setHasActivePlan(true);
+    setHasUnsavedChanges(true);
     setSelectedSavedPlanId('');
     setStatusMessage('New plan draft. Save it to create a plan in Intervals.icu.');
   };
@@ -543,6 +545,7 @@ export default function TrainingPlanEditor() {
       const refreshed = await requestTrainingPlans('get_plan', { id: savedId });
       const savedPlan = planFromIntervals(refreshed.plan);
       setPlan(savedPlan);
+      setHasUnsavedChanges(false);
       await refreshSavedPlans(savedId);
       setStatusMessage(`Saved “${savedPlan.name}” to Intervals.icu.`);
     } catch (error) {
@@ -598,6 +601,7 @@ export default function TrainingPlanEditor() {
       const openedPlan = planFromIntervals(result.plan);
       setPlan(openedPlan);
       setHasActivePlan(true);
+      setHasUnsavedChanges(false);
       setSelectedSavedPlanId(openedPlan.id);
       setOpenDialog(false);
       setStatusMessage(`Opened “${openedPlan.name}” from Intervals.icu.`);
@@ -623,6 +627,7 @@ export default function TrainingPlanEditor() {
       const copiedPlan = planFromIntervals(refreshed.plan);
       setPlan(copiedPlan);
       setHasActivePlan(true);
+      setHasUnsavedChanges(false);
       await refreshSavedPlans(copiedId);
       setStatusMessage(`Created “${copiedPlan.name}” in Intervals.icu.`);
     } catch (error) {
@@ -633,11 +638,13 @@ export default function TrainingPlanEditor() {
   };
 
   const handleRenamePlan = (event) => {
+    setHasUnsavedChanges(true);
     const name = event.target.value;
     setPlan((current) => ({ ...current, name }));
   };
 
   const addFourWeeks = () => {
+    setHasUnsavedChanges(true);
     setPlan((current) => ({
       ...current,
       weeks: [
@@ -652,6 +659,7 @@ export default function TrainingPlanEditor() {
   };
 
   const openScheduleDialog = () => {
+    if (!/^\d+$/.test(String(plan.id || '')) || hasUnsavedChanges) return;
     setScheduleStart('');
     setHoverStart('');
     setScheduleMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -696,7 +704,7 @@ export default function TrainingPlanEditor() {
               {hasActivePlan && (
                 <>
                   <hr className="tpe-options-divider" />
-                  <button type="button" onClick={() => runOption(openScheduleDialog)} disabled={savingPlan || !planWorkoutCount}>Schedule Plan…</button>
+                  <button type="button" onClick={() => runOption(openScheduleDialog)} disabled={savingPlan || !/^\d+$/.test(String(plan.id || '')) || hasUnsavedChanges || !planWorkoutCount} title={hasUnsavedChanges ? 'Save changes before scheduling' : 'Save this plan before scheduling'}>Schedule Plan…</button>
                 </>
               )}
             </div>
@@ -762,13 +770,13 @@ export default function TrainingPlanEditor() {
                   <button
                     type="button"
                     key={key}
-                    className={`tpe-schedule-day ${date.getMonth() !== scheduleMonth.getMonth() ? 'outside' : ''} ${inPreview ? 'preview' : ''} ${scheduleStart === mondayKey ? 'chosen' : ''} ${valid ? 'valid' : ''}`}
+                    className={`tpe-schedule-day ${date.getMonth() !== scheduleMonth.getMonth() ? 'outside' : ''} ${inPreview ? 'preview' : ''} ${scheduleStart === mondayKey ? 'chosen-week' : ''} ${scheduleStart === key ? 'chosen' : ''} ${valid ? 'valid' : ''}`}
                     disabled={!valid}
                     aria-label={`${formatPlanDate(date)}${valid ? `, select week starting ${formatPlanDate(weekMonday)}` : ', unavailable'}`}
                     aria-pressed={scheduleStart === mondayKey}
                     onMouseEnter={() => { if (valid) setHoverStart(mondayKey); }}
                     onMouseLeave={() => setHoverStart('')}
-                    onFocus={() => { if (valid) setHoverStart(key); }}
+                    onFocus={() => { if (valid) setHoverStart(mondayKey); }}
                     onBlur={() => setHoverStart('')}
                     onClick={() => setScheduleStart(mondayKey)}
                   >
