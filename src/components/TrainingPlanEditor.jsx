@@ -783,6 +783,7 @@ export default function TrainingPlanEditor() {
                     onClick={() => setScheduleStart(mondayKey)}
                   >
                     <span className="tpe-schedule-day-number">{date.getDate()}</span>
+                    {inPreview && dayOffset === 0 && <small className="tpe-schedule-start">Start</small>}
                     {inPreview && entries.slice(0, 2).map((entry, index) => (
                       <span key={entry.entryId || index} className="tpe-schedule-mini-workout" title={entry.workout.name || 'Planned workout'}>
                         <WorkoutChart workout={entry.workout} chartHeight="17px" showWorkoutName={false} showThresholdPace={false} showYAxis={false} showYAxisLabels={false} showLegend={false} minimalXAxis={true} showHoverDetails={false} />
