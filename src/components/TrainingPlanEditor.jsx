@@ -190,6 +190,20 @@ const clonePlan = (plan, name = plan.name) => ({
   })),
 });
 
+
+const mondayOf = (date) => {
+  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  result.setDate(result.getDate() - ((result.getDay() + 6) % 7));
+  return result;
+};
+const shiftDate = (date, days) => {
+  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  result.setDate(result.getDate() + days);
+  return result;
+};
+const dateKey = (date) => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+const formatPlanDate = (date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
 export default function TrainingPlanEditor() {
   const { paces } = usePaces();
   const isMobile = useIsMobile(768);
@@ -206,6 +220,11 @@ export default function TrainingPlanEditor() {
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [savingPlan, setSavingPlan] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
+  const [scheduleDialog, setScheduleDialog] = useState(false);
+  const [scheduleStart, setScheduleStart] = useState('');
+  const [hoverStart, setHoverStart] = useState('');
+  const [scheduleMonth, setScheduleMonth] = useState(() => mondayOf(new Date()));
+
   const [openPlanId, setOpenPlanId] = useState('');
   const [openPlanDetails, setOpenPlanDetails] = useState({});
   const [openPlanLoading, setOpenPlanLoading] = useState(false);
@@ -621,6 +640,23 @@ export default function TrainingPlanEditor() {
     setStatusMessage('Added four more weeks.');
   };
 
+  const openScheduleDialog = () => {
+    setScheduleStart('');
+    setHoverStart('');
+    setScheduleMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    setScheduleDialog(true);
+  };
+  const scheduleWeeks = plan.weeks.length;
+  const scheduleDays = scheduleWeeks * 7;
+  const previewStartKey = hoverStart || scheduleStart;
+  const previewStart = previewStartKey ? new Date(previewStartKey + 'T12:00:00') : null;
+  const selectedStart = scheduleStart ? new Date(scheduleStart + 'T12:00:00') : null;
+  const calendarFirst = mondayOf(new Date(scheduleMonth.getFullYear(), scheduleMonth.getMonth(), 1));
+  const calendarDates = Array.from({ length: 42 }, (_, index) => shiftDate(calendarFirst, index));
+  const planWorkoutCount = plan.weeks.reduce((sum, week) => sum + week.days.reduce((count, day) => count + day.workouts.length, 0), 0);
+  const previewEnd = previewStart ? shiftDate(previewStart, scheduleDays - 1) : null;
+  const todayStart = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+
   const totalMiles = weekTotals.reduce((sum, week) => sum + week.miles, 0);
   const totalSeconds = weekTotals.reduce((sum, week) => sum + week.seconds, 0);
 
@@ -646,6 +682,8 @@ export default function TrainingPlanEditor() {
               <button type="button" onClick={() => runOption(showOpenDialog)} disabled={savingPlan}>Open Plan…</button>
               <button type="button" onClick={() => runOption(handleSavePlan)} disabled={savingPlan}>{savingPlan ? 'Saving…' : 'Save'}</button>
               <button type="button" onClick={() => runOption(handleCopyPlan)} disabled={savingPlan}>Copy</button>
+              <hr className="tpe-options-divider" />
+              <button type="button" onClick={() => runOption(openScheduleDialog)} disabled={savingPlan || !planWorkoutCount}>Schedule Plan…</button>
             </div>
           </details>
         </div>
@@ -679,6 +717,64 @@ export default function TrainingPlanEditor() {
             <div className="tpe-dialog-actions">
               <button type="button" onClick={() => setOpenDialog(false)} disabled={savingPlan}>Cancel</button>
               <button type="button" onClick={handleOpenPlan} disabled={!openPlanId || savingPlan}>{savingPlan ? 'Opening…' : 'Open'}</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {scheduleDialog && (
+        <div className="tpe-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setScheduleDialog(false); }}>
+          <section className="tpe-open-dialog tpe-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="tpe-schedule-title">
+            <h2 id="tpe-schedule-title">Schedule Training Plan</h2>
+            <p><strong>{plan.name}</strong> · {scheduleWeeks} weeks · {planWorkoutCount} workouts</p>
+            <div className="tpe-schedule-navigation">
+              <button type="button" aria-label="Previous month" onClick={() => setScheduleMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
+              <strong>{scheduleMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</strong>
+              <button type="button" aria-label="Next month" onClick={() => setScheduleMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
+            </div>
+            <div className="tpe-schedule-calendar">
+              {WEEKDAY_SHORT.map((day) => <div className="tpe-schedule-weekday" key={day}>{day}</div>)}
+              {calendarDates.map((date) => {
+                const key = dateKey(date);
+                const valid = date.getDay() === 1 && date > todayStart;
+                const inPreview = previewStart && date >= previewStart && date <= previewEnd;
+                const dayOffset = previewStart ? Math.round((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(previewStart.getFullYear(), previewStart.getMonth(), previewStart.getDate())) / 86400000) : -1;
+                const week = dayOffset >= 0 ? plan.weeks[Math.floor(dayOffset / 7)] : null;
+                const entries = week?.days[dayOffset % 7]?.workouts || [];
+                return (
+                  <button
+                    type="button"
+                    key={key}
+                    className={`tpe-schedule-day ${date.getMonth() !== scheduleMonth.getMonth() ? 'outside' : ''} ${inPreview ? 'preview' : ''} ${scheduleStart === key ? 'chosen' : ''} ${valid ? 'valid' : ''}`}
+                    disabled={!valid}
+                    aria-label={`${formatPlanDate(date)}${valid ? ', choose as plan start' : ', unavailable'}`}
+                    aria-pressed={scheduleStart === key}
+                    onMouseEnter={() => { if (valid) setHoverStart(key); }}
+                    onMouseLeave={() => setHoverStart('')}
+                    onFocus={() => { if (valid) setHoverStart(key); }}
+                    onBlur={() => setHoverStart('')}
+                    onClick={() => setScheduleStart(key)}
+                  >
+                    <span className="tpe-schedule-day-number">{date.getDate()}</span>
+                    {inPreview && entries.slice(0, 2).map((entry, index) => (
+                      <span key={entry.entryId || index} className="tpe-schedule-mini-workout" title={entry.workout.name || 'Planned workout'}>
+                        <WorkoutChart workout={entry.workout} chartHeight="17px" showWorkoutName={false} showThresholdPace={false} showYAxis={false} showYAxisLabels={false} showLegend={false} minimalXAxis={true} showHoverDetails={false} />
+                      </span>
+                    ))}
+                    {inPreview && entries.length > 2 && <small>+{entries.length - 2}</small>}
+                    {inPreview && dayOffset === scheduleDays - 1 && <small className="tpe-schedule-end">End</small>}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="tpe-schedule-summary">
+              {previewStart ? `Preview: ${formatPlanDate(previewStart)} – ${formatPlanDate(previewEnd)}` : 'Hover over a future Monday to preview the plan.'}
+              {selectedStart && <div>Selected start: <strong>{formatPlanDate(selectedStart)}</strong></div>}
+              <div className="tpe-schedule-notice">Preview only (4F-3). Existing calendar events and overlap warnings will be added in 4F-4. No calendar events are created here.</div>
+            </div>
+            <div className="tpe-dialog-actions">
+              <button type="button" onClick={() => setScheduleDialog(false)}>Cancel</button>
+              <button type="button" disabled={!scheduleStart} onClick={() => { setScheduleDialog(false); setStatusMessage(`Preview confirmed for ${plan.name}: ${formatPlanDate(selectedStart)} – ${formatPlanDate(shiftDate(selectedStart, scheduleDays - 1))}. No calendar changes made (4F-3).`); }}>Schedule (Preview)</button>
             </div>
           </section>
         </div>
