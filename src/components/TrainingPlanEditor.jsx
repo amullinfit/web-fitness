@@ -205,6 +205,11 @@ export default function TrainingPlanEditor() {
   const [selectedSavedPlanId, setSelectedSavedPlanId] = useState('');
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [savingPlan, setSavingPlan] = useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [openPlanId, setOpenPlanId] = useState('');
+  const [openPlanDetails, setOpenPlanDetails] = useState({});
+  const [openPlanLoading, setOpenPlanLoading] = useState(false);
+  const [openPlanError, setOpenPlanError] = useState('');
   const [draggedWorkout, setDraggedWorkout] = useState(null);
   const [draggedPayload, setDraggedPayload] = useState(null);
   const draggedPayloadRef = useRef(null);
@@ -519,21 +524,56 @@ export default function TrainingPlanEditor() {
     }
   };
 
-  const handleOpenPlan = async () => {
-    if (!selectedSavedPlanId) {
-      setStatusMessage('Choose a plan from Intervals.icu to open.');
-      return;
-    }
-    setSavingPlan(true);
-    setStatusMessage('Opening plan from Intervals.icu…');
+  const showOpenDialog = async () => {
+    setOpenPlanId('');
+    setOpenPlanError('');
+    setOpenDialog(true);
+    setOpenPlanLoading(true);
     try {
-      const result = await requestTrainingPlans('get_plan', { id: selectedSavedPlanId });
+      const result = await requestTrainingPlans('list_plans');
+      setSavedPlans(Array.isArray(result?.plans) ? result.plans : []);
+    } catch (error) {
+      setOpenPlanError(error?.message || 'Could not load saved plans.');
+    } finally {
+      setOpenPlanLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!openDialog || !savedPlans.length) return undefined;
+    let active = true;
+    const missing = savedPlans.filter((item) => !openPlanDetails[String(item.id)]);
+    if (!missing.length) return undefined;
+    const loadDetails = async () => {
+      for (const item of missing) {
+        if (!active) break;
+        try {
+          const result = await requestTrainingPlans('get_plan', { id: item.id });
+          if (active && result?.plan) {
+            setOpenPlanDetails((current) => ({ ...current, [String(item.id)]: planFromIntervals(result.plan) }));
+          }
+        } catch {
+          // Keep the plan selectable even if statistics cannot be loaded.
+        }
+      }
+    };
+    loadDetails();
+    return () => { active = false; };
+  }, [openDialog, savedPlans]);
+
+  const handleOpenPlan = async () => {
+    if (!openPlanId) return;
+    setSavingPlan(true);
+    setOpenPlanError('');
+    try {
+      const result = await requestTrainingPlans('get_plan', { id: openPlanId });
       const openedPlan = planFromIntervals(result.plan);
       setPlan(openedPlan);
       setSelectedSavedPlanId(openedPlan.id);
+      setOpenDialog(false);
       setStatusMessage(`Opened “${openedPlan.name}” from Intervals.icu.`);
     } catch (error) {
-      setStatusMessage(error?.message || 'Could not open that plan from Intervals.icu.');
+      setOpenPlanError(error?.message || 'Could not open that plan from Intervals.icu.');
     } finally {
       setSavingPlan(false);
     }
@@ -603,24 +643,46 @@ export default function TrainingPlanEditor() {
             <summary aria-label="Training plan options">Options <span aria-hidden="true">▾</span></summary>
             <div className="tpe-options-content">
               <button type="button" onClick={() => runOption(handleNewPlan)} disabled={savingPlan}>New Plan</button>
-              <label htmlFor="tpe-open-plan-select">Open plan from Intervals.icu</label>
-              <select
-                id="tpe-open-plan-select"
-                aria-label="Plans in Intervals.icu"
-                value={selectedSavedPlanId}
-                onChange={(event) => setSelectedSavedPlanId(event.target.value)}
-                disabled={loadingPlans || savingPlan}
-              >
-                <option value="">{loadingPlans ? 'Loading plans…' : 'Choose a plan…'}</option>
-                {savedPlans.map((saved) => <option key={saved.id} value={String(saved.id)}>{saved.name || 'Untitled Plan'}</option>)}
-              </select>
-              <button type="button" onClick={() => runOption(handleOpenPlan)} disabled={savingPlan || !selectedSavedPlanId}>Open</button>
+              <button type="button" onClick={() => runOption(showOpenDialog)} disabled={savingPlan}>Open Plan…</button>
               <button type="button" onClick={() => runOption(handleSavePlan)} disabled={savingPlan}>{savingPlan ? 'Saving…' : 'Save'}</button>
               <button type="button" onClick={() => runOption(handleCopyPlan)} disabled={savingPlan}>Copy</button>
             </div>
           </details>
         </div>
       </div>
+
+      {openDialog && (
+        <div className="tpe-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !savingPlan) setOpenDialog(false); }}>
+          <section className="tpe-open-dialog" role="dialog" aria-modal="true" aria-labelledby="tpe-open-title">
+            <h2 id="tpe-open-title">Open Training Plan</h2>
+            <p>Select a saved training plan folder from Intervals.icu.</p>
+            {openPlanError && <div className="tpe-error" role="alert">{openPlanError}</div>}
+            <div className="tpe-plan-picker" role="radiogroup" aria-label="Saved training plans">
+              <div className="tpe-plan-picker-head"><span>Plan folder</span><span>Weeks</span><span>Workouts</span><span>Max mi/wk</span></div>
+              {openPlanLoading && <p>Loading saved plans…</p>}
+              {!openPlanLoading && !savedPlans.length && <p>No saved plans found.</p>}
+              {savedPlans.map((saved) => {
+                const details = openPlanDetails[String(saved.id)];
+                const weeks = details?.weeks || [];
+                const workoutCount = weeks.reduce((count, week) => count + week.days.reduce((sum, day) => sum + day.workouts.length, 0), 0);
+                const maxMiles = weeks.length ? Math.max(...weeks.map((week) => week.days.reduce((sum, day) => sum + day.workouts.reduce((miles, entry) => miles + estimateWorkout(entry.workout, paces).miles, 0), 0))) : 0;
+                return (
+                  <label className={`tpe-plan-picker-row ${openPlanId === String(saved.id) ? 'selected' : ''}`} key={saved.id}>
+                    <span><input type="radio" name="open-plan" value={String(saved.id)} checked={openPlanId === String(saved.id)} onChange={() => setOpenPlanId(String(saved.id))} />{saved.name || 'Untitled Plan'}</span>
+                    <span>{details ? weeks.length : '…'}</span>
+                    <span>{details ? workoutCount : '…'}</span>
+                    <span>{details ? maxMiles.toFixed(1) : '…'}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="tpe-dialog-actions">
+              <button type="button" onClick={() => setOpenDialog(false)} disabled={savingPlan}>Cancel</button>
+              <button type="button" onClick={handleOpenPlan} disabled={!openPlanId || savingPlan}>{savingPlan ? 'Opening…' : 'Open'}</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       <div className="tpe-status" role="status">{statusMessage}</div>
       {loadError && <div className="tpe-error" role="alert">Workout library error: {loadError}</div>}
