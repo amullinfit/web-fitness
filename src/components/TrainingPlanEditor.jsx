@@ -295,12 +295,10 @@ export default function TrainingPlanEditor() {
         if (active) {
           const plans = Array.isArray(result?.plans) ? result.plans : [];
           setSavedPlans(plans);
-          setStatusMessage(plans.length
-            ? 'Loaded ' + plans.length + ' plan' + (plans.length === 1 ? '' : 's') + ' from Intervals.icu.'
-            : 'Connected to Intervals.icu. Save a new plan to get started.');
+          setStatusMessage('Use Options → New Plan or Open Plan to get started.');
         }
       } catch (error) {
-        if (active) setStatusMessage(error?.message || 'Could not load plans from Intervals.icu.');
+        if (active) setStatusMessage(error?.message || 'Could not load saved plans. Use Options to create or open a plan.');
       } finally {
         if (active) setLoadingPlans(false);
       }
@@ -783,7 +781,7 @@ export default function TrainingPlanEditor() {
               })}
             </div>
             <div className="tpe-schedule-summary">
-              {previewStart ? `Preview: ${formatPlanDate(previewStart)} – ${formatPlanDate(previewEnd)}` : 'Hover over a future Monday to preview the plan.'}
+              {previewStart ? `Preview: ${formatPlanDate(previewStart)} – ${formatPlanDate(previewEnd)}` : 'Hover over any day in a future week to preview the plan, starting Monday.'}
               {selectedStart && <div>Selected start: <strong>{formatPlanDate(selectedStart)}</strong></div>}
               <div className="tpe-schedule-notice">Preview only (4F-3). Existing calendar events and overlap warnings will be added in 4F-4. No calendar events are created here.</div>
             </div>
