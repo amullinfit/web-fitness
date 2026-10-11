@@ -275,3 +275,13 @@
 .tpe-schedule-day.chosen { background: rgba(40,105,200,.42); outline: 2px solid #2765ba; outline-offset: -2px; }
 .tpe-schedule-mini-workout, .tpe-schedule-mini-workout > * { background: transparent !important; }
 .tpe-schedule-mini-workout svg { background: transparent !important; }
+
+/* 4F-3E: Monday has a stronger outline while retaining the same pale fill. */
+.tpe-schedule-day.chosen,
+.tpe-schedule-day.chosen-week.chosen {
+  background: rgba(100,170,255,.19);
+  border: 2px solid #2059a8;
+  outline: 1px solid #2059a8;
+  outline-offset: -1px;
+}
+.tpe-schedule-start { font-size: .65rem; font-weight: 700; color: #2059a8; }
