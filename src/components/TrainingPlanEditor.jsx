@@ -797,7 +797,7 @@ export default function TrainingPlanEditor() {
             </div>
             <div className="tpe-schedule-summary">
               {previewStart ? `Preview: ${formatPlanDate(previewStart)} – ${formatPlanDate(previewEnd)}` : 'Hover over any day in a future week to preview the plan, starting Monday.'}
-              {selectedStart && <div>Selected start: <strong>{formatPlanDate(selectedStart)}</strong></div>}
+              {selectedStart && <div>Selected dates: <strong>{formatPlanDate(selectedStart)} – {formatPlanDate(shiftDate(selectedStart, scheduleDays - 1))}</strong></div>}
               <div className="tpe-schedule-notice">Preview only (4F-3). Existing calendar events and overlap warnings will be added in 4F-4. No calendar events are created here.</div>
             </div>
             <div className="tpe-dialog-actions">
