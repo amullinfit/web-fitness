@@ -213,6 +213,11 @@ export default function TrainingPlanEditor() {
   const [summaryScrollState, setSummaryScrollState] = useState({ left: false, right: false, visibleWeeks: [] });
   const weekGridScrollRef = useRef(null);
   const mileageChartRef = useRef(null);
+  const optionsMenuRef = useRef(null);
+  const runOption = (action) => {
+    if (optionsMenuRef.current) optionsMenuRef.current.open = false;
+    action();
+  };
   const [statusMessage, setStatusMessage] = useState('Loading training plans from Intervals.icu…');
 
   useEffect(() => {
@@ -594,10 +599,10 @@ export default function TrainingPlanEditor() {
           <div className="tpe-subtitle">Drag workouts from the library onto any day, or drag scheduled workouts to move them.</div>
         </div>
         <div className="tpe-plan-actions">
-          <details className="tpe-options-menu">
+          <details className="tpe-options-menu" ref={optionsMenuRef}>
             <summary aria-label="Training plan options">Options <span aria-hidden="true">▾</span></summary>
             <div className="tpe-options-content">
-              <button type="button" onClick={handleNewPlan} disabled={savingPlan}>New Plan</button>
+              <button type="button" onClick={() => runOption(handleNewPlan)} disabled={savingPlan}>New Plan</button>
               <label htmlFor="tpe-open-plan-select">Open plan from Intervals.icu</label>
               <select
                 id="tpe-open-plan-select"
@@ -609,9 +614,9 @@ export default function TrainingPlanEditor() {
                 <option value="">{loadingPlans ? 'Loading plans…' : 'Choose a plan…'}</option>
                 {savedPlans.map((saved) => <option key={saved.id} value={String(saved.id)}>{saved.name || 'Untitled Plan'}</option>)}
               </select>
-              <button type="button" onClick={handleOpenPlan} disabled={savingPlan || !selectedSavedPlanId}>Open</button>
-              <button type="button" onClick={handleSavePlan} disabled={savingPlan}>{savingPlan ? 'Saving…' : 'Save'}</button>
-              <button type="button" onClick={handleCopyPlan} disabled={savingPlan}>Copy</button>
+              <button type="button" onClick={() => runOption(handleOpenPlan)} disabled={savingPlan || !selectedSavedPlanId}>Open</button>
+              <button type="button" onClick={() => runOption(handleSavePlan)} disabled={savingPlan}>{savingPlan ? 'Saving…' : 'Save'}</button>
+              <button type="button" onClick={() => runOption(handleCopyPlan)} disabled={savingPlan}>Copy</button>
             </div>
           </details>
         </div>
