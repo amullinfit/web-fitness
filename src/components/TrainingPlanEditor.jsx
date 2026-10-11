@@ -670,8 +670,8 @@ export default function TrainingPlanEditor() {
   const scheduleWeeks = plan.weeks.length;
   const scheduleDays = scheduleWeeks * 7;
   const previewStartKey = hoverStart || scheduleStart;
-  const previewStart = previewStartKey ? new Date(previewStartKey + 'T12:00:00') : null;
-  const selectedStart = scheduleStart ? new Date(scheduleStart + 'T12:00:00') : null;
+  const previewStart = previewStartKey ? new Date(previewStartKey + 'T00:00:00') : null;
+  const selectedStart = scheduleStart ? new Date(scheduleStart + 'T00:00:00') : null;
   const calendarFirst = mondayOf(new Date(scheduleMonth.getFullYear(), scheduleMonth.getMonth(), 1));
   const calendarDates = Array.from({ length: 42 }, (_, index) => shiftDate(calendarFirst, index));
   const planWorkoutCount = plan.weeks.reduce((sum, week) => sum + week.days.reduce((count, day) => count + day.workouts.length, 0), 0);
