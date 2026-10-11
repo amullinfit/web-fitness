@@ -693,8 +693,12 @@ export default function TrainingPlanEditor() {
               <button type="button" onClick={() => runOption(showOpenDialog)} disabled={savingPlan}>Open Plan…</button>
               <button type="button" onClick={() => runOption(handleSavePlan)} disabled={savingPlan || !hasActivePlan}>{savingPlan ? 'Saving…' : 'Save'}</button>
               <button type="button" onClick={() => runOption(handleCopyPlan)} disabled={savingPlan || !hasActivePlan}>Copy</button>
-              <hr className="tpe-options-divider" />
-              <button type="button" onClick={() => runOption(openScheduleDialog)} disabled={savingPlan || !hasActivePlan || !planWorkoutCount}>Schedule Plan…</button>
+              {hasActivePlan && (
+                <>
+                  <hr className="tpe-options-divider" />
+                  <button type="button" onClick={() => runOption(openScheduleDialog)} disabled={savingPlan || !planWorkoutCount}>Schedule Plan…</button>
+                </>
+              )}
             </div>
           </details>
         </div>
