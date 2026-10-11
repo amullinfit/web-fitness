@@ -209,3 +209,27 @@
   color: #075fae;
   opacity: 1;
 }
+
+/* 4F-1: compact action menu; retain existing plan selection until 4F-2 dialog. */
+.tpe-plan-actions { position: relative; }
+.tpe-options-menu { position: relative; min-width: 120px; }
+.tpe-options-menu > summary {
+  cursor: pointer; list-style: none; padding: 9px 14px;
+  border: 1px solid var(--border-color, #aab4c1); border-radius: 7px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-weight: 600;
+}
+.tpe-options-menu > summary::-webkit-details-marker { display: none; }
+.tpe-options-menu[open] > summary { background: rgba(100, 150, 220, 0.12); }
+.tpe-options-content {
+  position: absolute; z-index: 30; top: calc(100% + 5px); right: 0;
+  min-width: 230px; max-width: min(90vw, 320px);
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px; border: 1px solid var(--border-color, #aab4c1);
+  border-radius: 8px; background: var(--background-color, #fff);
+  color: var(--text-color, #222); box-shadow: 0 8px 24px rgba(0,0,0,.15);
+}
+.tpe-options-content button, .tpe-options-content select {
+  width: 100%; max-width: none; text-align: left;
+}
+.tpe-options-content label { font-size: .8rem; font-weight: 600; }
