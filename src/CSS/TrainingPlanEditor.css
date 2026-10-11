@@ -269,3 +269,9 @@
 .tpe-schedule-summary { margin-top: 14px; font-size: .9rem; }
 .tpe-schedule-notice { margin-top: 7px; opacity: .75; font-size: .8rem; }
 @media (max-width: 600px) { .tpe-schedule-day { min-height: 48px; padding: 2px; } .tpe-schedule-day-number { font-size: .7rem; } .tpe-schedule-mini-workout { height: 12px; } }
+
+/* 4F-3D: highlight the whole selected start week, not only Monday. */
+.tpe-schedule-day.chosen-week { background: rgba(40,105,200,.30); border-color: #2765ba; }
+.tpe-schedule-day.chosen { background: rgba(40,105,200,.42); outline: 2px solid #2765ba; outline-offset: -2px; }
+.tpe-schedule-mini-workout, .tpe-schedule-mini-workout > * { background: transparent !important; }
+.tpe-schedule-mini-workout svg { background: transparent !important; }
