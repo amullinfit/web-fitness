@@ -233,3 +233,17 @@
   width: 100%; max-width: none; text-align: left;
 }
 .tpe-options-content label { font-size: .8rem; font-weight: 600; }
+
+/* 4F-2: saved plan picker */
+.tpe-dialog-backdrop { position: fixed; inset: 0; z-index: 1100; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.tpe-open-dialog { width: min(760px, 100%); max-height: 85vh; overflow: auto; padding: 22px; border-radius: 12px; background: var(--background-color, #fff); color: var(--text-color, #222); box-shadow: 0 15px 50px rgba(0,0,0,.25); }
+.tpe-open-dialog h2 { margin: 0 0 6px; }
+.tpe-open-dialog p { margin: 0 0 16px; }
+.tpe-plan-picker { overflow-x: auto; max-height: 55vh; overflow-y: auto; }
+.tpe-plan-picker-head, .tpe-plan-picker-row { display: grid; grid-template-columns: minmax(180px, 1fr) 70px 90px 100px; align-items: center; gap: 10px; min-width: 480px; padding: 10px 8px; }
+.tpe-plan-picker-head { font-weight: 600; border-bottom: 1px solid #aab4c1; }
+.tpe-plan-picker-row { cursor: pointer; border-bottom: 1px solid rgba(128,128,128,.2); }
+.tpe-plan-picker-row:hover { background: rgba(80,145,220,.1); }
+.tpe-plan-picker-row.selected { background: rgba(80,145,220,.22); }
+.tpe-plan-picker-row > span:first-child { display: flex; gap: 8px; align-items: center; }
+.tpe-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
