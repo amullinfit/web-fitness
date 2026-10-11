@@ -215,6 +215,7 @@ export default function TrainingPlanEditor() {
   const [loadingLibrary, setLoadingLibrary] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [plan, setPlan] = useState(() => makePlan());
+  const [hasActivePlan, setHasActivePlan] = useState(false);
   const [savedPlans, setSavedPlans] = useState([]);
   const [selectedSavedPlanId, setSelectedSavedPlanId] = useState('');
   const [loadingPlans, setLoadingPlans] = useState(true);
@@ -251,7 +252,7 @@ export default function TrainingPlanEditor() {
     if (optionsMenuRef.current) optionsMenuRef.current.open = false;
     action();
   };
-  const [statusMessage, setStatusMessage] = useState('Loading training plans from Intervals.icu…');
+  const [statusMessage, setStatusMessage] = useState('Use Options to create or open a training plan.');
 
   useEffect(() => {
     if (!zoomWorkout) return undefined;
@@ -525,6 +526,7 @@ export default function TrainingPlanEditor() {
 
   const handleNewPlan = () => {
     setPlan(makePlan());
+    setHasActivePlan(true);
     setSelectedSavedPlanId('');
     setStatusMessage('New plan draft. Save it to create a plan in Intervals.icu.');
   };
@@ -597,6 +599,7 @@ export default function TrainingPlanEditor() {
       const result = await requestTrainingPlans('get_plan', { id: openPlanId });
       const openedPlan = planFromIntervals(result.plan);
       setPlan(openedPlan);
+      setHasActivePlan(true);
       setSelectedSavedPlanId(openedPlan.id);
       setOpenDialog(false);
       setStatusMessage(`Opened “${openedPlan.name}” from Intervals.icu.`);
@@ -621,6 +624,7 @@ export default function TrainingPlanEditor() {
       const refreshed = await requestTrainingPlans('get_plan', { id: copiedId });
       const copiedPlan = planFromIntervals(refreshed.plan);
       setPlan(copiedPlan);
+      setHasActivePlan(true);
       await refreshSavedPlans(copiedId);
       setStatusMessage(`Created “${copiedPlan.name}” in Intervals.icu.`);
     } catch (error) {
@@ -674,14 +678,14 @@ export default function TrainingPlanEditor() {
       <div className="tpe-header">
         <div className="tpe-title-block">
           <div className="tpe-eyebrow">PLAN DESIGNER</div>
-          <input
+          {hasActivePlan ? <input
             className="tpe-plan-name"
             aria-label="Training plan name"
             value={plan.name}
             onChange={handleRenamePlan}
             placeholder="Training plan name"
-          />
-          <div className="tpe-subtitle">Drag workouts from the library onto any day, or drag scheduled workouts to move them.</div>
+          /> : <div className="tpe-plan-name">No training plan selected</div>}
+          <div className="tpe-subtitle">{hasActivePlan ? 'Drag workouts from the library onto any day, or drag scheduled workouts to move them.' : 'Use Options → New Plan or Open Plan to get started.'}</div>
         </div>
         <div className="tpe-plan-actions">
           <details className="tpe-options-menu" ref={optionsMenuRef}>
@@ -689,10 +693,10 @@ export default function TrainingPlanEditor() {
             <div className="tpe-options-content">
               <button type="button" onClick={() => runOption(handleNewPlan)} disabled={savingPlan}>New Plan</button>
               <button type="button" onClick={() => runOption(showOpenDialog)} disabled={savingPlan}>Open Plan…</button>
-              <button type="button" onClick={() => runOption(handleSavePlan)} disabled={savingPlan}>{savingPlan ? 'Saving…' : 'Save'}</button>
-              <button type="button" onClick={() => runOption(handleCopyPlan)} disabled={savingPlan}>Copy</button>
+              <button type="button" onClick={() => runOption(handleSavePlan)} disabled={savingPlan || !hasActivePlan}>{savingPlan ? 'Saving…' : 'Save'}</button>
+              <button type="button" onClick={() => runOption(handleCopyPlan)} disabled={savingPlan || !hasActivePlan}>Copy</button>
               <hr className="tpe-options-divider" />
-              <button type="button" onClick={() => runOption(openScheduleDialog)} disabled={savingPlan || !planWorkoutCount}>Schedule Plan…</button>
+              <button type="button" onClick={() => runOption(openScheduleDialog)} disabled={savingPlan || !hasActivePlan || !planWorkoutCount}>Schedule Plan…</button>
             </div>
           </details>
         </div>
@@ -745,7 +749,9 @@ export default function TrainingPlanEditor() {
               {WEEKDAY_SHORT.map((day) => <div className="tpe-schedule-weekday" key={day}>{day}</div>)}
               {calendarDates.map((date) => {
                 const key = dateKey(date);
-                const valid = date.getDay() === 1 && date > todayStart;
+                const weekMonday = mondayOf(date);
+                const mondayKey = dateKey(weekMonday);
+                const valid = weekMonday > todayStart;
                 const inPreview = previewStart && date >= previewStart && date <= previewEnd;
                 const dayOffset = previewStart ? Math.round((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(previewStart.getFullYear(), previewStart.getMonth(), previewStart.getDate())) / 86400000) : -1;
                 const week = dayOffset >= 0 ? plan.weeks[Math.floor(dayOffset / 7)] : null;
@@ -754,15 +760,15 @@ export default function TrainingPlanEditor() {
                   <button
                     type="button"
                     key={key}
-                    className={`tpe-schedule-day ${date.getMonth() !== scheduleMonth.getMonth() ? 'outside' : ''} ${inPreview ? 'preview' : ''} ${scheduleStart === key ? 'chosen' : ''} ${valid ? 'valid' : ''}`}
+                    className={`tpe-schedule-day ${date.getMonth() !== scheduleMonth.getMonth() ? 'outside' : ''} ${inPreview ? 'preview' : ''} ${scheduleStart === mondayKey ? 'chosen' : ''} ${valid ? 'valid' : ''}`}
                     disabled={!valid}
-                    aria-label={`${formatPlanDate(date)}${valid ? ', choose as plan start' : ', unavailable'}`}
-                    aria-pressed={scheduleStart === key}
-                    onMouseEnter={() => { if (valid) setHoverStart(key); }}
+                    aria-label={`${formatPlanDate(date)}${valid ? `, select week starting ${formatPlanDate(weekMonday)}` : ', unavailable'}`}
+                    aria-pressed={scheduleStart === mondayKey}
+                    onMouseEnter={() => { if (valid) setHoverStart(mondayKey); }}
                     onMouseLeave={() => setHoverStart('')}
                     onFocus={() => { if (valid) setHoverStart(key); }}
                     onBlur={() => setHoverStart('')}
-                    onClick={() => setScheduleStart(key)}
+                    onClick={() => setScheduleStart(mondayKey)}
                   >
                     <span className="tpe-schedule-day-number">{date.getDate()}</span>
                     {inPreview && entries.slice(0, 2).map((entry, index) => (
@@ -792,7 +798,7 @@ export default function TrainingPlanEditor() {
       <div className="tpe-status" role="status">{statusMessage}</div>
       {loadError && <div className="tpe-error" role="alert">Workout library error: {loadError}</div>}
 
-      <div className={`tpe-workspace ${libraryCollapsed ? 'tpe-library-collapsed' : ''}`}>
+      {hasActivePlan && <div className={`tpe-workspace ${libraryCollapsed ? 'tpe-library-collapsed' : ''}`}>
         <aside className="tpe-library">
           <div className="tpe-panel-heading">
             {!libraryCollapsed && <div><strong>Workout Library</strong><span>{visibleWorkouts.length} workouts</span></div>}
@@ -1013,6 +1019,7 @@ export default function TrainingPlanEditor() {
         </section>
         </div>
       </div>
+      }
       {zoomWorkout && (
         <WorkoutZoomModal
           workouts={[zoomWorkout]}
