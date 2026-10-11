@@ -594,19 +594,26 @@ export default function TrainingPlanEditor() {
           <div className="tpe-subtitle">Drag workouts from the library onto any day, or drag scheduled workouts to move them.</div>
         </div>
         <div className="tpe-plan-actions">
-          <button type="button" onClick={handleNewPlan}>New Plan</button>
-          <select
-            aria-label="Plans in Intervals.icu"
-            value={selectedSavedPlanId}
-            onChange={(event) => setSelectedSavedPlanId(event.target.value)}
-            disabled={loadingPlans || savingPlan}
-          >
-            <option value="">{loadingPlans ? 'Loading plans…' : 'Choose a plan…'}</option>
-            {savedPlans.map((saved) => <option key={saved.id} value={String(saved.id)}>{saved.name || 'Untitled Plan'}</option>)}
-          </select>
-          <button type="button" onClick={handleOpenPlan} disabled={savingPlan || !selectedSavedPlanId}>Open</button>
-          <button type="button" onClick={handleSavePlan} disabled={savingPlan}>{savingPlan ? 'Saving…' : 'Save'}</button>
-          <button type="button" onClick={handleCopyPlan} disabled={savingPlan}>Copy</button>
+          <details className="tpe-options-menu">
+            <summary aria-label="Training plan options">Options <span aria-hidden="true">▾</span></summary>
+            <div className="tpe-options-content">
+              <button type="button" onClick={handleNewPlan} disabled={savingPlan}>New Plan</button>
+              <label htmlFor="tpe-open-plan-select">Open plan from Intervals.icu</label>
+              <select
+                id="tpe-open-plan-select"
+                aria-label="Plans in Intervals.icu"
+                value={selectedSavedPlanId}
+                onChange={(event) => setSelectedSavedPlanId(event.target.value)}
+                disabled={loadingPlans || savingPlan}
+              >
+                <option value="">{loadingPlans ? 'Loading plans…' : 'Choose a plan…'}</option>
+                {savedPlans.map((saved) => <option key={saved.id} value={String(saved.id)}>{saved.name || 'Untitled Plan'}</option>)}
+              </select>
+              <button type="button" onClick={handleOpenPlan} disabled={savingPlan || !selectedSavedPlanId}>Open</button>
+              <button type="button" onClick={handleSavePlan} disabled={savingPlan}>{savingPlan ? 'Saving…' : 'Save'}</button>
+              <button type="button" onClick={handleCopyPlan} disabled={savingPlan}>Copy</button>
+            </div>
+          </details>
         </div>
       </div>
 
