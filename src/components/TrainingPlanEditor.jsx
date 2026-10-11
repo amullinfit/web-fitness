@@ -389,6 +389,7 @@ export default function TrainingPlanEditor() {
   };
 
   const updateDay = (weekIndex, dayIndex, updater) => {
+    setHasUnsavedChanges(true);
     setPlan((current) => ({
       ...current,
       weeks: current.weeks.map((week, wi) => wi !== weekIndex ? week : ({
@@ -454,6 +455,7 @@ export default function TrainingPlanEditor() {
         // Find the source by its unique entry ID rather than trusting stored
         // grid indexes. This survives re-renders and avoids losing a move if
         // a payload's week/day coordinates are stale.
+        setHasUnsavedChanges(true);
         setPlan((current) => {
           let moving = null;
           let sourceWeekIndex = -1;
