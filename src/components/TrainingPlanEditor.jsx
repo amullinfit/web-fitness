@@ -717,7 +717,6 @@ export default function TrainingPlanEditor() {
     setScheduleValidationError('');
     setScheduleResult(null);
     setScheduleAttempted(false);
-    setScheduleWriteToken('');
     setHoverStart('');
     setCalendarEvents([]);
     setCalendarError('');
