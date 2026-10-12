@@ -285,3 +285,8 @@
   outline-offset: -1px;
 }
 .tpe-schedule-start { font-size: .65rem; font-weight: 700; color: #2059a8; }
+
+/* 4F-4: Existing Intervals.icu events and non-destructive overlap warnings. */
+.tpe-existing-events { display: block; font-size: .64rem; line-height: 1.2; color: #175c73; background: rgba(47,166,189,.13); border-radius: 3px; padding: 2px 3px; overflow-wrap: anywhere; }
+.tpe-schedule-day.overlap { box-shadow: inset 0 0 0 2px #c17b16; }
+.tpe-overlap-warning { font-size: .65rem; font-weight: 700; color: #925200; }
