@@ -115,6 +115,7 @@ const normalizeFolderId = (workout) =>
   String(workout?.folderId ?? workout?.folder_id ?? '');
 
 const CALENDAR_API_URL = import.meta.env.VITE_API_WORKOUTS_URL || 'https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run';
+const previewWorkoutName = (name) => String(name || 'Workout').replace(/^IntervalCoach\s*-?\s*/i, '').trim() || 'Workout';
 const calendarDateKey = (event) => String(event?.start_date_local || event?.start_date || '').slice(0, 10);
 
 const TRAINING_PLANS_API_URL =
@@ -816,21 +817,20 @@ export default function TrainingPlanEditor() {
                     onBlur={() => setHoverStart('')}
                     onClick={() => setScheduleStart(mondayKey)}
                   >
-                    <span className="tpe-schedule-day-number">{date.getDate()}</span>
-                    {inPreview && dayOffset === 0 && <small className="tpe-schedule-start">Start</small>}
+                    <span className="tpe-schedule-date-heading"><span className="tpe-schedule-day-number">{date.getDate()}</span>{inPreview && dayOffset === 0 && <small className="tpe-schedule-start">Start</small>}{inPreview && dayOffset === scheduleDays - 1 && <small className="tpe-schedule-end">End</small>}</span>
                     {inPreview && entries.slice(0, 2).map((entry, index) => (
-                      <span key={entry.entryId || index} className="tpe-schedule-mini-workout" title={entry.workout.name || 'Planned workout'}>
+                      <span key={entry.entryId || index} className="tpe-schedule-mini-workout tpe-schedule-plan-workout" title={previewWorkoutName(entry.workout.name || entry.workout.title)}>
+                        <span className="tpe-schedule-workout-name">{previewWorkoutName(entry.workout.name || entry.workout.title)}</span>
                         <WorkoutChart workout={entry.workout} chartHeight="17px" showWorkoutName={false} showThresholdPace={false} showYAxis={false} showYAxisLabels={false} showLegend={false} minimalXAxis={true} showHoverDetails={false} />
                       </span>
                     ))}
                     {inPreview && entries.length > 2 && <small>+{entries.length - 2}</small>}
                     {existing.filter((event) => event.category === 'WORKOUT' || event.workout_doc).map((event, index) => (
-                      <span key={event.id || `existing-${index}`} className="tpe-schedule-existing-workout" title={event.name || 'Existing workout'}>
-                        <span className="tpe-schedule-workout-name">{event.name || 'Existing workout'}</span>
+                      <span key={event.id || `existing-${index}`} className="tpe-schedule-existing-workout" title={previewWorkoutName(event.name)}>
+                        <span className="tpe-schedule-workout-name">{previewWorkoutName(event.name)}</span>
                         {event.workout_doc?.steps?.length > 0 && <WorkoutChart workout={event} chartHeight="17px" showWorkoutName={false} showThresholdPace={false} showYAxis={false} showYAxisLabels={false} showLegend={false} minimalXAxis={true} showHoverDetails={false} />}
                       </span>
                     ))}
-                    {inPreview && dayOffset === scheduleDays - 1 && <small className="tpe-schedule-end">End</small>}
                   </button>
                 );
               })}
