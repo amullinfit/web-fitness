@@ -235,6 +235,7 @@ export default function TrainingPlanEditor() {
   const [scheduleWriteToken, setScheduleWriteToken] = useState('');
   const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
   const [scheduleResult, setScheduleResult] = useState(null);
+  const [scheduleAttempted, setScheduleAttempted] = useState(false);
   const [scheduleValidationLoading, setScheduleValidationLoading] = useState(false);
   const [scheduleValidationError, setScheduleValidationError] = useState('');
   const [scheduleStart, setScheduleStart] = useState('');
@@ -704,6 +705,7 @@ export default function TrainingPlanEditor() {
     setScheduleValidation(null);
     setScheduleValidationError('');
     setScheduleResult(null);
+    setScheduleAttempted(false);
     setScheduleWriteToken('');
     setHoverStart('');
     setCalendarEvents([]);
@@ -731,6 +733,7 @@ export default function TrainingPlanEditor() {
     if (!scheduleValidation || !scheduleStart || !scheduleWriteToken || scheduleSubmitting) return;
     if (!window.confirm(`Schedule ${scheduleValidation.workout_count} workouts from ${plan.name} starting ${scheduleStart}? Existing workouts will remain.`)) return;
     setScheduleSubmitting(true);
+    setScheduleAttempted(true);
     setScheduleValidationError('');
     try {
       const response = await fetch(SCHEDULE_PREVIEW_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'schedule', plan_id: plan.id, start_date: scheduleStart, confirm: true, write_token: scheduleWriteToken }) });
@@ -888,7 +891,7 @@ export default function TrainingPlanEditor() {
                   {scheduleValidationLoading ? 'Validating…' : 'Validate with Intervals.icu (no writes)'}
                 </button>
               </div>
-              {scheduleValidationError && <div className="tpe-schedule-notice" role="alert">Validation failed: {scheduleValidationError}</div>}
+              {scheduleValidationError && <div className="tpe-schedule-notice" role="alert"><strong>{scheduleAttempted ? "Scheduling failed or could not be confirmed" : "Validation failed"}:</strong> {scheduleValidationError}</div>}
               {scheduleValidation && <div className="tpe-schedule-notice" role="status">
                 <strong>Intervals.icu dry-run results:</strong> {scheduleValidation.workout_count} workouts, {scheduleValidation.start_date} to {scheduleValidation.end_date}; {scheduleValidation.overlap_dates?.length || 0} overlap dates.
                 {scheduleValidation.workout_count !== planWorkoutCount && <div role="alert">Warning: saved plan has {scheduleValidation.workout_count} workouts; editor shows {planWorkoutCount}.</div>}
@@ -899,12 +902,12 @@ export default function TrainingPlanEditor() {
                 <input id="tpe-schedule-token" type="password" autoComplete="off" value={scheduleWriteToken} onChange={(event) => setScheduleWriteToken(event.target.value)} placeholder="SCHEDULE_WRITE_TOKEN from Val Town" />
                 <button type="button" disabled={!scheduleWriteToken || scheduleSubmitting} onClick={submitSchedule}>{scheduleSubmitting ? 'Scheduling…' : 'Confirm and schedule workouts'}</button>
               </div>}
-              {scheduleResult && <div className="tpe-schedule-notice" role="status"><strong>Scheduling response:</strong> {scheduleResult.created_count} of {scheduleResult.requested_count} workouts returned by Intervals.icu. Instance ID: {scheduleResult.instance_id}. {scheduleResult.warning || 'Review your Intervals.icu calendar to verify the scheduled workouts.'}</div>}
+              {scheduleSubmitting && <div className="tpe-schedule-notice" role="status"><strong>Scheduling in progress…</strong> Keep this window open. Do not submit twice.</div>}
+              {scheduleResult && <div className="tpe-schedule-notice" role="status"><strong>{scheduleResult.verified_count ? 'Scheduling request completed' : 'Scheduling needs verification'}:</strong> {scheduleResult.created_count} of {scheduleResult.requested_count} workouts returned by Intervals.icu. Instance ID: {scheduleResult.instance_id}. {scheduleResult.warning || 'Check the scheduled dates in Intervals.icu to confirm the workouts appear correctly.'}</div>}
               <div className="tpe-schedule-notice">Existing workouts are preserved. Scheduling requires a separate Val Town write token.</div>
             </div>
             <div className="tpe-dialog-actions">
-              <button type="button" onClick={() => setScheduleDialog(false)}>Cancel</button>
-              <button type="button" disabled={!scheduleStart || calendarLoading || !!calendarError} onClick={() => { setScheduleDialog(false); setStatusMessage(`Preview confirmed for ${plan.name}: ${formatPlanDate(selectedStart)} – ${formatPlanDate(shiftDate(selectedStart, scheduleDays - 1))}. No calendar changes made (4F-4).`); }}>Schedule (Preview)</button>
+              <button type="button" onClick={() => setScheduleDialog(false)} disabled={scheduleSubmitting}>{scheduleResult ? 'Close' : 'Close without scheduling'}</button>
             </div>
           </section>
         </div>
