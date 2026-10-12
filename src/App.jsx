@@ -11,7 +11,7 @@ import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
 import { ReadOnlyProvider, useReadOnly } from './context/ReadOnlyContext.jsx';
 
 const DEFAULT_VIEW = 'monthly';
-const APP_TITLE = 'Web Fitness - 4F-7C';
+const APP_TITLE = 'Web Fitness - 4F-7D';
 
 // Timestamped logger utility
 const originalLog = console.log;
@@ -166,7 +166,7 @@ function HeaderBar({
             minWidth: '160px',
           }}
         >
-          {TABS.filter((tab) => !readOnly || !['training-plan-editor', 'options'].includes(tab.id)).map((tab) => (
+          {TABS.filter((tab) => !readOnly || tab.id !== 'training-plan-editor').map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleSelectTab(tab.id)}
@@ -225,7 +225,7 @@ function AppContent() {
     return { backgroundColor: '#f9f9f9', color: '#1a1a1a' };
   };
 
-  const allowedTabs = readOnly ? TABS.filter((tab) => !['training-plan-editor', 'options'].includes(tab.id)) : TABS;
+  const allowedTabs = readOnly ? TABS.filter((tab) => tab.id !== 'training-plan-editor') : TABS;
   const activeTabConfig = allowedTabs.find((tab) => tab.id === activeTab) || TABS[1]; // Fallback to Monthly
   const ActiveComponent = activeTabConfig.component;
 
