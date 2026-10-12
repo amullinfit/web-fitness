@@ -668,10 +668,10 @@ export default function TrainingPlanEditor() {
 
   const previewStartKeyForFetch = hoverStart || scheduleStart;
   useEffect(() => {
-    if (!scheduleDialog || !previewStartKeyForFetch) return;
+    if (!scheduleDialog) return;
     const controller = new AbortController();
-    const start = new Date(previewStartKeyForFetch + 'T00:00:00');
-    const end = shiftDate(start, plan.weeks.length * 7 - 1);
+    const start = mondayOf(new Date(scheduleMonth.getFullYear(), scheduleMonth.getMonth(), 1));
+    const end = shiftDate(start, 41);
     const url = new URL(CALENDAR_API_URL);
     url.searchParams.set('action', 'calendar_range');
     url.searchParams.set('oldest', dateKey(start));
@@ -688,7 +688,7 @@ export default function TrainingPlanEditor() {
       .catch((error) => { if (error.name !== 'AbortError') { setCalendarEvents([]); setCalendarError(error.message); } })
       .finally(() => { if (!controller.signal.aborted) setCalendarLoading(false); });
     return () => controller.abort();
-  }, [scheduleDialog, previewStartKeyForFetch, plan.weeks.length]);
+  }, [scheduleDialog, scheduleMonth]);
 
   const openScheduleDialog = () => {
     if (!/^\d+$/.test(String(plan.id || '')) || hasUnsavedChanges) return;
@@ -801,7 +801,7 @@ export default function TrainingPlanEditor() {
                 const week = dayOffset >= 0 ? plan.weeks[Math.floor(dayOffset / 7)] : null;
                 const entries = week?.days[dayOffset % 7]?.workouts || [];
                 const existing = calendarEvents.filter((event) => calendarDateKey(event) === key);
-                const overlaps = inPreview && entries.length > 0 && existing.length > 0;
+                const overlaps = inPreview && entries.length > 0 && existing.some((event) => event.category === 'WORKOUT' || event.workout_doc);
                 return (
                   <button
                     type="button"
@@ -824,8 +824,12 @@ export default function TrainingPlanEditor() {
                       </span>
                     ))}
                     {inPreview && entries.length > 2 && <small>+{entries.length - 2}</small>}
-                    {existing.length > 0 && <span className="tpe-existing-events" title={existing.map((event) => event.name).join(', ')}>Existing: {existing.slice(0, 2).map((event) => event.name).join(', ')}{existing.length > 2 ? ` +${existing.length - 2}` : ''}</span>}
-                    {overlaps && <small className="tpe-overlap-warning">Overlap</small>}
+                    {existing.filter((event) => event.category === 'WORKOUT' || event.workout_doc).map((event, index) => (
+                      <span key={event.id || `existing-${index}`} className="tpe-schedule-existing-workout" title={event.name || 'Existing workout'}>
+                        <span className="tpe-schedule-workout-name">{event.name || 'Existing workout'}</span>
+                        {event.workout_doc?.steps?.length > 0 && <WorkoutChart workout={event} chartHeight="17px" showWorkoutName={false} showThresholdPace={false} showYAxis={false} showYAxisLabels={false} showLegend={false} minimalXAxis={true} showHoverDetails={false} />}
+                      </span>
+                    ))}
                     {inPreview && dayOffset === scheduleDays - 1 && <small className="tpe-schedule-end">End</small>}
                   </button>
                 );
@@ -836,7 +840,7 @@ export default function TrainingPlanEditor() {
               {selectedStart && <div>Selected dates: <strong>{formatPlanDate(selectedStart)} – {formatPlanDate(shiftDate(selectedStart, scheduleDays - 1))}</strong></div>}
               {calendarLoading && <div className="tpe-schedule-notice">Checking existing Intervals.icu calendar events…</div>}
               {calendarError && <div className="tpe-schedule-notice" role="alert">Calendar check failed: {calendarError}. Scheduling preview cannot be confirmed.</div>}
-              {!calendarLoading && !calendarError && previewStart && <div className="tpe-schedule-notice">Existing calendar events: {calendarEvents.length}. Days with both existing events and proposed workouts are marked Overlap. Existing workouts are never overwritten.</div>}
+              {!calendarLoading && !calendarError && previewStart && <div className="tpe-schedule-notice">Existing calendar events: {calendarEvents.length}. Days with both existing and proposed workouts have a red border. Existing workouts are never overwritten.</div>}
               <div className="tpe-schedule-notice">Preview only (4F-4). No calendar events are created or modified.</div>
             </div>
             <div className="tpe-dialog-actions">
