@@ -1,5 +1,5 @@
 // GitHub OAuth helpers for Vercel serverless functions. No secrets are exposed to Vite.
-export const origin = 'https://web-fitness-indol.vercel.app';
+export const origin = 'https://web-fitness-schedule-preview.vercel.app';
 export const callback = origin + '/api/auth/callback';
 const encoder = new TextEncoder();
 const b64 = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
