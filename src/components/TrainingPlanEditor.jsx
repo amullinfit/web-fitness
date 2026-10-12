@@ -240,6 +240,10 @@ export default function TrainingPlanEditor() {
   const [scheduledPlansLoading, setScheduledPlansLoading] = useState(false);
   const [scheduledPlansError, setScheduledPlansError] = useState('');
   const [scheduledDetail, setScheduledDetail] = useState(null);
+  const [removalPreview, setRemovalPreview] = useState(null);
+  const [removalToken, setRemovalToken] = useState('');
+  const [removalBusy, setRemovalBusy] = useState(false);
+  const [removalResult, setRemovalResult] = useState(null);
   const [scheduleAttempted, setScheduleAttempted] = useState(false);
   const [scheduleValidationLoading, setScheduleValidationLoading] = useState(false);
   const [scheduleValidationError, setScheduleValidationError] = useState('');
@@ -755,6 +759,8 @@ export default function TrainingPlanEditor() {
     setScheduledPlansLoading(true);
     setScheduledPlansError('');
     setScheduledDetail(null);
+    setRemovalPreview(null);
+    setRemovalResult(null);
     try {
       const response = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=list_scheduled');
       const data = await response.json();
@@ -766,6 +772,8 @@ export default function TrainingPlanEditor() {
   const showScheduledDetail = async (id) => {
     setScheduledPlansLoading(true);
     setScheduledPlansError('');
+    setRemovalPreview(null);
+    setRemovalResult(null);
     try {
       const response = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=scheduled_detail&instance_id=' + encodeURIComponent(id));
       const data = await response.json();
@@ -773,6 +781,33 @@ export default function TrainingPlanEditor() {
       setScheduledDetail(data);
     } catch (error) { setScheduledPlansError(error.message); }
     finally { setScheduledPlansLoading(false); }
+  };
+  const previewScheduledRemoval = async () => {
+    if (!scheduledDetail) return;
+    setRemovalBusy(true); setScheduledPlansError(''); setRemovalPreview(null);
+    try {
+      const response = await fetch(SCHEDULE_PREVIEW_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'removal_preview', instance_id: scheduledDetail.instance.instance_id }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Removal preview failed');
+      setRemovalPreview(data);
+    } catch (error) { setScheduledPlansError(error.message); }
+    finally { setRemovalBusy(false); }
+  };
+  const removeScheduledInstance = async () => {
+    if (!removalPreview || !scheduledDetail || !removalToken) return;
+    const id = scheduledDetail.instance.instance_id;
+    if (!window.confirm('Remove ONLY the tracked calendar workouts for this scheduled instance? This cannot be undone.')) return;
+    setRemovalBusy(true); setScheduledPlansError('');
+    try {
+      const response = await fetch(SCHEDULE_PREVIEW_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'remove_scheduled', instance_id: id, write_token: removalToken, confirm: true }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Removal failed');
+      setRemovalResult(data); setRemovalPreview(null);
+      await showScheduledDetail(id);
+      const listing = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=list_scheduled');
+      if (listing.ok) setScheduledPlans((await listing.json()).instances || []);
+    } catch (error) { setScheduledPlansError(error.message + '. Check Intervals.icu before retrying.'); }
+    finally { setRemovalToken(''); setRemovalBusy(false); }
   };
   const scheduleWeeks = plan.weeks.length;
   const scheduleDays = scheduleWeeks * 7;
@@ -860,20 +895,34 @@ export default function TrainingPlanEditor() {
         <div className="tpe-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setScheduledPlansDialog(false); }}>
           <section className="tpe-open-dialog tpe-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="tpe-scheduled-plans-title">
             <h2 id="tpe-scheduled-plans-title">Scheduled Plans</h2>
-            <p>Recorded scheduling instances from Val Town SQLite. This view cannot modify or remove workouts.</p>
+            <p>Recorded scheduling instances from Val Town SQLite. Only recorded calendar event IDs can be removed; original plans are never changed.</p>
             {scheduledPlansError && <div role="alert" className="tpe-error">{scheduledPlansError}</div>}
             {scheduledPlansLoading && <p>Loading scheduled plans…</p>}
             {!scheduledPlansLoading && !scheduledPlans.length && <p>No tracked scheduled plans yet. Scheduling completed before 4F-6A is not automatically imported.</p>}
             <div className="tpe-plan-picker">
               {scheduledPlans.map((item) => <button key={item.instance_id} type="button" onClick={() => showScheduledDetail(item.instance_id)}>
-                <strong>{item.plan_name}</strong> — {item.start_date} to {item.end_date} · {item.returned_count}/{item.requested_count} workouts · {item.status}
+                <strong>{item.plan_name}</strong>{item.current_plan_name && item.current_plan_name !== item.plan_name ? ' (current: ' + item.current_plan_name + ')' : ''} — {item.start_date} to {item.end_date} · {item.returned_count}/{item.requested_count} workouts · {item.status}
               </button>)}
             </div>
             {scheduledDetail && <div className="tpe-schedule-summary">
               <h3>Scheduled workouts — {scheduledDetail.instance.plan_name}</h3>
               <p>Instance: {scheduledDetail.instance.instance_id}</p>
+              {scheduledDetail.instance.current_plan_name && scheduledDetail.instance.current_plan_name !== scheduledDetail.instance.plan_name && <p>Current plan name: {scheduledDetail.instance.current_plan_name}</p>}
               <p>{scheduledDetail.events.length} tracked calendar event IDs</p>
-              <div className="tpe-schedule-validation-list">{scheduledDetail.events.map((event) => <div key={event.event_id}>{event.scheduled_date}: {previewWorkoutName(event.workout_name)} · Intervals.icu event ID {event.event_id}</div>)}</div>
+              <div className="tpe-schedule-validation-list">{scheduledDetail.events.map((event) => <div key={event.event_id}>{event.scheduled_date}: {previewWorkoutName(event.workout_name)} · Intervals.icu event ID {event.event_id} · {event.removal_status}</div>)}</div>
+              {scheduledDetail.instance.status !== 'removed' && <div className="tpe-schedule-notice">
+                <button type="button" disabled={removalBusy} onClick={previewScheduledRemoval}>Check tracked workouts for removal (no writes)</button>
+                {removalPreview && <div>
+                  <p>{removalPreview.ready_count} calendar events verified for removal. {removalPreview.checks.filter((item) => item.check === 'missing').length} already missing; {removalPreview.checks.filter((item) => item.check === 'identity_mismatch').length} identity mismatches.</p>
+                  <div className="tpe-schedule-validation-list">{removalPreview.checks.map((item) => <div key={item.event_id}>{item.scheduled_date}: {item.workout_name} — {item.check}</div>)}</div>
+                  {removalPreview.ready_count > 0 && !removalPreview.checks.some((item) => item.check === 'identity_mismatch') && <>
+                    <label htmlFor="tpe-removal-token">Scheduling write token (required to remove)</label>
+                    <input id="tpe-removal-token" type="password" autoComplete="off" value={removalToken} onChange={(event) => setRemovalToken(event.target.value)} placeholder="SCHEDULE_WRITE_TOKEN" />
+                    <button type="button" disabled={removalBusy || !removalToken} onClick={removeScheduledInstance}>{removalBusy ? 'Removing…' : 'Confirm removal of this scheduled instance'}</button>
+                  </>}
+                </div>}
+                {removalResult && <p role="status">Removal completed: {removalResult.results.filter((item) => item.result === 'removed').length} deleted; {removalResult.remaining_count} remaining. Check the calendar for confirmation.</p>}
+              </div>}
             </div>}
             <div className="tpe-dialog-actions"><button type="button" onClick={() => setScheduledPlansDialog(false)}>Close</button></div>
           </section>
