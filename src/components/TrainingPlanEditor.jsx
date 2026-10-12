@@ -902,7 +902,7 @@ export default function TrainingPlanEditor() {
             {!scheduledPlansLoading && !scheduledPlans.length && <p>No tracked scheduled plans yet. Scheduling completed before 4F-6A is not automatically imported.</p>}
             <div className="tpe-plan-picker">
               {scheduledPlans.map((item) => <button key={item.instance_id} type="button" onClick={() => showScheduledDetail(item.instance_id)}>
-                <strong>{item.plan_name}</strong>{item.current_plan_name && item.current_plan_name !== item.plan_name ? ' (current: ' + item.current_plan_name + ')' : ''} — {item.start_date} to {item.end_date} · {item.returned_count - (item.returned_count > item.requested_count ? 1 : 0)}/{item.requested_count - (item.returned_count > item.requested_count ? 1 : 0)} workouts · {item.status}
+                <strong>{item.plan_name}</strong>{item.current_plan_name && item.current_plan_name !== item.plan_name ? ' (current: ' + item.current_plan_name + ')' : ''} — {item.start_date} to {item.end_date} · {item.returned_count - (item.note_count || 0)}/{item.requested_count - (item.note_count || 0)} workouts · {item.status}
               </button>)}
             </div>
             {scheduledDetail && <div className="tpe-schedule-summary">
