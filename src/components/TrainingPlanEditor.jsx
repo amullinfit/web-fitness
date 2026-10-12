@@ -232,7 +232,10 @@ export default function TrainingPlanEditor() {
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState('');
   const [scheduleValidation, setScheduleValidation] = useState(null);
-  const [scheduleWriteToken, setScheduleWriteToken] = useState('');
+  const [auth, setAuth] = useState({ authenticated: false, authorized: false });
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'same-origin' }).then((r) => r.json()).then(setAuth).catch(() => setAuth({ authenticated: false, authorized: false }));
+  }, []);
   const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
   const [scheduleResult, setScheduleResult] = useState(null);
   const [scheduledPlansDialog, setScheduledPlansDialog] = useState(false);
@@ -241,7 +244,6 @@ export default function TrainingPlanEditor() {
   const [scheduledPlansError, setScheduledPlansError] = useState('');
   const [scheduledDetail, setScheduledDetail] = useState(null);
   const [removalPreview, setRemovalPreview] = useState(null);
-  const [removalToken, setRemovalToken] = useState('');
   const [removalBusy, setRemovalBusy] = useState(false);
   const [removalResult, setRemovalResult] = useState(null);
   const [scheduleAttempted, setScheduleAttempted] = useState(false);
@@ -739,13 +741,13 @@ export default function TrainingPlanEditor() {
     finally { setScheduleValidationLoading(false); }
   };
   const submitSchedule = async () => {
-    if (!scheduleValidation || !scheduleStart || !scheduleWriteToken || scheduleSubmitting) return;
+    if (!scheduleValidation || !scheduleStart || !auth.authorized || scheduleSubmitting) return;
     if (!window.confirm(`Schedule ${scheduleValidation.workout_count} workouts from ${plan.name} starting ${scheduleStart}? Existing workouts will remain.`)) return;
     setScheduleSubmitting(true);
     setScheduleAttempted(true);
     setScheduleValidationError('');
     try {
-      const response = await fetch(SCHEDULE_PREVIEW_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'schedule', plan_id: plan.id, start_date: scheduleStart, confirm: true, write_token: scheduleWriteToken }) });
+      const response = await fetch('/api/schedule-write', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'schedule', plan_id: plan.id, start_date: scheduleStart, confirm: true }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Scheduling failed. Check Intervals.icu before retrying.');
       setScheduleResult(result);
@@ -794,12 +796,12 @@ export default function TrainingPlanEditor() {
     finally { setRemovalBusy(false); }
   };
   const removeScheduledInstance = async () => {
-    if (!removalPreview || !scheduledDetail || !removalToken) return;
+    if (!removalPreview || !scheduledDetail || !auth.authorized) return;
     const id = scheduledDetail.instance.instance_id;
     if (!window.confirm('Remove ONLY the tracked calendar workouts for this scheduled instance? This cannot be undone.')) return;
     setRemovalBusy(true); setScheduledPlansError('');
     try {
-      const response = await fetch(SCHEDULE_PREVIEW_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'remove_scheduled', instance_id: id, write_token: removalToken, confirm: true }) });
+      const response = await fetch('/api/schedule-write', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'remove_scheduled', instance_id: id, confirm: true }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Removal failed');
       setRemovalPreview(null);
@@ -917,9 +919,8 @@ export default function TrainingPlanEditor() {
                   <p>{removalPreview.ready_count} calendar events verified for removal. {removalPreview.checks.filter((item) => item.check === 'missing').length} already missing; {removalPreview.checks.filter((item) => item.check === 'identity_mismatch').length} identity mismatches.</p>
                   <div className="tpe-schedule-validation-list">{removalPreview.checks.map((item) => <div key={item.event_id}>{item.scheduled_date}: {item.workout_name} — {item.check}</div>)}</div>
                   {removalPreview.ready_count > 0 && !removalPreview.checks.some((item) => item.check === 'identity_mismatch') && <>
-                    <label htmlFor="tpe-removal-token">Scheduling write token (required to remove)</label>
-                    <input id="tpe-removal-token" type="password" autoComplete="off" value={removalToken} onChange={(event) => setRemovalToken(event.target.value)} placeholder="SCHEDULE_WRITE_TOKEN" />
-                    <button type="button" disabled={removalBusy || !removalToken} onClick={removeScheduledInstance}>{removalBusy ? 'Removing…' : 'Confirm removal of this scheduled instance'}</button>
+                    {!auth.authorized && <a href="/api/auth/login">Sign in with GitHub to remove scheduled plans</a>}
+                    <button type="button" disabled={removalBusy || !auth.authorized} onClick={removeScheduledInstance}>{removalBusy ? 'Removing…' : 'Confirm removal of this scheduled instance'}</button>
                   </>}
                 </div>}
                 {removalResult && <p role="status">Removal completed: {removalResult.results.filter((item) => item.result === 'removed').length} deleted; {removalResult.remaining_count} remaining. Check the calendar for confirmation.</p>}
@@ -1003,9 +1004,9 @@ export default function TrainingPlanEditor() {
                 {scheduleValidation.events?.length > 0 && <details><summary>Inspect proposed workouts and dates</summary><div className="tpe-schedule-validation-list">{scheduleValidation.events.map((event, index) => <div key={event.source_workout_id || index}>{event.date}: {previewWorkoutName(event.name)}</div>)}</div></details>}
               </div>}
               {scheduleValidation && !scheduleResult && <div className="tpe-schedule-notice">
-                <label htmlFor="tpe-schedule-token">Scheduling authorization token (entered only when scheduling)</label>
-                <input id="tpe-schedule-token" type="password" autoComplete="off" value={scheduleWriteToken} onChange={(event) => setScheduleWriteToken(event.target.value)} placeholder="SCHEDULE_WRITE_TOKEN from Val Town" />
-                <button type="button" disabled={!scheduleWriteToken || scheduleSubmitting} onClick={submitSchedule}>{scheduleSubmitting ? 'Scheduling…' : 'Confirm and schedule workouts'}</button>
+                {!auth.authorized && <a href="/api/auth/login">Sign in with GitHub to schedule workouts</a>}
+                {auth.authorized && <span>Signed in as {auth.login} (authorized owner)</span>}
+                <button type="button" disabled={!auth.authorized || scheduleSubmitting} onClick={submitSchedule}>{scheduleSubmitting ? 'Scheduling…' : 'Confirm and schedule workouts'}</button>
               </div>}
               {scheduleSubmitting && <div className="tpe-schedule-notice" role="status"><strong>Scheduling in progress…</strong> Keep this window open. Do not submit twice.</div>}
               {scheduleResult && <div className="tpe-schedule-notice" role="status"><strong>{scheduleResult.verified_count ? 'Scheduling request completed' : 'Scheduling needs verification'}:</strong> {scheduleResult.created_count} of {scheduleResult.requested_count} workouts returned by Intervals.icu. Instance ID: {scheduleResult.instance_id}. {scheduleResult.tracking_saved ? 'Saved to Scheduled Plans. ' : 'Tracking was NOT saved; keep the instance ID and event IDs for recovery. '}{scheduleResult.warning || 'Check the scheduled dates in Intervals.icu to confirm the workouts appear correctly.'}</div>}
