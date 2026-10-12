@@ -235,6 +235,11 @@ export default function TrainingPlanEditor() {
   const [scheduleWriteToken, setScheduleWriteToken] = useState('');
   const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
   const [scheduleResult, setScheduleResult] = useState(null);
+  const [scheduledPlansDialog, setScheduledPlansDialog] = useState(false);
+  const [scheduledPlans, setScheduledPlans] = useState([]);
+  const [scheduledPlansLoading, setScheduledPlansLoading] = useState(false);
+  const [scheduledPlansError, setScheduledPlansError] = useState('');
+  const [scheduledDetail, setScheduledDetail] = useState(null);
   const [scheduleAttempted, setScheduleAttempted] = useState(false);
   const [scheduleValidationLoading, setScheduleValidationLoading] = useState(false);
   const [scheduleValidationError, setScheduleValidationError] = useState('');
@@ -745,6 +750,30 @@ export default function TrainingPlanEditor() {
     } catch (error) { setScheduleValidationError(error.message + ' Check Intervals.icu before retrying.'); }
     finally { setScheduleSubmitting(false); setScheduleWriteToken(''); }
   };
+  const openScheduledPlans = async () => {
+    setScheduledPlansDialog(true);
+    setScheduledPlansLoading(true);
+    setScheduledPlansError('');
+    setScheduledDetail(null);
+    try {
+      const response = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=list_scheduled');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not load scheduled plans');
+      setScheduledPlans(data.instances || []);
+    } catch (error) { setScheduledPlansError(error.message); }
+    finally { setScheduledPlansLoading(false); }
+  };
+  const showScheduledDetail = async (id) => {
+    setScheduledPlansLoading(true);
+    setScheduledPlansError('');
+    try {
+      const response = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=scheduled_detail&instance_id=' + encodeURIComponent(id));
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not load scheduled workouts');
+      setScheduledDetail(data);
+    } catch (error) { setScheduledPlansError(error.message); }
+    finally { setScheduledPlansLoading(false); }
+  };
   const scheduleWeeks = plan.weeks.length;
   const scheduleDays = scheduleWeeks * 7;
   const previewStartKey = hoverStart || scheduleStart;
@@ -787,6 +816,8 @@ export default function TrainingPlanEditor() {
                   <button type="button" onClick={() => runOption(openScheduleDialog)} disabled={savingPlan || !/^\d+$/.test(String(plan.id || '')) || hasUnsavedChanges || !planWorkoutCount} title={hasUnsavedChanges ? 'Save changes before scheduling' : 'Save this plan before scheduling'}>Schedule Plan…</button>
                 </>
               )}
+              <hr className="tpe-options-divider" />
+              <button type="button" onClick={() => runOption(openScheduledPlans)}>Scheduled Plans…</button>
             </div>
           </details>
         </div>
@@ -821,6 +852,30 @@ export default function TrainingPlanEditor() {
               <button type="button" onClick={() => setOpenDialog(false)} disabled={savingPlan}>Cancel</button>
               <button type="button" onClick={handleOpenPlan} disabled={!openPlanId || savingPlan}>{savingPlan ? 'Opening…' : 'Open'}</button>
             </div>
+          </section>
+        </div>
+      )}
+
+      {scheduledPlansDialog && (
+        <div className="tpe-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setScheduledPlansDialog(false); }}>
+          <section className="tpe-open-dialog tpe-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="tpe-scheduled-plans-title">
+            <h2 id="tpe-scheduled-plans-title">Scheduled Plans</h2>
+            <p>Recorded scheduling instances from Val Town SQLite. This view cannot modify or remove workouts.</p>
+            {scheduledPlansError && <div role="alert" className="tpe-error">{scheduledPlansError}</div>}
+            {scheduledPlansLoading && <p>Loading scheduled plans…</p>}
+            {!scheduledPlansLoading && !scheduledPlans.length && <p>No tracked scheduled plans yet. Scheduling completed before 4F-6A is not automatically imported.</p>}
+            <div className="tpe-plan-picker">
+              {scheduledPlans.map((item) => <button key={item.instance_id} type="button" onClick={() => showScheduledDetail(item.instance_id)}>
+                <strong>{item.plan_name}</strong> — {item.start_date} to {item.end_date} · {item.returned_count}/{item.requested_count} workouts · {item.status}
+              </button>)}
+            </div>
+            {scheduledDetail && <div className="tpe-schedule-summary">
+              <h3>Scheduled workouts — {scheduledDetail.instance.plan_name}</h3>
+              <p>Instance: {scheduledDetail.instance.instance_id}</p>
+              <p>{scheduledDetail.events.length} tracked calendar event IDs</p>
+              <div className="tpe-schedule-validation-list">{scheduledDetail.events.map((event) => <div key={event.event_id}>{event.scheduled_date}: {previewWorkoutName(event.workout_name)} · Intervals.icu event ID {event.event_id}</div>)}</div>
+            </div>}
+            <div className="tpe-dialog-actions"><button type="button" onClick={() => setScheduledPlansDialog(false)}>Close</button></div>
           </section>
         </div>
       )}
@@ -903,7 +958,7 @@ export default function TrainingPlanEditor() {
                 <button type="button" disabled={!scheduleWriteToken || scheduleSubmitting} onClick={submitSchedule}>{scheduleSubmitting ? 'Scheduling…' : 'Confirm and schedule workouts'}</button>
               </div>}
               {scheduleSubmitting && <div className="tpe-schedule-notice" role="status"><strong>Scheduling in progress…</strong> Keep this window open. Do not submit twice.</div>}
-              {scheduleResult && <div className="tpe-schedule-notice" role="status"><strong>{scheduleResult.verified_count ? 'Scheduling request completed' : 'Scheduling needs verification'}:</strong> {scheduleResult.created_count} of {scheduleResult.requested_count} workouts returned by Intervals.icu. Instance ID: {scheduleResult.instance_id}. {scheduleResult.warning || 'Check the scheduled dates in Intervals.icu to confirm the workouts appear correctly.'}</div>}
+              {scheduleResult && <div className="tpe-schedule-notice" role="status"><strong>{scheduleResult.verified_count ? 'Scheduling request completed' : 'Scheduling needs verification'}:</strong> {scheduleResult.created_count} of {scheduleResult.requested_count} workouts returned by Intervals.icu. Instance ID: {scheduleResult.instance_id}. {scheduleResult.tracking_saved ? 'Saved to Scheduled Plans. ' : 'Tracking was NOT saved; keep the instance ID and event IDs for recovery. '}{scheduleResult.warning || 'Check the scheduled dates in Intervals.icu to confirm the workouts appear correctly.'}</div>}
               <div className="tpe-schedule-notice">Existing workouts are preserved. Scheduling requires a separate Val Town write token.</div>
             </div>
             <div className="tpe-dialog-actions">
