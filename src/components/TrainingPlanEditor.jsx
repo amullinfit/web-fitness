@@ -114,6 +114,9 @@ const formatMiles = (miles) => miles > 0 ? miles.toFixed(1) : '—';
 const normalizeFolderId = (workout) =>
   String(workout?.folderId ?? workout?.folder_id ?? '');
 
+const CALENDAR_API_URL = import.meta.env.VITE_API_WORKOUTS_URL || 'https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run';
+const calendarDateKey = (event) => String(event?.start_date_local || event?.start_date || '').slice(0, 10);
+
 const TRAINING_PLANS_API_URL =
   import.meta.env.VITE_API_TRAININGPLANS_URL
   || 'https://amullinfit--e90bd68ec43911f188781607ee4eb77e.web.val.run';
@@ -223,6 +226,9 @@ export default function TrainingPlanEditor() {
   const [savingPlan, setSavingPlan] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [scheduleDialog, setScheduleDialog] = useState(false);
+  const [calendarEvents, setCalendarEvents] = useState([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarError, setCalendarError] = useState('');
   const [scheduleStart, setScheduleStart] = useState('');
   const [hoverStart, setHoverStart] = useState('');
   const [scheduleMonth, setScheduleMonth] = useState(() => mondayOf(new Date()));
@@ -660,10 +666,36 @@ export default function TrainingPlanEditor() {
     setStatusMessage('Added four more weeks.');
   };
 
+  const previewStartKeyForFetch = hoverStart || scheduleStart;
+  useEffect(() => {
+    if (!scheduleDialog || !previewStartKeyForFetch) return;
+    const controller = new AbortController();
+    const start = new Date(previewStartKeyForFetch + 'T00:00:00');
+    const end = shiftDate(start, plan.weeks.length * 7 - 1);
+    const url = new URL(CALENDAR_API_URL);
+    url.searchParams.set('action', 'calendar_range');
+    url.searchParams.set('oldest', dateKey(start));
+    url.searchParams.set('newest', dateKey(end));
+    setCalendarLoading(true);
+    setCalendarError('');
+    fetch(url, { signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !Array.isArray(data.events)) throw new Error(data.error || 'Unable to load calendar events.');
+        return data.events;
+      })
+      .then((events) => setCalendarEvents(events))
+      .catch((error) => { if (error.name !== 'AbortError') { setCalendarEvents([]); setCalendarError(error.message); } })
+      .finally(() => { if (!controller.signal.aborted) setCalendarLoading(false); });
+    return () => controller.abort();
+  }, [scheduleDialog, previewStartKeyForFetch, plan.weeks.length]);
+
   const openScheduleDialog = () => {
     if (!/^\d+$/.test(String(plan.id || '')) || hasUnsavedChanges) return;
     setScheduleStart('');
     setHoverStart('');
+    setCalendarEvents([]);
+    setCalendarError('');
     setScheduleMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     setScheduleDialog(true);
   };
@@ -768,11 +800,13 @@ export default function TrainingPlanEditor() {
                 const dayOffset = previewStart ? Math.round((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(previewStart.getFullYear(), previewStart.getMonth(), previewStart.getDate())) / 86400000) : -1;
                 const week = dayOffset >= 0 ? plan.weeks[Math.floor(dayOffset / 7)] : null;
                 const entries = week?.days[dayOffset % 7]?.workouts || [];
+                const existing = calendarEvents.filter((event) => calendarDateKey(event) === key);
+                const overlaps = inPreview && entries.length > 0 && existing.length > 0;
                 return (
                   <button
                     type="button"
                     key={key}
-                    className={`tpe-schedule-day ${date.getMonth() !== scheduleMonth.getMonth() ? 'outside' : ''} ${inPreview ? 'preview' : ''} ${scheduleStart === mondayKey ? 'chosen-week' : ''} ${scheduleStart === key ? 'chosen' : ''} ${valid ? 'valid' : ''}`}
+                    className={`tpe-schedule-day ${date.getMonth() !== scheduleMonth.getMonth() ? 'outside' : ''} ${inPreview ? 'preview' : ''} ${scheduleStart === mondayKey ? 'chosen-week' : ''} ${scheduleStart === key ? 'chosen' : ''} ${valid ? 'valid' : ''} ${overlaps ? 'overlap' : ''}`}
                     disabled={!valid}
                     aria-label={`${formatPlanDate(date)}${valid ? `, select week starting ${formatPlanDate(weekMonday)}` : ', unavailable'}`}
                     aria-pressed={scheduleStart === mondayKey}
@@ -790,6 +824,8 @@ export default function TrainingPlanEditor() {
                       </span>
                     ))}
                     {inPreview && entries.length > 2 && <small>+{entries.length - 2}</small>}
+                    {existing.length > 0 && <span className="tpe-existing-events" title={existing.map((event) => event.name).join(', ')}>Existing: {existing.slice(0, 2).map((event) => event.name).join(', ')}{existing.length > 2 ? ` +${existing.length - 2}` : ''}</span>}
+                    {overlaps && <small className="tpe-overlap-warning">Overlap</small>}
                     {inPreview && dayOffset === scheduleDays - 1 && <small className="tpe-schedule-end">End</small>}
                   </button>
                 );
@@ -798,11 +834,14 @@ export default function TrainingPlanEditor() {
             <div className="tpe-schedule-summary">
               {previewStart ? `Preview: ${formatPlanDate(previewStart)} – ${formatPlanDate(previewEnd)}` : 'Hover over any day in a future week to preview the plan, starting Monday.'}
               {selectedStart && <div>Selected dates: <strong>{formatPlanDate(selectedStart)} – {formatPlanDate(shiftDate(selectedStart, scheduleDays - 1))}</strong></div>}
-              <div className="tpe-schedule-notice">Preview only (4F-3). Existing calendar events and overlap warnings will be added in 4F-4. No calendar events are created here.</div>
+              {calendarLoading && <div className="tpe-schedule-notice">Checking existing Intervals.icu calendar events…</div>}
+              {calendarError && <div className="tpe-schedule-notice" role="alert">Calendar check failed: {calendarError}. Scheduling preview cannot be confirmed.</div>}
+              {!calendarLoading && !calendarError && previewStart && <div className="tpe-schedule-notice">Existing calendar events: {calendarEvents.length}. Days with both existing events and proposed workouts are marked Overlap. Existing workouts are never overwritten.</div>}
+              <div className="tpe-schedule-notice">Preview only (4F-4). No calendar events are created or modified.</div>
             </div>
             <div className="tpe-dialog-actions">
               <button type="button" onClick={() => setScheduleDialog(false)}>Cancel</button>
-              <button type="button" disabled={!scheduleStart} onClick={() => { setScheduleDialog(false); setStatusMessage(`Preview confirmed for ${plan.name}: ${formatPlanDate(selectedStart)} – ${formatPlanDate(shiftDate(selectedStart, scheduleDays - 1))}. No calendar changes made (4F-3).`); }}>Schedule (Preview)</button>
+              <button type="button" disabled={!scheduleStart || calendarLoading || !!calendarError} onClick={() => { setScheduleDialog(false); setStatusMessage(`Preview confirmed for ${plan.name}: ${formatPlanDate(selectedStart)} – ${formatPlanDate(shiftDate(selectedStart, scheduleDays - 1))}. No calendar changes made (4F-4).`); }}>Schedule (Preview)</button>
             </div>
           </section>
         </div>
