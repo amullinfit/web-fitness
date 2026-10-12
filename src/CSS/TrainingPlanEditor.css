@@ -308,3 +308,11 @@
 .tpe-schedule-plan-workout > * { max-height: none; }
 .tpe-schedule-plan-workout svg { max-width: 100%; background: transparent !important; }
 .tpe-schedule-existing-workout { width: 100%; }
+
+/* 4F-4D: compact vertical spacing without reducing chart height. */
+.tpe-schedule-day { gap: 1px; }
+.tpe-schedule-mini-workout.tpe-schedule-plan-workout,
+.tpe-schedule-existing-workout { gap: 0; padding-top: 0; padding-bottom: 0; }
+.tpe-schedule-mini-workout.tpe-schedule-plan-workout { min-height: 0; }
+.tpe-schedule-mini-workout.tpe-schedule-plan-workout > *,
+.tpe-schedule-existing-workout > * { margin-top: 0; margin-bottom: 0; }
