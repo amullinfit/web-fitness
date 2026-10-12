@@ -2,7 +2,7 @@
 export const origin = 'https://web-fitness-indol.vercel.app';
 export const callback = origin + '/api/auth/callback';
 const encoder = new TextEncoder();
-const b64 = bytes => btoa(String.fromCharCode(...bytes)).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
+const b64 = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const unb64 = value => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4)), c => c.charCodeAt(0));
 const key = async () => {
   const secret = process.env.SESSION_SECRET;
