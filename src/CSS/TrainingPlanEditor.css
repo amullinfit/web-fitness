@@ -290,3 +290,12 @@
 .tpe-existing-events { display: block; font-size: .64rem; line-height: 1.2; color: #175c73; background: rgba(47,166,189,.13); border-radius: 3px; padding: 2px 3px; overflow-wrap: anywhere; }
 .tpe-schedule-day.overlap { box-shadow: inset 0 0 0 2px #c17b16; }
 .tpe-overlap-warning { font-size: .65rem; font-weight: 700; color: #925200; }
+
+/* 4F-4B: distinguish existing calendar workouts from proposed plan charts. */
+.tpe-schedule-existing-workout { display: flex; flex-direction: column; gap: 2px; padding: 2px 3px; border-radius: 3px; background: rgba(47,166,189,.13); min-width: 0; overflow: hidden; pointer-events: none; }
+.tpe-schedule-workout-name { font-size: .62rem; line-height: 1.2; font-weight: 600; color: #175c73; overflow-wrap: anywhere; }
+.tpe-schedule-existing-workout svg, .tpe-schedule-existing-workout > * { max-width: 100%; background: transparent !important; }
+.tpe-schedule-day.overlap,
+.tpe-schedule-day.valid.overlap,
+.tpe-schedule-day.chosen.overlap,
+.tpe-schedule-day.chosen-week.overlap { border: 2px solid #d12d37; box-shadow: inset 0 0 0 1px #d12d37; }
