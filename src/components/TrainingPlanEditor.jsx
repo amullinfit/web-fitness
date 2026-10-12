@@ -114,6 +114,7 @@ const formatMiles = (miles) => miles > 0 ? miles.toFixed(1) : '—';
 const normalizeFolderId = (workout) =>
   String(workout?.folderId ?? workout?.folder_id ?? '');
 
+const SCHEDULE_PREVIEW_API_URL = 'https://amullinfit--e9d9dd94c5d911f1a2631607ee4eb77e.web.val.run';
 const CALENDAR_API_URL = import.meta.env.VITE_API_WORKOUTS_URL || 'https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run';
 const previewWorkoutName = (name) => String(name || 'Workout').replace(/^IntervalCoach\s*-?\s*/i, '').trim() || 'Workout';
 const calendarDateKey = (event) => String(event?.start_date_local || event?.start_date || '').slice(0, 10);
@@ -230,6 +231,9 @@ export default function TrainingPlanEditor() {
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState('');
+  const [scheduleValidation, setScheduleValidation] = useState(null);
+  const [scheduleValidationLoading, setScheduleValidationLoading] = useState(false);
+  const [scheduleValidationError, setScheduleValidationError] = useState('');
   const [scheduleStart, setScheduleStart] = useState('');
   const [hoverStart, setHoverStart] = useState('');
   const [scheduleMonth, setScheduleMonth] = useState(() => mondayOf(new Date()));
@@ -694,11 +698,29 @@ export default function TrainingPlanEditor() {
   const openScheduleDialog = () => {
     if (!/^\d+$/.test(String(plan.id || '')) || hasUnsavedChanges) return;
     setScheduleStart('');
+    setScheduleValidation(null);
+    setScheduleValidationError('');
     setHoverStart('');
     setCalendarEvents([]);
     setCalendarError('');
     setScheduleMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     setScheduleDialog(true);
+  };
+  const validateSchedulePreview = async () => {
+    if (!scheduleStart || scheduleValidationLoading) return;
+    setScheduleValidation(null);
+    setScheduleValidationError('');
+    setScheduleValidationLoading(true);
+    try {
+      const response = await fetch(SCHEDULE_PREVIEW_API_URL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'preview', plan_id: plan.id, start_date: scheduleStart }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Unable to validate schedule.');
+      setScheduleValidation(result);
+    } catch (error) { setScheduleValidationError(error.message); }
+    finally { setScheduleValidationLoading(false); }
   };
   const scheduleWeeks = plan.weeks.length;
   const scheduleDays = scheduleWeeks * 7;
@@ -815,7 +837,7 @@ export default function TrainingPlanEditor() {
                     onMouseLeave={() => setHoverStart('')}
                     onFocus={() => { if (valid) setHoverStart(mondayKey); }}
                     onBlur={() => setHoverStart('')}
-                    onClick={() => setScheduleStart(mondayKey)}
+                    onClick={() => { setScheduleStart(mondayKey); setScheduleValidation(null); setScheduleValidationError(''); }}
                   >
                     <span className="tpe-schedule-date-heading"><span className="tpe-schedule-day-number">{date.getDate()}</span>{inPreview && dayOffset === 0 && <small className="tpe-schedule-start">Start</small>}{inPreview && dayOffset === scheduleDays - 1 && <small className="tpe-schedule-end">End</small>}</span>
                     {inPreview && entries.slice(0, 2).map((entry, index) => (
@@ -841,7 +863,18 @@ export default function TrainingPlanEditor() {
               {calendarLoading && <div className="tpe-schedule-notice">Checking existing Intervals.icu calendar events…</div>}
               {calendarError && <div className="tpe-schedule-notice" role="alert">Calendar check failed: {calendarError}. Scheduling preview cannot be confirmed.</div>}
               {!calendarLoading && !calendarError && previewStart && <div className="tpe-schedule-notice">Existing calendar events: {calendarEvents.length}. Days with both existing and proposed workouts have a red border. Existing workouts are never overwritten.</div>}
-              <div className="tpe-schedule-notice">Preview only (4F-4). No calendar events are created or modified.</div>
+              <div className="tpe-schedule-notice">
+                <button type="button" onClick={validateSchedulePreview} disabled={!scheduleStart || scheduleValidationLoading}>
+                  {scheduleValidationLoading ? 'Validating…' : 'Validate with Intervals.icu (no writes)'}
+                </button>
+              </div>
+              {scheduleValidationError && <div className="tpe-schedule-notice" role="alert">Validation failed: {scheduleValidationError}</div>}
+              {scheduleValidation && <div className="tpe-schedule-notice" role="status">
+                <strong>Intervals.icu dry-run results:</strong> {scheduleValidation.workout_count} workouts, {scheduleValidation.start_date} to {scheduleValidation.end_date}; {scheduleValidation.overlap_dates?.length || 0} overlap dates.
+                {scheduleValidation.workout_count !== planWorkoutCount && <div role="alert">Warning: saved plan has {scheduleValidation.workout_count} workouts; editor shows {planWorkoutCount}.</div>}
+                {scheduleValidation.events?.length > 0 && <details><summary>Inspect proposed workouts and dates</summary><div className="tpe-schedule-validation-list">{scheduleValidation.events.map((event, index) => <div key={event.source_workout_id || index}>{event.date}: {previewWorkoutName(event.name)}</div>)}</div></details>}
+              </div>}
+              <div className="tpe-schedule-notice">Dry-run only (4F-5A). No calendar events are created or modified.</div>
             </div>
             <div className="tpe-dialog-actions">
               <button type="button" onClick={() => setScheduleDialog(false)}>Cancel</button>
