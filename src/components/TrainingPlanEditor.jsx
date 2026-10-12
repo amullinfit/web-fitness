@@ -753,7 +753,7 @@ export default function TrainingPlanEditor() {
       setScheduleValidation(null);
       setCalendarEvents((old) => [...old, ...(result.created_events || [])]);
     } catch (error) { setScheduleValidationError(error.message + ' Check Intervals.icu before retrying.'); }
-    finally { setScheduleSubmitting(false); setScheduleWriteToken(''); }
+    finally { setScheduleSubmitting(false); }
   };
   const openScheduledPlans = async () => {
     setScheduledPlansDialog(true);
@@ -809,7 +809,7 @@ export default function TrainingPlanEditor() {
       const listing = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=list_scheduled');
       if (listing.ok) setScheduledPlans((await listing.json()).instances || []);
     } catch (error) { setScheduledPlansError(error.message + '. Check Intervals.icu before retrying.'); }
-    finally { setRemovalToken(''); setRemovalBusy(false); }
+    finally { setRemovalBusy(false); }
   };
   const scheduleWeeks = plan.weeks.length;
   const scheduleDays = scheduleWeeks * 7;
