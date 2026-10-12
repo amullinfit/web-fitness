@@ -316,3 +316,16 @@
 .tpe-schedule-mini-workout.tpe-schedule-plan-workout { min-height: 0; }
 .tpe-schedule-mini-workout.tpe-schedule-plan-workout > *,
 .tpe-schedule-existing-workout > * { margin-top: 0; margin-bottom: 0; }
+
+/* 4F-4E: clearly distinguish proposed plan workouts from existing calendar workouts. */
+.tpe-schedule-mini-workout.tpe-schedule-plan-workout {
+  border: 1px solid #2059a8;
+  border-left: 3px solid #2059a8;
+  border-radius: 3px;
+  padding-left: 3px;
+  padding-right: 3px;
+}
+.tpe-schedule-plan-workout .tpe-schedule-workout-name {
+  color: #2059a8;
+  font-weight: 700;
+}
