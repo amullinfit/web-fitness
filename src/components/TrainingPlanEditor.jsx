@@ -128,8 +128,10 @@ async function requestTrainingPlans(action, { method = 'GET', id, plan } = {}) {
   url.searchParams.set('action', action);
   if (id != null) url.searchParams.set('id', String(id));
 
-  const response = await fetch(url, {
+  const isWrite = method !== 'GET';
+  const response = await fetch(isWrite ? '/api/training-plans-write' : url, {
     method,
+    credentials: isWrite ? 'same-origin' : undefined,
     headers: plan ? { 'Content-Type': 'application/json' } : undefined,
     body: plan ? JSON.stringify({ action, plan }) : undefined,
   });
