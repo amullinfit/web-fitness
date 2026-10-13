@@ -92,7 +92,7 @@ export async function createFolderApi(folderName) {
 
   try {
     const res = await fetch(
-      VAL_WORKOUTBUILDER_URL,
+      '/api/workout-builder-write',
       {
         method: 'POST',
         headers: {
@@ -341,7 +341,7 @@ export async function saveWorkoutApi(payload, isNew = false) {
     // ----------------------------------------------------------
 
     const res = await fetch(
-      VAL_WORKOUTBUILDER_URL,
+      '/api/workout-builder-write',
       {
         method,
         headers: {
