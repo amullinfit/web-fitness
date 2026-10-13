@@ -86,7 +86,11 @@ export function useGearManagement(workouts, setWorkouts) {
 
     try {
       const params = new URLSearchParams({ activityId: workoutId });
-      const response = await fetch(`${GEAR_REMOVE_URL}?${params.toString()}`);
+      const response = await fetch('/api/gear-write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'remove', activityId: workoutId }),
+      });
       const rawText = await response.text();
       let resData = {};
 
@@ -156,7 +160,11 @@ export function useGearManagement(workouts, setWorkouts) {
         gearId: gearId,
       });
 
-      const response = await fetch(`${GEAR_ADD_URL}?${params.toString()}`);
+      const response = await fetch('/api/gear-write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add', activityId: workoutId, gearId }),
+      });
       const rawText = await response.text();
       let resData = {};
       try {
