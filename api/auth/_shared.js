@@ -1,5 +1,12 @@
 // GitHub OAuth helpers for Vercel serverless functions. No secrets are exposed to Vite.
-export const origin = 'https://web-fitness-schedule-preview.vercel.app';
+const configuredOrigin = process.env.APP_ORIGIN;
+if (!configuredOrigin) throw new Error('APP_ORIGIN must be configured');
+let parsedOrigin;
+try { parsedOrigin = new URL(configuredOrigin); } catch { throw new Error('APP_ORIGIN must be a valid HTTPS origin'); }
+if (parsedOrigin.protocol !== 'https:' || parsedOrigin.username || parsedOrigin.password || parsedOrigin.pathname !== '/' || parsedOrigin.search || parsedOrigin.hash) {
+  throw new Error('APP_ORIGIN must be an HTTPS origin without a path or query');
+}
+export const origin = parsedOrigin.origin;
 export const callback = origin + '/api/auth/callback';
 const encoder = new TextEncoder();
 const b64 = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
