@@ -17,7 +17,8 @@ export default async function handler(req, res) {
   if (!token || token.length < 32) return res.status(503).json({ error: 'Gear write credential is not configured' });
   const { action, activityId, gearId, gearData, imageUrl } = req.body || {};
   if (!['add', 'remove', 'manage'].includes(action)) return res.status(400).json({ error: 'Invalid gear action' });
-  if (action !== 'manage' && (!/^[0-9]+$/.test(String(activityId ?? '')) || (action === 'add' && !/^[0-9]+$/.test(String(gearId ?? '')))))
+  const validId = value => typeof value === 'string' || typeof value === 'number' ? /^[A-Za-z0-9_-]{1,80}$/.test(String(value)) : false;
+  if (action !== 'manage' && (!validId(activityId) || (action === 'add' && !validId(gearId))))
     return res.status(400).json({ error: 'Invalid activity or gear ID' });
   if (action === 'manage' && !['retire', 'delete', 'create'].includes(req.body?.operation))
     return res.status(400).json({ error: 'Invalid gear management operation' });
