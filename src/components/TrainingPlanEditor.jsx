@@ -114,7 +114,7 @@ const formatMiles = (miles) => miles > 0 ? miles.toFixed(1) : '—';
 const normalizeFolderId = (workout) =>
   String(workout?.folderId ?? workout?.folder_id ?? '');
 
-const SCHEDULE_PREVIEW_API_URL = 'https://amullinfit--e9d9dd94c5d911f1a2631607ee4eb77e.web.val.run';
+const SCHEDULE_PREVIEW_API_URL = '/api/schedule-preview';
 const CALENDAR_API_URL = import.meta.env.VITE_API_WORKOUTS_URL || 'https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run';
 const previewWorkoutName = (name) => String(name || 'Workout').replace(/^IntervalCoach\s*-?\s*/i, '').trim() || 'Workout';
 const calendarDateKey = (event) => String(event?.start_date_local || event?.start_date || '').slice(0, 10);
