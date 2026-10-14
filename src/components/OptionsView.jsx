@@ -11,6 +11,32 @@ export default function OptionsView({
 
   // State to hold the dynamic maximum slider value
   const [maxOffset, setMaxOffset] = useState(500);
+  const [auth, setAuth] = useState(null);
+  const [authError, setAuthError] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' })
+      .then((response) => {
+        if (!response.ok) throw new Error('Unable to check GitHub sign-in.');
+        return response.json();
+      })
+      .then(setAuth)
+      .catch(() => setAuth({ authenticated: false, authorized: false }));
+  }, []);
+
+  const signOut = async () => {
+    setSigningOut(true);
+    setAuthError('');
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      if (!response.ok) throw new Error('Unable to sign out.');
+      window.location.assign('/');
+    } catch (error) {
+      setAuthError(error.message);
+      setSigningOut(false);
+    }
+  };
 
   useEffect(() => {
     // Function to check screen width and set the max buffer
@@ -47,6 +73,24 @@ export default function OptionsView({
       </header>
 
       <div className="options-content">
+        <h2>GitHub Account</h2>
+        <div className="control-section">
+          {auth === null ? (
+            <p>Checking GitHub sign-in…</p>
+          ) : auth.authenticated ? (
+            <>
+              <p>Signed in as <strong>{auth.login}</strong> — {auth.authorized ? 'Authorized owner (full access unless read-only was requested)' : 'Read-only access'}</p>
+              <button type="button" onClick={signOut} disabled={signingOut}>{signingOut ? 'Signing out…' : 'Sign out of Web Fitness'}</button>
+            </>
+          ) : (
+            <>
+              <p>Not signed in to Web Fitness. Read-only access is active.</p>
+              <a href="/api/auth/login">Sign in with GitHub</a>
+            </>
+          )}
+          {authError && <p role="alert">{authError}</p>}
+        </div>
+        <hr className="options-divider" />
         <h2>Dashboard Options</h2>
 
         {/* Right Offset Control */}

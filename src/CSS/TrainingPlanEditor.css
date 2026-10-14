@@ -209,3 +209,123 @@
   color: #075fae;
   opacity: 1;
 }
+
+/* 4F-1: compact action menu; retain existing plan selection until 4F-2 dialog. */
+.tpe-plan-actions { position: relative; }
+.tpe-options-menu { position: relative; min-width: 120px; }
+.tpe-options-menu > summary {
+  cursor: pointer; list-style: none; padding: 9px 14px;
+  border: 1px solid var(--border-color, #aab4c1); border-radius: 7px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-weight: 600;
+}
+.tpe-options-menu > summary::-webkit-details-marker { display: none; }
+.tpe-options-menu[open] > summary { background: rgba(100, 150, 220, 0.12); }
+.tpe-options-content {
+  position: absolute; z-index: 30; top: calc(100% + 5px); right: 0;
+  min-width: 230px; max-width: min(90vw, 320px);
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px; border: 1px solid var(--border-color, #aab4c1);
+  border-radius: 8px; background: var(--background-color, #fff);
+  color: var(--text-color, #222); box-shadow: 0 8px 24px rgba(0,0,0,.15);
+}
+.tpe-options-content button, .tpe-options-content select {
+  width: 100%; max-width: none; text-align: left;
+}
+.tpe-options-content label { font-size: .8rem; font-weight: 600; }
+
+/* 4F-2: saved plan picker */
+.tpe-dialog-backdrop { position: fixed; inset: 0; z-index: 1100; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.tpe-open-dialog { width: min(760px, 100%); max-height: 85vh; overflow: auto; padding: 22px; border-radius: 12px; background: var(--background-color, #fff); color: var(--text-color, #222); box-shadow: 0 15px 50px rgba(0,0,0,.25); }
+.tpe-open-dialog h2 { margin: 0 0 6px; }
+.tpe-open-dialog p { margin: 0 0 16px; }
+.tpe-plan-picker { overflow-x: auto; max-height: 55vh; overflow-y: auto; }
+.tpe-plan-picker-head, .tpe-plan-picker-row { display: grid; grid-template-columns: minmax(180px, 1fr) 70px 90px 100px; align-items: center; gap: 10px; min-width: 480px; padding: 10px 8px; }
+.tpe-plan-picker-head { font-weight: 600; border-bottom: 1px solid #aab4c1; }
+.tpe-plan-picker-row { cursor: pointer; border-bottom: 1px solid rgba(128,128,128,.2); }
+.tpe-plan-picker-row:hover { background: rgba(80,145,220,.1); }
+.tpe-plan-picker-row.selected { background: rgba(80,145,220,.22); }
+.tpe-plan-picker-row > span:first-child { display: flex; gap: 8px; align-items: center; }
+.tpe-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+/* 4F-3: calendar scheduling preview; no event writes. */
+.tpe-options-divider { width: 100%; border: 0; border-top: 1px solid rgba(128,128,128,.3); }
+.tpe-schedule-dialog { width: min(900px, 100%); }
+.tpe-schedule-navigation { display: flex; justify-content: space-between; align-items: center; margin: 12px 0; }
+.tpe-schedule-navigation button { min-width: 38px; font-size: 1.3rem; }
+.tpe-schedule-calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.tpe-schedule-weekday { text-align: center; font-weight: 600; font-size: .8rem; padding: 6px 0; }
+.tpe-schedule-day { min-width: 0; min-height: 70px; position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 5px; border: 1px solid rgba(128,128,128,.25); border-radius: 4px; background: transparent; color: inherit; text-align: left; cursor: default; overflow: hidden; }
+.tpe-schedule-day:disabled { opacity: 1; }
+.tpe-schedule-day.outside { opacity: .55; }
+.tpe-schedule-day.valid { cursor: pointer; border-color: #7ba5d5; }
+.tpe-schedule-day.valid:hover { outline: 2px solid #7ba5d5; outline-offset: -2px; }
+.tpe-schedule-day.preview { background: rgba(100,170,255,.19); }
+.tpe-schedule-day.chosen { background: rgba(40,105,200,.38); border-color: #2765ba; outline: 2px solid #2765ba; outline-offset: -2px; }
+.tpe-schedule-day-number { font-size: .8rem; font-weight: 600; }
+.tpe-schedule-mini-workout { width: 100%; height: 18px; overflow: hidden; pointer-events: none; }
+.tpe-schedule-mini-workout > * { max-height: 18px; }
+.tpe-schedule-end { font-size: .65rem; font-weight: 700; }
+.tpe-schedule-summary { margin-top: 14px; font-size: .9rem; }
+.tpe-schedule-notice { margin-top: 7px; opacity: .75; font-size: .8rem; }
+@media (max-width: 600px) { .tpe-schedule-day { min-height: 48px; padding: 2px; } .tpe-schedule-day-number { font-size: .7rem; } .tpe-schedule-mini-workout { height: 12px; } }
+
+/* 4F-3D: highlight the whole selected start week, not only Monday. */
+.tpe-schedule-day.chosen-week { background: rgba(40,105,200,.30); border-color: #2765ba; }
+.tpe-schedule-day.chosen { background: rgba(40,105,200,.42); outline: 2px solid #2765ba; outline-offset: -2px; }
+.tpe-schedule-mini-workout, .tpe-schedule-mini-workout > * { background: transparent !important; }
+.tpe-schedule-mini-workout svg { background: transparent !important; }
+
+/* 4F-3E: Monday has a stronger outline while retaining the same pale fill. */
+.tpe-schedule-day.chosen,
+.tpe-schedule-day.chosen-week.chosen {
+  background: rgba(100,170,255,.19);
+  border: 2px solid #2059a8;
+  outline: 1px solid #2059a8;
+  outline-offset: -1px;
+}
+.tpe-schedule-start { font-size: .65rem; font-weight: 700; color: #2059a8; }
+
+/* 4F-4: Existing Intervals.icu events and non-destructive overlap warnings. */
+.tpe-existing-events { display: block; font-size: .64rem; line-height: 1.2; color: #175c73; background: rgba(47,166,189,.13); border-radius: 3px; padding: 2px 3px; overflow-wrap: anywhere; }
+.tpe-schedule-day.overlap { box-shadow: inset 0 0 0 2px #c17b16; }
+.tpe-overlap-warning { font-size: .65rem; font-weight: 700; color: #925200; }
+
+/* 4F-4B: distinguish existing calendar workouts from proposed plan charts. */
+.tpe-schedule-existing-workout { display: flex; flex-direction: column; gap: 2px; padding: 2px 3px; border-radius: 3px; background: rgba(47,166,189,.13); min-width: 0; overflow: hidden; pointer-events: none; }
+.tpe-schedule-workout-name { font-size: .62rem; line-height: 1.2; font-weight: 600; color: #175c73; overflow-wrap: anywhere; }
+.tpe-schedule-existing-workout svg, .tpe-schedule-existing-workout > * { max-width: 100%; background: transparent !important; }
+.tpe-schedule-day.overlap,
+.tpe-schedule-day.valid.overlap,
+.tpe-schedule-day.chosen.overlap,
+.tpe-schedule-day.chosen-week.overlap { border: 2px solid #d12d37; box-shadow: inset 0 0 0 1px #d12d37; }
+
+/* 4F-4C: readable one-line workout labels and visible proposed charts. */
+.tpe-schedule-date-heading { display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.tpe-schedule-date-heading .tpe-schedule-start, .tpe-schedule-date-heading .tpe-schedule-end { font-size: .65rem; }
+.tpe-schedule-workout-name { display: block; width: 100%; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+.tpe-schedule-mini-workout.tpe-schedule-plan-workout { display: flex; flex-direction: column; flex: 0 0 auto; width: 100%; height: auto; min-height: 35px; max-height: none; gap: 2px; padding: 2px 3px; border-radius: 3px; background: rgba(100,170,255,.14); }
+.tpe-schedule-plan-workout > * { max-height: none; }
+.tpe-schedule-plan-workout svg { max-width: 100%; background: transparent !important; }
+.tpe-schedule-existing-workout { width: 100%; }
+
+/* 4F-4D: compact vertical spacing without reducing chart height. */
+.tpe-schedule-day { gap: 1px; }
+.tpe-schedule-mini-workout.tpe-schedule-plan-workout,
+.tpe-schedule-existing-workout { gap: 0; padding-top: 0; padding-bottom: 0; }
+.tpe-schedule-mini-workout.tpe-schedule-plan-workout { min-height: 0; }
+.tpe-schedule-mini-workout.tpe-schedule-plan-workout > *,
+.tpe-schedule-existing-workout > * { margin-top: 0; margin-bottom: 0; }
+
+/* 4F-4E: clearly distinguish proposed plan workouts from existing calendar workouts. */
+.tpe-schedule-mini-workout.tpe-schedule-plan-workout {
+  border: 1px solid #2059a8;
+  border-left: 3px solid #2059a8;
+  border-radius: 3px;
+  padding-left: 3px;
+  padding-right: 3px;
+}
+.tpe-schedule-plan-workout .tpe-schedule-workout-name {
+  color: #2059a8;
+  font-weight: 700;
+}
