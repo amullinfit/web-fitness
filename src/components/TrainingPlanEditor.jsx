@@ -284,6 +284,18 @@ export default function TrainingPlanEditor() {
   const [statusMessage, setStatusMessage] = useState('Use Options to create or open a training plan.');
 
   useEffect(() => {
+    if (!openDialog && !scheduleDialog && !scheduledPlansDialog) return undefined;
+    const closeModalOnEscape = (event) => {
+      if (event.key !== 'Escape') return;
+      if (openDialog && !savingPlan) setOpenDialog(false);
+      if (scheduleDialog && !scheduleSubmitting) setScheduleDialog(false);
+      if (scheduledPlansDialog && !removalBusy) setScheduledPlansDialog(false);
+    };
+    window.addEventListener('keydown', closeModalOnEscape);
+    return () => window.removeEventListener('keydown', closeModalOnEscape);
+  }, [openDialog, scheduleDialog, scheduledPlansDialog, savingPlan, scheduleSubmitting, removalBusy]);
+
+  useEffect(() => {
     if (!zoomWorkout) return undefined;
     const closeOnEscape = (event) => {
       if (event.key === 'Escape') setZoomWorkout(null);
@@ -856,7 +868,7 @@ export default function TrainingPlanEditor() {
                 </>
               )}
               <hr className="tpe-options-divider" />
-              <button type="button" onClick={() => runOption(openScheduledPlans)}>Scheduled Plans…</button>
+              <button type="button" onClick={() => runOption(openScheduledPlans)}>Active Plans…</button>
             </div>
           </details>
         </div>
