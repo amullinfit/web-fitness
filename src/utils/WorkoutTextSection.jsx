@@ -3,7 +3,7 @@
 //
 import React, { useState } from 'react';
 import './WorkoutTextSection.css';
-import { formatPaceRange, parsePaceStrToSec } from './WorkoutChartHelpers.js';
+import { extractStepPaceRange } from './WorkoutChartHelpers.js';
 
 import {
   detectPaceMethod,
@@ -33,104 +33,42 @@ const formatIntensityTitleCase = (val) => {
 };
 
 // Return the formatted text describing the pace(s) for the step
-const formatPaceString = (s, thresholdPaceMps, zoneList) => {
-  if (!s?.pace) return "N/A";
-
-  const { pace } = s;
-  const units = (pace.units || '').toLowerCase().replace(/\s+|range/g, '');
-
-  // Determine if single value vs range
-  const isSingle = pace.value != null;
-  const val = isSingle ? pace.value : null;
-
-  const start = Math.max(pace.start ?? 0, pace.end ?? 0);
-  const end = Math.min(pace.start ?? 0, pace.end ?? 0);
-
-  let paceStr = 'N/A';
-  let paceMethodStr = null;
-
-  switch (units) {
-    // -------------------------------------------------------------------
-    // 1. SECONDS PER MILE (Direct Seconds)
-    // -------------------------------------------------------------------
-    case 'secs':{
-      if (isSingle) {
-        paceStr = secondsToPaceStr(val);
-      } else {
-        paceStr = `${secondsToPaceStr(start)} - ${secondsToPaceStr(end)}`;
-      }
-      break;
-    }
-
-    // -------------------------------------------------------------------
-    // 2. PERCENTAGE OF THRESHOLD (%pace)
-    // -------------------------------------------------------------------
-    case '%pace': {
-      if (isSingle) {
-        paceStr = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (val / 100));
-        paceMethodStr = `(${val}% pace)`;
-      } else {
-        const startPaceStr = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (start / 100));
-        const endPaceStr  = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (end   / 100));
-        paceStr = `${startPaceStr}-${endPaceStr}`;
-        paceMethodStr = `(${start}-${end}% pace)`;
-      }
-      break;
-    }
-
-    // -------------------------------------------------------------------
-    // 3. PACE ZONE (Numeric Zone IDs)
-    // -------------------------------------------------------------------
-    case 'pace_zone': {
-      if (isSingle) {
-        // Look up directly in zoneList array
-        const zoneMatch = zoneList?.find((z) => z.zone === Number(val));
-        
-        // Convert the zone's target seconds (pace_val_sec) to a formatted pace
-        paceStr = zoneMatch?.pace_val_sec ? secondsToPaceStr(zoneMatch.pace_val_sec) : "?";
-        paceMethodStr = zoneMatch?.zone_name || `Zone ${val}`;
-      } else {
-        const startZone = zoneList?.find((z) => z.zone === Number(start));
-        const endZone = zoneList?.find((z) => z.zone === Number(end));
-
-        // Display pace ranges from fastest (lower seconds) to slowest.
-        const slowPace = startZone?.pace_slow ?? `Zone ${start}`;
-        const fastPace = endZone?.pace_fast ?? `Zone ${end}`;
-
-        const fastSec = parsePaceStrToSec(fastPace);
-        const slowSec = parsePaceStrToSec(slowPace);
-        paceStr = fastSec && slowSec
-          ? formatPaceRange(fastSec, slowSec)
-          : `${fastPace} - ${slowPace}`;
-        paceMethodStr = `(Zone ${start}-${end})`;
-      }
-      break;
-    }
-  }
-
-  return paceStr + (paceMethodStr ? ` ${paceMethodStr}` : '');
+const formatPaceString = (step, thresholdPaceSec, paceDetails) => {
+  if (!step?.pace) return 'N/A';
+  const paces = { ...(paceDetails || {}), thresholdSec: Number(paceDetails?.run_pace_sec || paceDetails?.threshold_pace_sec || thresholdPaceSec) || 450 };
+  const range = extractStepPaceRange(step.pace, paces);
+  const fast = Number(range.fastSec);
+  const slow = Number(range.slowSec);
+  if (!Number.isFinite(fast) || !Number.isFinite(slow) || fast <= 0 || slow <= 0) return 'N/A';
+  const format = (seconds) => {
+    const total = Math.round(seconds);
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  };
+  const paceText = fast === slow ? format(fast) : `${format(Math.min(fast, slow))} - ${format(Math.max(fast, slow))}`;
+  const method = step.pace.units === 'pace_zone' ? 'zone' : step.pace.units === '%pace' ? 'threshold' : '';
+  return `${paceText} /mi${method ? ` (${method})` : ''}`;
 };
 
-const parseSingleStep = (s, idx, thresholdPaceMps, zoneList) => {
+const parseSingleStep = (s, idx, thresholdPaceMps, paceDetails) => {
   const rawIntensity = s.intensity || (s.warmup ? "warmup" : s.cooldown ? "cooldown" : "active");
   return {
     id: idx,
     isRepeat: false,
     durationSec: s.duration || 0,
     intensity: formatIntensityTitleCase(rawIntensity),
-    paceStr: formatPaceString(s, thresholdPaceMps, zoneList),
+    paceStr: formatPaceString(s, thresholdPaceMps, paceDetails),
     text: s.text || "No step text"
   };
 };
 
-const parseWorkoutSteps = (stepList, thresholdPaceMps, zonelist) => {
+const parseWorkoutSteps = (stepList, thresholdPaceMps, paceDetails) => {
   if (!Array.isArray(stepList)) return [];
 
   return stepList.map((s, idx) => {
     // Handle Repeat Blocks
     if (Array.isArray(s.steps) && s.steps.length > 0) {
       const reps = s.reps && Number.isInteger(s.reps) && s.reps > 0 ? s.reps : 1;
-      const innerSteps = parseWorkoutSteps(s.steps, thresholdPaceMps, zonelist);
+      const innerSteps = parseWorkoutSteps(s.steps, thresholdPaceMps, paceDetails);
       
       const singleCycleDuration = innerSteps.reduce((sum, inner) => sum + inner.durationSec, 0);
       const totalRepeatDuration = singleCycleDuration * reps;
@@ -146,7 +84,7 @@ const parseWorkoutSteps = (stepList, thresholdPaceMps, zonelist) => {
     }
 
     // Handle Standard Steps
-    return parseSingleStep(s, idx, thresholdPaceMps, zonelist);
+    return parseSingleStep(s, idx, thresholdPaceMps, paceDetails);
   });
 };
 
