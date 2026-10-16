@@ -11,7 +11,7 @@ import {
 /**
  * Determine daily color based on intensity zone breakdown.
  * Red: Z5+ | Blue: Z4 | Yellow: Z3 | Grey: Z1/Z2 (Default)
- * Border: Dark Black if total miles > 8.0
+ * Border: Dark Black if total miles >= 10.0
  */
 export const getDayZoneStyle = (workoutsList) => {
   if (!workoutsList || workoutsList.length === 0) {
@@ -58,7 +58,7 @@ export const getDayZoneStyle = (workoutsList) => {
   }
 
   // Dark black border if > 8 miles
-  const borderColor = miles > 8.0 ? '#000000' : 'transparent';
+  const borderColor = miles >= 10.0 ? '#000000' : 'transparent';
 
   return { color, borderColor, miles, zoneLabel };
 };
@@ -246,8 +246,8 @@ export const WeeklyFrameChart = ({
             {daysData[hoveredDayIndex].miles > 0 ? (
               <>
                 <div className="tooltip-zone">{daysData[hoveredDayIndex].zoneLabel}</div>
-                {daysData[hoveredDayIndex].miles > 8.0 && (
-                  <div className="tooltip-long-run">★ Long Run (&gt;8 mi)</div>
+                {daysData[hoveredDayIndex].miles >= 10.0 && (
+                  <div className="tooltip-long-run">★ Long Run (≥10 mi)</div>
                 )}
                 <div className="tooltip-click-hint" style={{ fontSize: '10px', marginTop: '4px', opacity: 0.8 }}>
                   Click to view workout details
