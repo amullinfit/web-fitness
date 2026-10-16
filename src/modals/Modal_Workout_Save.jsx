@@ -2,7 +2,7 @@
 // Modal_Workout_Save.jsx
 //
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   modalOverlayStyle,
   modalContentStyle,
@@ -43,6 +43,15 @@ export default function Modal_Workout_Save({
         typeof onConfirmSave === 'function',
     }
   );
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && !apiLoading) onClose?.();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, apiLoading, onClose]);
 
   if (!isOpen) {
     return null;
@@ -98,10 +107,8 @@ export default function Modal_Workout_Save({
   return (
     <div
       style={modalOverlayStyle}
-      onClick={() => {
-        if (!apiLoading) {
-          onClose?.();
-        }
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !apiLoading) onClose?.();
       }}
     >
       <div
