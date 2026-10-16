@@ -260,10 +260,10 @@ const RenderStepCard = ({ step }) => {
           <span className="workout-section-title">
             {isOpen ? '▼' : '►'} Workout Details ({parsedSteps.length} block{parsedSteps.length === 1 ? '' : 's'})
           </span>
-          <span className="workout-section-badge">
-            Total Time: {formatDuration(totalWorkoutDurationSec)}
+          <span className="workout-section-summary">
+            <span className="workout-section-badge">Total Time: {formatDuration(totalWorkoutDurationSec)}</span>
+            <span className="workout-section-badge">Est. Distance: {estimatedDistanceMiles.toFixed(2)} mi</span>
           </span>
-          <span className="workout-section-badge">Est. Distance: {estimatedDistanceMiles.toFixed(2)} mi</span>
         </div>
 
         {isOpen && (
