@@ -210,7 +210,7 @@ export default function RenderStepRow({
         const selectedZones = zoneList.filter((zone) => selectedIds.every(Number.isFinite) && Number(zone.zone) >= Math.min(...selectedIds) && Number(zone.zone) <= Math.max(...selectedIds));
         const parseBoundary = (value) => {
           if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : null;
-          const match = String(value || '').match(/(\\d+):(\\d{2})/);
+          const match = String(value || '').match(/(\d+):(\d{2})/);
           return match ? Number(match[1]) * 60 + Number(match[2]) : null;
         };
         const fastCandidates = selectedZones.map((zone) => parseBoundary(zone.pace_fast) || parseBoundary(zone.pace_val_sec)).filter((value) => value > 0);
@@ -508,7 +508,7 @@ export default function RenderStepRow({
             />
             %
           </label>
-          <span style={{ fontSize: '12px', color: '#6c757d' }}>({calcSlowPace} - {calcFastPace} /mi)</span>
+          <span style={{ fontSize: '12px', color: '#6c757d' }}>({calcFastPace} - {calcSlowPace} /mi)</span>
         </div>
       );
     }
@@ -574,11 +574,17 @@ export default function RenderStepRow({
       const startZoneKey = String(matchedStart?.zone ?? matchedStart?.id ?? rawStartVal ?? defaultFastVal);
       const endZoneKey = String(matchedEnd?.zone ?? matchedEnd?.id ?? rawEndVal ?? defaultSlowVal);
 
-      const fastZonePaceSec = getZoneTargetPaceSec(matchedStart);
-      const slowZonePaceSec = getZoneTargetPaceSec(matchedEnd);
-
-      const calcFastZonePace = fastZonePaceSec > 0 ? formatMMSS(fastZonePaceSec) : '--:--';
-      const calcSlowZonePace = slowZonePaceSec > 0 ? formatMMSS(slowZonePaceSec) : '--:--';
+      const selectedIds = [Number(startZoneKey), Number(endZoneKey)];
+      const selectedZones = zoneList.filter((zone) => selectedIds.every(Number.isFinite) && Number(zone.zone) >= Math.min(...selectedIds) && Number(zone.zone) <= Math.max(...selectedIds));
+      const parseZoneBoundary = (value) => {
+        if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : 0;
+        const match = String(value || '').match(/(\d+):(\d{2})/);
+        return match ? Number(match[1]) * 60 + Number(match[2]) : 0;
+      };
+      const fastBoundaries = selectedZones.map((zone) => parseZoneBoundary(zone.pace_fast) || parseZoneBoundary(zone.pace_val_sec)).filter((sec) => sec > 0);
+      const slowBoundaries = selectedZones.map((zone) => parseZoneBoundary(zone.pace_slow) || parseZoneBoundary(zone.pace_val_sec)).filter((sec) => sec > 0);
+      const calcFastZonePace = fastBoundaries.length ? formatMMSS(Math.min(...fastBoundaries)) : '--:--';
+      const calcSlowZonePace = slowBoundaries.length ? formatMMSS(Math.max(...slowBoundaries)) : '--:--';
 
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
