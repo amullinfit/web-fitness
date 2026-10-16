@@ -190,7 +190,11 @@ export default function RenderStepRow({
         paceText = isRange ? `${startPct}%–${endPct}% threshold` : `${step.pace.value ?? startPct}% threshold`;
         const startPace = formatMMSS(calculatePaceFromPct(startPct, thresholdSecPerMile));
         const endPace = endPct !== undefined ? formatMMSS(calculatePaceFromPct(endPct, thresholdSecPerMile)) : '';
-        descriptivePace = endPace ? `${startPace}–${endPace} /mi` : `${startPace} /mi`;
+        const startSec = calculatePaceFromPct(startPct, thresholdSecPerMile);
+        const endSec = endPct !== undefined ? calculatePaceFromPct(endPct, thresholdSecPerMile) : null;
+        descriptivePace = endSec != null && Number.isFinite(startSec) && Number.isFinite(endSec)
+          ? `${formatMMSS(Math.min(startSec, endSec))}–${formatMMSS(Math.max(startSec, endSec))} /mi`
+          : `${startPace} /mi`;
       } else if (step.pace.units === 'pace_zone') {
         const startZoneValue = step.pace.start ?? step.pace.value;
         const endZoneValue = step.pace.end;
@@ -202,9 +206,18 @@ export default function RenderStepRow({
         paceText = endZoneValue !== undefined
           ? `${zoneLabel(startZoneValue, startZone)}–${zoneLabel(endZoneValue, endZone)}`
           : zoneLabel(startZoneValue, startZone);
-        descriptivePace = endZoneValue !== undefined
-          ? `${startPace > 0 ? formatMMSS(startPace) : '--:--'}–${endPace > 0 ? formatMMSS(endPace) : '--:--'} /mi`
-          : `${getDescriptiveText(step.pace, zoneList) || (startPace > 0 ? formatMMSS(startPace) : '--:--')} /mi`;
+        const selectedIds = endZoneValue !== undefined ? [Number(startZoneValue), Number(endZoneValue)] : [Number(startZoneValue)];
+        const selectedZones = zoneList.filter((zone) => selectedIds.every(Number.isFinite) && Number(zone.zone) >= Math.min(...selectedIds) && Number(zone.zone) <= Math.max(...selectedIds));
+        const parseBoundary = (value) => {
+          if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : null;
+          const match = String(value || '').match(/(\\d+):(\\d{2})/);
+          return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+        };
+        const fastCandidates = selectedZones.map((zone) => parseBoundary(zone.pace_fast) || parseBoundary(zone.pace_val_sec)).filter((value) => value > 0);
+        const slowCandidates = selectedZones.map((zone) => parseBoundary(zone.pace_slow) || parseBoundary(zone.pace_val_sec)).filter((value) => value > 0);
+        descriptivePace = fastCandidates.length && slowCandidates.length
+          ? `${formatMMSS(Math.min(...fastCandidates))}–${formatMMSS(Math.max(...slowCandidates))} /mi`
+          : 'N/A';
       } else if (step.pace.units === 'secs') {
         paceText = isRange
           ? `${formatMMSS(Math.min(step.pace.start ?? 0, step.pace.end ?? 0))}–${formatMMSS(Math.max(step.pace.start ?? 0, step.pace.end ?? 0))} /mi`
