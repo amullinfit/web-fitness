@@ -393,8 +393,9 @@ const getZoneList = (pacesInput) => {
    */
   export function formatSecPerMileToStr(totalSec) {
     if (!totalSec || isNaN(totalSec) || totalSec <= 0) return "--:--";
-    const mins = Math.floor(totalSec / 60);
-    const secs = Math.round(totalSec % 60);
+    const rounded = Math.round(totalSec / 5) * 5;
+    const mins = Math.floor(rounded / 60);
+    const secs = rounded % 60;
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   }
 
