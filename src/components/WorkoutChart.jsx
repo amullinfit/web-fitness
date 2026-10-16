@@ -90,7 +90,9 @@ export default function WorkoutChart({
   const stepPacesSec = [];
 
   allStepsCombined.forEach((s) => {
-    const parsed = extractPaceRangeInSeconds(s, thresholdSecPerMile, paces);
+    const parsed = s.pace && typeof s.pace === 'object' && s.pace.units
+      ? extractStepPaceRange(s.pace, paces)
+      : extractPaceRangeInSeconds(s, thresholdSecPerMile, paces);
     if (parsed) {
       if (parsed.fastSec) stepPacesSec.push(parsed.fastSec);
       if (parsed.slowSec) stepPacesSec.push(parsed.slowSec);
@@ -284,11 +286,7 @@ export default function WorkoutChart({
                   // Get descriptive text for zone or fallback to extracted/formatted range strings
                   const descriptivePaceStr = getDescriptiveText(step.pace, paces);
 
-                  const paceDetails = descriptivePaceStr || (
-                    range.fastPaceStr === range.slowPaceStr 
-                      ? range.fastPaceStr 
-                      : `${range.fastPaceStr} - ${range.slowPaceStr}`
-                  );
+                  const paceDetails = range.formattedText || descriptivePaceStr || 'N/A';
 
                   const tooltipText = `${durationFormatted} @ ${paceDetails}`;
 
@@ -336,7 +334,7 @@ export default function WorkoutChart({
                             zIndex: 3
                           }}
                         >
-                          {range.fastPaceStr}
+                          {range.fastSec > 0 && range.slowSec > 0 ? formatPaceRange(range.fastSec, range.slowSec) : 'N/A'}
                         </span>
                       )}
                     </div>
