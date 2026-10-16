@@ -29,6 +29,15 @@
   letter-spacing: 0.2px;
 }
 
+.workout-section-summary {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .workout-section-badge {
   font-size: 11px;
   font-weight: 600;
