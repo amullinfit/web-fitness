@@ -190,7 +190,7 @@ export default function RenderStepRow({
         paceText = isRange ? `${startPct}%–${endPct}% threshold` : `${step.pace.value ?? startPct}% threshold`;
         const startPace = formatMMSS(calculatePaceFromPct(startPct, thresholdSecPerMile));
         const endPace = endPct !== undefined ? formatMMSS(calculatePaceFromPct(endPct, thresholdSecPerMile)) : '';
-        descriptivePace = endPace ? `${formatMMSS(Math.min(calculatePaceFromPct(startPct, thresholdSecPerMile), calculatePaceFromPct(endPct, thresholdSecPerMile)))}–${formatMMSS(Math.max(calculatePaceFromPct(startPct, thresholdSecPerMile), calculatePaceFromPct(endPct, thresholdSecPerMile)))} /mi` : `${startPace} /mi`;
+        descriptivePace = endPace ? `${startPace}–${endPace} /mi` : `${startPace} /mi`;
       } else if (step.pace.units === 'pace_zone') {
         const startZoneValue = step.pace.start ?? step.pace.value;
         const endZoneValue = step.pace.end;
@@ -203,7 +203,7 @@ export default function RenderStepRow({
           ? `${zoneLabel(startZoneValue, startZone)}–${zoneLabel(endZoneValue, endZone)}`
           : zoneLabel(startZoneValue, startZone);
         descriptivePace = endZoneValue !== undefined
-          ? `${startPace > 0 && endPace > 0 ? `${formatMMSS(Math.min(startPace, endPace))}–${formatMMSS(Math.max(startPace, endPace))}` : '--:--'} /mi`
+          ? `${startPace > 0 ? formatMMSS(startPace) : '--:--'}–${endPace > 0 ? formatMMSS(endPace) : '--:--'} /mi`
           : `${getDescriptiveText(step.pace, zoneList) || (startPace > 0 ? formatMMSS(startPace) : '--:--')} /mi`;
       } else if (step.pace.units === 'secs') {
         paceText = isRange
