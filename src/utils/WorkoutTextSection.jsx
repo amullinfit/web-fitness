@@ -229,6 +229,17 @@ const RenderStepCard = ({ step }) => {
 
   const parsedSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps, zoneList);
 
+  // Estimate running distance using each step's pace and duration, including repeats.
+  const estimateStepMiles = (step) => {
+    if (step.isRepeat) return step.reps * step.innerSteps.reduce((sum, inner) => sum + estimateStepMiles(inner), 0);
+    const raw = step.paceStr || '';
+    const matches = [...raw.matchAll(/(\d{1,2}):(\d{2})(?!\d)/g)];
+    const paceSeconds = matches.map((match) => Number(match[1]) * 60 + Number(match[2])).filter((seconds) => seconds > 0);
+    if (!paceSeconds.length || !step.durationSec) return 0;
+    return step.durationSec / (paceSeconds.reduce((sum, seconds) => sum + seconds, 0) / paceSeconds.length);
+  };
+  const estimatedDistanceMiles = parsedSteps.reduce((sum, step) => sum + estimateStepMiles(step), 0);
+
   // Calculate Total Overall Workout Duration
   const totalWorkoutDurationSec = parsedSteps.reduce((sum, step) => sum + step.durationSec, 0);
 
@@ -252,6 +263,7 @@ const RenderStepCard = ({ step }) => {
           <span className="workout-section-badge">
             Total Time: {formatDuration(totalWorkoutDurationSec)}
           </span>
+          <span className="workout-section-badge">Est. Distance: {estimatedDistanceMiles.toFixed(2)} mi</span>
         </div>
 
         {isOpen && (
