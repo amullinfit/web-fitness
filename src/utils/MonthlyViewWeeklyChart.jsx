@@ -11,7 +11,7 @@ import {
 /**
  * Determine daily color based on intensity zone breakdown.
  * Red: Z5+ | Blue: Z4 | Yellow: Z3 | Grey: Z1/Z2 (Default)
- * Border: Dark Black if total miles >= 10.0
+ * Border: Dark Black if any individual run is >= 10.0 miles
  */
 export const getDayZoneStyle = (workoutsList) => {
   if (!workoutsList || workoutsList.length === 0) {
@@ -19,12 +19,15 @@ export const getDayZoneStyle = (workoutsList) => {
   }
 
   let totalMeters = 0;
+  let hasLongRun = false;
   let z5Time = 0;
   let z4Time = 0;
   let z3Time = 0;
 
   workoutsList.forEach((w) => {
-    totalMeters += w.distance || w.icu_distance || 0;
+    const workoutMeters = w.distance || w.icu_distance || 0;
+    totalMeters += workoutMeters;
+    if (getSportCategory(w) === 'Run' && metersToMilesNum(workoutMeters) >= 10.0) hasLongRun = true;
 
     if (w.icu_zone_times && Array.isArray(w.icu_zone_times)) {
       z3Time += w.icu_zone_times[2] || 0;
@@ -57,10 +60,10 @@ export const getDayZoneStyle = (workoutsList) => {
     zoneLabel = 'Z3 (Tempo)';
   }
 
-  // Dark black border if > 8 miles
-  const borderColor = miles >= 10.0 ? '#000000' : 'transparent';
+  // Long run border
+  const borderColor = hasLongRun ? '#000000' : 'transparent';
 
-  return { color, borderColor, miles, zoneLabel };
+  return { color, borderColor, miles, zoneLabel, hasLongRun };
 };
 
 /**
@@ -103,6 +106,7 @@ export const WeeklyFrameChart = ({
         color: style.color,
         borderColor: style.borderColor,
         zoneLabel: style.zoneLabel,
+        hasLongRun: style.hasLongRun,
         sportWorkouts
       };
     });
@@ -246,7 +250,7 @@ export const WeeklyFrameChart = ({
             {daysData[hoveredDayIndex].miles > 0 ? (
               <>
                 <div className="tooltip-zone">{daysData[hoveredDayIndex].zoneLabel}</div>
-                {daysData[hoveredDayIndex].miles >= 10.0 && (
+                {daysData[hoveredDayIndex].hasLongRun && (
                   <div className="tooltip-long-run">★ Long Run (≥10 mi)</div>
                 )}
                 <div className="tooltip-click-hint" style={{ fontSize: '10px', marginTop: '4px', opacity: 0.8 }}>
