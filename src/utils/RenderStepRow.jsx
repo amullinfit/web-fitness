@@ -214,7 +214,7 @@ export default function RenderStepRow({
           return match ? Number(match[1]) * 60 + Number(match[2]) : null;
         };
         const fastCandidates = selectedZones.map((zone) => parseBoundary(zone.pace_fast) || parseBoundary(zone.pace_val_sec)).filter((value) => value > 0);
-        const slowCandidates = selectedZones.map((zone) => parseBoundary(zone.pace_slow) || parseBoundary(zone.pace_val_sec)).filter((value) => value > 0);
+        const slowCandidates = selectedZones.map((zone) => parseBoundary(zone.pace_slow) || ((parseBoundary(zone.pace_fast) || parseBoundary(zone.pace_val_sec) || 0) + 120)).filter((value) => value > 0);
         descriptivePace = fastCandidates.length && slowCandidates.length
           ? `${formatMMSS(Math.min(...fastCandidates))}–${formatMMSS(Math.max(...slowCandidates))} /mi`
           : 'N/A';
@@ -582,7 +582,7 @@ export default function RenderStepRow({
         return match ? Number(match[1]) * 60 + Number(match[2]) : 0;
       };
       const fastBoundaries = selectedZones.map((zone) => parseZoneBoundary(zone.pace_fast) || parseZoneBoundary(zone.pace_val_sec)).filter((sec) => sec > 0);
-      const slowBoundaries = selectedZones.map((zone) => parseZoneBoundary(zone.pace_slow) || parseZoneBoundary(zone.pace_val_sec)).filter((sec) => sec > 0);
+      const slowBoundaries = selectedZones.map((zone) => parseZoneBoundary(zone.pace_slow) || ((parseZoneBoundary(zone.pace_fast) || parseZoneBoundary(zone.pace_val_sec) || 0) + 120)).filter((sec) => sec > 0);
       const calcFastZonePace = fastBoundaries.length ? formatMMSS(Math.min(...fastBoundaries)) : '--:--';
       const calcSlowZonePace = slowBoundaries.length ? formatMMSS(Math.max(...slowBoundaries)) : '--:--';
 
