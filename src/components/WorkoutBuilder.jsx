@@ -42,7 +42,7 @@ export default function WorkoutBuilder() {
 
   const [mode, setMode] = useState('EMPTY');
 
-  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(true);
 
   // ------------------------------------------------------------
   // Workout Metadata
