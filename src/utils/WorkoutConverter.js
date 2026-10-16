@@ -515,7 +515,7 @@ export function getDescriptiveText(step, pacesInput) {
 
     const fastSec = fastZoneObj ? parsePaceStrToSec(fastZoneObj.pace_fast): null;
     
-    const slowSec = slowZoneObj ? parsePaceStrToSec(fastZoneObj.pace_slow): null;
+    const slowSec = slowZoneObj ? parsePaceStrToSec(slowZoneObj.pace_slow): null;
 
     return formatOutputRange(fastSec, slowSec);
   }
