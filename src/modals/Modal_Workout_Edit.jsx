@@ -43,6 +43,15 @@ export default function Modal_Workout_Edit({
     setSelectedFolderId(defaultFolderId);
   }, [defaultFolderId, isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const filteredWorkouts = useMemo(() => {
@@ -106,7 +115,7 @@ export default function Modal_Workout_Edit({
   };
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.(); }}>
       <div className="modal-container modal-workout-select">
         <div className="modal-header">
           <h2 className="modal-title">Select Workout</h2>
