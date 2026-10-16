@@ -89,7 +89,7 @@ const formatPaceString = (s, thresholdPaceMps, zoneList, paceDetails) => {
         return match ? Number(match[1]) * 60 + Number(match[2]) : null;
       };
       const fastCandidates = selectedZones.map((z) => parseBoundary(z.pace_fast) || parseBoundary(z.pace_val_sec)).filter((v) => v > 0);
-      const slowCandidates = selectedZones.map((z) => parseBoundary(z.pace_slow) || parseBoundary(z.pace_val_sec)).filter((v) => v > 0);
+      const slowCandidates = selectedZones.map((z) => parseBoundary(z.pace_slow) || ((parseBoundary(z.pace_fast) || parseBoundary(z.pace_val_sec) || 0) + 120)).filter((v) => v > 0);
       if (fastCandidates.length && slowCandidates.length) {
         const fast = Math.min(...fastCandidates);
         const slow = Math.max(...slowCandidates);
