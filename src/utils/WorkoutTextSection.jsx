@@ -82,28 +82,23 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
     // 3. PACE ZONE (Numeric Zone IDs)
     // -------------------------------------------------------------------
     case 'pace_zone': {
-      if (isSingle) {
-        // Look up directly in zoneList array
-        const zoneMatch = zoneList?.find((z) => z.zone === Number(val));
-        
-        // Convert the zone's target seconds (pace_val_sec) to a formatted pace
-        paceStr = zoneMatch?.pace_val_sec ? secondsToPaceStr(zoneMatch.pace_val_sec) : "?";
-        paceMethodStr = zoneMatch?.zone_name || `Zone ${val}`;
+      const selectedIds = isSingle ? [Number(val)] : [Number(pace.start), Number(pace.end)];
+      const selectedZones = (zoneList || []).filter((z) => selectedIds.every(Number.isFinite) && Number(z.zone) >= Math.min(...selectedIds) && Number(z.zone) <= Math.max(...selectedIds));
+      const parseBoundary = (value) => {
+        if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : null;
+        const match = String(value || '').match(/(\\d+):(\\d{2})/);
+        return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+      };
+      const fastCandidates = selectedZones.map((z) => parseBoundary(z.pace_fast) || parseBoundary(z.pace_val_sec)).filter((v) => v > 0);
+      const slowCandidates = selectedZones.map((z) => parseBoundary(z.pace_slow) || parseBoundary(z.pace_val_sec)).filter((v) => v > 0);
+      if (fastCandidates.length && slowCandidates.length) {
+        const fast = Math.min(...fastCandidates);
+        const slow = Math.max(...slowCandidates);
+        paceStr = fast === slow ? secondsToPaceStr(fast) : `${secondsToPaceStr(fast)} - ${secondsToPaceStr(slow)}`;
       } else {
-        const startZone = zoneList?.find((z) => z.zone === Number(start));
-        const endZone = zoneList?.find((z) => z.zone === Number(end));
-
-        // Display pace ranges from fastest (lower seconds) to slowest.
-        const slowPace = startZone?.pace_slow ?? `Zone ${start}`;
-        const fastPace = endZone?.pace_fast ?? `Zone ${end}`;
-
-        const fastSec = parsePaceStrToSec(fastPace);
-        const slowSec = parsePaceStrToSec(slowPace);
-        paceStr = fastSec && slowSec
-          ? formatPaceRange(fastSec, slowSec)
-          : `${fastPace} - ${slowPace}`;
-        paceMethodStr = `(Zone ${start}-${end})`;
+        paceStr = 'N/A';
       }
+      paceMethodStr = isSingle ? `(Zone ${val})` : `(Zones ${Math.min(...selectedIds)}-${Math.max(...selectedIds)})`;
       break;
     }
   }
