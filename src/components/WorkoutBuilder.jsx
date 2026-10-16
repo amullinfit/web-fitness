@@ -362,6 +362,12 @@ export default function WorkoutBuilder() {
   // OPEN SAVE MODAL
   // ============================================================
 
+  const getPreferredSaveFolderId = () => {
+    if (selectedFolderId) return selectedFolderId;
+    const workoutsFolder = folders.find((folder) => String(folder.name || folder.title || '').trim().toLowerCase() === 'workouts');
+    return workoutsFolder ? String(workoutsFolder.id) : '';
+  };
+
   const handleOpenSaveModal = (isSaveAs = false) => {
     console.log(
       '[Save Flow] Step 1: Save menu option selected',
@@ -379,14 +385,14 @@ export default function WorkoutBuilder() {
 
     setIsSaveAsMode(isSaveAs);
     setSaveTitle(initialTitle);
-    setSaveFolderId(selectedFolderId || '');
+    setSaveFolderId(getPreferredSaveFolderId());
     setIsSaveModalOpen(true);
 
     console.log(
       '[Save Flow] Step 2: Save modal opening',
       {
         saveTitle: initialTitle,
-        saveFolderId: selectedFolderId || '',
+        saveFolderId: getPreferredSaveFolderId(),
         isSaveAs,
       }
     );
@@ -660,7 +666,7 @@ export default function WorkoutBuilder() {
       `${workoutTitle || 'Workout'} (Copy)`;
 
     setSaveTitle(duplicateTitle);
-    setSaveFolderId(selectedFolderId || '');
+    setSaveFolderId(getPreferredSaveFolderId());
     setWorkoutTitle(duplicateTitle);
 
     setMode('BUILDING');
