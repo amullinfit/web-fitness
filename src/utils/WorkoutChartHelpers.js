@@ -499,37 +499,26 @@ const getZoneList = (pacesInput) => {
   
     // 2. Zone-Based (`units: "pace_zone"`)
     else if (stepPace.units === "pace_zone") {
-      if (stepPace.value != null && zones.length) {
-        const zObj = findZone(stepPace.value);
-        if (zObj) {
-          fastSec = zObj.pace_val_sec || parsePaceStrToSec(zObj.pace_fast);
-          slowSec = parsePaceStrToSec(zObj.pace_slow) || (fastSec + 120);
-          midSec  = Math.round((fastSec + slowSec)/2);
-  
-          const fastStr = cleanPaceStr(zObj.pace_fast);
-          let slowStr = cleanPaceStr(zObj.pace_slow);
-          if (!slowStr || slowStr === "0:00") slowStr = formatSecPerMileToStr(slowSec);
-  
-          descriptiveLabel = `Zone ${stepPace.value} (${formatPaceRange(parsePaceStrToSec(fastStr), parsePaceStrToSec(slowStr))})`;
-        }
-      } else if (stepPace.start != null && stepPace.end != null && zones.length) {
-        const slowZ = findZone(Math.min(stepPace.start, stepPace.end));
-        const fastZ = findZone(Math.max(stepPace.start, stepPace.end));
-  
-        if (slowZ && fastZ) {
-          fastSec = fastZ.pace_val_sec || parsePaceStrToSec(fastZ.pace_fast);
-          slowSec = parsePaceStrToSec(slowZ.pace_slow) || (parsePaceStrToSec(slowZ.pace_fast) + 120);
-          midSec  = Math.round((fastSec + slowSec)/2);
-  
-          const fastPaceStr = cleanPaceStr(fastZ.pace_fast);
-          let slowPaceStr = cleanPaceStr(slowZ.pace_slow);
-          if (!slowPaceStr || slowPaceStr === "0:00") slowPaceStr = formatSecPerMileToStr(slowSec);
-  
-          descriptiveLabel = `Z${stepPace.start}-${stepPace.end} (${formatPaceRange(parsePaceStrToSec(fastPaceStr), parsePaceStrToSec(slowPaceStr))})`;
+      const isRange = stepPace.start != null && stepPace.end != null;
+      const ids = isRange ? [Number(stepPace.start), Number(stepPace.end)] : [Number(stepPace.value)];
+      const parseBoundary = (value) => {
+        if (typeof value === "number") return Number.isFinite(value) && value > 0 ? value : 0;
+        return parsePaceStrToSec(value) || 0;
+      };
+      if (ids.every(Number.isFinite)) {
+        const selectedZones = zones.filter((z) => Number(z.zone) >= Math.min(...ids) && Number(z.zone) <= Math.max(...ids));
+        const fastCandidates = selectedZones.map((z) => parseBoundary(z.pace_fast) || parseBoundary(z.pace_val_sec)).filter((v) => v > 0);
+        const slowCandidates = selectedZones.map((z) => parseBoundary(z.pace_slow) || parseBoundary(z.pace_val_sec)).filter((v) => v > 0);
+        if (fastCandidates.length && slowCandidates.length) {
+          fastSec = Math.min(...fastCandidates);
+          slowSec = Math.max(...slowCandidates);
+          midSec = Math.round((fastSec + slowSec) / 2);
+          const label = isRange ? `Z${Math.min(...ids)}-${Math.max(...ids)}` : `Zone ${ids[0]}`;
+          descriptiveLabel = `${label} (${formatPaceRange(fastSec, slowSec)})`;
         }
       }
     }
-  
+   
     // 3. Threshold % (`units: "%pace"`)
     else if (stepPace.units === "%pace") {
       if (typeof stepPace.value === "number") {
