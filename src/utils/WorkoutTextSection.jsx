@@ -57,7 +57,7 @@ const formatPaceString = (s, thresholdPaceMps, zoneList, paceDetails) => {
       if (isSingle) {
         paceStr = secondsToPaceStr(val);
       } else {
-        paceStr = `${secondsToPaceStr(start)} - ${secondsToPaceStr(end)}`;
+        paceStr = `${secondsToPaceStr(end)} - ${secondsToPaceStr(start)}`;
       }
       break;
     }
