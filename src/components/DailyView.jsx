@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import WorkoutChart from './WorkoutChart';
+import { CalendarWorkoutActions } from '../modals/CalendarWorkoutActions.jsx';
+import { useReadOnly } from '../context/ReadOnlyContext.jsx';
 import WorkoutTextSection from '../utils/WorkoutTextSection';
 import Modal_AddGear from '../modals/Modal_AddGear';
 import GearBadge from './GearBadge';
@@ -19,6 +21,22 @@ const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
 
 export default function DailyView() {
   const { paces } = usePaces();
+  const readOnly = useReadOnly();
+  const [calendarAction, setCalendarAction] = useState(null);
+  const [calendarMenu, setCalendarMenu] = useState(null);
+  const [calendarMessage, setCalendarMessage] = useState('');
+  const openCalendarAction = (action, date, workout = null) => { setCalendarMenu(null); setCalendarMessage(''); setCalendarAction({ action, date, workout }); };
+  const renderCalendarOptions = (date, workout = null) => {
+    if (readOnly || date < getLocalDateString(new Date()) || (workout && isWorkoutCompleted(workout))) return null;
+    const key = workout ? `workout-${workout.id ?? workout._id}` : `empty-${date}`;
+    return <div className="daily-calendar-options" style={{ position: 'relative', marginLeft: 'auto' }}>
+      <button type="button" aria-label="Workout options" aria-expanded={calendarMenu === key} onClick={() => setCalendarMenu((current) => current === key ? null : key)}>Options ▾</button>
+      {calendarMenu === key && <div className="daily-calendar-options-menu" style={{ position: 'absolute', right: 0, top: '100%', zIndex: 20, background: 'var(--card-background, white)', border: '1px solid #aaa', padding: 8, minWidth: 150, display: 'grid', gap: 4 }}>
+        <button type="button" onClick={() => openCalendarAction('add', date)}>Add Workout</button>
+        {workout && <><button type="button" onClick={() => openCalendarAction('move', date, workout)}>Move Workout</button><button type="button" onClick={() => openCalendarAction('remove', date, workout)}>Remove Workout</button></>}
+      </div>}
+    </div>;
+  };
 
   const [workouts, setWorkouts] = useState([]);
   const [sportSettings, setSportSettings] = useState([]);
@@ -205,6 +223,7 @@ export default function DailyView() {
         {dayWorkouts.length === 0 ? (
           <div className="daily-empty-card">
             No workouts scheduled for {isToday ? 'today' : dateStr}.
+            {renderCalendarOptions(dateStr)}
           </div>
         ) : (
           <div className="daily-workouts-list">
