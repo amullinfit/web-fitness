@@ -402,3 +402,11 @@ DAILYVIEW.CSS
   outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
+/* Stage 6B: compact calendar workout actions */
+.daily-calendar-options{position:relative;margin-left:auto;flex-shrink:0;z-index:5}
+.daily-calendar-menu-trigger{border:0;background:transparent;color:inherit;cursor:pointer;font-size:19px;line-height:1;padding:4px 7px;border-radius:5px}
+.daily-calendar-menu-trigger:hover,.daily-calendar-menu-trigger[aria-expanded="true"]{background:#e9ecef;color:#222}
+.daily-calendar-options-menu{position:absolute;right:0;top:100%;z-index:50;min-width:190px;background:var(--card-background,#fff);color:var(--text-color,#222);border:1px solid #bbb;border-radius:7px;padding:5px;box-shadow:0 5px 16px rgba(0,0,0,.18)}
+.daily-calendar-options-menu .options-menu-item{display:block;width:100%;text-align:left;white-space:nowrap;padding:9px 12px;border:0;background:transparent;color:inherit;cursor:pointer;border-radius:4px;font-size:13px}
+.daily-calendar-options-menu .options-menu-item:hover{background:#e9ecef;color:#222}
+.daily-workout-card{overflow:visible}
