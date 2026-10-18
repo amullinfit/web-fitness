@@ -176,6 +176,8 @@ export default function DailyView() {
             {isMissed && <span className="status-badge badge-missed">MISSED</span>}
           </div>
 
+          {workout.feedSource === 'WORKOUTS' && renderCalendarOptions(workoutDateStr, workout)}
+
           <GearBadge
             workout={workout}
             removingGearId={removingGearId}
@@ -271,6 +273,10 @@ export default function DailyView() {
         {renderDaySection(selectedDate, selectedDateStr, selectedDayWorkouts)}
         {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts)}
       </div>
+
+      {calendarMessage && <div className="daily-toast-error" role="alert">{calendarMessage}</div>}
+
+      <CalendarWorkoutActions open={Boolean(calendarAction)} action={calendarAction?.action} date={calendarAction?.date} workout={calendarAction?.workout} onClose={() => setCalendarAction(null)} onConfirm={() => { setCalendarMessage('Calendar changes are not yet enabled; the authenticated scheduling API is still being implemented.'); setCalendarAction(null); }} />
 
       <Modal_AddGear
         isOpen={Boolean(modalWorkoutId)}
