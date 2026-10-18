@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import WorkoutChart from '../components/WorkoutChart.jsx';
 import { fetchWorkoutsApi } from '../utils/WorkoutBuilderHelpers.js';
 import '../CSS/CalendarWorkoutActions.css';
 
 const CALENDAR_API_URL = import.meta.env.VITE_API_WORKOUTS_URL || 'https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run';
 const dateKey = (date) => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
 const firstOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
+const previewWorkoutName = (name) => String(name || 'Workout').replace(/^IntervalCoach\s*-?\s*/i, '').trim() || 'Workout';
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export function CalendarWorkoutActions({ open, action, date, workout, onClose, onConfirm, busy = false }) {
@@ -37,7 +39,9 @@ export function CalendarWorkoutActions({ open, action, date, workout, onClose, o
       if (!active) return;
       setFolders(data.folders || []);
       setLibrary(data.workouts || []);
-      setFolderId(String(data.folders?.[0]?.id ?? ''));
+      const defaultFolder = (data.folders || []).find((folder) => String(folder.name || '').trim().toLowerCase() === 'workouts');
+      setFolderId(String(defaultFolder?.id ?? data.folders?.[0]?.id ?? ''));
+      setWorkoutId('');
     }).catch((e) => { if (active) setError(e.message || 'Unable to load workout library.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -86,9 +90,9 @@ export function CalendarWorkoutActions({ open, action, date, workout, onClose, o
         <label>Schedule for <input type="date" min={today} value={targetDate} onChange={(e) => setTargetDate(e.target.value)} /></label>
       </>}
       {action === 'move' && <>
-        <p>Move <strong>{workout?.name || 'this workout'}</strong> to a new date. Existing workouts are shown below; they will not be replaced.</p>
+        <p>Move <strong>{previewWorkoutName(workout?.name || 'this workout')}</strong> to a new date. Existing workouts are shown below; they will not be replaced.</p>
         <div className="cwa-month"><button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button><strong>{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</strong><button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button></div>
-        <div className="cwa-calendar">{weekdays.map((day) => <strong key={day}>{day}</strong>)}{dates.map((day) => { const key = dateKey(day); const existing = events.filter((event) => String(event.start_date_local || event.start_date || '').slice(0, 10) === key && (event.category === 'WORKOUT' || event.workout_doc)); return <button key={key} type="button" disabled={key < today || key === date || loading} className={targetDate === key ? 'selected' : ''} onClick={() => setTargetDate(key)}><span>{day.getDate()}</span>{existing.slice(0, 2).map((event, index) => <small key={event.id || index} title={event.name}>{event.name}</small>)}{existing.length > 2 && <small>+{existing.length - 2}</small>}</button>; })}</div>
+        <div className="cwa-calendar">{weekdays.map((day) => <strong key={day}>{day}</strong>)}{dates.map((day) => { const key = dateKey(day); const existing = events.filter((event) => String(event.start_date_local || event.start_date || '').slice(0, 10) === key && (event.category === 'WORKOUT' || event.workout_doc)); return <button key={key} type="button" disabled={key < today || key === date || loading} className={targetDate === key ? 'selected' : ''} onClick={() => setTargetDate(key)}><span>{day.getDate()}</span>{existing.map((event, index) => <span className="cwa-mini-workout" key={event.id || index} title={previewWorkoutName(event.name)}><span className="cwa-workout-name">{previewWorkoutName(event.name)}</span>{event.workout_doc?.steps?.length > 0 && <WorkoutChart workout={event} chartHeight="17px" showWorkoutName={false} showThresholdPace={false} showYAxis={false} showYAxisLabels={false} showLegend={false} minimalXAxis={true} showHoverDetails={false} />}</span>)}</button>; })}</div>
         {targetDate && <p>New date: <strong>{targetDate}</strong>{events.some((event) => String(event.start_date_local || event.start_date || '').slice(0, 10) === targetDate && (event.category === 'WORKOUT' || event.workout_doc)) ? ' — existing workout(s) on this date' : ''}</p>}
       </>}
       {action === 'remove' && <p>Remove <strong>{workout?.name || 'this workout'}</strong> from {date}? The workout library template will not be deleted.</p>}
