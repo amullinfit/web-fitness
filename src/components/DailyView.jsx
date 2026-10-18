@@ -26,6 +26,7 @@ export default function DailyView() {
   const [calendarMenu, setCalendarMenu] = useState(null);
   const [calendarMessage, setCalendarMessage] = useState('');
   const [calendarBusy, setCalendarBusy] = useState(false);
+  const [calendarRefresh, setCalendarRefresh] = useState(0);
   const confirmCalendarAction = async (selection) => {
     if (selection.action !== 'add') {
       setCalendarMessage('Move and Remove will be enabled in later Stage 6D steps.');
@@ -42,7 +43,7 @@ export default function DailyView() {
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || 'Could not add workout.');
       setCalendarAction(null);
-      window.location.reload();
+      setCalendarRefresh((value) => value + 1);
     } catch (error) { setCalendarMessage(error.message || 'Unable to add workout.'); }
     finally { setCalendarBusy(false); }
   };
@@ -116,7 +117,7 @@ export default function DailyView() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [calendarRefresh]);
 
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
   const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
