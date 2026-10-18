@@ -25,6 +25,27 @@ export default function DailyView() {
   const [calendarAction, setCalendarAction] = useState(null);
   const [calendarMenu, setCalendarMenu] = useState(null);
   const [calendarMessage, setCalendarMessage] = useState('');
+  const [calendarBusy, setCalendarBusy] = useState(false);
+  const confirmCalendarAction = async (selection) => {
+    if (selection.action !== 'add') {
+      setCalendarMessage('Move and Remove will be enabled in later Stage 6D steps.');
+      setCalendarAction(null);
+      return;
+    }
+    setCalendarBusy(true);
+    setCalendarMessage('');
+    try {
+      const response = await fetch('/api/calendar-workout-write', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add_workout', confirm: true, date: selection.date, workout_id: selection.workout?.id ?? selection.workout?._id })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Could not add workout.');
+      setCalendarAction(null);
+      window.location.reload();
+    } catch (error) { setCalendarMessage(error.message || 'Unable to add workout.'); }
+    finally { setCalendarBusy(false); }
+  };
   const openCalendarAction = (action, date, workout = null) => { setCalendarMenu(null); setCalendarMessage(''); setCalendarAction({ action, date, workout }); };
   const renderCalendarOptions = (date, workout = null) => {
     if (readOnly || date < getLocalDateString(new Date()) || (workout && isWorkoutCompleted(workout))) return null;
@@ -276,7 +297,7 @@ export default function DailyView() {
 
       {calendarMessage && <div className="daily-toast-error" role="alert">{calendarMessage}</div>}
 
-      <CalendarWorkoutActions open={Boolean(calendarAction)} action={calendarAction?.action} date={calendarAction?.date} workout={calendarAction?.workout} onClose={() => setCalendarAction(null)} onConfirm={() => { setCalendarMessage('Calendar changes are not yet enabled; the authenticated scheduling API is still being implemented.'); setCalendarAction(null); }} />
+      <CalendarWorkoutActions open={Boolean(calendarAction)} action={calendarAction?.action} date={calendarAction?.date} workout={calendarAction?.workout} busy={calendarBusy} onClose={() => setCalendarAction(null)} onConfirm={confirmCalendarAction} />
 
       <Modal_AddGear
         isOpen={Boolean(modalWorkoutId)}
