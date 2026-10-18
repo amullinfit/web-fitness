@@ -28,8 +28,8 @@ export default function DailyView() {
   const [calendarBusy, setCalendarBusy] = useState(false);
   const [calendarRefresh, setCalendarRefresh] = useState(0);
   const confirmCalendarAction = async (selection) => {
-    if (!['add', 'move'].includes(selection.action)) {
-      setCalendarMessage('Remove will be enabled in a later Stage 6D step.');
+    if (!['add', 'move', 'remove'].includes(selection.action)) {
+      setCalendarMessage('Unsupported calendar action.');
       setCalendarAction(null);
       return;
     }
@@ -38,7 +38,7 @@ export default function DailyView() {
     try {
       const response = await fetch('/api/calendar-workout-write', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: selection.action === 'move' ? 'move_workout' : 'add_workout', confirm: true, date: selection.date, original_date: selection.originalDate, workout_id: selection.action === 'add' ? (selection.workout?.id ?? selection.workout?._id) : undefined, event_id: selection.action === 'move' ? (selection.workout?.id ?? selection.workout?._id) : undefined })
+        body: JSON.stringify({ action: selection.action === 'move' ? 'move_workout' : selection.action === 'remove' ? 'remove_workout' : 'add_workout', confirm: true, date: selection.date, original_date: selection.originalDate, workout_id: selection.action === 'add' ? (selection.workout?.id ?? selection.workout?._id) : undefined, event_id: selection.action !== 'add' ? (selection.workout?.id ?? selection.workout?._id) : undefined })
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || 'Could not update workout.');
