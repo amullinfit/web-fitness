@@ -50,8 +50,11 @@ export function CalendarWorkoutActions({ open, action, date, workout, onClose, o
   useEffect(() => {
     if (!open || action !== 'move') return;
     const controller = new AbortController();
-    const start = new Date(month.getFullYear(), month.getMonth(), 1);
-    const end = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+    // Fetch the entire six-week grid, including adjacent-month days.
+    const first = firstOfMonth(month);
+    const offset = (first.getDay() + 6) % 7;
+    const start = new Date(month.getFullYear(), month.getMonth(), 1 - offset);
+    const end = new Date(month.getFullYear(), month.getMonth(), 42 - offset);
     const url = new URL(CALENDAR_API_URL);
     url.searchParams.set('action', 'calendar_range');
     url.searchParams.set('oldest', dateKey(start));
