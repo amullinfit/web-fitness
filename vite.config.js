@@ -14,6 +14,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/val-workoutbuilder/, '')
       },
+      '/api/val-trainingplans': {
+        target: 'https://amullinfit--e90bd68ec43911f188781607ee4eb77e.web.val.run',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/val-trainingplans/, '')
+      },
       '/api/val-workouts': {
         target: 'https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run',
         changeOrigin: true,
