@@ -9,7 +9,7 @@ const firstOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
 const previewWorkoutName = (name) => String(name || 'Workout').replace(/^IntervalCoach\s*-?\s*/i, '').trim() || 'Workout';
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export function CalendarWorkoutActions({ open, action, date, workout, onClose, onConfirm, busy = false }) {
+export function CalendarWorkoutActions({ open, action, date, workout, onClose, onConfirm, busy = false, initialTargetDate = '' }) {
   const [month, setMonth] = useState(() => firstOfMonth(new Date()));
   const [targetDate, setTargetDate] = useState('');
   const [folders, setFolders] = useState([]);
@@ -23,13 +23,13 @@ export function CalendarWorkoutActions({ open, action, date, workout, onClose, o
 
   useEffect(() => {
     if (!open) return;
-    setTargetDate(action === 'add' ? (date || today) : '');
+    setTargetDate(action === 'add' ? (date || today) : (initialTargetDate || ''));
     setMonth(firstOfMonth(new Date((date || today) + 'T12:00:00')));
     setError('');
     const onKey = (event) => { if (event.key === 'Escape' && !busy) onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, action, date, busy, onClose, today]);
+  }, [open, action, date, busy, onClose, today, initialTargetDate]);
 
   useEffect(() => {
     if (!open || action !== 'add') return;
