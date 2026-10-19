@@ -828,3 +828,12 @@
 .monthly-workout-item>.monthly-calendar-options+.monthly-workout-type{padding-right:28px}
 .monthly-day-cell:has(.monthly-calendar-options-menu){z-index:30}
 .monthly-workout-item:has(.monthly-calendar-options-menu){z-index:30}
+
+/* Stage 6D-5 */
+.monthly-day-cell.monthly-drop-target{outline:2px solid #2563eb;outline-offset:-2px;background:rgba(37,99,235,.08)}
+.monthly-workout-item[draggable="true"]{cursor:grab}
+.monthly-workout-item[draggable="true"]:active{cursor:grabbing}
+.monthly-zoom-calendar-options{position:relative;margin-left:auto}
+.monthly-zoom-calendar-options>button{background:transparent;border:0;cursor:pointer;padding:6px 9px;font-size:18px}
+.monthly-zoom-calendar-options .monthly-calendar-options-menu{z-index:200}
+.monthly-calendar-options-menu{min-width:110px}
