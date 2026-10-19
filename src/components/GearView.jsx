@@ -129,6 +129,7 @@ export default function GearView({ gearList: initialGearList }) {
 
   const renderGearCard = (item, isShoe = true) => {
     const distanceMiles = getDistanceInMiles(item);
+    const activityCount = item.activities ?? item.activity_count ?? item.activities_count ?? item.activityCount ?? item.num_activities ?? item.count;
     const reminderThreshold = getThresholdFromReminders(item);
     const maxMiles = reminderThreshold || item.max_distance_miles || DEFAULT_MAX_SHOE_MILES;
 
@@ -162,6 +163,10 @@ export default function GearView({ gearList: initialGearList }) {
           <div className="gear-stat-row">
             <span>Distance:</span>
             <strong>{distanceMiles.toFixed(1)} miles</strong>
+          </div>
+          <div className="gear-stat-row">
+            <span>Activities:</span>
+            <strong>{activityCount == null ? "—" : Number(activityCount).toLocaleString()}</strong>
           </div>
           {isShoe && (
             <div className="gear-stat-row">
