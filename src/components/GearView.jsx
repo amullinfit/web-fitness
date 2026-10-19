@@ -164,6 +164,10 @@ export default function GearView({ gearList: initialGearList }) {
             <span>Distance:</span>
             <strong>{distanceMiles.toFixed(1)} miles</strong>
           </div>
+          <div className="gear-stat-row">
+            <span>Activities:</span>
+            <strong>{activityCount == null ? "—" : Number(activityCount).toLocaleString()}</strong>
+          </div>
           {isShoe && (
             <div className="gear-stat-row">
               <span>Max Threshold:</span>
