@@ -619,7 +619,8 @@ export default function MonthlyView() {
       />}
 
       {/* REUSABLE FULL-WIDTH WORKOUT ZOOM MODAL */}
-      {zoomWorkouts && !calendarAction && (
+      {zoomWorkouts && (
+        <div style={calendarAction ? { display: 'none' } : undefined}>
         <WorkoutZoomModal
           workouts={zoomWorkouts}
           setWorkouts={setWorkouts} 
@@ -630,6 +631,7 @@ export default function MonthlyView() {
           readOnly={readOnly}
           onCalendarAction={(action, workout) => { const date = getLocalDateString(workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date); setZoomReturn(true); openCalendarAction(action, date, action === 'add' ? null : workout); }}
         />
+        </div>
       )}
 
     </div>
