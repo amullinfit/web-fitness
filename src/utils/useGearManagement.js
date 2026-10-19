@@ -8,8 +8,6 @@ import {
   sortByDistanceDesc,
 } from './GearHelpers.js';
 
-const GEAR_REMOVE_URL = "/api/val-gear-remove";
-const GEAR_ADD_URL = "/api/val-gear-add";
 const GEAR_URL = "/api/val-gear";
 
 export const isWorkoutCompleted = (workout) => {
