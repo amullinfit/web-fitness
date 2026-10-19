@@ -815,3 +815,25 @@
   font-size: 12px;
   font-weight: 600;
 }
+/* Stage 6D-4: compact calendar actions in MonthlyView */
+.monthly-day-header{position:relative}
+.monthly-calendar-options{position:relative;z-index:10;margin-left:auto;flex-shrink:0}
+.monthly-calendar-menu-trigger{border:0;background:transparent;color:inherit;cursor:pointer;font-size:18px;line-height:1;padding:3px 6px;border-radius:5px}
+.monthly-calendar-menu-trigger:hover,.monthly-calendar-menu-trigger[aria-expanded="true"]{background:#e9ecef;color:#222}
+.monthly-calendar-options-menu{position:absolute;right:0;top:100%;z-index:100;min-width:190px;background:var(--card-background,#fff);color:var(--text-color,#222);border:1px solid #bbb;border-radius:7px;padding:5px;box-shadow:0 5px 16px rgba(0,0,0,.18)}
+.monthly-calendar-options-menu button{display:block;width:100%;text-align:left;white-space:nowrap;padding:9px 12px;border:0;background:transparent;color:inherit;cursor:pointer;border-radius:4px;font-size:13px}
+.monthly-calendar-options-menu button:hover{background:#e9ecef;color:#222}
+.monthly-workout-item{position:relative}
+.monthly-workout-item>.monthly-calendar-options{position:absolute;right:2px;top:2px}
+.monthly-workout-item>.monthly-calendar-options+.monthly-workout-type{padding-right:28px}
+.monthly-day-cell:has(.monthly-calendar-options-menu){z-index:30}
+.monthly-workout-item:has(.monthly-calendar-options-menu){z-index:30}
+
+/* Stage 6D-5 */
+.monthly-day-cell.monthly-drop-target{outline:2px solid #2563eb;outline-offset:-2px;background:rgba(37,99,235,.08)}
+.monthly-workout-item[draggable="true"]{cursor:grab}
+.monthly-workout-item[draggable="true"]:active{cursor:grabbing}
+.monthly-zoom-calendar-options{position:relative;margin-left:auto}
+.monthly-zoom-calendar-options>button{background:transparent;border:0;cursor:pointer;padding:6px 9px;font-size:18px}
+.monthly-zoom-calendar-options .monthly-calendar-options-menu{z-index:200}
+.monthly-calendar-options-menu{min-width:110px}

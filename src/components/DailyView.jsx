@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import WorkoutChart from './WorkoutChart';
+import { CalendarWorkoutActions } from '../modals/CalendarWorkoutActions.jsx';
+import { useReadOnly } from '../context/ReadOnlyContext.jsx';
 import WorkoutTextSection from '../utils/WorkoutTextSection';
 import Modal_AddGear from '../modals/Modal_AddGear';
 import GearBadge from './GearBadge';
@@ -19,6 +21,44 @@ const getThresholdPaceForSport = (workout, sportSettings, contextPaces) => {
 
 export default function DailyView() {
   const { paces } = usePaces();
+  const readOnly = useReadOnly();
+  const [calendarAction, setCalendarAction] = useState(null);
+  const [calendarMenu, setCalendarMenu] = useState(null);
+  const [calendarMessage, setCalendarMessage] = useState('');
+  const [calendarBusy, setCalendarBusy] = useState(false);
+  const [calendarRefresh, setCalendarRefresh] = useState(0);
+  const confirmCalendarAction = async (selection) => {
+    if (!['add', 'move', 'remove'].includes(selection.action)) {
+      setCalendarMessage('Unsupported calendar action.');
+      setCalendarAction(null);
+      return;
+    }
+    setCalendarBusy(true);
+    setCalendarMessage('');
+    try {
+      const response = await fetch('/api/calendar-workout-write', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: selection.action === 'move' ? 'move_workout' : selection.action === 'remove' ? 'remove_workout' : 'add_workout', confirm: true, date: selection.date, original_date: selection.originalDate, workout_id: selection.action === 'add' ? (selection.workout?.id ?? selection.workout?._id) : undefined, event_id: selection.action !== 'add' ? (selection.workout?.id ?? selection.workout?._id) : undefined })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Could not update workout.');
+      setCalendarAction(null);
+      setCalendarRefresh((value) => value + 1);
+    } catch (error) { setCalendarMessage(error.message || 'Unable to update workout.'); }
+    finally { setCalendarBusy(false); }
+  };
+  const openCalendarAction = (action, date, workout = null) => { setCalendarMenu(null); setCalendarMessage(''); setCalendarAction({ action, date, workout }); };
+  const renderCalendarOptions = (date, workout = null) => {
+    if (readOnly || date < getLocalDateString(new Date()) || (workout && isWorkoutCompleted(workout))) return null;
+    const key = workout ? `workout-${workout.feedSource || 'planned'}-${workout.id ?? workout._id}` : `empty-${date}`;
+    return <div className="daily-calendar-options">
+      <button type="button" className="daily-calendar-menu-trigger" title="Workout options" aria-label="Workout options" aria-expanded={calendarMenu === key} onClick={() => setCalendarMenu((current) => current === key ? null : key)}>☰</button>
+      {calendarMenu === key && <div className="daily-calendar-options-menu">
+        <button type="button" className="options-menu-item" onClick={() => openCalendarAction('add', date)}>➕ Add Workout</button>
+        {workout && <><button type="button" className="options-menu-item" onClick={() => openCalendarAction('move', date, workout)}>📅 Move Workout</button><button type="button" className="options-menu-item" onClick={() => openCalendarAction('remove', date, workout)}>🗑️ Remove Workout</button></>}
+      </div>}
+    </div>;
+  };
 
   const [workouts, setWorkouts] = useState([]);
   const [sportSettings, setSportSettings] = useState([]);
@@ -77,7 +117,7 @@ export default function DailyView() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [calendarRefresh]);
 
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
   const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
@@ -158,6 +198,8 @@ export default function DailyView() {
             {isMissed && <span className="status-badge badge-missed">MISSED</span>}
           </div>
 
+          {workout.feedSource === 'WORKOUTS' && renderCalendarOptions(workoutDateStr, workout)}
+
           <GearBadge
             workout={workout}
             removingGearId={removingGearId}
@@ -200,11 +242,13 @@ export default function DailyView() {
             {formatHeaderDate(dateObj)}
           </h3>
           {isToday && <span className="daily-today-indicator">TODAY</span>}
+          {!dayWorkouts.some((w) => w.feedSource === 'WORKOUTS' && !isWorkoutCompleted(w)) && renderCalendarOptions(dateStr)}
         </div>
 
         {dayWorkouts.length === 0 ? (
           <div className="daily-empty-card">
             No workouts scheduled for {isToday ? 'today' : dateStr}.
+
           </div>
         ) : (
           <div className="daily-workouts-list">
@@ -251,6 +295,10 @@ export default function DailyView() {
         {renderDaySection(selectedDate, selectedDateStr, selectedDayWorkouts)}
         {renderDaySection(nextDateObj, nextDateStr, nextDayWorkouts)}
       </div>
+
+      {calendarMessage && <div className="daily-toast-error" role="alert">{calendarMessage}</div>}
+
+      <CalendarWorkoutActions open={Boolean(calendarAction)} action={calendarAction?.action} date={calendarAction?.date} workout={calendarAction?.workout} busy={calendarBusy} onClose={() => setCalendarAction(null)} onConfirm={confirmCalendarAction} />
 
       <Modal_AddGear
         isOpen={Boolean(modalWorkoutId)}

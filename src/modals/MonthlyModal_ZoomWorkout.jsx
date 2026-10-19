@@ -55,8 +55,9 @@ export function WorkoutZoomContent({
   );
 }
 
-export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMobile, setWorkouts, readOnly = false }) {
+export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMobile, setWorkouts, readOnly = false, onCalendarAction }) {
   const [activeWorkoutIndex, setActiveWorkoutIndex] = useState(0);
+  const [optionsOpen, setOptionsOpen] = useState(false);
 
   const {
     removingGearId,
@@ -101,6 +102,12 @@ export function WorkoutZoomModal({ workouts, onClose, sportSettings, paces, isMo
             </span>
             <h2>{activeWorkout.name || activeWorkout.title || 'Workout Details'}</h2>
           </div>
+          {!readOnly && onCalendarAction && activeWorkout.feedSource === "WORKOUTS" && !activeWorkout.icu_activity_id && String(activeWorkout.start_date_local || activeWorkout.start_date || activeWorkout.date || "").slice(0,10) >= new Date().toLocaleDateString("en-CA") && <div className="monthly-zoom-calendar-options">
+            <button type="button" aria-label="Workout options" aria-expanded={optionsOpen} onClick={() => setOptionsOpen((value) => !value)}>☰</button>
+            {optionsOpen && <div className="monthly-calendar-options-menu">
+              {["add", "move", "remove"].map((action) => <button type="button" key={action} onClick={() => { setOptionsOpen(false); onCalendarAction(action, activeWorkout); }}>{action[0].toUpperCase() + action.slice(1)}</button>)}
+            </div>}
+          </div>}
           <button className="monthly-zoom-close" onClick={onClose}>✕</button>
         </div>
 

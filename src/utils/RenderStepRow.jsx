@@ -4,6 +4,8 @@
 import React, { useMemo } from 'react';
 import MMSSInput from './MMSSInput';
 import { formatTime, formatMMSS, calculateDynamicPresets } from './WorkoutBuilderHelpers.js';
+import { formatSecPerMileToStr } from './WorkoutChartHelpers.js';
+const formatRoundedPace = (seconds) => Number.isFinite(Number(seconds)) && Number(seconds) > 0 ? formatSecPerMileToStr(Number(seconds)) : '--:--';
 
 import {
   detectPaceMethod,
@@ -188,9 +190,13 @@ export default function RenderStepRow({
         const startPct = step.pace.start ?? step.pace.value ?? 100;
         const endPct = step.pace.end;
         paceText = isRange ? `${startPct}%–${endPct}% threshold` : `${step.pace.value ?? startPct}% threshold`;
-        const startPace = formatMMSS(calculatePaceFromPct(startPct, thresholdSecPerMile));
-        const endPace = endPct !== undefined ? formatMMSS(calculatePaceFromPct(endPct, thresholdSecPerMile)) : '';
-        descriptivePace = endPace ? `${startPace}–${endPace} /mi` : `${startPace} /mi`;
+        const startPace = formatRoundedPace(calculatePaceFromPct(startPct, thresholdSecPerMile));
+        const endPace = endPct !== undefined ? formatRoundedPace(calculatePaceFromPct(endPct, thresholdSecPerMile)) : '';
+        const startSec = calculatePaceFromPct(startPct, thresholdSecPerMile);
+        const endSec = endPct !== undefined ? calculatePaceFromPct(endPct, thresholdSecPerMile) : null;
+        descriptivePace = endSec != null && Number.isFinite(startSec) && Number.isFinite(endSec)
+          ? `${formatRoundedPace(Math.min(startSec, endSec))}–${formatRoundedPace(Math.max(startSec, endSec))} /mi`
+          : `${startPace} /mi`;
       } else if (step.pace.units === 'pace_zone') {
         const startZoneValue = step.pace.start ?? step.pace.value;
         const endZoneValue = step.pace.end;
@@ -202,9 +208,18 @@ export default function RenderStepRow({
         paceText = endZoneValue !== undefined
           ? `${zoneLabel(startZoneValue, startZone)}–${zoneLabel(endZoneValue, endZone)}`
           : zoneLabel(startZoneValue, startZone);
-        descriptivePace = endZoneValue !== undefined
-          ? `${startPace > 0 ? formatMMSS(startPace) : '--:--'}–${endPace > 0 ? formatMMSS(endPace) : '--:--'} /mi`
-          : `${getDescriptiveText(step.pace, zoneList) || (startPace > 0 ? formatMMSS(startPace) : '--:--')} /mi`;
+        const selectedIds = endZoneValue !== undefined ? [Number(startZoneValue), Number(endZoneValue)] : [Number(startZoneValue)];
+        const selectedZones = zoneList.filter((zone) => selectedIds.every(Number.isFinite) && Number(zone.zone) >= Math.min(...selectedIds) && Number(zone.zone) <= Math.max(...selectedIds));
+        const parseBoundary = (value) => {
+          if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : null;
+          const match = String(value || '').match(/(\d+):(\d{2})/);
+          return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+        };
+        const fastCandidates = selectedZones.map((zone) => parseBoundary(zone.pace_fast) || parseBoundary(zone.pace_val_sec)).filter((value) => value > 0);
+        const slowCandidates = selectedZones.map((zone) => parseBoundary(zone.pace_slow) || ((parseBoundary(zone.pace_fast) || parseBoundary(zone.pace_val_sec) || 0) + 120)).filter((value) => value > 0);
+        descriptivePace = fastCandidates.length && slowCandidates.length
+          ? `${formatRoundedPace(Math.min(...fastCandidates))}–${formatRoundedPace(Math.max(...slowCandidates))} /mi`
+          : 'N/A';
       } else if (step.pace.units === 'secs') {
         paceText = isRange
           ? `${formatMMSS(Math.min(step.pace.start ?? 0, step.pace.end ?? 0))}–${formatMMSS(Math.max(step.pace.start ?? 0, step.pace.end ?? 0))} /mi`
@@ -430,7 +445,7 @@ export default function RenderStepRow({
     if (paceMethod === 'Threshold %' || paceMethod === 'Threshold % Range') {
       if (!isRange) {
         const valPct = typeof step.pace === 'object' ? (step.pace.value ?? 100) : 100;
-        const calcPace = thresholdSecPerMile > 0 ? formatMMSS(calculatePaceFromPct(valPct, thresholdSecPerMile)) : '--:--';
+        const calcPace = thresholdSecPerMile > 0 ? formatRoundedPace(calculatePaceFromPct(valPct, thresholdSecPerMile)) : '--:--';
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <label className="input-label">
@@ -460,8 +475,8 @@ export default function RenderStepRow({
       const slowPct = Math.min(rawStartPct, rawEndPct);
       const fastPct = Math.max(rawStartPct, rawEndPct);
 
-      const calcFastPace = thresholdSecPerMile > 0 ? formatMMSS(calculatePaceFromPct(fastPct, thresholdSecPerMile)) : '--:--';
-      const calcSlowPace = thresholdSecPerMile > 0 ? formatMMSS(calculatePaceFromPct(slowPct, thresholdSecPerMile)) : '--:--';
+      const calcFastPace = thresholdSecPerMile > 0 ? formatRoundedPace(calculatePaceFromPct(fastPct, thresholdSecPerMile)) : '--:--';
+      const calcSlowPace = thresholdSecPerMile > 0 ? formatRoundedPace(calculatePaceFromPct(slowPct, thresholdSecPerMile)) : '--:--';
 
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -495,7 +510,7 @@ export default function RenderStepRow({
             />
             %
           </label>
-          <span style={{ fontSize: '12px', color: '#6c757d' }}>({calcSlowPace} - {calcFastPace} /mi)</span>
+          <span style={{ fontSize: '12px', color: '#6c757d' }}>({calcFastPace} - {calcSlowPace} /mi)</span>
         </div>
       );
     }
@@ -508,7 +523,7 @@ export default function RenderStepRow({
         const zoneColor = z.color ?? z.preset_colors?.color ?? '#fff';
 
         const zoneSec = getZoneTargetPaceSec(z);
-        const displayPace = z.displayPace || (zoneSec > 0 ? formatMMSS(zoneSec) : '');
+        const displayPace = z.displayPace || (zoneSec > 0 ? formatRoundedPace(zoneSec) : '');
         const labelText = `${zoneName}${displayPace ? ` (${displayPace})` : ''}`;
 
         return (
@@ -526,7 +541,7 @@ export default function RenderStepRow({
         const currentZoneKey = String(matchedZone?.zone ?? matchedZone?.id ?? rawZoneVal ?? defaultZoneVal);
 
         const zonePaceSec = getZoneTargetPaceSec(matchedZone);
-        const displayPaceStr = getDescriptiveText(step.pace, zoneList) || (zonePaceSec > 0 ? formatMMSS(zonePaceSec) : '--:--');
+        const displayPaceStr = getDescriptiveText(step.pace, zoneList) || (zonePaceSec > 0 ? formatRoundedPace(zonePaceSec) : '--:--');
 
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -561,11 +576,17 @@ export default function RenderStepRow({
       const startZoneKey = String(matchedStart?.zone ?? matchedStart?.id ?? rawStartVal ?? defaultFastVal);
       const endZoneKey = String(matchedEnd?.zone ?? matchedEnd?.id ?? rawEndVal ?? defaultSlowVal);
 
-      const fastZonePaceSec = getZoneTargetPaceSec(matchedStart);
-      const slowZonePaceSec = getZoneTargetPaceSec(matchedEnd);
-
-      const calcFastZonePace = fastZonePaceSec > 0 ? formatMMSS(fastZonePaceSec) : '--:--';
-      const calcSlowZonePace = slowZonePaceSec > 0 ? formatMMSS(slowZonePaceSec) : '--:--';
+      const selectedIds = [Number(startZoneKey), Number(endZoneKey)];
+      const selectedZones = zoneList.filter((zone) => selectedIds.every(Number.isFinite) && Number(zone.zone) >= Math.min(...selectedIds) && Number(zone.zone) <= Math.max(...selectedIds));
+      const parseZoneBoundary = (value) => {
+        if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : 0;
+        const match = String(value || '').match(/(\d+):(\d{2})/);
+        return match ? Number(match[1]) * 60 + Number(match[2]) : 0;
+      };
+      const fastBoundaries = selectedZones.map((zone) => parseZoneBoundary(zone.pace_fast) || parseZoneBoundary(zone.pace_val_sec)).filter((sec) => sec > 0);
+      const slowBoundaries = selectedZones.map((zone) => parseZoneBoundary(zone.pace_slow) || ((parseZoneBoundary(zone.pace_fast) || parseZoneBoundary(zone.pace_val_sec) || 0) + 120)).filter((sec) => sec > 0);
+      const calcFastZonePace = fastBoundaries.length ? formatRoundedPace(Math.min(...fastBoundaries)) : '--:--';
+      const calcSlowZonePace = slowBoundaries.length ? formatRoundedPace(Math.max(...slowBoundaries)) : '--:--';
 
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -33,7 +33,7 @@ const formatIntensityTitleCase = (val) => {
 };
 
 // Return the formatted text describing the pace(s) for the step
-const formatPaceString = (s, thresholdPaceMps, zoneList) => {
+const formatPaceString = (s, thresholdPaceMps, zoneList, paceDetails) => {
   if (!s?.pace) return "N/A";
 
   const { pace } = s;
@@ -57,7 +57,7 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
       if (isSingle) {
         paceStr = secondsToPaceStr(val);
       } else {
-        paceStr = `${secondsToPaceStr(start)} - ${secondsToPaceStr(end)}`;
+        paceStr = `${secondsToPaceStr(end)} - ${secondsToPaceStr(start)}`;
       }
       break;
     }
@@ -66,15 +66,14 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
     // 2. PERCENTAGE OF THRESHOLD (%pace)
     // -------------------------------------------------------------------
     case '%pace': {
-      if (isSingle) {
-        paceStr = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (val / 100));
-        paceMethodStr = `(${val}% pace)`;
-      } else {
-        const startPaceStr = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (start / 100));
-        const endPaceStr  = metersPerSecondToPaceStr((thresholdPaceMps ?? 0) * (end   / 100));
-        paceStr = `${startPaceStr}-${endPaceStr}`;
-        paceMethodStr = `(${start}-${end}% pace)`;
-      }
+      const thresholdSec = Number(paceDetails?.run_pace_sec || paceDetails?.threshold_pace_sec);
+      const calc = (pct) => thresholdSec > 0 && Number(pct) > 0 ? thresholdSec / (Number(pct) / 100) : NaN;
+      const first = isSingle ? val : pace.start;
+      const last = isSingle ? val : pace.end;
+      const fast = Math.min(calc(first), calc(last));
+      const slow = Math.max(calc(first), calc(last));
+      paceStr = Number.isFinite(fast) && Number.isFinite(slow) ? (fast === slow ? secondsToPaceStr(fast) : `${secondsToPaceStr(fast)} - ${secondsToPaceStr(slow)}`) : 'N/A';
+      paceMethodStr = isSingle ? `(${val}% threshold)` : `(${Math.min(first, last)}-${Math.max(first, last)}% threshold)`;
       break;
     }
 
@@ -82,28 +81,23 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
     // 3. PACE ZONE (Numeric Zone IDs)
     // -------------------------------------------------------------------
     case 'pace_zone': {
-      if (isSingle) {
-        // Look up directly in zoneList array
-        const zoneMatch = zoneList?.find((z) => z.zone === Number(val));
-        
-        // Convert the zone's target seconds (pace_val_sec) to a formatted pace
-        paceStr = zoneMatch?.pace_val_sec ? secondsToPaceStr(zoneMatch.pace_val_sec) : "?";
-        paceMethodStr = zoneMatch?.zone_name || `Zone ${val}`;
+      const selectedIds = isSingle ? [Number(val)] : [Number(pace.start), Number(pace.end)];
+      const selectedZones = (zoneList || []).filter((z) => selectedIds.every(Number.isFinite) && Number(z.zone) >= Math.min(...selectedIds) && Number(z.zone) <= Math.max(...selectedIds));
+      const parseBoundary = (value) => {
+        if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? value : null;
+        const match = String(value || '').match(/(\d+):(\d{2})/);
+        return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+      };
+      const fastCandidates = selectedZones.map((z) => parseBoundary(z.pace_fast) || parseBoundary(z.pace_val_sec)).filter((v) => v > 0);
+      const slowCandidates = selectedZones.map((z) => parseBoundary(z.pace_slow) || ((parseBoundary(z.pace_fast) || parseBoundary(z.pace_val_sec) || 0) + 120)).filter((v) => v > 0);
+      if (fastCandidates.length && slowCandidates.length) {
+        const fast = Math.min(...fastCandidates);
+        const slow = Math.max(...slowCandidates);
+        paceStr = fast === slow ? secondsToPaceStr(fast) : `${secondsToPaceStr(fast)} - ${secondsToPaceStr(slow)}`;
       } else {
-        const startZone = zoneList?.find((z) => z.zone === Number(start));
-        const endZone = zoneList?.find((z) => z.zone === Number(end));
-
-        // Display pace ranges from fastest (lower seconds) to slowest.
-        const slowPace = startZone?.pace_slow ?? `Zone ${start}`;
-        const fastPace = endZone?.pace_fast ?? `Zone ${end}`;
-
-        const fastSec = parsePaceStrToSec(fastPace);
-        const slowSec = parsePaceStrToSec(slowPace);
-        paceStr = fastSec && slowSec
-          ? formatPaceRange(fastSec, slowSec)
-          : `${fastPace} - ${slowPace}`;
-        paceMethodStr = `(Zone ${start}-${end})`;
+        paceStr = 'N/A';
       }
+      paceMethodStr = isSingle ? `(Zone ${val})` : `(Zones ${Math.min(...selectedIds)}-${Math.max(...selectedIds)})`;
       break;
     }
   }
@@ -111,26 +105,26 @@ const formatPaceString = (s, thresholdPaceMps, zoneList) => {
   return paceStr + (paceMethodStr ? ` ${paceMethodStr}` : '');
 };
 
-const parseSingleStep = (s, idx, thresholdPaceMps, zoneList) => {
+const parseSingleStep = (s, idx, thresholdPaceMps, zoneList, paceDetails) => {
   const rawIntensity = s.intensity || (s.warmup ? "warmup" : s.cooldown ? "cooldown" : "active");
   return {
     id: idx,
     isRepeat: false,
     durationSec: s.duration || 0,
     intensity: formatIntensityTitleCase(rawIntensity),
-    paceStr: formatPaceString(s, thresholdPaceMps, zoneList),
+    paceStr: formatPaceString(s, thresholdPaceMps, zoneList, paceDetails),
     text: s.text || "No step text"
   };
 };
 
-const parseWorkoutSteps = (stepList, thresholdPaceMps, zonelist) => {
+const parseWorkoutSteps = (stepList, thresholdPaceMps, zonelist, paceDetails) => {
   if (!Array.isArray(stepList)) return [];
 
   return stepList.map((s, idx) => {
     // Handle Repeat Blocks
     if (Array.isArray(s.steps) && s.steps.length > 0) {
       const reps = s.reps && Number.isInteger(s.reps) && s.reps > 0 ? s.reps : 1;
-      const innerSteps = parseWorkoutSteps(s.steps, thresholdPaceMps, zonelist);
+      const innerSteps = parseWorkoutSteps(s.steps, thresholdPaceMps, zonelist, paceDetails);
       
       const singleCycleDuration = innerSteps.reduce((sum, inner) => sum + inner.durationSec, 0);
       const totalRepeatDuration = singleCycleDuration * reps;
@@ -146,8 +140,16 @@ const parseWorkoutSteps = (stepList, thresholdPaceMps, zonelist) => {
     }
 
     // Handle Standard Steps
-    return parseSingleStep(s, idx, thresholdPaceMps, zonelist);
+    return parseSingleStep(s, idx, thresholdPaceMps, zonelist, paceDetails);
   });
+};
+
+const estimateStepMiles = (step) => {
+  if (step.isRepeat) return step.reps * step.innerSteps.reduce((sum, inner) => sum + estimateStepMiles(inner), 0);
+  const matches = [...(step.paceStr || '').matchAll(/(\d{1,2}):(\d{2})(?!\d)/g)];
+  const paceSeconds = matches.map((match) => Number(match[1]) * 60 + Number(match[2])).filter((seconds) => seconds > 0);
+  if (!paceSeconds.length || !step.durationSec) return 0;
+  return step.durationSec / (paceSeconds.reduce((sum, seconds) => sum + seconds, 0) / paceSeconds.length);
 };
 
 const RenderStepCard = ({ step }) => {
@@ -166,6 +168,7 @@ const RenderStepCard = ({ step }) => {
           <span className="workout-section-badge">
             Repeat Time: {formatDuration(step.durationSec)}
           </span>
+          <span className="workout-section-badge">Est. Distance: {estimateStepMiles(step).toFixed(2)} mi</span>
         </div>
 
         <div className="workout-repeat-inner-list">
@@ -188,6 +191,8 @@ const RenderStepCard = ({ step }) => {
           <span className="workout-step-value">{formatDuration(step.durationSec)}</span>
           <span className="workout-step-connector">at</span>
           <span className="workout-step-value">{step.paceStr}</span>
+          <span className="workout-step-connector">· est.</span>
+          <span className="workout-step-value">{estimateStepMiles(step).toFixed(2)} mi</span>
         </span>
       </div>
 
@@ -227,7 +232,9 @@ const RenderStepCard = ({ step }) => {
 
   const zoneList = paceDetails?.preset_colors;
 
-  const parsedSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps, zoneList);
+  const parsedSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps, zoneList, paceDetails);
+
+  const estimatedDistanceMiles = parsedSteps.reduce((sum, step) => sum + estimateStepMiles(step), 0);
 
   // Calculate Total Overall Workout Duration
   const totalWorkoutDurationSec = parsedSteps.reduce((sum, step) => sum + step.durationSec, 0);
@@ -249,8 +256,9 @@ const RenderStepCard = ({ step }) => {
           <span className="workout-section-title">
             {isOpen ? '▼' : '►'} Workout Details ({parsedSteps.length} block{parsedSteps.length === 1 ? '' : 's'})
           </span>
-          <span className="workout-section-badge">
-            Total Time: {formatDuration(totalWorkoutDurationSec)}
+          <span className="workout-section-summary">
+            <span className="workout-section-badge">Total Time: {formatDuration(totalWorkoutDurationSec)}</span>
+            <span className="workout-section-badge">Est. Distance: {estimatedDistanceMiles.toFixed(2)} mi</span>
           </span>
         </div>
 

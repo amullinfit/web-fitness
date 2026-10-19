@@ -1,10 +1,18 @@
 // Modal_Folder_Create.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { modalOverlayStyle, modalContentStyle } from './modalStyles';
 
 export default function Modal_Folder_Create({ onClose, onCreate }) {
   const [folderName, setFolderName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && !submitting) onClose?.();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose, submitting]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,7 +23,7 @@ export default function Modal_Folder_Create({ onClose, onCreate }) {
   };
 
   return (
-    <div style={modalOverlayStyle}>
+    <div style={modalOverlayStyle} onMouseDown={(event) => { if (event.target === event.currentTarget && !submitting) onClose?.(); }}>
       <div style={modalContentStyle}>
         <h3>Create New Folder</h3>
         <form onSubmit={handleSubmit}>
@@ -28,7 +36,7 @@ export default function Modal_Folder_Create({ onClose, onCreate }) {
             autoFocus
           />
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="button" onClick={onClose} disabled={submitting}>Cancel</button>
             <button
               type="submit"
               disabled={submitting || !folderName.trim()}
