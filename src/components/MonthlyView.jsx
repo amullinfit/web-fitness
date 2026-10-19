@@ -42,6 +42,8 @@ export default function MonthlyView() {
   const [calendarBusy, setCalendarBusy] = useState(false);
   const [calendarRefresh, setCalendarRefresh] = useState(0);
   const [calendarMessage, setCalendarMessage] = useState('');
+  const [dragWorkout, setDragWorkout] = useState(null);
+  const [dragOverDate, setDragOverDate] = useState(null);
   const openCalendarAction = (action, date, workout = null) => {
     setCalendarMenu(null);
     setCalendarMessage('');
@@ -80,10 +82,10 @@ export default function MonthlyView() {
     return <div className="monthly-calendar-options" onClick={(event) => event.stopPropagation()}>
       <button type="button" className="monthly-calendar-menu-trigger" title="Workout options" aria-label="Workout options" aria-expanded={calendarMenu === key} onClick={() => setCalendarMenu((current) => current === key ? null : key)}>☰</button>
       {calendarMenu === key && <div className="monthly-calendar-options-menu">
-        <button type="button" onClick={() => openCalendarAction('add', date)}>➕ Add Workout</button>
+        <button type="button" onClick={() => openCalendarAction('add', date)}>➕ Add</button>
         {workout && <>
-          <button type="button" onClick={() => openCalendarAction('move', date, workout)}>📅 Move Workout</button>
-          <button type="button" onClick={() => openCalendarAction('remove', date, workout)}>🗑️ Remove Workout</button>
+          <button type="button" onClick={() => openCalendarAction('move', date, workout)}>📅 Move</button>
+          <button type="button" onClick={() => openCalendarAction('remove', date, workout)}>🗑️ Remove</button>
         </>}
       </div>}
     </div>;
@@ -310,11 +312,24 @@ export default function MonthlyView() {
     const dateStr = getLocalDateString(date);
     const isToday = dateStr === todayStr;
     const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
+    const canDrop = !readOnly && dateStr >= todayStr;
+    const handleDrop = (event) => {
+      event.preventDefault();
+      const source = dragWorkout;
+      setDragWorkout(null);
+      setDragOverDate(null);
+      if (!source || !canDrop || source.date === dateStr) return;
+      setCalendarMenu(null);
+      setCalendarAction({ action: 'move', date: source.date, workout: source.workout, targetDate: dateStr });
+    };
 
     return (
       <div 
         key={dateStr} 
-        className={`monthly-day-cell ${isToday ? 'monthly-today' : ''}`}
+        className={`monthly-day-cell ${isToday ? 'monthly-today' : ''} ${dragOverDate === dateStr ? 'monthly-drop-target' : ''}`}
+        onDragOver={(event) => { if (dragWorkout && canDrop) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setDragOverDate(dateStr); } }}
+        onDragLeave={() => setDragOverDate(null)}
+        onDrop={handleDrop}
       >
         <div className="monthly-day-header">
           <span className="monthly-day-name">{getDayName(dayIndex)}</span>
@@ -340,6 +355,9 @@ export default function MonthlyView() {
                 <div 
                   key={workout.id || idx} 
                   className={`monthly-workout-item monthly-clickable ${completed ? 'monthly-completed' : ''} ${isMissed ? 'monthly-missed' : ''}`}
+                  draggable={!readOnly && dateStr >= todayStr && workout.feedSource === 'WORKOUTS' && !completed}
+                  onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; setDragWorkout({ workout, date: dateStr }); }}
+                  onDragEnd={() => { setDragWorkout(null); setDragOverDate(null); }}
                   onClick={() => handleOpenZoomModal(workoutList)}
                 >
                   {workout.feedSource === "WORKOUTS" && renderCalendarOptions(dateStr, workout)}
@@ -580,7 +598,7 @@ export default function MonthlyView() {
         })}
       </div>
 
-      <CalendarWorkoutActions open={Boolean(calendarAction)} action={calendarAction?.action} date={calendarAction?.date} workout={calendarAction?.workout} busy={calendarBusy} onClose={() => setCalendarAction(null)} onConfirm={confirmCalendarAction} />
+      <CalendarWorkoutActions open={Boolean(calendarAction)} action={calendarAction?.action} date={calendarAction?.date} workout={calendarAction?.workout} busy={calendarBusy} initialTargetDate={calendarAction?.targetDate || ''} onClose={() => setCalendarAction(null)} onConfirm={confirmCalendarAction} />
 
       {/* REUSABLE FULL-WIDTH WORKOUT ZOOM MODAL */}
       {zoomWorkouts && (
@@ -591,6 +609,8 @@ export default function MonthlyView() {
           sportSettings={sportSettings}
           paces={paces}
           isMobile={isMobile}
+          readOnly={readOnly}
+          onCalendarAction={(action, workout) => { const date = getLocalDateString(workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date); setZoomWorkouts(null); openCalendarAction(action, date, action === 'add' ? null : workout); }}
         />
       )}
 
