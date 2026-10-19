@@ -4,3 +4,6 @@
 .cwa-mini-workout{display:block;width:100%;min-width:0;padding:2px;border:1px solid var(--border-color,#d1d5db);border-radius:3px;overflow:hidden}
 .cwa-workout-name{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cwa-mini-workout .workout-chart{max-width:100%}
+
+/* Stage 6D-7: calendar actions must appear above MonthlyView zoom (z-index: 2000). */
+.cwa-backdrop{z-index:3000}
