@@ -26,9 +26,9 @@ export function CalendarWorkoutActions({ open, action, date, workout, onClose, o
     setTargetDate(action === 'add' ? (date || today) : (initialTargetDate || ''));
     setMonth(firstOfMonth(new Date((date || today) + 'T12:00:00')));
     setError('');
-    const onKey = (event) => { if (event.key === 'Escape' && !busy) onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const onKey = (event) => { if (event.key === 'Escape' && !busy) { event.stopImmediatePropagation(); onClose(); } };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [open, action, date, busy, onClose, today, initialTargetDate]);
 
   useEffect(() => {
