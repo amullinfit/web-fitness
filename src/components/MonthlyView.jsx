@@ -44,6 +44,7 @@ export default function MonthlyView() {
   const [calendarMessage, setCalendarMessage] = useState('');
   const [dragWorkout, setDragWorkout] = useState(null);
   const [dragOverDate, setDragOverDate] = useState(null);
+  const [zoomReturn, setZoomReturn] = useState(false);
   const openCalendarAction = (action, date, workout = null) => {
     setCalendarMenu(null);
     setCalendarMessage('');
@@ -69,6 +70,8 @@ export default function MonthlyView() {
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || 'Could not update workout.');
       setCalendarAction(null);
+      setZoomReturn(false);
+      if (zoomReturn) setZoomWorkouts(null);
       setCalendarRefresh((value) => value + 1);
     } catch (error) {
       setCalendarMessage(error.message || 'Unable to update workout.');
@@ -319,8 +322,10 @@ export default function MonthlyView() {
       setDragWorkout(null);
       setDragOverDate(null);
       if (!source || !canDrop || source.date === dateStr) return;
+      if (calendarBusy) return;
       setCalendarMenu(null);
-      setCalendarAction({ action: 'move', date: source.date, workout: source.workout, targetDate: dateStr });
+      setZoomReturn(false);
+      void confirmCalendarAction({ action: 'move', date: dateStr, originalDate: source.date, workout: source.workout });
     };
 
     return (
@@ -598,10 +603,10 @@ export default function MonthlyView() {
         })}
       </div>
 
-      <CalendarWorkoutActions open={Boolean(calendarAction)} action={calendarAction?.action} date={calendarAction?.date} workout={calendarAction?.workout} busy={calendarBusy} initialTargetDate={calendarAction?.targetDate || ''} onClose={() => setCalendarAction(null)} onConfirm={confirmCalendarAction} />
+      <CalendarWorkoutActions open={Boolean(calendarAction)} action={calendarAction?.action} date={calendarAction?.date} workout={calendarAction?.workout} busy={calendarBusy} initialTargetDate={calendarAction?.targetDate || ''} onClose={() => { setCalendarAction(null); setZoomReturn(false); }} onConfirm={confirmCalendarAction} />
 
       {/* REUSABLE FULL-WIDTH WORKOUT ZOOM MODAL */}
-      {zoomWorkouts && (
+      {zoomWorkouts && !calendarAction && (
         <WorkoutZoomModal
           workouts={zoomWorkouts}
           setWorkouts={setWorkouts} 
@@ -610,7 +615,7 @@ export default function MonthlyView() {
           paces={paces}
           isMobile={isMobile}
           readOnly={readOnly}
-          onCalendarAction={(action, workout) => { const date = getLocalDateString(workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date); setZoomWorkouts(null); openCalendarAction(action, date, action === 'add' ? null : workout); }}
+          onCalendarAction={(action, workout) => { const date = getLocalDateString(workout.start_date_local || workout.icu_start_date || workout.start_date || workout.date); setZoomReturn(true); openCalendarAction(action, date, action === 'add' ? null : workout); }}
         />
       )}
 
