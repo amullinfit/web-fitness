@@ -39,10 +39,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/val-gear-add/, '')
       },
-      '/api/historical': {
+      '/api/val-historical': {
         target: 'https://amullinfit--60610b3ea60611f1bbff1607ee4eb77e.web.val.run',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/historical/, '')
+        rewrite: (path) => path.replace(/^\/api\/val-historical/, '')
       }
     }
   }
