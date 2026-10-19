@@ -603,7 +603,20 @@ export default function MonthlyView() {
         })}
       </div>
 
-      <CalendarWorkoutActions open={Boolean(calendarAction)} action={calendarAction?.action} date={calendarAction?.date} workout={calendarAction?.workout} busy={calendarBusy} initialTargetDate={calendarAction?.targetDate || ''} onClose={() => { setCalendarAction(null); setZoomReturn(false); }} onConfirm={confirmCalendarAction} />
+      {calendarAction && <CalendarWorkoutActions
+        open={true}
+        action={calendarAction.action}
+        date={calendarAction.date}
+        workout={calendarAction.workout}
+        busy={calendarBusy}
+        initialTargetDate={calendarAction.targetDate || ''}
+        onClose={() => {
+          if (calendarBusy) return;
+          setCalendarAction(null);
+          setZoomReturn(false);
+        }}
+        onConfirm={confirmCalendarAction}
+      />}
 
       {/* REUSABLE FULL-WIDTH WORKOUT ZOOM MODAL */}
       {zoomWorkouts && !calendarAction && (
