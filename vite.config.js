@@ -14,6 +14,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/val-workoutbuilder/, '')
       },
+      '/api/val-trainingplans': {
+        target: 'https://amullinfit--e90bd68ec43911f188781607ee4eb77e.web.val.run',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/val-trainingplans/, '')
+      },
       '/api/val-workouts': {
         target: 'https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run',
         changeOrigin: true,
@@ -29,20 +34,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/val-gear/, '')
       },
-      '/api/val-gear-remove': {
-        target: 'https://amullinfit--7f186c3aa8b711f1b0a01607ee4eb77e.web.val.run',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/val-gear-remove/, '')
-      },
-      '/api/val-gear-add': {
-        target: 'https://amullinfit--77b77396a8b711f19a3f1607ee4eb77e.web.val.run',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/val-gear-add/, '')
-      },
-      '/api/historical': {
+
+
+      '/api/val-historical': {
         target: 'https://amullinfit--60610b3ea60611f1bbff1607ee4eb77e.web.val.run',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/historical/, '')
+        rewrite: (path) => path.replace(/^\/api\/val-historical/, '')
       }
     }
   }

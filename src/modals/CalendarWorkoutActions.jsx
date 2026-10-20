@@ -3,7 +3,7 @@ import WorkoutChart from '../components/WorkoutChart.jsx';
 import { fetchWorkoutsApi } from '../utils/WorkoutBuilderHelpers.js';
 import '../CSS/CalendarWorkoutActions.css';
 
-const CALENDAR_API_URL = import.meta.env.VITE_API_WORKOUTS_URL || 'https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run';
+const CALENDAR_API_URL = '/api/val-workouts';
 const dateKey = (date) => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
 const firstOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
 const previewWorkoutName = (name) => String(name || 'Workout').replace(/^IntervalCoach\s*-?\s*/i, '').trim() || 'Workout';
@@ -55,7 +55,7 @@ export function CalendarWorkoutActions({ open, action, date, workout, onClose, o
     const offset = (first.getDay() + 6) % 7;
     const start = new Date(month.getFullYear(), month.getMonth(), 1 - offset);
     const end = new Date(month.getFullYear(), month.getMonth(), 42 - offset);
-    const url = new URL(CALENDAR_API_URL);
+    const url = new URL(CALENDAR_API_URL, window.location.origin);
     url.searchParams.set('action', 'calendar_range');
     url.searchParams.set('oldest', dateKey(start));
     url.searchParams.set('newest', dateKey(end));

@@ -115,16 +115,14 @@ const normalizeFolderId = (workout) =>
   String(workout?.folderId ?? workout?.folder_id ?? '');
 
 const SCHEDULE_PREVIEW_API_URL = '/api/schedule-preview';
-const CALENDAR_API_URL = import.meta.env.VITE_API_WORKOUTS_URL || 'https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run';
+const CALENDAR_API_URL = '/api/val-workouts';
 const previewWorkoutName = (name) => String(name || 'Workout').replace(/^IntervalCoach\s*-?\s*/i, '').trim() || 'Workout';
 const calendarDateKey = (event) => String(event?.start_date_local || event?.start_date || '').slice(0, 10);
 
-const TRAINING_PLANS_API_URL =
-  import.meta.env.VITE_API_TRAININGPLANS_URL
-  || 'https://amullinfit--e90bd68ec43911f188781607ee4eb77e.web.val.run';
+const TRAINING_PLANS_API_URL = '/api/val-trainingplans';
 
 async function requestTrainingPlans(action, { method = 'GET', id, plan } = {}) {
-  const url = new URL(TRAINING_PLANS_API_URL);
+  const url = new URL(TRAINING_PLANS_API_URL, window.location.origin);
   url.searchParams.set('action', action);
   if (id != null) url.searchParams.set('id', String(id));
 
@@ -706,7 +704,7 @@ export default function TrainingPlanEditor() {
     const controller = new AbortController();
     const start = mondayOf(new Date(scheduleMonth.getFullYear(), scheduleMonth.getMonth(), 1));
     const end = shiftDate(start, 41);
-    const url = new URL(CALENDAR_API_URL);
+    const url = new URL(CALENDAR_API_URL, window.location.origin);
     url.searchParams.set('action', 'calendar_range');
     url.searchParams.set('oldest', dateKey(start));
     url.searchParams.set('newest', dateKey(end));

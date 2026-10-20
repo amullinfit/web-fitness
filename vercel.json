@@ -13,6 +13,10 @@
       "destination": "https://amullinfit--c1c217a8b22511f19b531607ee4eb77e.web.val.run"
     },
     {
+      "source": "/api/val-trainingplans",
+      "destination": "https://amullinfit--e90bd68ec43911f188781607ee4eb77e.web.val.run"
+    },
+    {
       "source": "/api/val-workouts",
       "destination": "https://amullinfit--a89d6420a4cf11f1ad761607ee4eb77e.web.val.run"
     },
@@ -23,14 +27,6 @@
     {
       "source": "/api/val-gear",
       "destination": "https://amullinfit--de20b782a4cf11f1832e1607ee4eb77e.web.val.run"
-    },
-    {
-      "source": "/api/val-gear-remove",
-      "destination": "https://amullinfit--7f186c3aa8b711f1b0a01607ee4eb77e.web.val.run"
-    },
-    {
-      "source": "/api/val-gear-add",
-      "destination": "https://amullinfit--77b77396a8b711f19a3f1607ee4eb77e.web.val.run"
     },
     {
       "source": "/api/val-historical",
