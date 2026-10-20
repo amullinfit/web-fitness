@@ -76,6 +76,7 @@ Proposed response:
 Illustrative shape: nulls and empty arrays are placeholders, **not** verified activity values; planned workout_doc.steps shown abbreviated. Do not ship example as a fixture.
 
 Matching rules:
+0. A matched completed activity takes the planned event's display name.
 1. Join activity `paired_event_id` to event `id` (string-normalized).
 2. Also inspect event `paired_activity_id` and validate reciprocal linkage; use it when activity-side linkage is missing and unambiguous.
 3. No name/date heuristic joins. Preserve planned-only, activity-only and multiple activities/day.
@@ -88,6 +89,12 @@ Planned: id, paired_activity_id, name, start_date_local, category, type, descrip
 Actual summary: id, paired_event_id, start_date_local, start_date, type, elapsed_time, distance, average_speed, gear_id, shoe_name, training load/fitness metrics and HR fields **only where consumed**.
 Executed interval: id, type, start_time, end_time, moving_time, elapsed_time, distance, average_speed, average_heartrate, average_cadence, zone, intensity. Review additional metrics and null semantics before final trim.
 Do not include `icu_groups` unless a consumer requires them. Retain raw pace/speed values; presentation conversion stays in existing helpers.
+
+## User-confirmed behavior (2026-10-20)
+- Planned-only, completed-only and matched activity records remain visible, including multiple on one date.
+- Matched completed activities use the planned workout name.
+- Training-plan preview red overlap border is triggered by **any existing calendar activity** on a proposed workout day, whether planned/uncompleted, planned/completed, unplanned/completed, or multiple activities. It is informational, not a scheduling block.
+- When executed intervals are missing or their fetch fails, show the completed activity summary; if paired with a planned workout, keep its planned-only chart. Without planned steps, show no fabricated chart. Preserve a separate interval availability/error state.
 
 ## Batching and cache contract
 - Fetch full initial inclusive 64-day window around local today.
@@ -102,22 +109,22 @@ Do not include `icu_groups` unless a consumer requires them. Retain raw pace/spe
 1. 2026-10-19 planned event 144449333 paired with activity i199233082, planned duration 4200 distinct from executed interval end time 3986.
 2. 2026-10-20 planned events 144449339 and 144449354 uncompleted, same day.
 3. Nested `reps`, decreasing ramp pace percentages and planned chart unchanged.
-4. Completed-only activities, unmatched planned events, multiple completed activities on same date.
+4. Completed-only activities, unmatched planned events, multiple completed activities on same date; any existing activity triggers informational red border on a proposed plan day.
 5. Reciprocal/nonreciprocal IDs; duplicate events and activities; no fallback matching.
 6. Interval duration uses elapsed_time; moving_time separate; average_speed stays m/s; all-WORK sample does not imply no recovery.
 7. Day/month and schedule preview charts remain identical; no edits to WorkoutChart.
 8. Monthly grid spanning months; 28/35 default, 28-day directional extensions, no duplicate network requests.
-9. Partial upstream failures, zero intervals vs failed fetch, rate limits, timeouts, retries and oversized ranges.
+9. Partial upstream failures, zero intervals vs failed fetch, rate limits, timeouts, retries and oversized ranges. A matched completed activity with missing executed intervals still shows the planned chart; unmatched completed activity shows summary without invented chart.
 10. Read-only mode, workout options, drag/move, gear, plan scheduling, authenticated write and cache refresh.
 11. Compare response payload bytes, upstream request count, total load time, chart render against existing Vals.
 
 ## Open verification before 5B
 - Audit full executed activity summary sample from intervals.icu; verify activity-side pairing, displayed metrics and real values.
 - Audit remaining code paths and all nested step properties used by charts and text.
-- Decide canonical record representation when one event links multiple activities.
+- Decide canonical record representation when one event links multiple activities; preserve distinct activities without duplicate planned cards.
 - Determine timezone contract (Intervals.icu athlete timezone versus server clock) and exact upper bound for range requests.
 - Verify `api_workouts` and `api_historical` current Val source: Val Town file browser works but read_file currently returns empty; earlier pasted code used provisionally.
-- Confirm which training-plan preview operations should read scheduled events only versus all activity records.
+- Confirmed: training-plan preview overlap indicators include any existing calendar activity (planned-only, matched, completed-only, multiple); overlap is informational and never blocks scheduling.
 
 ## Stage gates
 5A: design + audit approval only. 5B: create new Val alongside old, no frontend behavior change. 5C: optimize ranges and payload. 5D: migrate Daily/Monthly shared cache. 5E: migrate remaining calendar consumers. 5F: regressions, cleanup, restore APP_TITLE, approval before merge.
