@@ -46,3 +46,14 @@ Counters are per HTTP feed invocation; no activity records, matching rules, requ
 
 ## Diagnostic status naming update — 2026-10-21
 At user request, Val Town feed diagnostics renamed `partial` to `success` and inverted its meaning: `success: true` means all interval-detail lookups succeeded; `success: false` means one or more ultimately failed. Empty range verified HTTP 200 with `success:true`. This is a response-contract change; future frontend cache must use `success === false` to treat a window as incomplete/retryable.
+
+## 5C follow-up diagnostic tests — 2026-10-21
+Read-only Val endpoint calls with successful full diagnostics (API-internal duration, not connector wall time):
+| Range | Events | Activities | Matched | Planned-only | Interval attempts | 429s | Retries | Failures | Success | duration_ms |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| Oct 19 | 1 | 1 | 1 | 0 | 1 | 0 | 0 | 0 | true | 579 |
+| Oct 20 | 2 | 2 | 2 | 0 | 2 | 0 | 0 | 0 | true | 494 |
+| Oct 21 | 2 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | true | 124 |
+| Jan 1–2 2027 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | true | 126 |
+
+These narrow-window tests verify success semantics and request counting; they do **not** establish full-window retry/error performance. The combined payload for 64 days still exceeds connector output limits. Do not optimize the concurrency policy or change chart fields on the strength of these tests alone.
