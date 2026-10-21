@@ -28,7 +28,7 @@ export function useActivityFeed(visibleStart, visibleEnd, refresh = 0) {
     (async () => {
       try {
         if (refresh > 0) activityFeedCache.invalidate(visibleStart, visibleEnd);
-        await activityFeedCache.ensure(initialStart, initialEnd);
+        await activityFeedCache.ensure(initialStart, initialEnd, 64);
         if (visibleStart < initialStart || visibleEnd > initialEnd) {
           await activityFeedCache.ensure(visibleStart, visibleEnd);
         }
