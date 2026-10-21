@@ -75,6 +75,7 @@ export const activityFeedCache = {
     }).sort((x, y) => x.date.localeCompare(y.date) || x.key.localeCompare(y.key));
   },
   getCoverage() { return intervals.map(([a, b]) => [dayString(a), dayString(b)]); },
+  isDateLoaded(date) { const d = parseDay(date); return intervals.some(([a,b]) => d >= a && d <= b); },
   async ensureDirectional(start, end) {
     const a = parseDay(start), b = parseDay(end);
     if (b < a) throw new Error('Reversed activity feed range');
