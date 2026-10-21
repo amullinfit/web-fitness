@@ -57,3 +57,26 @@ Read-only Val endpoint calls with successful full diagnostics (API-internal dura
 | Jan 1–2 2027 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | true | 126 |
 
 These narrow-window tests verify success semantics and request counting; they do **not** establish full-window retry/error performance. The combined payload for 64 days still exceeds connector output limits. Do not optimize the concurrency policy or change chart fields on the strength of these tests alone.
+
+## 5C shared cache contract — approved design candidate for Stage 5D
+This section defines behavior only; no frontend integration in 5C.
+
+1. **Window coordinates:** ISO date-only `YYYY-MM-DD`, inclusive, using the app's Detroit-local calendar date convention. Avoid converting date-only values to UTC timestamps for range arithmetic. Validate start <= end. Never request >366 inclusive days.
+2. **Initial window:** today minus 28 calendar days through today plus 35 calendar days (64 days inclusive). This is a fetch coverage window, not a retention limit.
+3. **Directional extension:** when a displayed date falls outside covered dates, fetch only missing dates in adjacent 28-day inclusive blocks. For a month view, ensure all visible calendar cells are covered, not only first/last dates of the named month. Never re-fetch already healthy covered dates merely because another component mounts.
+4. **Coverage model:** track requested inclusive windows and their status separately from record data. A response with `diagnostics.success === true` marks the window healthy, including empty windows. A response with `success === false` merges usable records but leaves its window incomplete and retryable. HTTP/network errors also do not mark coverage healthy. Never infer completeness from record count.
+5. **Concurrency:** one shared in-flight promise per exact window; overlapping requests should compute uncovered subranges and await existing in-flight coverage rather than dispatch duplicates. Coalesce adjacent uncovered date blocks where practical while staying within the API cap. Do not let DailyView and MonthlyView independently request identical windows.
+6. **Stable identity:** prefer server `record.key` as the primary key; preserve eventId/activityId for mutations and matching. Replace an existing record with the same key on refreshed ranges rather than appending a duplicate. Multiple records per day remain distinct.
+7. **Refresh and writes:** invalidate only affected date ranges after calendar mutations; invalidate relevant gear-derived display fields when gear data changes. An incomplete window may be retried by explicit refresh or subsequent navigation. A stale response must not overwrite a newer refresh.
+8. **UI compatibility:** adapters for DailyView and MonthlyView must preserve planned-vs-actual distinction, matched planned name, workout_doc nested steps, chart helpers, pace, watts, gear identifiers, and multiple same-day records. Do not show planned chart as executed intervals if `intervals_status === "unavailable"`.
+9. **Safety:** keep the existing three-worker/250ms/429 retry server controls; never retry all successful interval records simply because one failed unless the API later supports targeted repair. Cache retry may temporarily re-fetch a window; consider narrower repair if this becomes a measurable issue.
+10. **Diagnostics:** surface `success`, duration_ms, intervalRequests, intervalRateLimited, intervalRetries, intervalFailures; avoid treating a 429 that recovered as failure.
+
+### Additional boundary verification
+Read-only request 2026-09-30..2026-10-01 returned events=2, activities=2, matched=2, success=true, intervalRequests=2, retries=0, duration_ms=851. This verifies the cross-month range responds successfully, but does not by itself prove all UI month navigation behaviors.
+
+### Remaining 5C gates
+- Full 64-day and historical-expanded-window aggregate diagnostics are still unverified because the connector truncates large bodies; need a non-destructive summary-only diagnostic read or another bounded observation method.
+- Verify multiple same-day records and completed-only examples in small, non-truncated windows.
+- Review server payload fields against Stage 5A consumer needs before any trimming; preserve all fields until evidence supports removal.
+- No 5D frontend switch until user approves the stage transition.
