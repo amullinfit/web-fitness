@@ -79,6 +79,7 @@ export const activityFeedCache = {
     const a = parseDay(start), b = parseDay(end);
     if (b < a) throw new Error('Reversed activity feed range');
     const coverage = allCoverage();
+    // Coverage includes completed and in-flight windows; extend full calendar blocks.
     if (!coverage.length) return this.ensure(start, end, 28);
     const low = coverage[0][0], high = coverage[coverage.length - 1][1];
     const tasks = [];
