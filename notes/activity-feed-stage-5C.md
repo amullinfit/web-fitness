@@ -43,3 +43,6 @@ Updated Val Town `amullinfit/api_activity_feed` (main Val branch) with request-s
 - `intervalFailures`: final failed activity interval fetches (same count as `errors` under current behavior).
 
 Counters are per HTTP feed invocation; no activity records, matching rules, request bounds, or frontend consumers were changed. Verified a 2027-01-01..2027-01-02 empty-range response: status 200, all counters 0, diagnostics duration_ms 211. The full-range response exceeds connector display limits, so representative full-window counter values remain to be checked separately. Note `intervalRequests` counts attempts begun; a thrown network error is counted even without an HTTP status. No power/pace/chart changes.
+
+## Diagnostic status naming update — 2026-10-21
+At user request, Val Town feed diagnostics renamed `partial` to `success` and inverted its meaning: `success: true` means all interval-detail lookups succeeded; `success: false` means one or more ultimately failed. Empty range verified HTTP 200 with `success:true`. This is a response-contract change; future frontend cache must use `success === false` to treat a window as incomplete/retryable.
