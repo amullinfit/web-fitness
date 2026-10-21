@@ -80,3 +80,13 @@ Read-only request 2026-09-30..2026-10-01 returned events=2, activities=2, matche
 - Verify multiple same-day records and completed-only examples in small, non-truncated windows.
 - Review server payload fields against Stage 5A consumer needs before any trimming; preserve all fields until evidence supports removal.
 - No 5D frontend switch until user approves the stage transition.
+
+## 5C diagnostics-only mode and expanded-range verification — 2026-10-21
+Added optional `diagnostics_only=true` query flag to the existing live Val. The feed still fetches and normalizes events, activities and executed intervals as usual, but returns `{start,end,diagnostics}` instead of `{start,end,records,diagnostics}`. Summary adds `records` and `fullResponseBytes` (UTF-8 byte count of JSON-serialized normal response body, not wire-compressed transfer bytes). Normal requests retain their prior response schema. Empty-range test returned HTTP 200 with success true and 0 records.
+
+| Inclusive range | Events | Activities | Matched | Planned-only | Completed-only | Records | Attempts | 429 | Retries | Failures | success | duration_ms | Full JSON bytes |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|
+| Sep 22–Nov 24 (64 days) | 83 | 35 | 29 | 54 | 6 | 89 | 35 | 0 | 0 | 0 | true | 9062 | 308816 |
+| Aug 25–Sep 21 (28 days) | 29 | 32 | 25 | 4 | 7 | 36 | 32 | 0 | 0 | 0 | true | 8018 | 154910 |
+
+Record totals reconcile: 29+54+6=89 and 25+4+7=36. Interval attempts equal completed activities; no duplicate/retried interval requests were observed in these runs. These are live measurements, not guarantees for future 429 behavior. Keep the diagnostic-only flag as an observation tool; do not have UI views request diagnostics-only because they need full records. Existing safety bounds and chart fields remain unchanged.
