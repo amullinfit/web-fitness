@@ -13,6 +13,7 @@ const inflight = new Map();
 const records = new Map();
 const listeners = new Set();
 let revision = 0;
+let invalidationEpoch = 0;
 const notify = () => { revision++; listeners.forEach((fn) => fn()); };
 const combine = (items) => {
   const sorted = items.sort((a, b) => a[0] - b[0]);
@@ -39,12 +40,14 @@ const allCoverage = () => combine([...intervals, ...[...inflight.values()].map((
 const fetchWindow = async (a, b) => {
   const key = a + ':' + b;
   if (inflight.has(key)) return inflight.get(key).promise;
+  const requestEpoch = invalidationEpoch;
   const promise = (async () => {
     const url = '/api/val-activity-feed?start=' + dayString(a) + '&end=' + dayString(b);
     const response = await fetch(url);
     if (!response.ok) throw new Error('Activity feed HTTP ' + response.status);
     const body = await response.json();
     if (!Array.isArray(body.records) || !body.diagnostics) throw new Error('Invalid activity feed response');
+    if (requestEpoch !== invalidationEpoch) return body;
     for (const record of body.records) {
       if (record?.key) records.set(record.key, record);
     }
@@ -107,6 +110,7 @@ export const activityFeedCache = {
     // An overlapping in-flight request may fail or be incomplete; caller can retry.
   },
   invalidate(start, end) {
+    invalidationEpoch++;
     const a = parseDay(start), b = parseDay(end);
     intervals.splice(0, intervals.length, ...intervals.flatMap(([u, v]) => subtract(u, v, [[a, b]])));
     for (const [key, record] of records) {
