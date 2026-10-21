@@ -72,15 +72,15 @@ export const activityFeedCache = {
     }).sort((x, y) => x.date.localeCompare(y.date) || x.key.localeCompare(y.key));
   },
   getCoverage() { return intervals.map(([a, b]) => [dayString(a), dayString(b)]); },
-  async ensure(start, end) {
+  async ensure(start, end, batchDays = 28) {
     const a = parseDay(start), b = parseDay(end);
     if (b < a) throw new Error('Reversed activity feed range');
     const pending = [...inflight.values()].filter((x) => x.range[0] <= b && x.range[1] >= a).map((x) => x.promise);
     const missing = subtract(a, b, allCoverage());
     const jobs = [];
     for (const [x, y] of missing) {
-      for (let from = x; from <= y; from += 28) {
-        const to = Math.min(y, from + 27);
+      for (let from = x; from <= y; from += batchDays) {
+        const to = Math.min(y, from + batchDays - 1);
         jobs.push(fetchWindow(from, to));
       }
     }
