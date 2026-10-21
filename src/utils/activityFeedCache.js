@@ -72,6 +72,25 @@ export const activityFeedCache = {
     }).sort((x, y) => x.date.localeCompare(y.date) || x.key.localeCompare(y.key));
   },
   getCoverage() { return intervals.map(([a, b]) => [dayString(a), dayString(b)]); },
+  async ensureDirectional(start, end) {
+    const a = parseDay(start), b = parseDay(end);
+    if (b < a) throw new Error('Reversed activity feed range');
+    const coverage = allCoverage();
+    if (!coverage.length) return this.ensure(start, end, 28);
+    const low = coverage[0][0], high = coverage[coverage.length - 1][1];
+    const tasks = [];
+    if (a < low) {
+      const blocks = Math.ceil((low - a) / 28);
+      tasks.push(this.ensure(dayString(low - blocks * 28), dayString(low - 1), 28));
+    }
+    if (b > high) {
+      const blocks = Math.ceil((b - high) / 28);
+      tasks.push(this.ensure(dayString(high + 1), dayString(high + blocks * 28), 28));
+    }
+    // Disjoint or incomplete ranges may exist between cached windows.
+    tasks.push(this.ensure(start, end, 28));
+    await Promise.all(tasks);
+  },
   async ensure(start, end, batchDays = 28) {
     const a = parseDay(start), b = parseDay(end);
     if (b < a) throw new Error('Reversed activity feed range');
