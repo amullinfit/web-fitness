@@ -7,7 +7,7 @@ import Modal_AddGear from '../modals/Modal_AddGear';
 import GearBadge from './GearBadge';
 import { useGearManagement, isWorkoutCompleted } from '../utils/useGearManagement';
 import { useIsMobile, safeStringLower, getLocalDateString } from '../utils/MonthlyViewHelpers.jsx';
-import { mergeDailyWorkoutFeeds } from '../utils/WorkoutFeedHelpers.js';
+import { useActivityFeed } from '../utils/useActivityFeed.js';
 import '../CSS/DailyView.css';
 import { usePaces } from '../utils/PacesContext.jsx'; 
 
@@ -82,42 +82,14 @@ export default function DailyView() {
     handleAddGear,
   } = useGearManagement(workouts, setWorkouts);
 
-  useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-
-    Promise.all([
-      fetch(VAL_WORKOUTS_URL).then((res) => res.json()).catch((err) => {
-        console.error("Error fetching val-workouts:", err);
-        return null;
-      }),
-      fetch(HISTORICAL_URL).then((res) => res.json()).catch((err) => {
-        console.error("Error fetching historical activities:", err);
-        return null;
-      })
-    ])
-      .then(([valJson, historicalJson]) => {
-        if (!isMounted) return;
-
-        const { workouts: mergedList, sportSettings: settings } = mergeDailyWorkoutFeeds(
-          valJson,
-          historicalJson,
-          { getLocalDateString, safeStringLower }
-        );
-
-        setWorkouts(mergedList);
-        setSportSettings(settings);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error loading workout data:", err);
-        if (isMounted) setLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [calendarRefresh]);
+  const feedStart = getLocalDateString(selectedDate);
+  const feedNextDay = new Date(selectedDate);
+  feedNextDay.setDate(feedNextDay.getDate() + 1);
+  const feedEnd = getLocalDateString(feedNextDay);
+  const { workouts: feedWorkouts, loading: feedLoading, error: feedError } = useActivityFeed(feedStart, feedEnd, calendarRefresh);
+  useEffect(() => { setWorkouts(feedWorkouts); }, [feedWorkouts]);
+  useEffect(() => { setLoading(feedLoading); }, [feedLoading]);
+  useEffect(() => { if (feedError) console.error('Activity feed:', feedError); }, [feedError]);
 
   const todayStr = useMemo(() => getLocalDateString(new Date()), []);
   const selectedDateStr = useMemo(() => getLocalDateString(selectedDate), [selectedDate]);
