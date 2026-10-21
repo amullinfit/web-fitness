@@ -117,7 +117,7 @@ export default function MonthlyView() {
   const feedEndDay = new Date(currentWeekMonday);
   feedEndDay.setDate(feedEndDay.getDate() + 27);
   const feedEnd = getLocalDateString(feedEndDay);
-  const { workouts: feedWorkouts, loading: feedLoading, error: feedError } = useActivityFeed(feedStart, feedEnd, calendarRefresh);
+  const { workouts: feedWorkouts, loading: feedLoading, error: feedError, isDateLoaded, coverageRevision } = useActivityFeed(feedStart, feedEnd, calendarRefresh);
   useEffect(() => { setWorkouts(feedWorkouts); }, [feedWorkouts]);
   useEffect(() => { setLoading(feedLoading); }, [feedLoading]);
   useEffect(() => { setErrorMessage(feedError?.message || null); }, [feedError]);
@@ -265,6 +265,7 @@ export default function MonthlyView() {
     return days[dayIndex];
   };
 
+  void coverageRevision;
   const renderDayCell = (date, workoutList) => {
     const dateStr = getLocalDateString(date);
     const isToday = dateStr === todayStr;
@@ -302,7 +303,7 @@ export default function MonthlyView() {
           style={{ overflowY: workoutList.length > 1 ? 'auto' : 'hidden' }}
         >
           {workoutList.length === 0 ? (
-            <div className="monthly-empty-day"></div>
+            <div className="monthly-empty-day" style={{ color: "#9299a3", fontSize: "0.78rem", padding: "8px 5px" }} aria-live="polite">{isDateLoaded(dateStr) ? "No Activity" : "Pending Load…"}</div>
           ) : (
             workoutList.map((workout, idx) => {
               const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings, paces);
