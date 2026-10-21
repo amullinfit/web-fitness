@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { activityFeedCache } from './activityFeedCache.js';
 import { adaptActivityRecords } from './activityFeedAdapter.js';
 
@@ -41,9 +41,9 @@ export function useActivityFeed(visibleStart, visibleEnd, refresh = 0) {
     return () => { active = false; };
   }, [visibleStart, visibleEnd, refresh]);
   // revision subscription makes this update when another view completes a fetch.
-  void revision;
+  const workouts = useMemo(() => adaptActivityRecords(activityFeedCache.getRecords(visibleStart, visibleEnd)), [visibleStart, visibleEnd, revision]);
   return {
-    workouts: adaptActivityRecords(activityFeedCache.getRecords(visibleStart, visibleEnd)),
+    workouts,
     loading,
     error,
     invalidate: activityFeedCache.invalidate,
