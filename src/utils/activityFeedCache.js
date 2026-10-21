@@ -89,7 +89,7 @@ export const activityFeedCache = {
   },
   invalidate(start, end) {
     const a = parseDay(start), b = parseDay(end);
-    intervals.splice(0, intervals.length, ...subtract(-100000, 100000, [[a, b]]).flatMap(([x, y]) => intervals.flatMap(([u, v]) => subtract(u, v, [[a, b]]))));
+    intervals.splice(0, intervals.length, ...intervals.flatMap(([u, v]) => subtract(u, v, [[a, b]])));
     for (const [key, record] of records) {
       if (record.date && record.date >= start && record.date <= end) records.delete(key);
     }
