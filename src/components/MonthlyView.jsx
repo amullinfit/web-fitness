@@ -20,7 +20,7 @@ import {
   metersToMilesNum,
   safeStringLower
 } from '../utils/MonthlyViewHelpers.jsx';
-import { mergeMonthlyWorkoutFeeds } from '../utils/WorkoutFeedHelpers.js';
+import { useActivityFeed } from '../utils/useActivityFeed.js';
 
 import {
   WeeklyFrameChart,
@@ -113,60 +113,14 @@ export default function MonthlyView() {
 
   const isMobile = useIsMobile(768);
 
-  useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-    setErrorMessage(null);
-  
-    const controller = new AbortController();
-  
-    const fetchData = async () => {
-      try {
-        const [valRes, histRes] = await Promise.allSettled([
-          fetch(VAL_WORKOUTS_URL, { signal: controller.signal }).then((r) => {
-            if (!r.ok) throw new Error(`Workouts fetch failed: ${r.status}`);
-            return r.json();
-          }),
-          fetch(HISTORICAL_URL, { signal: controller.signal }).then((r) => {
-            if (!r.ok) throw new Error(`Historical fetch failed: ${r.status}`);
-            return r.json();
-          }),
-        ]);
-  
-        if (!isMounted) return;
-  
-        const valJson = valRes.status === 'fulfilled' ? valRes.value : null;
-        const historicalJson = histRes.status === 'fulfilled' ? histRes.value : null;
-  
-        // Log or handle partial failures
-        if (valRes.status === 'rejected') console.error(valRes.reason);
-        if (histRes.status === 'rejected') console.error(histRes.reason);
-  
-        const { workouts: mergedList, sportSettings: settings } = mergeMonthlyWorkoutFeeds(
-          valJson,
-          historicalJson,
-          { getLocalDateString, safeStringLower }
-        );
-
-        setWorkouts(mergedList);
-        setSportSettings(settings);
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error("Error loading workout data:", err);
-          if (isMounted) setErrorMessage(err.message);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-  
-    fetchData();
-  
-    return () => {
-      isMounted = false;
-      controller.abort(); // Cancel ongoing network requests on unmount
-    };
-  }, [calendarRefresh]);
+  const feedStart = getLocalDateString(currentWeekMonday);
+  const feedEndDay = new Date(currentWeekMonday);
+  feedEndDay.setDate(feedEndDay.getDate() + 27);
+  const feedEnd = getLocalDateString(feedEndDay);
+  const { workouts: feedWorkouts, loading: feedLoading, error: feedError } = useActivityFeed(feedStart, feedEnd, calendarRefresh);
+  useEffect(() => { setWorkouts(feedWorkouts); }, [feedWorkouts]);
+  useEffect(() => { setLoading(feedLoading); }, [feedLoading]);
+  useEffect(() => { setErrorMessage(feedError?.message || null); }, [feedError]);
 
   // When workouts state updates, re-sync zoomWorkouts if modal is currently open
   useEffect(() => {
