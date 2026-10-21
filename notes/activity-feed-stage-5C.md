@@ -34,3 +34,12 @@ Read-only calls to the deployed Val (not browser or Val internal duration), one 
 Tool response is capped at approximately 20,000 characters and includes truncation metadata; diagnostic counts and full response byte size could not be extracted reliably. These timings include connector/tool overhead and must not be presented as Val internal durations. The earlier 28-day range may contain more completed activities than the 64-day forward-heavy window. No source-data or UI behavior changed in this pass.
 
 **Next 5C action:** add lightweight, explicitly defined aggregate request metrics to the Val diagnostics (interval attempt count, rate-limit retries, final failed interval lookups, optional payload bytes) so full-window performance can be checked without printing all records. Avoid exposing athlete credentials. Retest with representative windows and compare `duration_ms`, counts, and errors. Do not change concurrency/response schema for workouts without a focused test.
+
+## 5C diagnostic instrumentation — 2026-10-21
+Updated Val Town `amullinfit/api_activity_feed` (main Val branch) with request-scoped counters:
+- `intervalRequests`: HTTP interval fetch attempts, including retries.
+- `intervalRateLimited`: HTTP 429 responses received.
+- `intervalRetries`: retries initiated after a 429 response.
+- `intervalFailures`: final failed activity interval fetches (same count as `errors` under current behavior).
+
+Counters are per HTTP feed invocation; no activity records, matching rules, request bounds, or frontend consumers were changed. Verified a 2027-01-01..2027-01-02 empty-range response: status 200, all counters 0, diagnostics duration_ms 211. The full-range response exceeds connector display limits, so representative full-window counter values remain to be checked separately. Note `intervalRequests` counts attempts begun; a thrown network error is counted even without an HTTP status. No power/pace/chart changes.
