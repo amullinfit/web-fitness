@@ -66,5 +66,5 @@ export function useActivityFeed(visibleStart, visibleEnd, refresh = 0) {
     return () => { active = false; };
   }, [visibleStart, visibleEnd, refresh]);
   const workouts = useMemo(() => addGearNames(adaptActivityRecords(activityFeedCache.getRecords(visibleStart, visibleEnd))), [visibleStart, visibleEnd, revision, gearRevision]);
-  return { workouts, loading, error, invalidate: activityFeedCache.invalidate };
+  return { workouts, loading, error, isDateLoaded: activityFeedCache.isDateLoaded, coverageRevision: revision, invalidate: activityFeedCache.invalidate };
 }
