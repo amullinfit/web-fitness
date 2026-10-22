@@ -8,6 +8,7 @@ import GearBadge from './GearBadge';
 import { useGearManagement, isWorkoutCompleted } from '../utils/useGearManagement';
 import { useIsMobile, safeStringLower, getLocalDateString } from '../utils/MonthlyViewHelpers.jsx';
 import { useActivityFeed } from '../utils/useActivityFeed.js';
+import { activityFeedCache } from '../utils/activityFeedCache.js';
 import '../CSS/DailyView.css';
 import { usePaces } from '../utils/PacesContext.jsx'; 
 
@@ -30,6 +31,8 @@ export default function DailyView() {
   const confirmCalendarAction = async (selection) => {
     if (!['add', 'move', 'remove'].includes(selection.action)) {
       setCalendarMessage('Unsupported calendar action.');
+      activityFeedCache.invalidate(selection.date, selection.date);
+      if (selection.originalDate && selection.originalDate !== selection.date) activityFeedCache.invalidate(selection.originalDate, selection.originalDate);
       setCalendarAction(null);
       return;
     }
