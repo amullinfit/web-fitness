@@ -10,6 +10,10 @@ export const adaptActivityRecord = (record) => {
   const name = planned?.name || record.name || actual?.name || 'Workout';
   const date = record.date;
   const base = completed ? (actual || {}) : (planned || {});
+  // Activity feed gear_id may be a gear object, unlike the legacy scalar ID.
+  const rawGear = actual?.gear_id ?? base.gear_id ?? null;
+  const gearId = rawGear && typeof rawGear === 'object' ? (rawGear.id ?? rawGear.gear_id ?? null) : rawGear;
+  const gearName = (rawGear && typeof rawGear === 'object' ? rawGear.name : null) || actual?.shoe_name || base.shoe_name || null;
   const intervals = completed
     ? (actual?.intervals_status === 'unavailable' ? [] : (actual?.intervals ?? []))
     : (planned?.intervals ?? null);
@@ -38,8 +42,9 @@ export const adaptActivityRecord = (record) => {
     workout_doc: planned?.workout_doc ?? actual?.workout_doc ?? null,
     intervals,
     intervals_status: actual?.intervals_status ?? null,
-    gear_id: actual?.gear_id ?? base.gear_id ?? null,
-    shoe_name: actual?.shoe_name ?? base.shoe_name ?? null,
+    gear_id: gearId,
+    shoe_name: gearName,
+    gear: rawGear && typeof rawGear === 'object' ? [rawGear] : (base.gear ?? []),
     // Preserve existing pace/speed units; chart helpers handle display conversion.
     average_speed: actual?.average_speed ?? base.average_speed ?? null,
     average_watts: actual?.average_watts ?? base.average_watts ?? null,
