@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import WorkoutChart from './WorkoutChart';
+import { activityFeedCache } from '../utils/activityFeedCache.js';
 import { WorkoutZoomModal } from '../modals/MonthlyModal_ZoomWorkout.jsx';
 import { usePaces } from '../utils/PacesContext.jsx';
 import { useIsMobile } from '../utils/MonthlyViewHelpers.jsx';
@@ -10,6 +11,19 @@ import '../CSS/TrainingPlanEditor.css';
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const WEEKDAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const INITIAL_WEEKS = 4;
+const addCalendarDays = (isoDate, days) => {
+  const date = new Date(isoDate + 'T12:00:00Z');
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+const refreshScheduledRange = (start, weeks) => {
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(start) || !Number.isInteger(weeks) || weeks < 1) return;
+  const end = addCalendarDays(start, weeks * 7 - 1);
+  activityFeedCache.invalidate(start, end);
+  // Refill in the background so both calendar views can reuse the new records.
+  void activityFeedCache.ensure(start, end).catch((error) => console.error('Scheduled plan feed refresh:', error));
+};
+
 
 const makeEmptyWeeks = (count) =>
   Array.from({ length: count }, (_, index) => ({
@@ -761,6 +775,7 @@ export default function TrainingPlanEditor() {
       const response = await fetch('/api/schedule-write', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'schedule', plan_id: plan.id, start_date: scheduleStart, confirm: true }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Scheduling failed. Check Intervals.icu before retrying.');
+      refreshScheduledRange(scheduleStart, plan.weeks.length);
       setScheduleResult(result);
       setScheduleValidation(null);
       setCalendarEvents((old) => [...old, ...(result.created_events || [])]);
@@ -815,6 +830,11 @@ export default function TrainingPlanEditor() {
       const response = await fetch('/api/schedule-write', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'remove_scheduled', instance_id: id, confirm: true }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Removal failed');
+      const removedInstance = scheduledDetail.instance;
+      if (removedInstance.start_date && removedInstance.end_date) {
+        activityFeedCache.invalidate(removedInstance.start_date, removedInstance.end_date);
+        void activityFeedCache.ensure(removedInstance.start_date, removedInstance.end_date).catch((error) => console.error('Scheduled plan removal feed refresh:', error));
+      }
       setRemovalPreview(null);
       await showScheduledDetail(id);
       setRemovalResult(data);
