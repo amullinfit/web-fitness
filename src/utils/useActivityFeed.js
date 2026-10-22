@@ -53,7 +53,6 @@ export function useActivityFeed(visibleStart, visibleEnd, refresh = 0) {
     if (!hasAnyData) setLoading(true);
     (async () => {
       try {
-        if (refresh > 0) activityFeedCache.invalidate(visibleStart, visibleEnd);
         await activityFeedCache.ensure(initialStart, initialEnd, 64);
         // Extend by a complete 28-day block when a visible edge crosses coverage.
         await activityFeedCache.ensureDirectional(visibleStart, visibleEnd);
