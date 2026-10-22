@@ -21,6 +21,7 @@ import {
   safeStringLower
 } from '../utils/MonthlyViewHelpers.jsx';
 import { useActivityFeed } from '../utils/useActivityFeed.js';
+import { activityFeedCache } from '../utils/activityFeedCache.js';
 
 import {
   WeeklyFrameChart,
@@ -69,6 +70,8 @@ export default function MonthlyView() {
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || 'Could not update workout.');
+      activityFeedCache.invalidate(selection.date, selection.date);
+      if (selection.originalDate && selection.originalDate !== selection.date) activityFeedCache.invalidate(selection.originalDate, selection.originalDate);
       setCalendarAction(null);
       setZoomReturn(false);
       if (zoomReturn) setZoomWorkouts(null);
