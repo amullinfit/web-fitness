@@ -13,7 +13,7 @@ const inflight = new Map();
 const records = new Map();
 const listeners = new Set();
 let revision = 0;
-let invalidationEpoch = 0;
+const dateVersions = new Map();
 const notify = () => { revision++; listeners.forEach((fn) => fn()); };
 const combine = (items) => {
   const sorted = items.sort((a, b) => a[0] - b[0]);
@@ -40,20 +40,27 @@ const allCoverage = () => combine([...intervals, ...[...inflight.values()].map((
 const fetchWindow = async (a, b) => {
   const key = a + ':' + b;
   if (inflight.has(key)) return inflight.get(key).promise;
-  const requestEpoch = invalidationEpoch;
+    const requestedVersions = new Map();
+  for (let d = a; d <= b; d++) requestedVersions.set(d, dateVersions.get(d) || 0);
   const promise = (async () => {
     const url = '/api/val-activity-feed?start=' + dayString(a) + '&end=' + dayString(b);
     const response = await fetch(url);
     if (!response.ok) throw new Error('Activity feed HTTP ' + response.status);
     const body = await response.json();
     if (!Array.isArray(body.records) || !body.diagnostics) throw new Error('Invalid activity feed response');
-    if (requestEpoch !== invalidationEpoch) return body;
+    // An invalidation may happen while this request is running. Preserve unaffected days.
+    const current = (d) => (dateVersions.get(d) || 0) === requestedVersions.get(d);
     for (const record of body.records) {
-      if (record?.key) records.set(record.key, record);
+      if (record?.key && record.date && current(parseDay(record.date))) records.set(record.key, record);
     }
-    // Only healthy responses count as complete coverage. Incomplete records remain usable.
     if (body.diagnostics.success === true) {
-      intervals.splice(0, intervals.length, ...combine([...intervals, [a, b]]));
+      const valid = [];
+      let first = null;
+      for (let d = a; d <= b + 1; d++) {
+        if (d <= b && current(d)) { if (first === null) first = d; }
+        else if (first !== null) { valid.push([first, d - 1]); first = null; }
+      }
+      intervals.splice(0, intervals.length, ...combine([...intervals, ...valid]));
     }
     notify();
     return body;
@@ -112,8 +119,8 @@ export const activityFeedCache = {
     // An overlapping in-flight request may fail or be incomplete; caller can retry.
   },
   invalidate(start, end) {
-    invalidationEpoch++;
     const a = parseDay(start), b = parseDay(end);
+    for (let d = a; d <= b; d++) dateVersions.set(d, (dateVersions.get(d) || 0) + 1);
     intervals.splice(0, intervals.length, ...intervals.flatMap(([u, v]) => subtract(u, v, [[a, b]])));
     for (const [key, record] of records) {
       if (record.date && record.date >= start && record.date <= end) records.delete(key);
