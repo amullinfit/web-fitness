@@ -116,7 +116,16 @@ export const activityFeedCache = {
       }
     }
     await Promise.all([...pending, ...jobs]);
-    // An overlapping in-flight request may fail or be incomplete; caller can retry.
+    // A request started before invalidation cannot satisfy the changed dates.
+    // Retry only genuinely missing coverage after those requests finish.
+    if (pending.length && subtract(a, b, intervals).length) {
+      const remaining = subtract(a, b, intervals);
+      await Promise.all(remaining.flatMap(([x, y]) => {
+        const tasks = [];
+        for (let from = x; from <= y; from += batchDays) tasks.push(fetchWindow(from, Math.min(y, from + batchDays - 1)));
+        return tasks;
+      }));
+    }
   },
   invalidate(start, end) {
     const a = parseDay(start), b = parseDay(end);
