@@ -17,7 +17,7 @@ const addCalendarDays = (isoDate, days) => {
   return date.toISOString().slice(0, 10);
 };
 const refreshScheduledRange = (start, weeks) => {
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(start) || !Number.isInteger(weeks) || weeks < 1) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !Number.isInteger(weeks) || weeks < 1) return;
   const end = addCalendarDays(start, weeks * 7 - 1);
   activityFeedCache.invalidate(start, end);
   // Refill in the background so both calendar views can reuse the new records.
