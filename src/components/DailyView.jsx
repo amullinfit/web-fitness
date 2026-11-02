@@ -89,7 +89,7 @@ export default function DailyView() {
   const feedNextDay = new Date(selectedDate);
   feedNextDay.setDate(feedNextDay.getDate() + 1);
   const feedEnd = getLocalDateString(feedNextDay);
-  const { workouts: feedWorkouts, loading: feedLoading, error: feedError } = useActivityFeed(feedStart, feedEnd, calendarRefresh);
+  const { workouts: feedWorkouts, loading: feedLoading, error: feedError, isDateLoaded, coverageRevision } = useActivityFeed(feedStart, feedEnd, calendarRefresh);
   useEffect(() => { setWorkouts(feedWorkouts); }, [feedWorkouts]);
   useEffect(() => { setLoading(feedLoading); }, [feedLoading]);
   useEffect(() => { if (feedError) console.error('Activity feed:', feedError); }, [feedError]);
@@ -222,7 +222,7 @@ export default function DailyView() {
 
         {dayWorkouts.length === 0 ? (
           <div className="daily-empty-card">
-            No workouts scheduled for {isToday ? 'today' : dateStr}.
+            {isDateLoaded(dateStr) ? `No workouts scheduled for ${isToday ? 'today' : dateStr}.` : 'Pending Load…'}
 
           </div>
         ) : (
