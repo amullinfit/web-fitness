@@ -31,8 +31,6 @@ export default function DailyView() {
   const confirmCalendarAction = async (selection) => {
     if (!['add', 'move', 'remove'].includes(selection.action)) {
       setCalendarMessage('Unsupported calendar action.');
-      activityFeedCache.invalidate(selection.date, selection.date);
-      if (selection.originalDate && selection.originalDate !== selection.date) activityFeedCache.invalidate(selection.originalDate, selection.originalDate);
       setCalendarAction(null);
       return;
     }
@@ -45,6 +43,8 @@ export default function DailyView() {
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || 'Could not update workout.');
+      activityFeedCache.invalidate(selection.date, selection.date);
+      if (selection.originalDate && selection.originalDate !== selection.date) activityFeedCache.invalidate(selection.originalDate, selection.originalDate);
       setCalendarAction(null);
       setCalendarRefresh((value) => value + 1);
     } catch (error) { setCalendarMessage(error.message || 'Unable to update workout.'); }
