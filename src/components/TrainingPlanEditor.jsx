@@ -129,7 +129,6 @@ const normalizeFolderId = (workout) =>
   String(workout?.folderId ?? workout?.folder_id ?? '');
 
 const SCHEDULE_PREVIEW_API_URL = '/api/schedule-preview';
-const CALENDAR_API_URL = '/api/val-workouts';
 const previewWorkoutName = (name) => String(name || 'Workout').replace(/^IntervalCoach\s*-?\s*/i, '').trim() || 'Workout';
 const calendarDateKey = (event) => String(event?.start_date_local || event?.start_date || '').slice(0, 10);
 
@@ -712,28 +711,33 @@ export default function TrainingPlanEditor() {
     setStatusMessage('Added four more weeks.');
   };
 
-  const previewStartKeyForFetch = hoverStart || scheduleStart;
   useEffect(() => {
-    if (!scheduleDialog) return;
-    const controller = new AbortController();
-    const start = mondayOf(new Date(scheduleMonth.getFullYear(), scheduleMonth.getMonth(), 1));
-    const end = shiftDate(start, 41);
-    const url = new URL(CALENDAR_API_URL, window.location.origin);
-    url.searchParams.set('action', 'calendar_range');
-    url.searchParams.set('oldest', dateKey(start));
-    url.searchParams.set('newest', dateKey(end));
+    if (!scheduleDialog) return undefined;
+    let active = true;
+    const start = dateKey(mondayOf(new Date(scheduleMonth.getFullYear(), scheduleMonth.getMonth(), 1)));
+    const end = dateKey(shiftDate(new Date(start + 'T12:00:00'), 41));
+    const sync = () => {
+      if (!active) return;
+      setCalendarEvents(activityFeedCache.getRecords(start, end)
+        .filter((record) => record.planned)
+        .map((record) => ({
+          ...record.planned,
+          id: record.eventId ?? record.planned.id,
+          category: 'WORKOUT',
+          start_date_local: record.planned.start_date_local || record.date,
+        })));
+    };
+    const unsubscribe = activityFeedCache.subscribe(sync);
     setCalendarLoading(true);
     setCalendarError('');
-    fetch(url, { signal: controller.signal })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok || !Array.isArray(data.events)) throw new Error(data.error || 'Unable to load calendar events.');
-        return data.events;
-      })
-      .then((events) => setCalendarEvents(events))
-      .catch((error) => { if (error.name !== 'AbortError') { setCalendarEvents([]); setCalendarError(error.message); } })
-      .finally(() => { if (!controller.signal.aborted) setCalendarLoading(false); });
-    return () => controller.abort();
+    sync();
+    activityFeedCache.ensure(start, end).then(() => {
+      if (active && !activityFeedCache.getCoverage().some(([a, b]) => a <= start && b >= end)) {
+        setCalendarError('Calendar feed incomplete; verify conflicts before scheduling.');
+      }
+    }).catch((error) => { if (active) setCalendarError(error.message); })
+      .finally(() => { if (active) setCalendarLoading(false); });
+    return () => { active = false; unsubscribe(); };
   }, [scheduleDialog, scheduleMonth]);
 
   const openScheduleDialog = () => {
