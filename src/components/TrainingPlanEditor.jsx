@@ -807,7 +807,7 @@ export default function TrainingPlanEditor() {
   }, [scheduleDialog, scheduleResult, scheduleStart, plan.name]);
 
   const submitSchedule = async () => {
-    if (!scheduleValidation || !scheduleStart || !auth.authorized || scheduleSubmitting || calendarLoading || calendarError) return;
+    if (!scheduleValidation || !scheduleStart || !auth.authorized || scheduleSubmitting || scheduleValidationLoading || calendarLoading || calendarError || scheduleValidation.workout_count <= 0 || scheduleValidation.workout_count + (scheduleValidation.skipped_count || 0) !== planWorkoutCount) return;
     setScheduleSubmitting(true);
     setScheduleAttempted(true);
     setScheduleValidationError('');
@@ -1067,7 +1067,7 @@ export default function TrainingPlanEditor() {
               {scheduleValidationError && <div className="tpe-schedule-notice" role="alert"><strong>{scheduleAttempted ? "Scheduling failed or could not be confirmed" : "Validation failed"}:</strong> {scheduleValidationError}</div>}
               {scheduleValidation && <div className="tpe-schedule-notice" role="status">
                 <strong>Ready to schedule:</strong> {scheduleValidation.workout_count} workouts, {scheduleValidation.start_date} to {scheduleValidation.end_date}.
-                {scheduleValidation.skipped_count > 0 && <div role="status">{scheduleValidation.skipped_count} workout(s) before today will not be scheduled. Remaining workouts keep their original dates.</div>}
+                {scheduleValidation.skipped_count > 0 && <div>{scheduleValidation.skipped_count} workout(s) before today will not be scheduled. Remaining workouts keep their original dates.{scheduleValidation.skipped_events?.length > 0 && <details><summary>Inspect skipped workouts</summary><div className="tpe-schedule-validation-list">{scheduleValidation.skipped_events.map((event, index) => <div key={`${event.date}-${index}`}>{event.date}: {previewWorkoutName(event.name)}</div>)}</div></details>}</div>}
                 {scheduleValidation.workout_count === 0 && <div role="alert">No workouts remain to schedule.</div>}
                 {scheduleValidation.workout_count + (scheduleValidation.skipped_count || 0) !== planWorkoutCount && <div role="alert">Warning: saved plan has {scheduleValidation.workout_count + (scheduleValidation.skipped_count || 0)} workouts; editor shows {planWorkoutCount}.</div>}
                 {scheduleValidation.events?.length > 0 && <details><summary>Inspect proposed workouts and dates</summary><div className="tpe-schedule-validation-list">{scheduleValidation.events.map((event, index) => <div key={event.source_workout_id || index}>{event.date}: {previewWorkoutName(event.name)}</div>)}</div></details>}
@@ -1075,7 +1075,7 @@ export default function TrainingPlanEditor() {
               {scheduleValidation && !scheduleResult && <div className="tpe-schedule-notice">
                 {!auth.authorized && <a href="/api/auth/login">Sign in with GitHub to schedule workouts</a>}
                 {auth.authorized && <span>Signed in as {auth.login} (authorized owner)</span>}
-                <button type="button" disabled={!auth.authorized || scheduleSubmitting || scheduleValidationLoading || calendarLoading || Boolean(calendarError) || !scheduleValidation.workout_count} onClick={submitSchedule}>{scheduleSubmitting ? 'Scheduling…' : 'Schedule Plan'}</button>
+                <button type="button" disabled={!auth.authorized || scheduleSubmitting || scheduleValidationLoading || calendarLoading || Boolean(calendarError) || !scheduleValidation.workout_count || scheduleValidation.workout_count + (scheduleValidation.skipped_count || 0) !== planWorkoutCount} onClick={submitSchedule}>{scheduleSubmitting ? 'Scheduling…' : 'Schedule Plan'}</button>
               </div>}
               {scheduleSubmitting && <div className="tpe-schedule-notice" role="status"><strong>Scheduling in progress…</strong> Keep this window open. Do not submit twice.</div>}
               {scheduleResult && <div className="tpe-schedule-notice" role="status"><strong>{scheduleResult.verified_count ? 'Scheduling request completed' : 'Scheduling needs verification'}:</strong> {scheduleResult.created_count} of {scheduleResult.requested_count} workouts returned by Intervals.icu. Instance ID: {scheduleResult.instance_id}. {scheduleResult.tracking_saved ? 'Saved to Scheduled Plans. ' : 'Tracking was NOT saved; keep the instance ID and event IDs for recovery. '}{scheduleResult.warning || 'Check the scheduled dates in Intervals.icu to confirm the workouts appear correctly.'}</div>}
