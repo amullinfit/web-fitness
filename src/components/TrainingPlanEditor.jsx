@@ -1018,13 +1018,13 @@ export default function TrainingPlanEditor() {
                 const key = dateKey(date);
                 const weekMonday = mondayOf(date);
                 const mondayKey = dateKey(weekMonday);
-                const valid = weekMonday > todayStart;
+                const valid = weekMonday.getTime() >= mondayOf(todayStart).getTime();
                 const inPreview = previewStart && date >= previewStart && date <= previewEnd;
                 const dayOffset = previewStart ? Math.round((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(previewStart.getFullYear(), previewStart.getMonth(), previewStart.getDate())) / 86400000) : -1;
                 const week = dayOffset >= 0 ? plan.weeks[Math.floor(dayOffset / 7)] : null;
                 const entries = week?.days[dayOffset % 7]?.workouts || [];
                 const existing = calendarEvents.filter((event) => calendarDateKey(event) === key);
-                const overlaps = inPreview && entries.length > 0 && existing.some((event) => event.category === 'WORKOUT');
+                const overlaps = inPreview && date >= todayStart && entries.length > 0 && existing.some((event) => event.category === 'WORKOUT');
                 return (
                   <button
                     type="button"
@@ -1040,13 +1040,13 @@ export default function TrainingPlanEditor() {
                     onClick={() => { setScheduleStart(mondayKey); setScheduleValidation(null); setScheduleResult(null); setScheduleValidationError(''); }}
                   >
                     <span className="tpe-schedule-date-heading"><span className="tpe-schedule-day-number">{date.getDate()}</span>{inPreview && dayOffset === 0 && <small className="tpe-schedule-start">Start</small>}{inPreview && dayOffset === scheduleDays - 1 && <small className="tpe-schedule-end">End</small>}</span>
-                    {inPreview && entries.slice(0, 2).map((entry, index) => (
+                    {inPreview && date >= todayStart && entries.slice(0, 2).map((entry, index) => (
                       <span key={entry.entryId || index} className="tpe-schedule-mini-workout tpe-schedule-plan-workout" title={previewWorkoutName(entry.workout.name || entry.workout.title)}>
                         <span className="tpe-schedule-workout-name">{previewWorkoutName(entry.workout.name || entry.workout.title)}</span>
                         <WorkoutChart workout={entry.workout} chartHeight="17px" showWorkoutName={false} showThresholdPace={false} showYAxis={false} showYAxisLabels={false} showLegend={false} minimalXAxis={true} showHoverDetails={false} />
                       </span>
                     ))}
-                    {inPreview && entries.length > 2 && <small>+{entries.length - 2}</small>}
+                    {inPreview && date >= todayStart && entries.length > 2 && <small>+{entries.length - 2}</small>}
                     {existing.filter((event) => event.category === 'WORKOUT').map((event, index) => (
                       <span key={event.canonicalKey || event.id || `existing-${index}`} className="tpe-schedule-existing-workout" title={previewWorkoutName(event.name)}>
                         <span className="tpe-schedule-workout-name">{previewWorkoutName(event.name)}</span>
@@ -1058,7 +1058,7 @@ export default function TrainingPlanEditor() {
               })}
             </div>
             <div className="tpe-schedule-summary">
-              {previewStart ? `Preview: ${formatPlanDate(previewStart)} – ${formatPlanDate(previewEnd)}` : 'Hover over any day in a future week to preview the plan, starting Monday.'}
+              {previewStart ? `Preview: ${formatPlanDate(previewStart)} – ${formatPlanDate(previewEnd)}` : 'Hover over any day in the current or a future week to preview the plan, starting Monday.'}
               {selectedStart && <div>Selected dates: <strong>{formatPlanDate(selectedStart)} – {formatPlanDate(shiftDate(selectedStart, scheduleDays - 1))}</strong></div>}
               {calendarLoading && <div className="tpe-schedule-notice">Checking existing Intervals.icu calendar events…</div>}
               {calendarError && <div className="tpe-schedule-notice" role="alert">Calendar check failed: {calendarError}. Scheduling preview cannot be confirmed.</div>}
@@ -1067,13 +1067,15 @@ export default function TrainingPlanEditor() {
               {scheduleValidationError && <div className="tpe-schedule-notice" role="alert"><strong>{scheduleAttempted ? "Scheduling failed or could not be confirmed" : "Validation failed"}:</strong> {scheduleValidationError}</div>}
               {scheduleValidation && <div className="tpe-schedule-notice" role="status">
                 <strong>Ready to schedule:</strong> {scheduleValidation.workout_count} workouts, {scheduleValidation.start_date} to {scheduleValidation.end_date}.
-                {scheduleValidation.workout_count !== planWorkoutCount && <div role="alert">Warning: saved plan has {scheduleValidation.workout_count} workouts; editor shows {planWorkoutCount}.</div>}
+                {scheduleValidation.skipped_count > 0 && <div role="status">{scheduleValidation.skipped_count} workout(s) before today will not be scheduled. Remaining workouts keep their original dates.</div>}
+                {scheduleValidation.workout_count === 0 && <div role="alert">No workouts remain to schedule.</div>}
+                {scheduleValidation.workout_count + (scheduleValidation.skipped_count || 0) !== planWorkoutCount && <div role="alert">Warning: saved plan has {scheduleValidation.workout_count + (scheduleValidation.skipped_count || 0)} workouts; editor shows {planWorkoutCount}.</div>}
                 {scheduleValidation.events?.length > 0 && <details><summary>Inspect proposed workouts and dates</summary><div className="tpe-schedule-validation-list">{scheduleValidation.events.map((event, index) => <div key={event.source_workout_id || index}>{event.date}: {previewWorkoutName(event.name)}</div>)}</div></details>}
               </div>}
               {scheduleValidation && !scheduleResult && <div className="tpe-schedule-notice">
                 {!auth.authorized && <a href="/api/auth/login">Sign in with GitHub to schedule workouts</a>}
                 {auth.authorized && <span>Signed in as {auth.login} (authorized owner)</span>}
-                <button type="button" disabled={!auth.authorized || scheduleSubmitting || scheduleValidationLoading || calendarLoading || Boolean(calendarError)} onClick={submitSchedule}>{scheduleSubmitting ? 'Scheduling…' : 'Schedule Plan'}</button>
+                <button type="button" disabled={!auth.authorized || scheduleSubmitting || scheduleValidationLoading || calendarLoading || Boolean(calendarError) || !scheduleValidation.workout_count} onClick={submitSchedule}>{scheduleSubmitting ? 'Scheduling…' : 'Schedule Plan'}</button>
               </div>}
               {scheduleSubmitting && <div className="tpe-schedule-notice" role="status"><strong>Scheduling in progress…</strong> Keep this window open. Do not submit twice.</div>}
               {scheduleResult && <div className="tpe-schedule-notice" role="status"><strong>{scheduleResult.verified_count ? 'Scheduling request completed' : 'Scheduling needs verification'}:</strong> {scheduleResult.created_count} of {scheduleResult.requested_count} workouts returned by Intervals.icu. Instance ID: {scheduleResult.instance_id}. {scheduleResult.tracking_saved ? 'Saved to Scheduled Plans. ' : 'Tracking was NOT saved; keep the instance ID and event IDs for recovery. '}{scheduleResult.warning || 'Check the scheduled dates in Intervals.icu to confirm the workouts appear correctly.'}</div>}
