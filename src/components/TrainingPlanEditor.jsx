@@ -724,7 +724,10 @@ export default function TrainingPlanEditor() {
           ...record.planned,
           id: record.eventId ?? record.planned.id,
           category: 'WORKOUT',
+          name: record.planned.name || record.name || 'Workout',
           start_date_local: record.planned.start_date_local || record.date,
+          workout_doc: record.planned.workout_doc ?? null,
+          canonicalKey: record.key,
         })));
     };
     const unsubscribe = activityFeedCache.subscribe(sync);
@@ -988,7 +991,7 @@ export default function TrainingPlanEditor() {
                 const week = dayOffset >= 0 ? plan.weeks[Math.floor(dayOffset / 7)] : null;
                 const entries = week?.days[dayOffset % 7]?.workouts || [];
                 const existing = calendarEvents.filter((event) => calendarDateKey(event) === key);
-                const overlaps = inPreview && entries.length > 0 && existing.some((event) => event.category === 'WORKOUT' || event.workout_doc);
+                const overlaps = inPreview && entries.length > 0 && existing.some((event) => event.category === 'WORKOUT');
                 return (
                   <button
                     type="button"
@@ -1011,8 +1014,8 @@ export default function TrainingPlanEditor() {
                       </span>
                     ))}
                     {inPreview && entries.length > 2 && <small>+{entries.length - 2}</small>}
-                    {existing.filter((event) => event.category === 'WORKOUT' || event.workout_doc).map((event, index) => (
-                      <span key={event.id || `existing-${index}`} className="tpe-schedule-existing-workout" title={previewWorkoutName(event.name)}>
+                    {existing.filter((event) => event.category === 'WORKOUT').map((event, index) => (
+                      <span key={event.canonicalKey || event.id || `existing-${index}`} className="tpe-schedule-existing-workout" title={previewWorkoutName(event.name)}>
                         <span className="tpe-schedule-workout-name">{previewWorkoutName(event.name)}</span>
                         {event.workout_doc?.steps?.length > 0 && <WorkoutChart workout={event} chartHeight="17px" showWorkoutName={false} showThresholdPace={false} showYAxis={false} showYAxisLabels={false} showLegend={false} minimalXAxis={true} showHoverDetails={false} />}
                       </span>
