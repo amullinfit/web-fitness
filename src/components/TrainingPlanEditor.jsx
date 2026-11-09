@@ -1008,7 +1008,7 @@ export default function TrainingPlanEditor() {
             <h2 id="tpe-schedule-title">Schedule Training Plan</h2>
             <p><strong>{plan.name}</strong> · {scheduleWeeks} weeks · {planWorkoutCount} workouts</p>
             <div className="tpe-schedule-navigation">
-              <button type="button" aria-label="Previous month" disabled={scheduleMonth.getFullYear() <= todayStart.getFullYear() && scheduleMonth.getMonth() <= todayStart.getMonth() && scheduleMonth.getFullYear() === todayStart.getFullYear() || scheduleMonth.getFullYear() < todayStart.getFullYear()} onClick={() => setScheduleMonth((month) => { const previous = new Date(month.getFullYear(), month.getMonth() - 1, 1); const current = new Date(new Date().getFullYear(), new Date().getMonth(), 1); return previous < current ? current : previous; })}>‹</button>
+              <button type="button" aria-label="Previous month" disabled={scheduleMonth.getFullYear() * 12 + scheduleMonth.getMonth() <= todayStart.getFullYear() * 12 + todayStart.getMonth()} onClick={() => setScheduleMonth((month) => { const previous = new Date(month.getFullYear(), month.getMonth() - 1, 1); const current = new Date(new Date().getFullYear(), new Date().getMonth(), 1); return previous < current ? current : previous; })}>‹</button>
               <strong>{scheduleMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</strong>
               <button type="button" aria-label="Next month" onClick={() => setScheduleMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
             </div>
