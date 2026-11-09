@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useReadOnly } from '../context/ReadOnlyContext.jsx';
+import { activityFeedCache } from './activityFeedCache.js';
 import {
   getDistanceInMiles,
   hasRetiredDate,
@@ -43,6 +44,14 @@ export function useGearManagement(workouts, setWorkouts) {
   const [loadingGear, setLoadingGear] = useState(false);
   const [selectedGearId, setSelectedGearId] = useState(null);
 
+  const refreshChangedActivity = async (workoutId) => {
+    const workout = workouts.find((w) => String(w.icu_activity_id || w.activity_id || w.id) === String(workoutId));
+    const date = workout?.date || workout?.start_date_local?.slice(0, 10);
+    if (!date) return;
+    activityFeedCache.invalidate(date, date);
+    try { await activityFeedCache.ensure(date, date); }
+    catch (err) { console.error('Unable to refresh activity after gear update:', err); }
+  };
   const showErrorMessage = (msg) => {
     setErrorMessage(msg);
     setTimeout(() => {
@@ -104,6 +113,7 @@ export function useGearManagement(workouts, setWorkouts) {
         throw new Error(msg);
       }
 
+      await refreshChangedActivity(workoutId);
       // Sync backend gear state if explicit gear list returned
       if (setWorkouts && resData.gear !== undefined) {
         const normalizedGear = Array.isArray(resData.gear) ? resData.gear : (resData.gear ? [resData.gear] : []);
@@ -203,6 +213,7 @@ export function useGearManagement(workouts, setWorkouts) {
           })
         );
       }
+      await refreshChangedActivity(workoutId);
       setModalWorkoutId(null);
       setSelectedGearId(null);
     } catch (err) {

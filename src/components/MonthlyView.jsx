@@ -20,7 +20,8 @@ import {
   metersToMilesNum,
   safeStringLower
 } from '../utils/MonthlyViewHelpers.jsx';
-import { mergeMonthlyWorkoutFeeds } from '../utils/WorkoutFeedHelpers.js';
+import { useActivityFeed } from '../utils/useActivityFeed.js';
+import { activityFeedCache } from '../utils/activityFeedCache.js';
 
 import {
   WeeklyFrameChart,
@@ -69,6 +70,8 @@ export default function MonthlyView() {
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || 'Could not update workout.');
+      activityFeedCache.invalidate(selection.date, selection.date);
+      if (selection.originalDate && selection.originalDate !== selection.date) activityFeedCache.invalidate(selection.originalDate, selection.originalDate);
       setCalendarAction(null);
       setZoomReturn(false);
       if (zoomReturn) setZoomWorkouts(null);
@@ -113,60 +116,14 @@ export default function MonthlyView() {
 
   const isMobile = useIsMobile(768);
 
-  useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-    setErrorMessage(null);
-  
-    const controller = new AbortController();
-  
-    const fetchData = async () => {
-      try {
-        const [valRes, histRes] = await Promise.allSettled([
-          fetch(VAL_WORKOUTS_URL, { signal: controller.signal }).then((r) => {
-            if (!r.ok) throw new Error(`Workouts fetch failed: ${r.status}`);
-            return r.json();
-          }),
-          fetch(HISTORICAL_URL, { signal: controller.signal }).then((r) => {
-            if (!r.ok) throw new Error(`Historical fetch failed: ${r.status}`);
-            return r.json();
-          }),
-        ]);
-  
-        if (!isMounted) return;
-  
-        const valJson = valRes.status === 'fulfilled' ? valRes.value : null;
-        const historicalJson = histRes.status === 'fulfilled' ? histRes.value : null;
-  
-        // Log or handle partial failures
-        if (valRes.status === 'rejected') console.error(valRes.reason);
-        if (histRes.status === 'rejected') console.error(histRes.reason);
-  
-        const { workouts: mergedList, sportSettings: settings } = mergeMonthlyWorkoutFeeds(
-          valJson,
-          historicalJson,
-          { getLocalDateString, safeStringLower }
-        );
-
-        setWorkouts(mergedList);
-        setSportSettings(settings);
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error("Error loading workout data:", err);
-          if (isMounted) setErrorMessage(err.message);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-  
-    fetchData();
-  
-    return () => {
-      isMounted = false;
-      controller.abort(); // Cancel ongoing network requests on unmount
-    };
-  }, [calendarRefresh]);
+  const feedStart = getLocalDateString(currentWeekMonday);
+  const feedEndDay = new Date(currentWeekMonday);
+  feedEndDay.setDate(feedEndDay.getDate() + 27);
+  const feedEnd = getLocalDateString(feedEndDay);
+  const { workouts: feedWorkouts, loading: feedLoading, error: feedError, isDateLoaded, coverageRevision } = useActivityFeed(feedStart, feedEnd, calendarRefresh);
+  useEffect(() => { setWorkouts(feedWorkouts); }, [feedWorkouts]);
+  useEffect(() => { setLoading(feedLoading); }, [feedLoading]);
+  useEffect(() => { setErrorMessage(feedError?.message || null); }, [feedError]);
 
   // When workouts state updates, re-sync zoomWorkouts if modal is currently open
   useEffect(() => {
@@ -311,6 +268,7 @@ export default function MonthlyView() {
     return days[dayIndex];
   };
 
+  void coverageRevision;
   const renderDayCell = (date, workoutList) => {
     const dateStr = getLocalDateString(date);
     const isToday = dateStr === todayStr;
@@ -348,7 +306,7 @@ export default function MonthlyView() {
           style={{ overflowY: workoutList.length > 1 ? 'auto' : 'hidden' }}
         >
           {workoutList.length === 0 ? (
-            <div className="monthly-empty-day"></div>
+            <div className="monthly-empty-day" style={{ color: "#9299a3", fontSize: "0.78rem", padding: "8px 5px" }} aria-live="polite">{isDateLoaded(dateStr) ? "No Activity" : "Pending Load…"}</div>
           ) : (
             workoutList.map((workout, idx) => {
               const thresholdPaceMps = getThresholdPaceForSport(workout, sportSettings, paces);

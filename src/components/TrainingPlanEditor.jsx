@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import WorkoutChart from './WorkoutChart';
+import { activityFeedCache } from '../utils/activityFeedCache.js';
 import { WorkoutZoomModal } from '../modals/MonthlyModal_ZoomWorkout.jsx';
 import { usePaces } from '../utils/PacesContext.jsx';
 import { useIsMobile } from '../utils/MonthlyViewHelpers.jsx';
@@ -10,6 +11,19 @@ import '../CSS/TrainingPlanEditor.css';
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const WEEKDAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const INITIAL_WEEKS = 4;
+const addCalendarDays = (isoDate, days) => {
+  const date = new Date(isoDate + 'T12:00:00Z');
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+const refreshScheduledRange = (start, weeks) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !Number.isInteger(weeks) || weeks < 1) return;
+  const end = addCalendarDays(start, weeks * 7 - 1);
+  activityFeedCache.invalidate(start, end);
+  // Refill in the background so both calendar views can reuse the new records.
+  void activityFeedCache.ensure(start, end).catch((error) => console.error('Scheduled plan feed refresh:', error));
+};
+
 
 const makeEmptyWeeks = (count) =>
   Array.from({ length: count }, (_, index) => ({
@@ -115,7 +129,6 @@ const normalizeFolderId = (workout) =>
   String(workout?.folderId ?? workout?.folder_id ?? '');
 
 const SCHEDULE_PREVIEW_API_URL = '/api/schedule-preview';
-const CALENDAR_API_URL = '/api/val-workouts';
 const previewWorkoutName = (name) => String(name || 'Workout').replace(/^IntervalCoach\s*-?\s*/i, '').trim() || 'Workout';
 const calendarDateKey = (event) => String(event?.start_date_local || event?.start_date || '').slice(0, 10);
 
@@ -208,6 +221,7 @@ const shiftDate = (date, days) => {
 };
 const dateKey = (date) => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
 const formatPlanDate = (date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+const sortScheduledPlans = (instances) => [...instances].sort((a, b) => (a.start_date || '').localeCompare(b.start_date || '') || String(a.instance_id).localeCompare(String(b.instance_id)));
 
 export default function TrainingPlanEditor() {
   const { paces } = usePaces();
@@ -232,6 +246,7 @@ export default function TrainingPlanEditor() {
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState('');
   const [scheduleValidation, setScheduleValidation] = useState(null);
+  const scheduleValidationRequestRef = useRef(0);
   const [auth, setAuth] = useState({ authenticated: false, authorized: false });
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'same-origin' }).then((r) => r.json()).then(setAuth).catch(() => setAuth({ authenticated: false, authorized: false }));
@@ -246,6 +261,7 @@ export default function TrainingPlanEditor() {
   const [removalPreview, setRemovalPreview] = useState(null);
   const [removalBusy, setRemovalBusy] = useState(false);
   const [removalResult, setRemovalResult] = useState(null);
+  const removalRequestRef = useRef(0);
   const [scheduleAttempted, setScheduleAttempted] = useState(false);
   const [scheduleValidationLoading, setScheduleValidationLoading] = useState(false);
   const [scheduleValidationError, setScheduleValidationError] = useState('');
@@ -698,28 +714,39 @@ export default function TrainingPlanEditor() {
     setStatusMessage('Added four more weeks.');
   };
 
-  const previewStartKeyForFetch = hoverStart || scheduleStart;
   useEffect(() => {
-    if (!scheduleDialog) return;
-    const controller = new AbortController();
-    const start = mondayOf(new Date(scheduleMonth.getFullYear(), scheduleMonth.getMonth(), 1));
-    const end = shiftDate(start, 41);
-    const url = new URL(CALENDAR_API_URL, window.location.origin);
-    url.searchParams.set('action', 'calendar_range');
-    url.searchParams.set('oldest', dateKey(start));
-    url.searchParams.set('newest', dateKey(end));
+    if (!scheduleDialog) return undefined;
+    let active = true;
+    const start = dateKey(mondayOf(new Date(scheduleMonth.getFullYear(), scheduleMonth.getMonth(), 1)));
+    const end = dateKey(shiftDate(new Date(start + 'T12:00:00'), 41));
+    const sync = () => {
+      if (!active) return;
+      setCalendarEvents(activityFeedCache.getRecords(start, end)
+        .filter((record) => record.planned)
+        .map((record) => ({
+          ...record.planned,
+          id: record.eventId ?? record.planned.id,
+          category: 'WORKOUT',
+          name: record.planned.name || record.name || 'Workout',
+          start_date_local: record.planned.start_date_local || record.date,
+          workout_doc: record.planned.workout_doc ?? null,
+          canonicalKey: record.key,
+        })));
+      if (!activityFeedCache.getCoverage().some(([a, b]) => a <= start && b >= end)) {
+        setCalendarError('Calendar feed is incomplete. Scheduling validation is unavailable until it loads.');
+      } else {
+        setCalendarError('');
+      }
+    };
+    const unsubscribe = activityFeedCache.subscribe(sync);
     setCalendarLoading(true);
     setCalendarError('');
-    fetch(url, { signal: controller.signal })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok || !Array.isArray(data.events)) throw new Error(data.error || 'Unable to load calendar events.');
-        return data.events;
-      })
-      .then((events) => setCalendarEvents(events))
-      .catch((error) => { if (error.name !== 'AbortError') { setCalendarEvents([]); setCalendarError(error.message); } })
-      .finally(() => { if (!controller.signal.aborted) setCalendarLoading(false); });
-    return () => controller.abort();
+    sync();
+    activityFeedCache.ensure(start, end).then(() => {
+      if (active) sync();
+    }).catch((error) => { if (active) setCalendarError(error.message); })
+      .finally(() => { if (active) setCalendarLoading(false); });
+    return () => { active = false; unsubscribe(); };
   }, [scheduleDialog, scheduleMonth]);
 
   const openScheduleDialog = () => {
@@ -735,25 +762,52 @@ export default function TrainingPlanEditor() {
     setScheduleMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     setScheduleDialog(true);
   };
-  const validateSchedulePreview = async () => {
-    if (!scheduleStart || scheduleValidationLoading) return;
+  // Selecting a week triggers a dry-run automatically; only the latest selection may apply.
+  useEffect(() => {
+    if (!scheduleDialog || !scheduleStart || calendarLoading || calendarError || scheduleResult) return undefined;
+    const requestId = ++scheduleValidationRequestRef.current;
+    const controller = new AbortController();
     setScheduleValidation(null);
     setScheduleValidationError('');
     setScheduleValidationLoading(true);
-    try {
-      const response = await fetch(SCHEDULE_PREVIEW_API_URL, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'preview', plan_id: plan.id, start_date: scheduleStart }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Unable to validate schedule.');
-      setScheduleValidation(result);
-    } catch (error) { setScheduleValidationError(error.message); }
-    finally { setScheduleValidationLoading(false); }
-  };
+    (async () => {
+      try {
+        const response = await fetch(SCHEDULE_PREVIEW_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({ action: 'preview', plan_id: plan.id, start_date: scheduleStart }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Unable to validate schedule.');
+        if (scheduleValidationRequestRef.current === requestId) setScheduleValidation(result);
+      } catch (error) {
+        if (error.name !== 'AbortError' && scheduleValidationRequestRef.current === requestId) {
+          setScheduleValidationError(error.message || 'Unable to validate schedule.');
+        }
+      } finally {
+        if (scheduleValidationRequestRef.current === requestId) setScheduleValidationLoading(false);
+      }
+    })();
+    return () => {
+      controller.abort();
+      scheduleValidationRequestRef.current += 1;
+    };
+  }, [scheduleDialog, scheduleStart, calendarLoading, calendarError, plan.id, scheduleResult]);
+
+  // Keep the completed result visible briefly before returning to the editor.
+  useEffect(() => {
+    if (!scheduleDialog || !scheduleResult) return undefined;
+    const timeout = window.setTimeout(() => {
+      const startLabel = new Date(scheduleStart + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      setStatusMessage(`Training plan ${plan.name} has been scheduled starting the week of ${startLabel}.`);
+      setScheduleDialog(false);
+    }, 1000);
+    return () => window.clearTimeout(timeout);
+  }, [scheduleDialog, scheduleResult, scheduleStart, plan.name]);
+
   const submitSchedule = async () => {
-    if (!scheduleValidation || !scheduleStart || !auth.authorized || scheduleSubmitting) return;
-    if (!window.confirm(`Schedule ${scheduleValidation.workout_count} workouts from ${plan.name} starting ${scheduleStart}? Existing workouts will remain.`)) return;
+    if (!scheduleValidation || !scheduleStart || !auth.authorized || scheduleSubmitting || scheduleValidationLoading || calendarLoading || calendarError || scheduleValidation.workout_count <= 0 || scheduleValidation.workout_count + (scheduleValidation.skipped_count || 0) !== planWorkoutCount) return;
     setScheduleSubmitting(true);
     setScheduleAttempted(true);
     setScheduleValidationError('');
@@ -761,9 +815,10 @@ export default function TrainingPlanEditor() {
       const response = await fetch('/api/schedule-write', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'schedule', plan_id: plan.id, start_date: scheduleStart, confirm: true }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Scheduling failed. Check Intervals.icu before retrying.');
+      refreshScheduledRange(scheduleStart, plan.weeks.length);
       setScheduleResult(result);
       setScheduleValidation(null);
-      setCalendarEvents((old) => [...old, ...(result.created_events || [])]);
+
     } catch (error) { setScheduleValidationError(error.message + ' Check Intervals.icu before retrying.'); }
     finally { setScheduleSubmitting(false); }
   };
@@ -778,48 +833,56 @@ export default function TrainingPlanEditor() {
       const response = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=list_scheduled');
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Could not load scheduled plans');
-      setScheduledPlans(data.instances || []);
+      setScheduledPlans(sortScheduledPlans(data.instances || []));
     } catch (error) { setScheduledPlansError(error.message); }
     finally { setScheduledPlansLoading(false); }
   };
   const showScheduledDetail = async (id) => {
+    const requestId = ++removalRequestRef.current;
     setScheduledPlansLoading(true);
     setScheduledPlansError('');
+    setScheduledDetail(null);
     setRemovalPreview(null);
     setRemovalResult(null);
     try {
       const response = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=scheduled_detail&instance_id=' + encodeURIComponent(id));
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Could not load scheduled workouts');
-      setScheduledDetail(data);
-    } catch (error) { setScheduledPlansError(error.message); }
-    finally { setScheduledPlansLoading(false); }
-  };
-  const previewScheduledRemoval = async () => {
-    if (!scheduledDetail) return;
-    setRemovalBusy(true); setScheduledPlansError(''); setRemovalPreview(null);
-    try {
-      const response = await fetch(SCHEDULE_PREVIEW_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'removal_preview', instance_id: scheduledDetail.instance.instance_id }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Removal preview failed');
-      setRemovalPreview(data);
-    } catch (error) { setScheduledPlansError(error.message); }
-    finally { setRemovalBusy(false); }
+      const detail = await response.json();
+      if (!response.ok) throw new Error(detail.error || 'Could not load scheduled workouts');
+      if (requestId !== removalRequestRef.current) return;
+      setScheduledDetail(detail);
+      if (detail.instance.status === 'removed') return;
+      const previewResponse = await fetch(SCHEDULE_PREVIEW_API_URL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'removal_preview', instance_id: id }),
+      });
+      const preview = await previewResponse.json();
+      if (!previewResponse.ok) throw new Error(preview.error || 'Removal preview failed');
+      if (requestId === removalRequestRef.current) setRemovalPreview(preview);
+    } catch (error) {
+      if (requestId === removalRequestRef.current) setScheduledPlansError(error.message);
+    } finally {
+      if (requestId === removalRequestRef.current) setScheduledPlansLoading(false);
+    }
   };
   const removeScheduledInstance = async () => {
-    if (!removalPreview || !scheduledDetail || !auth.authorized) return;
+    if (!removalPreview || !scheduledDetail || !auth.authorized || removalBusy || removalPreview.ready_count <= 0 || removalPreview.checks.some((item) => item.check === 'identity_mismatch')) return;
     const id = scheduledDetail.instance.instance_id;
-    if (!window.confirm('Remove ONLY the tracked calendar workouts for this scheduled instance? This cannot be undone.')) return;
     setRemovalBusy(true); setScheduledPlansError('');
     try {
       const response = await fetch('/api/schedule-write', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'remove_scheduled', instance_id: id, confirm: true }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Removal failed');
+      const removedInstance = scheduledDetail.instance;
+      if (removedInstance.start_date && removedInstance.end_date) {
+        activityFeedCache.invalidate(removedInstance.start_date, removedInstance.end_date);
+        void activityFeedCache.ensure(removedInstance.start_date, removedInstance.end_date).catch((error) => console.error('Scheduled plan removal feed refresh:', error));
+      }
       setRemovalPreview(null);
-      await showScheduledDetail(id);
       setRemovalResult(data);
+      setScheduledDetail(null);
+      setStatusMessage(`${removedInstance.plan_name} starting week of ${new Date(removedInstance.start_date + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} has been removed from the calendar.`);
       const listing = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=list_scheduled');
-      if (listing.ok) setScheduledPlans((await listing.json()).instances || []);
+      if (listing.ok) setScheduledPlans(sortScheduledPlans((await listing.json()).instances || []));
     } catch (error) { setScheduledPlansError(error.message + '. Check Intervals.icu before retrying.'); }
     finally { setRemovalBusy(false); }
   };
@@ -906,35 +969,32 @@ export default function TrainingPlanEditor() {
       )}
 
       {scheduledPlansDialog && (
-        <div className="tpe-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setScheduledPlansDialog(false); }}>
+        <div className="tpe-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !removalBusy) setScheduledPlansDialog(false); }}>
           <section className="tpe-open-dialog tpe-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="tpe-scheduled-plans-title">
-            <h2 id="tpe-scheduled-plans-title">Scheduled Plans</h2>
-            <p>Recorded scheduling instances from Val Town SQLite. Only recorded calendar event IDs can be removed; original plans are never changed.</p>
+            <h2 id="tpe-scheduled-plans-title">Active Plans</h2>
+            <p>Select a training plan to remove its tracked calendar events. The original saved plan is not changed.</p>
             {scheduledPlansError && <div role="alert" className="tpe-error">{scheduledPlansError}</div>}
-            {scheduledPlansLoading && <p>Loading scheduled plans…</p>}
-            {!scheduledPlansLoading && !scheduledPlans.length && <p>No tracked scheduled plans yet. Scheduling completed before 4F-6A is not automatically imported.</p>}
+            {scheduledPlansLoading && <p>Checking active plans…</p>}
+            {!scheduledPlansLoading && !scheduledPlans.length && <p>No active training plans.</p>}
             <div className="tpe-plan-picker">
               {scheduledPlans.map((item) => <button key={item.instance_id} type="button" onClick={() => showScheduledDetail(item.instance_id)}>
                 <strong>{item.plan_name}</strong>{item.current_plan_name && item.current_plan_name !== item.plan_name ? ' (current: ' + item.current_plan_name + ')' : ''} — {item.start_date} to {item.end_date} · {item.returned_count - (item.note_count || 0)}/{item.requested_count - (item.note_count || 0)} workouts · {item.status}
               </button>)}
             </div>
             {scheduledDetail && <div className="tpe-schedule-summary">
-              <h3>Scheduled workouts — {scheduledDetail.instance.plan_name}</h3>
-              <p>Instance: {scheduledDetail.instance.instance_id}</p>
-              {scheduledDetail.instance.current_plan_name && scheduledDetail.instance.current_plan_name !== scheduledDetail.instance.plan_name && <p>Current plan name: {scheduledDetail.instance.current_plan_name}</p>}
-              <p>{scheduledDetail.events.filter((event) => event.event_category !== "NOTE").length} tracked workout IDs{scheduledDetail.events.some((event) => event.event_category === "NOTE") ? " + plan start note" : ""}</p>
-              <div className="tpe-schedule-validation-list">{scheduledDetail.events.map((event) => <div key={event.event_id}>{event.scheduled_date}: {previewWorkoutName(event.workout_name)} · {event.event_category === "NOTE" ? "Plan start note" : "Workout"} · Intervals.icu event ID {event.event_id} · {event.removal_status}</div>)}</div>
-              {scheduledDetail.instance.status !== 'removed' && <div className="tpe-schedule-notice">
-                <button type="button" disabled={removalBusy} onClick={previewScheduledRemoval}>Check tracked workouts for removal (no writes)</button>
-                {removalPreview && <div>
-                  <p>{removalPreview.ready_count} calendar events verified for removal. {removalPreview.checks.filter((item) => item.check === 'missing').length} already missing; {removalPreview.checks.filter((item) => item.check === 'identity_mismatch').length} identity mismatches.</p>
-                  <div className="tpe-schedule-validation-list">{removalPreview.checks.map((item) => <div key={item.event_id}>{item.scheduled_date}: {item.workout_name} — {item.check}</div>)}</div>
-                  {removalPreview.ready_count > 0 && !removalPreview.checks.some((item) => item.check === 'identity_mismatch') && <>
-                    {!auth.authorized && <a href="/api/auth/login">Sign in with GitHub to remove scheduled plans</a>}
-                    <button type="button" disabled={removalBusy || !auth.authorized} onClick={removeScheduledInstance}>{removalBusy ? 'Removing…' : 'Confirm removal of this scheduled instance'}</button>
-                  </>}
-                </div>}
-                {removalResult && <p role="status">Removal completed: {removalResult.results.filter((item) => item.result === 'removed').length} deleted; {removalResult.remaining_count} remaining. Check the calendar for confirmation.</p>}
+              <h3>Selected Training Plan - {scheduledDetail.instance.plan_name} start on {new Date(scheduledDetail.instance.start_date + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</h3>
+              {scheduledPlansLoading && <p role="status">Checking calendar events for removal…</p>}
+              {removalPreview && <div className="tpe-schedule-notice">
+                <p>Original plan: {scheduledDetail.events.length} events · Still on calendar: {removalPreview.ready_count} · Already removed: {removalPreview.checks.filter((item) => item.check === 'missing').length}</p>
+                {removalPreview.checks.some((item) => item.check === 'identity_mismatch') && <p role="alert">Some events do not match the tracked plan. Removal is disabled to protect unrelated workouts.</p>}
+                {!auth.authorized && <a href="/api/auth/login">Sign in with GitHub to remove scheduled plans</a>}
+                <button type="button" disabled={removalBusy || !auth.authorized || scheduledPlansLoading || removalPreview.ready_count <= 0 || removalPreview.checks.some((item) => item.check === 'identity_mismatch')} onClick={removeScheduledInstance}>{removalBusy ? 'Removing…' : 'Confirm Removal of Selected Training Plan'}</button>
+                <details style={{ marginTop: 12 }}><summary>Show calendar events ({scheduledDetail.events.length})</summary>
+                  <div className="tpe-schedule-validation-list">{scheduledDetail.events.map((event) => {
+                    const check = removalPreview.checks.find((item) => String(item.event_id) === String(event.event_id));
+                    return <div key={event.event_id}>{event.scheduled_date}: {previewWorkoutName(event.workout_name)} · {event.event_category === 'NOTE' ? 'Plan start note' : 'Workout'} · {check?.check === 'missing' ? 'Removed' : check?.check === 'identity_mismatch' ? 'Changed' : 'On calendar'}</div>;
+                  })}</div>
+                </details>
               </div>}
             </div>}
             <div className="tpe-dialog-actions"><button type="button" onClick={() => setScheduledPlansDialog(false)}>Close</button></div>
@@ -948,7 +1008,7 @@ export default function TrainingPlanEditor() {
             <h2 id="tpe-schedule-title">Schedule Training Plan</h2>
             <p><strong>{plan.name}</strong> · {scheduleWeeks} weeks · {planWorkoutCount} workouts</p>
             <div className="tpe-schedule-navigation">
-              <button type="button" aria-label="Previous month" onClick={() => setScheduleMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
+              <button type="button" aria-label="Previous month" disabled={scheduleMonth.getFullYear() * 12 + scheduleMonth.getMonth() <= todayStart.getFullYear() * 12 + todayStart.getMonth()} onClick={() => setScheduleMonth((month) => { const previous = new Date(month.getFullYear(), month.getMonth() - 1, 1); const current = new Date(new Date().getFullYear(), new Date().getMonth(), 1); return previous < current ? current : previous; })}>‹</button>
               <strong>{scheduleMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</strong>
               <button type="button" aria-label="Next month" onClick={() => setScheduleMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
             </div>
@@ -958,13 +1018,13 @@ export default function TrainingPlanEditor() {
                 const key = dateKey(date);
                 const weekMonday = mondayOf(date);
                 const mondayKey = dateKey(weekMonday);
-                const valid = weekMonday > todayStart;
+                const valid = weekMonday.getTime() >= mondayOf(todayStart).getTime();
                 const inPreview = previewStart && date >= previewStart && date <= previewEnd;
                 const dayOffset = previewStart ? Math.round((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(previewStart.getFullYear(), previewStart.getMonth(), previewStart.getDate())) / 86400000) : -1;
                 const week = dayOffset >= 0 ? plan.weeks[Math.floor(dayOffset / 7)] : null;
                 const entries = week?.days[dayOffset % 7]?.workouts || [];
                 const existing = calendarEvents.filter((event) => calendarDateKey(event) === key);
-                const overlaps = inPreview && entries.length > 0 && existing.some((event) => event.category === 'WORKOUT' || event.workout_doc);
+                const overlaps = inPreview && date >= todayStart && entries.length > 0 && existing.some((event) => event.category === 'WORKOUT');
                 return (
                   <button
                     type="button"
@@ -980,15 +1040,15 @@ export default function TrainingPlanEditor() {
                     onClick={() => { setScheduleStart(mondayKey); setScheduleValidation(null); setScheduleResult(null); setScheduleValidationError(''); }}
                   >
                     <span className="tpe-schedule-date-heading"><span className="tpe-schedule-day-number">{date.getDate()}</span>{inPreview && dayOffset === 0 && <small className="tpe-schedule-start">Start</small>}{inPreview && dayOffset === scheduleDays - 1 && <small className="tpe-schedule-end">End</small>}</span>
-                    {inPreview && entries.slice(0, 2).map((entry, index) => (
+                    {inPreview && date >= todayStart && entries.slice(0, 2).map((entry, index) => (
                       <span key={entry.entryId || index} className="tpe-schedule-mini-workout tpe-schedule-plan-workout" title={previewWorkoutName(entry.workout.name || entry.workout.title)}>
                         <span className="tpe-schedule-workout-name">{previewWorkoutName(entry.workout.name || entry.workout.title)}</span>
                         <WorkoutChart workout={entry.workout} chartHeight="17px" showWorkoutName={false} showThresholdPace={false} showYAxis={false} showYAxisLabels={false} showLegend={false} minimalXAxis={true} showHoverDetails={false} />
                       </span>
                     ))}
-                    {inPreview && entries.length > 2 && <small>+{entries.length - 2}</small>}
-                    {existing.filter((event) => event.category === 'WORKOUT' || event.workout_doc).map((event, index) => (
-                      <span key={event.id || `existing-${index}`} className="tpe-schedule-existing-workout" title={previewWorkoutName(event.name)}>
+                    {inPreview && date >= todayStart && entries.length > 2 && <small>+{entries.length - 2}</small>}
+                    {existing.filter((event) => event.category === 'WORKOUT').map((event, index) => (
+                      <span key={event.canonicalKey || event.id || `existing-${index}`} className="tpe-schedule-existing-workout" title={previewWorkoutName(event.name)}>
                         <span className="tpe-schedule-workout-name">{previewWorkoutName(event.name)}</span>
                         {event.workout_doc?.steps?.length > 0 && <WorkoutChart workout={event} chartHeight="17px" showWorkoutName={false} showThresholdPace={false} showYAxis={false} showYAxisLabels={false} showLegend={false} minimalXAxis={true} showHoverDetails={false} />}
                       </span>
@@ -998,30 +1058,28 @@ export default function TrainingPlanEditor() {
               })}
             </div>
             <div className="tpe-schedule-summary">
-              {previewStart ? `Preview: ${formatPlanDate(previewStart)} – ${formatPlanDate(previewEnd)}` : 'Hover over any day in a future week to preview the plan, starting Monday.'}
+              {previewStart ? `Preview: ${formatPlanDate(previewStart)} – ${formatPlanDate(previewEnd)}` : 'Hover over any day in the current or a future week to preview the plan, starting Monday.'}
               {selectedStart && <div>Selected dates: <strong>{formatPlanDate(selectedStart)} – {formatPlanDate(shiftDate(selectedStart, scheduleDays - 1))}</strong></div>}
               {calendarLoading && <div className="tpe-schedule-notice">Checking existing Intervals.icu calendar events…</div>}
               {calendarError && <div className="tpe-schedule-notice" role="alert">Calendar check failed: {calendarError}. Scheduling preview cannot be confirmed.</div>}
               {!calendarLoading && !calendarError && previewStart && <div className="tpe-schedule-notice">Existing calendar events: {calendarEvents.length}. Days with both existing and proposed workouts have a red border. Existing workouts are never overwritten.</div>}
-              <div className="tpe-schedule-notice">
-                <button type="button" onClick={validateSchedulePreview} disabled={!scheduleStart || scheduleValidationLoading}>
-                  {scheduleValidationLoading ? 'Validating…' : 'Validate with Intervals.icu (no writes)'}
-                </button>
-              </div>
+              {scheduleValidationLoading && <div className="tpe-schedule-notice" role="status">Validating selected week with Intervals.icu…</div>}
               {scheduleValidationError && <div className="tpe-schedule-notice" role="alert"><strong>{scheduleAttempted ? "Scheduling failed or could not be confirmed" : "Validation failed"}:</strong> {scheduleValidationError}</div>}
               {scheduleValidation && <div className="tpe-schedule-notice" role="status">
-                <strong>Intervals.icu dry-run results:</strong> {scheduleValidation.workout_count} workouts, {scheduleValidation.start_date} to {scheduleValidation.end_date}; {scheduleValidation.overlap_dates?.length || 0} overlap dates.
-                {scheduleValidation.workout_count !== planWorkoutCount && <div role="alert">Warning: saved plan has {scheduleValidation.workout_count} workouts; editor shows {planWorkoutCount}.</div>}
+                <strong>Ready to schedule:</strong> {scheduleValidation.workout_count} workouts, {scheduleValidation.start_date} to {scheduleValidation.end_date}.
+                {scheduleValidation.skipped_count > 0 && <div>{scheduleValidation.skipped_count} workout(s) before today will not be scheduled. Remaining workouts keep their original dates.{scheduleValidation.skipped_events?.length > 0 && <details><summary>Inspect skipped workouts</summary><div className="tpe-schedule-validation-list">{scheduleValidation.skipped_events.map((event, index) => <div key={`${event.date}-${index}`}>{event.date}: {previewWorkoutName(event.name)}</div>)}</div></details>}</div>}
+                {scheduleValidation.workout_count === 0 && <div role="alert">No workouts remain to schedule.</div>}
+                {scheduleValidation.workout_count + (scheduleValidation.skipped_count || 0) !== planWorkoutCount && <div role="alert">Warning: saved plan has {scheduleValidation.workout_count + (scheduleValidation.skipped_count || 0)} workouts; editor shows {planWorkoutCount}.</div>}
                 {scheduleValidation.events?.length > 0 && <details><summary>Inspect proposed workouts and dates</summary><div className="tpe-schedule-validation-list">{scheduleValidation.events.map((event, index) => <div key={event.source_workout_id || index}>{event.date}: {previewWorkoutName(event.name)}</div>)}</div></details>}
               </div>}
               {scheduleValidation && !scheduleResult && <div className="tpe-schedule-notice">
                 {!auth.authorized && <a href="/api/auth/login">Sign in with GitHub to schedule workouts</a>}
                 {auth.authorized && <span>Signed in as {auth.login} (authorized owner)</span>}
-                <button type="button" disabled={!auth.authorized || scheduleSubmitting} onClick={submitSchedule}>{scheduleSubmitting ? 'Scheduling…' : 'Confirm and schedule workouts'}</button>
+                <button type="button" disabled={!auth.authorized || scheduleSubmitting || scheduleValidationLoading || calendarLoading || Boolean(calendarError) || !scheduleValidation.workout_count || scheduleValidation.workout_count + (scheduleValidation.skipped_count || 0) !== planWorkoutCount} onClick={submitSchedule}>{scheduleSubmitting ? 'Scheduling…' : 'Schedule Plan'}</button>
               </div>}
               {scheduleSubmitting && <div className="tpe-schedule-notice" role="status"><strong>Scheduling in progress…</strong> Keep this window open. Do not submit twice.</div>}
               {scheduleResult && <div className="tpe-schedule-notice" role="status"><strong>{scheduleResult.verified_count ? 'Scheduling request completed' : 'Scheduling needs verification'}:</strong> {scheduleResult.created_count} of {scheduleResult.requested_count} workouts returned by Intervals.icu. Instance ID: {scheduleResult.instance_id}. {scheduleResult.tracking_saved ? 'Saved to Scheduled Plans. ' : 'Tracking was NOT saved; keep the instance ID and event IDs for recovery. '}{scheduleResult.warning || 'Check the scheduled dates in Intervals.icu to confirm the workouts appear correctly.'}</div>}
-              <div className="tpe-schedule-notice">Existing workouts are preserved. Scheduling requires a separate Val Town write token.</div>
+              <div className="tpe-schedule-notice">Existing workouts are preserved, including workouts on overlapping dates.</div>
             </div>
             <div className="tpe-dialog-actions">
               <button type="button" onClick={() => setScheduleDialog(false)} disabled={scheduleSubmitting}>{scheduleResult ? 'Close' : 'Close without scheduling'}</button>

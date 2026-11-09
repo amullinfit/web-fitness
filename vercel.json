@@ -31,6 +31,10 @@
     {
       "source": "/api/val-historical",
       "destination": "https://amullinfit--60610b3ea60611f1bbff1607ee4eb77e.web.val.run"
+    },
+    {
+      "source": "/api/val-activity-feed",
+      "destination": "https://amullinfit--c5d015b0ccb611f1bb0a1607ee4eb77e.web.val.run"
     }
   ]
 }
