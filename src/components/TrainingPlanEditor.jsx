@@ -729,15 +729,18 @@ export default function TrainingPlanEditor() {
           workout_doc: record.planned.workout_doc ?? null,
           canonicalKey: record.key,
         })));
+      if (!activityFeedCache.getCoverage().some(([a, b]) => a <= start && b >= end)) {
+        setCalendarError('Calendar feed is incomplete. Scheduling validation is unavailable until it loads.');
+      } else {
+        setCalendarError('');
+      }
     };
     const unsubscribe = activityFeedCache.subscribe(sync);
     setCalendarLoading(true);
     setCalendarError('');
     sync();
     activityFeedCache.ensure(start, end).then(() => {
-      if (active && !activityFeedCache.getCoverage().some(([a, b]) => a <= start && b >= end)) {
-        setCalendarError('Calendar feed incomplete; verify conflicts before scheduling.');
-      }
+      if (active) sync();
     }).catch((error) => { if (active) setCalendarError(error.message); })
       .finally(() => { if (active) setCalendarLoading(false); });
     return () => { active = false; unsubscribe(); };
@@ -773,7 +776,7 @@ export default function TrainingPlanEditor() {
     finally { setScheduleValidationLoading(false); }
   };
   const submitSchedule = async () => {
-    if (!scheduleValidation || !scheduleStart || !auth.authorized || scheduleSubmitting) return;
+    if (!scheduleValidation || !scheduleStart || !auth.authorized || scheduleSubmitting || calendarLoading || calendarError) return;
     if (!window.confirm(`Schedule ${scheduleValidation.workout_count} workouts from ${plan.name} starting ${scheduleStart}? Existing workouts will remain.`)) return;
     setScheduleSubmitting(true);
     setScheduleAttempted(true);
@@ -785,7 +788,6 @@ export default function TrainingPlanEditor() {
       refreshScheduledRange(scheduleStart, plan.weeks.length);
       setScheduleResult(result);
       setScheduleValidation(null);
-      setCalendarEvents((old) => [...old, ...(result.created_events || [])]);
     } catch (error) { setScheduleValidationError(error.message + ' Check Intervals.icu before retrying.'); }
     finally { setScheduleSubmitting(false); }
   };
@@ -1031,7 +1033,7 @@ export default function TrainingPlanEditor() {
               {calendarError && <div className="tpe-schedule-notice" role="alert">Calendar check failed: {calendarError}. Scheduling preview cannot be confirmed.</div>}
               {!calendarLoading && !calendarError && previewStart && <div className="tpe-schedule-notice">Existing calendar events: {calendarEvents.length}. Days with both existing and proposed workouts have a red border. Existing workouts are never overwritten.</div>}
               <div className="tpe-schedule-notice">
-                <button type="button" onClick={validateSchedulePreview} disabled={!scheduleStart || scheduleValidationLoading}>
+                <button type="button" onClick={validateSchedulePreview} disabled={!scheduleStart || scheduleValidationLoading || calendarLoading || Boolean(calendarError)}>
                   {scheduleValidationLoading ? 'Validating…' : 'Validate with Intervals.icu (no writes)'}
                 </button>
               </div>
