@@ -982,7 +982,7 @@ export default function TrainingPlanEditor() {
               </button>)}
             </div>
             {scheduledDetail && <div className="tpe-schedule-summary">
-              <h3>Selected Training Plan — {scheduledDetail.instance.plan_name}</h3>
+              <h3>Selected Training Plan - {scheduledDetail.instance.plan_name} start on {new Date(scheduledDetail.instance.start_date + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</h3>
               {scheduledPlansLoading && <p role="status">Checking calendar events for removal…</p>}
               {removalPreview && <div className="tpe-schedule-notice">
                 <p>Original plan: {scheduledDetail.events.length} events · Still on calendar: {removalPreview.ready_count} · Already removed: {removalPreview.checks.filter((item) => item.check === 'missing').length}</p>
