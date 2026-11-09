@@ -260,6 +260,7 @@ export default function TrainingPlanEditor() {
   const [removalPreview, setRemovalPreview] = useState(null);
   const [removalBusy, setRemovalBusy] = useState(false);
   const [removalResult, setRemovalResult] = useState(null);
+  const removalRequestRef = useRef(0);
   const [scheduleAttempted, setScheduleAttempted] = useState(false);
   const [scheduleValidationLoading, setScheduleValidationLoading] = useState(false);
   const [scheduleValidationError, setScheduleValidationError] = useState('');
@@ -836,33 +837,44 @@ export default function TrainingPlanEditor() {
     finally { setScheduledPlansLoading(false); }
   };
   const showScheduledDetail = async (id) => {
+    const requestId = ++removalRequestRef.current;
     setScheduledPlansLoading(true);
     setScheduledPlansError('');
+    setScheduledDetail(null);
     setRemovalPreview(null);
     setRemovalResult(null);
     try {
       const response = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=scheduled_detail&instance_id=' + encodeURIComponent(id));
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Could not load scheduled workouts');
-      setScheduledDetail(data);
-    } catch (error) { setScheduledPlansError(error.message); }
-    finally { setScheduledPlansLoading(false); }
+      const detail = await response.json();
+      if (!response.ok) throw new Error(detail.error || 'Could not load scheduled workouts');
+      if (requestId !== removalRequestRef.current) return;
+      setScheduledDetail(detail);
+      if (detail.instance.status === 'removed') return;
+      const previewResponse = await fetch(SCHEDULE_PREVIEW_API_URL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'removal_preview', instance_id: id }),
+      });
+      const preview = await previewResponse.json();
+      if (!previewResponse.ok) throw new Error(preview.error || 'Removal preview failed');
+      if (requestId === removalRequestRef.current) setRemovalPreview(preview);
+    } catch (error) {
+      if (requestId === removalRequestRef.current) setScheduledPlansError(error.message);
+    } finally {
+      if (requestId === removalRequestRef.current) setScheduledPlansLoading(false);
+    }
   };
-  const previewScheduledRemoval = async () => {
-    if (!scheduledDetail) return;
-    setRemovalBusy(true); setScheduledPlansError(''); setRemovalPreview(null);
-    try {
-      const response = await fetch(SCHEDULE_PREVIEW_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'removal_preview', instance_id: scheduledDetail.instance.instance_id }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Removal preview failed');
-      setRemovalPreview(data);
-    } catch (error) { setScheduledPlansError(error.message); }
-    finally { setRemovalBusy(false); }
-  };
+  useEffect(() => {
+    if (!scheduledPlansDialog || !removalResult) return undefined;
+    const timeout = window.setTimeout(() => {
+      setStatusMessage(`Scheduled training plan ${scheduledDetail?.instance?.plan_name || ''} has been removed.`);
+      setScheduledPlansDialog(false);
+    }, 1000);
+    return () => window.clearTimeout(timeout);
+  }, [scheduledPlansDialog, removalResult, scheduledDetail]);
+
   const removeScheduledInstance = async () => {
-    if (!removalPreview || !scheduledDetail || !auth.authorized) return;
+    if (!removalPreview || !scheduledDetail || !auth.authorized || removalBusy || removalPreview.ready_count <= 0 || removalPreview.checks.some((item) => item.check === 'identity_mismatch')) return;
     const id = scheduledDetail.instance.instance_id;
-    if (!window.confirm('Remove ONLY the tracked calendar workouts for this scheduled instance? This cannot be undone.')) return;
     setRemovalBusy(true); setScheduledPlansError('');
     try {
       const response = await fetch('/api/schedule-write', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'remove_scheduled', instance_id: id, confirm: true }) });
@@ -874,7 +886,6 @@ export default function TrainingPlanEditor() {
         void activityFeedCache.ensure(removedInstance.start_date, removedInstance.end_date).catch((error) => console.error('Scheduled plan removal feed refresh:', error));
       }
       setRemovalPreview(null);
-      await showScheduledDetail(id);
       setRemovalResult(data);
       const listing = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=list_scheduled');
       if (listing.ok) setScheduledPlans((await listing.json()).instances || []);
@@ -964,7 +975,7 @@ export default function TrainingPlanEditor() {
       )}
 
       {scheduledPlansDialog && (
-        <div className="tpe-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setScheduledPlansDialog(false); }}>
+        <div className="tpe-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !removalBusy) setScheduledPlansDialog(false); }}>
           <section className="tpe-open-dialog tpe-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="tpe-scheduled-plans-title">
             <h2 id="tpe-scheduled-plans-title">Scheduled Plans</h2>
             <p>Recorded scheduling instances from Val Town SQLite. Only recorded calendar event IDs can be removed; original plans are never changed.</p>
@@ -983,7 +994,6 @@ export default function TrainingPlanEditor() {
               <p>{scheduledDetail.events.filter((event) => event.event_category !== "NOTE").length} tracked workout IDs{scheduledDetail.events.some((event) => event.event_category === "NOTE") ? " + plan start note" : ""}</p>
               <div className="tpe-schedule-validation-list">{scheduledDetail.events.map((event) => <div key={event.event_id}>{event.scheduled_date}: {previewWorkoutName(event.workout_name)} · {event.event_category === "NOTE" ? "Plan start note" : "Workout"} · Intervals.icu event ID {event.event_id} · {event.removal_status}</div>)}</div>
               {scheduledDetail.instance.status !== 'removed' && <div className="tpe-schedule-notice">
-                <button type="button" disabled={removalBusy} onClick={previewScheduledRemoval}>Check tracked workouts for removal (no writes)</button>
                 {removalPreview && <div>
                   <p>{removalPreview.ready_count} calendar events verified for removal. {removalPreview.checks.filter((item) => item.check === 'missing').length} already missing; {removalPreview.checks.filter((item) => item.check === 'identity_mismatch').length} identity mismatches.</p>
                   <div className="tpe-schedule-validation-list">{removalPreview.checks.map((item) => <div key={item.event_id}>{item.scheduled_date}: {item.workout_name} — {item.check}</div>)}</div>
