@@ -11,7 +11,7 @@ import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
 import { ReadOnlyProvider, useReadOnly } from './context/ReadOnlyContext.jsx';
 
 const DEFAULT_VIEW = 'monthly';
-const APP_TITLE = 'Web Fitness – 5E.2C';
+const APP_TITLE = 'Web Fitness – 5F.1';
 
 // Timestamped logger utility
 const originalLog = console.log;
