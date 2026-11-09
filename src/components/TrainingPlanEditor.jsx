@@ -988,7 +988,7 @@ export default function TrainingPlanEditor() {
                 {removalPreview.checks.some((item) => item.check === 'identity_mismatch') && <p role="alert">Some events do not match the tracked plan. Removal is disabled to protect unrelated workouts.</p>}
                 {!auth.authorized && <a href="/api/auth/login">Sign in with GitHub to remove scheduled plans</a>}
                 <button type="button" disabled={removalBusy || !auth.authorized || scheduledPlansLoading || removalPreview.ready_count <= 0 || removalPreview.checks.some((item) => item.check === 'identity_mismatch')} onClick={removeScheduledInstance}>{removalBusy ? 'Removing…' : 'Confirm Removal of Selected Training Plan'}</button>
-                <details><summary>Show calendar events ({scheduledDetail.events.length})</summary>
+                <details style={{ marginTop: 12 }}><summary>Show calendar events ({scheduledDetail.events.length})</summary>
                   <div className="tpe-schedule-validation-list">{scheduledDetail.events.map((event) => {
                     const check = removalPreview.checks.find((item) => String(item.event_id) === String(event.event_id));
                     return <div key={event.event_id}>{event.scheduled_date}: {previewWorkoutName(event.workout_name)} · {event.event_category === 'NOTE' ? 'Plan start note' : 'Workout'} · {check?.check === 'missing' ? 'Removed' : check?.check === 'identity_mismatch' ? 'Changed' : 'On calendar'}</div>;
