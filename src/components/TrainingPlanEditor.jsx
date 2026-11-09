@@ -793,6 +793,17 @@ export default function TrainingPlanEditor() {
     };
   }, [scheduleDialog, scheduleStart, calendarLoading, calendarError, plan.id, scheduleResult]);
 
+  // Keep the completed result visible briefly before returning to the editor.
+  useEffect(() => {
+    if (!scheduleDialog || !scheduleResult) return undefined;
+    const timeout = window.setTimeout(() => {
+      const startLabel = new Date(scheduleStart + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      setStatusMessage(`Training plan ${plan.name} has been scheduled starting the week of ${startLabel}.`);
+      setScheduleDialog(false);
+    }, 1000);
+    return () => window.clearTimeout(timeout);
+  }, [scheduleDialog, scheduleResult, scheduleStart, plan.name]);
+
   const submitSchedule = async () => {
     if (!scheduleValidation || !scheduleStart || !auth.authorized || scheduleSubmitting || calendarLoading || calendarError) return;
     setScheduleSubmitting(true);
@@ -805,8 +816,7 @@ export default function TrainingPlanEditor() {
       refreshScheduledRange(scheduleStart, plan.weeks.length);
       setScheduleResult(result);
       setScheduleValidation(null);
-      setStatusMessage(`Scheduling ${plan.name}: ${result.created_count} of ${result.requested_count} workouts returned by Intervals.icu.${result.warning ? ' ' + result.warning : ''}`);
-      setScheduleDialog(false);
+
     } catch (error) { setScheduleValidationError(error.message + ' Check Intervals.icu before retrying.'); }
     finally { setScheduleSubmitting(false); }
   };
