@@ -221,6 +221,7 @@ const shiftDate = (date, days) => {
 };
 const dateKey = (date) => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
 const formatPlanDate = (date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+const sortScheduledPlans = (instances) => [...instances].sort((a, b) => (a.start_date || '').localeCompare(b.start_date || '') || String(a.instance_id).localeCompare(String(b.instance_id)));
 
 export default function TrainingPlanEditor() {
   const { paces } = usePaces();
@@ -832,7 +833,7 @@ export default function TrainingPlanEditor() {
       const response = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=list_scheduled');
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Could not load scheduled plans');
-      setScheduledPlans(data.instances || []);
+      setScheduledPlans(sortScheduledPlans(data.instances || []));
     } catch (error) { setScheduledPlansError(error.message); }
     finally { setScheduledPlansLoading(false); }
   };
@@ -879,9 +880,9 @@ export default function TrainingPlanEditor() {
       setRemovalPreview(null);
       setRemovalResult(data);
       setScheduledDetail(null);
-      setStatusMessage(`Training plan ${removedInstance.plan_name} has been removed.`);
+      setStatusMessage(`${removedInstance.plan_name} starting week of ${new Date(removedInstance.start_date + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} has been removed from the calendar.`);
       const listing = await fetch(SCHEDULE_PREVIEW_API_URL + '?action=list_scheduled');
-      if (listing.ok) setScheduledPlans((await listing.json()).instances || []);
+      if (listing.ok) setScheduledPlans(sortScheduledPlans((await listing.json()).instances || []));
     } catch (error) { setScheduledPlansError(error.message + '. Check Intervals.icu before retrying.'); }
     finally { setRemovalBusy(false); }
   };
