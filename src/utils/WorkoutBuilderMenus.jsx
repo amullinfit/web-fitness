@@ -20,6 +20,8 @@ export function OptionsMenu({
   onDownloadZwo,
   onCancelEdits,
   onCloseWorkout,
+  onDeleteWorkout,
+  canDeleteWorkout = false,
 }) {
   const readOnly = useReadOnly();
   const [isOpen, setIsOpen] =
@@ -220,6 +222,17 @@ export function OptionsMenu({
               onClick={() => handleAction('Cancel Edits', onCancelEdits)}
             >
               ↩️ Cancel Edits
+            </button>
+          )}
+
+          {canDeleteWorkout && !readOnly && (
+            <button
+              type="button"
+              className="options-menu-item"
+              style={{ ...menuButtonStyle, color: '#dc3545' }}
+              onClick={() => handleAction('Delete Workout', onDeleteWorkout)}
+            >
+              🗑️ Delete Workout
             </button>
           )}
 
