@@ -12,6 +12,26 @@ const positive = (value) => {
 const firstPositive = (...values) => values.map(positive).find((n) => n !== null) ?? null;
 const milesFromMeters = (meters) => meters / 1609.344;
 const isDistanceMode = (step) => String(step?.stepMode || '').toLowerCase() === 'distance';
+const parsePaceSeconds = (value) => {
+  const numeric = positive(value);
+  if (numeric !== null) return numeric;
+  if (typeof value !== 'string') return null;
+  const match = value.trim().match(/^(\\d+):(\\d{2})(?:\\/mi)?$/i);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+};
+const speedMidpointPace = (fast, slow) => fast && slow ? 2 / (1 / fast + 1 / slow) : null;
+const zoneBounds = (value, paces) => {
+  const zones = paces?.preset_colors || [];
+  const zone = zones.find((item) => String(item.zone) === String(value));
+  if (!zone) {
+    const fallback = positive(paces?.pace_val_sec?.[Number(value) - 1]);
+    return fallback ? { fast: fallback, slow: fallback } : null;
+  }
+  const reference = parsePaceSeconds(zone.pace_val_sec);
+  const fast = parsePaceSeconds(zone.pace_fast) ?? reference;
+  const slow = parsePaceSeconds(zone.pace_slow) ?? reference;
+  return fast && slow ? { fast, slow } : null;
+};
 export const getRunningThreshold = (paces) => positive(paces?.run_pace_sec) ?? positive(paces?.threshold_pace_sec);
 
 export function estimateRunningPace(step, paces) {
@@ -19,24 +39,25 @@ export function estimateRunningPace(step, paces) {
   if (!pace || typeof pace !== 'object') return null;
   const units = String(pace.units || '').toLowerCase();
   const threshold = getRunningThreshold(paces);
+  if (units.includes('zone')) {
+    const values = [pace.start ?? pace.value, pace.end ?? pace.value];
+    const bounds = values.map((value) => zoneBounds(value, paces));
+    if (bounds.some((value) => !value)) return null;
+    const fast = Math.min(...bounds.map((value) => value.fast));
+    const slow = Math.max(...bounds.map((value) => value.slow));
+    return speedMidpointPace(fast, slow);
+  }
   const toSeconds = (value) => {
     const n = positive(value);
     if (n === null) return null;
     if (units.includes('sec')) return n;
     if (units.includes('min')) return n * 60;
     if (units.includes('%') || units.includes('pct')) return threshold ? threshold / (n / 100) : null;
-    if (units.includes('zone')) {
-      const zones = paces?.preset_colors || [];
-      const zone = zones.find((z) => String(z.zone) === String(value));
-      return positive(zone?.pace_val_sec) ?? positive(paces?.pace_val_sec?.[Number(value) - 1]);
-    }
     return null;
   };
   const a = toSeconds(pace.start ?? pace.value);
   const b = toSeconds(pace.end ?? pace.value);
-  if (!a || !b) return null;
-  // Midpoint of SPEED, not arithmetic midpoint of seconds/mile.
-  return 2 / (1 / a + 1 / b);
+  return speedMidpointPace(a, b);
 }
 
 export function estimateRunningStep(step, paces) {
