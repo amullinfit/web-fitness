@@ -11,6 +11,7 @@ const positive = (value) => {
 };
 const firstPositive = (...values) => values.map(positive).find((n) => n !== null) ?? null;
 const milesFromMeters = (meters) => meters / 1609.344;
+const isDistanceMode = (step) => String(step?.stepMode || '').toLowerCase() === 'distance';
 export const getRunningThreshold = (paces) => positive(paces?.run_pace_sec) ?? positive(paces?.threshold_pace_sec);
 
 export function estimateRunningPace(step, paces) {
@@ -52,7 +53,7 @@ export function estimateRunningStep(step, paces) {
     };
   }
   const paceSec = estimateRunningPace(step, paces);
-  const secondsInput = firstPositive(step.duration, step.duration_seconds, step.durationSec, step.elapsed_time);
+  const secondsInput = isDistanceMode(step) ? null : firstPositive(step.duration, step.duration_seconds, step.durationSec, step.elapsed_time);
   // Workout Builder's distance is miles unless the step explicitly declares meters.
   const distanceUnits = String(step.distanceUnits || step.distance_units || step.durationType || '').toLowerCase();
   const rawDistance = positive(step.distance);
