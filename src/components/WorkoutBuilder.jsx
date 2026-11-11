@@ -1229,7 +1229,7 @@ export default function WorkoutBuilder() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                Updated Live
+                JSON Viewer
               </label>
             )}
 
