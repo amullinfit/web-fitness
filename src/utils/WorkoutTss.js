@@ -1,7 +1,7 @@
 /**
  * Stage 6-TSS-1: one source for running workout estimates.
  * Planned TSS is derived from CURRENT threshold pace, never written to intervals.icu.
- * TSS = 100 * hours * (threshold speed / target speed)^2.
+ * TSS = 100 * hours * (target speed / threshold speed)^2.
  * Unavailable estimates are null, never zero. Totals remain null if any step lacks data.
  */
 const positive = (value) => {
