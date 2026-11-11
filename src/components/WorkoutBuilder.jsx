@@ -185,6 +185,8 @@ export default function WorkoutBuilder() {
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
 
   // ------------------------------------------------------------
@@ -911,11 +913,16 @@ export default function WorkoutBuilder() {
   // DELETE SAVED WORKOUT FROM LIBRARY
   // ============================================================
 
-  const handleDeleteWorkout = async () => {
+  const handleDeleteWorkout = () => {
+    if (readOnly || !workoutId || !/^\d+$/.test(String(workoutId))) return;
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDeleteWorkout = async () => {
     if (readOnly || !workoutId || !/^\d+$/.test(String(workoutId))) return;
     const idToDelete = workoutId;
     const nameToDelete = savedWorkouts.find((w) => String(w.id) === String(idToDelete))?.name || workoutTitle;
-    if (!window.confirm(`Delete workout "${nameToDelete}" from the workout library? This cannot be undone. Scheduled workouts and saved training plans are not targeted.`)) return;
+    setIsDeleting(true);
 
     try {
       const response = await fetch('/api/workout-builder-write', {
@@ -928,6 +935,7 @@ export default function WorkoutBuilder() {
       if (!response.ok || !result.success) {
         throw new Error(result.error || 'Delete failed');
       }
+      setIsDeleteModalOpen(false);
       handleCloseWorkout();
       setSavedWorkouts((prev) => prev.filter((w) => String(w.id) !== String(idToDelete)));
       try {
@@ -941,6 +949,8 @@ export default function WorkoutBuilder() {
     } catch (error) {
       console.error('[WorkoutBuilder] Delete workout failed:', error);
       showToast(`Unable to delete workout: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1403,6 +1413,27 @@ export default function WorkoutBuilder() {
             }
           }}
         />
+      )}
+
+      {/* DELETE WORKOUT CONFIRMATION MODAL */}
+      {isDeleteModalOpen && (
+        <div
+          role="presentation"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+          onMouseDown={(event) => { if (event.target === event.currentTarget && !isDeleting) setIsDeleteModalOpen(false); }}
+        >
+          <div role="dialog" aria-modal="true" aria-labelledby="delete-workout-heading" style={{ background: '#fff', borderRadius: '8px', padding: '24px', width: '100%', maxWidth: '440px', boxShadow: '0 10px 35px rgba(0,0,0,0.25)' }}>
+            <h3 id="delete-workout-heading" style={{ margin: '0 0 14px' }}>Delete Workout</h3>
+            <p>Delete <strong>{savedWorkouts.find((w) => String(w.id) === String(workoutId))?.name || workoutTitle}</strong> from the workout library?</p>
+            <p style={{ fontSize: '13px', color: '#6c757d' }}>This cannot be undone. Scheduled workouts and saved training plans are not targeted.</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
+              <button type="button" disabled={isDeleting} onClick={() => setIsDeleteModalOpen(false)} style={{ padding: '8px 16px', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={isDeleting} onClick={handleConfirmDeleteWorkout} style={{ padding: '8px 16px', background: '#dc3545', color: '#fff', border: 0, borderRadius: '4px', cursor: isDeleting ? 'wait' : 'pointer' }}>
+                {isDeleting ? 'Deleting…' : '🗑️ Delete Workout'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ZOOM MODAL */}
