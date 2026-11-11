@@ -1186,8 +1186,8 @@ export default function WorkoutBuilder() {
           </div>
         </div>
 
-        {/* RIGHT LIVE BASEWORKOUT PANEL */}
-        <div
+        {/* JSON Viewer is only available when a workout is selected. */}
+        {mode !== 'EMPTY' && <div
           className="baseworkout-column-container"
           style={{
             width:
@@ -1302,7 +1302,7 @@ export default function WorkoutBuilder() {
               }}
             />
           )}
-        </div>
+        </div>}
       </div>
 
       {/* FOLDER MODAL */}
