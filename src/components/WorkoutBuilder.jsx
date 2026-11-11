@@ -938,6 +938,8 @@ export default function WorkoutBuilder() {
         <div
           style={{
             flex: 1,
+            minWidth: 0,
+            minHeight: 0,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -947,6 +949,7 @@ export default function WorkoutBuilder() {
           <div
             className="builder-fixed-header-section"
             style={{
+              flexShrink: 0,
               backgroundColor: '#fff',
               boxShadow:
                 '0px 2px 5px rgba(0,0,0,0.05)',
@@ -1071,6 +1074,7 @@ export default function WorkoutBuilder() {
             className="builder-scrollable-content"
             style={{
               flex: 1,
+              minHeight: 0,
               overflowY: 'auto',
               padding: '16px',
             }}
@@ -1212,6 +1216,8 @@ export default function WorkoutBuilder() {
                 ? '40px'
                 : '400px',
             display: 'flex',
+            flexShrink: 0,
+            minHeight: 0,
             flexDirection: 'column',
             backgroundColor: '#fafafa',
             borderLeft:
