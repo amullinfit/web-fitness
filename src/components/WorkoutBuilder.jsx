@@ -185,6 +185,8 @@ export default function WorkoutBuilder() {
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
 
   // ------------------------------------------------------------
@@ -908,6 +910,51 @@ export default function WorkoutBuilder() {
   };
 
   // ============================================================
+  // DELETE SAVED WORKOUT FROM LIBRARY
+  // ============================================================
+
+  const handleDeleteWorkout = () => {
+    if (readOnly || !workoutId || !/^\d+$/.test(String(workoutId))) return;
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDeleteWorkout = async () => {
+    if (readOnly || !workoutId || !/^\d+$/.test(String(workoutId))) return;
+    const idToDelete = workoutId;
+    const nameToDelete = savedWorkouts.find((w) => String(w.id) === String(idToDelete))?.name || workoutTitle;
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch('/api/workout-builder-write', {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_workout', workoutId: idToDelete }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Delete failed');
+      }
+      setIsDeleteModalOpen(false);
+      handleCloseWorkout();
+      setSavedWorkouts((prev) => prev.filter((w) => String(w.id) !== String(idToDelete)));
+      try {
+        const refreshed = await fetchWorkoutsApi();
+        setFolders(refreshed?.folders || []);
+        setSavedWorkouts(refreshed?.workouts || []);
+      } catch (refreshError) {
+        console.warn('[WorkoutBuilder] Deleted workout; library refresh failed:', refreshError);
+      }
+      showToast(`Workout "${nameToDelete}" deleted from library.`);
+    } catch (error) {
+      console.error('[WorkoutBuilder] Delete workout failed:', error);
+      showToast(`Unable to delete workout: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // ============================================================
   // RENDER
   // ============================================================
 
@@ -927,35 +974,12 @@ export default function WorkoutBuilder() {
         </div>
       )}
 
+      {/* Workout name and chart span the full builder width. */}
       <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          overflow: 'hidden',
-        }}
+        className="builder-fixed-header-section"
+        style={{ flexShrink: 0, padding: '0 16px 8px', backgroundColor: '#fff' }}
       >
-        {/* LEFT MAIN PANEL */}
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          }}
-        >
-          {/* HEADER */}
-          <div
-            className="builder-fixed-header-section"
-            style={{
-              backgroundColor: '#fff',
-              boxShadow:
-                '0px 2px 5px rgba(0,0,0,0.05)',
-              paddingBottom: '8px',
-              paddingLeft: '16px',
-              paddingRight: '16px',
-            }}
-          >
-            <div className="builder-header-bar">
+        <div className="builder-header-bar">
               <div
                 style={{
                   display: 'flex',
@@ -1035,10 +1059,12 @@ export default function WorkoutBuilder() {
                 onCloseWorkout={
                   handleCloseWorkout
                 }
+                canDeleteWorkout={!readOnly && !!workoutId && /^\d+$/.test(String(workoutId))}
+                onDeleteWorkout={handleDeleteWorkout}
               />
-            </div>
+        </div>
 
-            {mode !== 'EMPTY' && (
+        {mode !== 'EMPTY' && (
               <div
                 className="chart-preview-container"
                 style={{
@@ -1055,26 +1081,32 @@ export default function WorkoutBuilder() {
                   showBarPace={false}
                 />
 
-                <WorkoutTextSection
-                  workout={baseWorkout}
-                  threshold={
-                    paces?.threshold_pace
-                  }
-                  paceDetails={paces}
-                />
               </div>
-            )}
-          </div>
+        )}
+      </div>
 
-          {/* SCROLLABLE STEPS */}
+      <div className="builder-lower-layout" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', marginTop: '8px' }}>
+        {/* LEFT MAIN PANEL */}
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* SCROLLABLE WORKOUT DETAILS AND STEPS */}
           <div
             className="builder-scrollable-content"
             style={{
               flex: 1,
+              minHeight: 0,
               overflowY: 'auto',
-              padding: '16px',
+              padding: mode === 'EMPTY' ? '16px' : '0 16px 16px',
             }}
           >
+            {mode !== 'EMPTY' && (
+              <div className="builder-workout-details" style={{ marginBottom: '8px' }}>
+                <WorkoutTextSection
+                  workout={baseWorkout}
+                  threshold={paces?.threshold_pace}
+                  paceDetails={paces}
+                />
+              </div>
+            )}
             {mode === 'EMPTY' ? (
               <div className="empty-state-card">
                 <h3>
@@ -1203,15 +1235,17 @@ export default function WorkoutBuilder() {
           </div>
         </div>
 
-        {/* RIGHT LIVE BASEWORKOUT PANEL */}
-        <div
+        {/* JSON Viewer is only available when a workout is selected. */}
+        {mode !== 'EMPTY' && <div
           className="baseworkout-column-container"
           style={{
             width:
               isRightPanelCollapsed
                 ? '40px'
-                : '400px',
+                : '33.333%',
             display: 'flex',
+            flexShrink: 0,
+            minHeight: 0,
             flexDirection: 'column',
             backgroundColor: '#fafafa',
             borderLeft:
@@ -1246,7 +1280,7 @@ export default function WorkoutBuilder() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                Updated Live
+                JSON Viewer
               </label>
             )}
 
@@ -1317,7 +1351,7 @@ export default function WorkoutBuilder() {
               }}
             />
           )}
-        </div>
+        </div>}
       </div>
 
       {/* FOLDER MODAL */}
@@ -1379,6 +1413,27 @@ export default function WorkoutBuilder() {
             }
           }}
         />
+      )}
+
+      {/* DELETE WORKOUT CONFIRMATION MODAL */}
+      {isDeleteModalOpen && (
+        <div
+          role="presentation"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+          onMouseDown={(event) => { if (event.target === event.currentTarget && !isDeleting) setIsDeleteModalOpen(false); }}
+        >
+          <div role="dialog" aria-modal="true" aria-labelledby="delete-workout-heading" style={{ background: '#fff', borderRadius: '8px', padding: '24px', width: '100%', maxWidth: '440px', boxShadow: '0 10px 35px rgba(0,0,0,0.25)' }}>
+            <h3 id="delete-workout-heading" style={{ margin: '0 0 14px' }}>Delete Workout</h3>
+            <p>Delete <strong>{savedWorkouts.find((w) => String(w.id) === String(workoutId))?.name || workoutTitle}</strong> from the workout library?</p>
+            <p style={{ fontSize: '13px', color: '#6c757d' }}>This cannot be undone. Scheduled workouts and saved training plans are not targeted.</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
+              <button type="button" disabled={isDeleting} onClick={() => setIsDeleteModalOpen(false)} style={{ padding: '8px 16px', cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={isDeleting} onClick={handleConfirmDeleteWorkout} style={{ padding: '8px 16px', background: '#dc3545', color: '#fff', border: 0, borderRadius: '4px', cursor: isDeleting ? 'wait' : 'pointer' }}>
+                {isDeleting ? 'Deleting…' : '🗑️ Delete Workout'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ZOOM MODAL */}

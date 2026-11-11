@@ -423,3 +423,7 @@ WORKOUTBUILDER.CSS
 .options-menu-item:hover {
   background-color: #f1f3f5;
 }
+/* Workout Details sits flush at the top of the scrolling builder pane. */
+.builder-scrollable-content .builder-workout-details .workout-section-container {
+  margin-top: 0;
+}

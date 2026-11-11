@@ -116,12 +116,15 @@ export default function WorkoutChart({
     yFastestSec = chosenStartSec;
     ySlowestSec = chosenEndSec;
 
-    const chosenStepSec = 60;
-    const totalTicks = Math.round((chosenEndSec - chosenStartSec) / chosenStepSec) + 1;
-    
+    // Choose a 30-second-aligned interval that keeps the axis readable.
+    // Retain the full pace domain so planned/executed bars do not get clipped.
+    const rangeSec = chosenEndSec - chosenStartSec;
+    const chosenStepSec = Math.max(30, Math.ceil(rangeSec / (7 - 1) / 30) * 30);
+    const totalTicks = Math.floor(rangeSec / chosenStepSec) + 1;
+
     for (let i = 0; i < totalTicks; i++) {
       const currentSec = chosenStartSec + i * chosenStepSec;
-      const topPct = totalTicks > 1 ? (i / (totalTicks - 1)) * 100 : 0;
+      const topPct = rangeSec > 0 ? ((currentSec - chosenStartSec) / rangeSec) * 100 : 0;
       yTicks.push({
         label: formatSecPerMileToStr(currentSec),
         topPct: topPct
