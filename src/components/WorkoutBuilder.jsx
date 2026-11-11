@@ -1046,11 +1046,11 @@ export default function WorkoutBuilder() {
               flex: 1,
               minHeight: 0,
               overflowY: 'auto',
-              padding: '16px',
+              padding: mode === 'EMPTY' ? '16px' : '0 16px 16px',
             }}
           >
             {mode !== 'EMPTY' && (
-              <div style={{ marginBottom: '8px' }}>
+              <div className="builder-workout-details" style={{ marginBottom: '8px' }}>
                 <WorkoutTextSection
                   workout={baseWorkout}
                   threshold={paces?.threshold_pace}
