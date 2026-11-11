@@ -10,6 +10,11 @@ export default async function handler(req, res) {
   if (!token || token.length < 32) return res.status(503).json({ error: 'Calendar write credential is not configured' });
   const body = req.body || {};
   if (!['add_workout', 'move_workout', 'remove_workout'].includes(body.action) || body.confirm !== true || !/^\d{4}-\d{2}-\d{2}$/.test(body.date || '') || !/^[0-9]+$/.test(String(body.action !== 'add_workout' ? body.event_id : body.workout_id || ''))) return res.status(400).json({ error: 'Invalid calendar write request' });
+  if (body.action !== 'remove_workout') {
+    const now = new Date();
+    const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+    if (body.date < today) return res.status(400).json({ error: 'Workouts cannot be scheduled or moved into the past' });
+  }
   try {
     const upstream = await fetch(UPSTREAM, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Calendar-Write-Token': token }, body: JSON.stringify({ action: body.action, confirm: true, date: body.date, workout_id: body.workout_id, event_id: body.event_id, original_date: body.original_date }), signal: AbortSignal.timeout(55000) });
     return res.status(upstream.status).json(await upstream.json());
