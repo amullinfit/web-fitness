@@ -908,6 +908,43 @@ export default function WorkoutBuilder() {
   };
 
   // ============================================================
+  // DELETE SAVED WORKOUT FROM LIBRARY
+  // ============================================================
+
+  const handleDeleteWorkout = async () => {
+    if (readOnly || !workoutId || !/^\\d+$/.test(String(workoutId))) return;
+    const idToDelete = workoutId;
+    const nameToDelete = savedWorkouts.find((w) => String(w.id) === String(idToDelete))?.name || workoutTitle;
+    if (!window.confirm(`Delete workout "${nameToDelete}" from the workout library? This cannot be undone. Scheduled workouts and saved training plans are not targeted.`)) return;
+
+    try {
+      const response = await fetch('/api/workout-builder-write', {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_workout', workoutId: idToDelete }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Delete failed');
+      }
+      handleCloseWorkout();
+      setSavedWorkouts((prev) => prev.filter((w) => String(w.id) !== String(idToDelete)));
+      try {
+        const refreshed = await fetchWorkoutsApi();
+        setFolders(refreshed?.folders || []);
+        setSavedWorkouts(refreshed?.workouts || []);
+      } catch (refreshError) {
+        console.warn('[WorkoutBuilder] Deleted workout; library refresh failed:', refreshError);
+      }
+      showToast(`Workout "${nameToDelete}" deleted from library.`);
+    } catch (error) {
+      console.error('[WorkoutBuilder] Delete workout failed:', error);
+      showToast(`Unable to delete workout: ${error.message}`);
+    }
+  };
+
+  // ============================================================
   // RENDER
   // ============================================================
 
@@ -1012,6 +1049,8 @@ export default function WorkoutBuilder() {
                 onCloseWorkout={
                   handleCloseWorkout
                 }
+                canDeleteWorkout={!readOnly && !!workoutId && /^\\d+$/.test(String(workoutId))}
+                onDeleteWorkout={handleDeleteWorkout}
               />
         </div>
 
