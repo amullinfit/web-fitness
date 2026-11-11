@@ -5,6 +5,7 @@
  * Unavailable estimates are null, never zero. Totals remain null if any step lacks data.
  */
 const positive = (value) => {
+  if (value === null || value === undefined || value === '') return null;
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : null;
 };
@@ -52,9 +53,11 @@ export function estimateRunningStep(step, paces) {
   }
   const paceSec = estimateRunningPace(step, paces);
   const secondsInput = firstPositive(step.duration, step.duration_seconds, step.durationSec, step.elapsed_time);
+  // Workout Builder's distance is miles unless the step explicitly declares meters.
+  const distanceUnits = String(step.distanceUnits || step.distance_units || step.durationType || '').toLowerCase();
+  const rawDistance = positive(step.distance);
   const milesInput = firstPositive(step.distanceMiles, step.distance_miles)
-    ?? (positive(step.distance) && String(step.durationType || step.stepMode || '').toLowerCase().includes('meter')
-      ? milesFromMeters(Number(step.distance)) : positive(step.distance));
+    ?? (rawDistance ? (distanceUnits.includes('meter') ? milesFromMeters(rawDistance) : rawDistance) : null);
   const seconds = secondsInput ?? (milesInput && paceSec ? milesInput * paceSec : null);
   const miles = milesInput ?? (seconds && paceSec ? seconds / paceSec : null);
   const threshold = getRunningThreshold(paces);
