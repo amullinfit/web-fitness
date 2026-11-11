@@ -933,17 +933,6 @@ export default function WorkoutBuilder() {
         style={{ flexShrink: 0, padding: '0 16px 8px', backgroundColor: '#fff' }}
       >
         <div className="builder-header-bar">
-        <div
-          style={{
-            flex: 1,
-            minWidth: 0,
-            minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          }}
-        >
-          {/* WORKOUT DETAILS AND EDITABLE STEPS */}
               <div
                 style={{
                   display: 'flex',
