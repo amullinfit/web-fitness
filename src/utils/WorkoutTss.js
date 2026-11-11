@@ -87,5 +87,8 @@ export function estimateRunningWorkout(workout, paces) {
 
 /** Actual workout-level training load is authoritative from intervals.icu. */
 export function getExecutedTss(workout) {
-  return positive(workout?.icu_training_load) ?? (Number(workout?.icu_training_load) === 0 ? 0 : null);
+  const value = workout?.icu_training_load;
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
 }
