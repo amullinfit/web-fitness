@@ -912,7 +912,7 @@ export default function WorkoutBuilder() {
   // ============================================================
 
   const handleDeleteWorkout = async () => {
-    if (readOnly || !workoutId || !/^\\d+$/.test(String(workoutId))) return;
+    if (readOnly || !workoutId || !/^\d+$/.test(String(workoutId))) return;
     const idToDelete = workoutId;
     const nameToDelete = savedWorkouts.find((w) => String(w.id) === String(idToDelete))?.name || workoutTitle;
     if (!window.confirm(`Delete workout "${nameToDelete}" from the workout library? This cannot be undone. Scheduled workouts and saved training plans are not targeted.`)) return;
@@ -1049,7 +1049,7 @@ export default function WorkoutBuilder() {
                 onCloseWorkout={
                   handleCloseWorkout
                 }
-                canDeleteWorkout={!readOnly && !!workoutId && /^\\d+$/.test(String(workoutId))}
+                canDeleteWorkout={!readOnly && !!workoutId && /^\d+$/.test(String(workoutId))}
                 onDeleteWorkout={handleDeleteWorkout}
               />
         </div>
