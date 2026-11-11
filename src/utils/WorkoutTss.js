@@ -16,7 +16,7 @@ const parsePaceSeconds = (value) => {
   const numeric = positive(value);
   if (numeric !== null) return numeric;
   if (typeof value !== 'string') return null;
-  const match = value.trim().match(/^(\\d+):(\\d{2})(?:\\/mi)?$/i);
+  const match = value.trim().match(/^([0-9]+):([0-9]{2})(?:[/]mi)?$/i);
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 };
 const speedMidpointPace = (fast, slow) => fast && slow ? 2 / (1 / fast + 1 / slow) : null;
