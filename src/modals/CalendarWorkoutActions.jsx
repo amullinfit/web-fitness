@@ -20,11 +20,13 @@ export function CalendarWorkoutActions({ open, action, date, workout, onClose, o
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const today = dateKey(new Date());
+  const currentMonth = firstOfMonth(new Date());
 
   useEffect(() => {
     if (!open) return;
     setTargetDate(action === 'add' ? (date || today) : (initialTargetDate || ''));
-    setMonth(firstOfMonth(new Date((date || today) + 'T12:00:00')));
+    const requestedMonth = firstOfMonth(new Date((date || today) + 'T12:00:00'));
+    setMonth(requestedMonth < firstOfMonth(new Date()) ? firstOfMonth(new Date()) : requestedMonth);
     setError('');
     const onKey = (event) => { if (event.key === 'Escape' && !busy) { event.stopImmediatePropagation(); onClose(); } };
     window.addEventListener('keydown', onKey, true);
@@ -94,7 +96,7 @@ export function CalendarWorkoutActions({ open, action, date, workout, onClose, o
       </>}
       {action === 'move' && <>
         <p>Move <strong>{previewWorkoutName(workout?.name || 'this workout')}</strong> to a new date. Existing workouts are shown below; they will not be replaced.</p>
-        <div className="cwa-month"><button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button><strong>{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</strong><button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button></div>
+        <div className="cwa-month"><button type="button" disabled={month <= currentMonth} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button><strong>{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</strong><button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button></div>
         <div className="cwa-calendar">{weekdays.map((day) => <strong key={day}>{day}</strong>)}{dates.map((day) => { const key = dateKey(day); const existing = events.filter((event) => String(event.start_date_local || event.start_date || '').slice(0, 10) === key && (event.category === 'WORKOUT' || event.workout_doc)); return <button key={key} type="button" disabled={key < today || key === date || loading} className={targetDate === key ? 'selected' : ''} onClick={() => setTargetDate(key)}><span>{day.getDate()}</span>{existing.map((event, index) => <span className="cwa-mini-workout" key={event.id || index} title={previewWorkoutName(event.name)}><span className="cwa-workout-name">{previewWorkoutName(event.name)}</span>{event.workout_doc?.steps?.length > 0 && <WorkoutChart workout={event} chartHeight="17px" showWorkoutName={false} showThresholdPace={false} showYAxis={false} showYAxisLabels={false} showLegend={false} minimalXAxis={true} showHoverDetails={false} />}</span>)}</button>; })}</div>
         {targetDate && <p>New date: <strong>{targetDate}</strong>{events.some((event) => String(event.start_date_local || event.start_date || '').slice(0, 10) === targetDate && (event.category === 'WORKOUT' || event.workout_doc)) ? ' — existing workout(s) on this date' : ''}</p>}
       </>}
