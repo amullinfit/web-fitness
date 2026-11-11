@@ -60,7 +60,8 @@ export function estimateRunningStep(step, paces) {
   const milesInput = firstPositive(step.distanceMiles, step.distance_miles)
     ?? (rawDistance ? (distanceUnits.includes('meter') ? milesFromMeters(rawDistance) : rawDistance) : null);
   const seconds = secondsInput ?? (milesInput && paceSec ? milesInput * paceSec : null);
-  const miles = milesInput ?? (seconds && paceSec ? seconds / paceSec : null);
+  const miles = !isDistanceMode(step) && secondsInput && paceSec
+    ? secondsInput / paceSec : milesInput ?? (seconds && paceSec ? seconds / paceSec : null);
   const threshold = getRunningThreshold(paces);
   const tss = seconds && paceSec && threshold
     ? 100 * (seconds / 3600) * (threshold / paceSec) ** 2 : null;
