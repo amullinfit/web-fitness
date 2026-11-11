@@ -54,3 +54,14 @@ test('actual TSS uses intervals.icu field, including valid zero', () => {
   assert.equal(getExecutedTss({}), null);
   assert.equal(getExecutedTss({ icu_training_load: null }), null);
 });
+
+test('distance mode ignores stale duration and derives time from distance', () => {
+  const result = estimateRunningStep({ stepMode: 'distance', duration: 600, distanceMiles: 2, pace: { units: 'secs', value: 480 } }, paces);
+  near(result.seconds, 960);
+  near(result.miles, 2);
+});
+
+test('time mode derives mileage from duration, not stale distance', () => {
+  const result = estimateRunningStep({ stepMode: 'time', duration: 600, distanceMiles: 3, pace: { units: 'secs', value: 480 } }, paces);
+  near(result.miles, 1.25);
+});
