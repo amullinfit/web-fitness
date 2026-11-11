@@ -1036,7 +1036,7 @@ export default function WorkoutBuilder() {
         )}
       </div>
 
-      <div className="builder-lower-layout" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <div className="builder-lower-layout" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', marginTop: '8px' }}>
         {/* LEFT MAIN PANEL */}
         <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* SCROLLABLE WORKOUT DETAILS AND STEPS */}
@@ -1050,11 +1050,13 @@ export default function WorkoutBuilder() {
             }}
           >
             {mode !== 'EMPTY' && (
-              <WorkoutTextSection
-                workout={baseWorkout}
-                threshold={paces?.threshold_pace}
-                paceDetails={paces}
-              />
+              <div style={{ marginBottom: '8px' }}>
+                <WorkoutTextSection
+                  workout={baseWorkout}
+                  threshold={paces?.threshold_pace}
+                  paceDetails={paces}
+                />
+              </div>
             )}
             {mode === 'EMPTY' ? (
               <div className="empty-state-card">
