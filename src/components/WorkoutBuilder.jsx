@@ -927,14 +927,12 @@ export default function WorkoutBuilder() {
         </div>
       )}
 
+      {/* Workout name and chart span the full builder width. */}
       <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          overflow: 'hidden',
-        }}
+        className="builder-fixed-header-section"
+        style={{ flexShrink: 0, padding: '0 16px 8px', backgroundColor: '#fff' }}
       >
-        {/* LEFT MAIN PANEL */}
+        <div className="builder-header-bar">
         <div
           style={{
             flex: 1,
@@ -945,20 +943,7 @@ export default function WorkoutBuilder() {
             overflow: 'hidden',
           }}
         >
-          {/* HEADER */}
-          <div
-            className="builder-fixed-header-section"
-            style={{
-              flexShrink: 0,
-              backgroundColor: '#fff',
-              boxShadow:
-                '0px 2px 5px rgba(0,0,0,0.05)',
-              paddingBottom: '8px',
-              paddingLeft: '16px',
-              paddingRight: '16px',
-            }}
-          >
-            <div className="builder-header-bar">
+          {/* WORKOUT DETAILS AND EDITABLE STEPS */}
               <div
                 style={{
                   display: 'flex',
@@ -1039,9 +1024,9 @@ export default function WorkoutBuilder() {
                   handleCloseWorkout
                 }
               />
-            </div>
+        </div>
 
-            {mode !== 'EMPTY' && (
+        {mode !== 'EMPTY' && (
               <div
                 className="chart-preview-container"
                 style={{
@@ -1058,18 +1043,14 @@ export default function WorkoutBuilder() {
                   showBarPace={false}
                 />
 
-                <WorkoutTextSection
-                  workout={baseWorkout}
-                  threshold={
-                    paces?.threshold_pace
-                  }
-                  paceDetails={paces}
-                />
               </div>
-            )}
-          </div>
+        )}
+      </div>
 
-          {/* SCROLLABLE STEPS */}
+      <div className="builder-lower-layout" style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        {/* LEFT MAIN PANEL */}
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* SCROLLABLE WORKOUT DETAILS AND STEPS */}
           <div
             className="builder-scrollable-content"
             style={{
@@ -1079,6 +1060,13 @@ export default function WorkoutBuilder() {
               padding: '16px',
             }}
           >
+            {mode !== 'EMPTY' && (
+              <WorkoutTextSection
+                workout={baseWorkout}
+                threshold={paces?.threshold_pace}
+                paceDetails={paces}
+              />
+            )}
             {mode === 'EMPTY' ? (
               <div className="empty-state-card">
                 <h3>
@@ -1214,7 +1202,7 @@ export default function WorkoutBuilder() {
             width:
               isRightPanelCollapsed
                 ? '40px'
-                : '400px',
+                : '33.333%',
             display: 'flex',
             flexShrink: 0,
             minHeight: 0,
