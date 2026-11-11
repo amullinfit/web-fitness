@@ -65,3 +65,21 @@ test('time mode derives mileage from duration, not stale distance', () => {
   const result = estimateRunningStep({ stepMode: 'time', duration: 600, distanceMiles: 3, pace: { units: 'secs', value: 480 } }, paces);
   near(result.miles, 1.25);
 });
+
+test('pace zone uses configured fast and slow boundaries', () => {
+  const settings = { run_pace_sec: 480, preset_colors: [{ zone: 2, pace_fast: '8:00/mi', pace_slow: '10:00/mi', pace_val_sec: 540 }] };
+  near(estimateRunningPace({ pace: { units: 'pace_zone', value: 2 } }, settings), 2 / (1 / 480 + 1 / 600));
+});
+
+test('zone range spans selected zone boundaries', () => {
+  const settings = { run_pace_sec: 480, preset_colors: [
+    { zone: 2, pace_fast: '8:00/mi', pace_slow: '10:00/mi' },
+    { zone: 3, pace_fast: '7:00/mi', pace_slow: '8:00/mi' },
+  ] };
+  near(estimateRunningPace({ pace: { units: 'pace_zone', start: 2, end: 3 } }, settings), 2 / (1 / 420 + 1 / 600));
+});
+
+test('threshold percent resolves to threshold-relative speed', () => {
+  const result = estimateRunningStep({ duration: 3600, pace: { units: '%pace', value: 80 } }, paces);
+  near(result.tss, 64);
+});
