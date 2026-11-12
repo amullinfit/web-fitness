@@ -307,3 +307,10 @@
     font-size: 10px;
   }
 }
+/* Compact metric selector: labels with a single accessible switch. */
+.workout-chart-metric-toggle { display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 11px; color: #7a8490; white-space: nowrap; }
+.workout-chart-metric-toggle .metric-active { color: #253448; font-weight: 700; }
+.workout-chart-metric-switch { width: 29px; height: 16px; border: 1px solid #aeb8c4; border-radius: 10px; padding: 1px; background: #e8edf3; cursor: pointer; display: inline-flex; align-items: center; justify-content: flex-start; }
+.workout-chart-metric-switch[aria-checked="true"] { background: #d8e9ff; justify-content: flex-end; }
+.workout-chart-metric-thumb { width: 12px; height: 12px; border-radius: 50%; background: #697c93; display: block; }
+.workout-chart-metric-switch:focus-visible { outline: 2px solid #0d6efd; outline-offset: 2px; }
