@@ -84,8 +84,10 @@ export default function WorkoutChart({
   const thresholdForTss = getRunningThreshold(paces);
   const plannedTss = plannedList.map((step) => runningSport ? estimateRunningStep(step, paces).tss : null);
   const executedTss = executedList.map((step) => {
-    const seconds = Number(step.duration);
-    const pace = Number(step.pace);
+    const seconds = Number(step.elapsed_time ?? step.duration);
+    // An executed step must have recorded speed, not a planned pace or placeholder.
+    const speed = Number(step.average_speed ?? step.speed);
+    const pace = speed > 0 ? 1609.344 / speed : NaN;
     return runningSport && thresholdForTss && seconds > 0 && pace > 0
       ? 100 * (seconds / 3600) * (thresholdForTss / pace) ** 2 : null;
   });
@@ -205,9 +207,17 @@ export default function WorkoutChart({
           )}
 
           {enableTssToggle && (
-            <div className="workout-chart-header-slot workout-chart-metric-toggle" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-              <button type="button" aria-pressed={!isTssMode} onClick={() => setChartMetric('pace')} style={{ fontWeight: !isTssMode ? 700 : 400 }}>Pace</button>
-              <button type="button" aria-pressed={isTssMode} onClick={() => setChartMetric('tss')} style={{ fontWeight: isTssMode ? 700 : 400 }}>TSS</button>
+            <div className="workout-chart-header-slot workout-chart-metric-toggle">
+              <span className={!isTssMode ? 'metric-active' : ''}>Pace</span>
+              <button
+                type="button"
+                className="workout-chart-metric-switch"
+                role="switch"
+                aria-label="Show TSS instead of pace"
+                aria-checked={isTssMode}
+                onClick={() => setChartMetric(isTssMode ? 'pace' : 'tss')}
+              ><span className="workout-chart-metric-thumb" /></button>
+              <span className={isTssMode ? 'metric-active' : ''}>TSS</span>
             </div>
           )}
           {isLegendVisible && (
