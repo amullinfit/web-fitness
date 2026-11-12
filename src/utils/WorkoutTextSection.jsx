@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import './WorkoutTextSection.css';
 import { formatPaceRange, parsePaceStrToSec } from './WorkoutChartHelpers.js';
+import { estimateRunningStep, estimateRunningWorkout } from './WorkoutTss.js';
 
 import {
   detectPaceMethod,
@@ -110,6 +111,7 @@ const parseSingleStep = (s, idx, thresholdPaceMps, zoneList, paceDetails) => {
   return {
     id: idx,
     isRepeat: false,
+    tss: estimateRunningStep(s, paceDetails).tss,
     durationSec: s.duration || 0,
     intensity: formatIntensityTitleCase(rawIntensity),
     paceStr: formatPaceString(s, thresholdPaceMps, zoneList, paceDetails),
@@ -132,6 +134,7 @@ const parseWorkoutSteps = (stepList, thresholdPaceMps, zonelist, paceDetails) =>
       return {
         id: idx,
         isRepeat: true,
+        tss: estimateRunningStep(s, paceDetails).tss,
         reps,
         durationSec: totalRepeatDuration,
         innerSteps,
@@ -152,6 +155,8 @@ const estimateStepMiles = (step) => {
   return step.durationSec / (paceSeconds.reduce((sum, seconds) => sum + seconds, 0) / paceSeconds.length);
 };
 
+const formatTss = (value) => value === null || value === undefined ? 'TSS: — (missing data)' : `TSS: ${value.toFixed(1)}`;
+
 const RenderStepCard = ({ step }) => {
   if (step.isRepeat) {
     return (
@@ -169,6 +174,7 @@ const RenderStepCard = ({ step }) => {
             Repeat Time: {formatDuration(step.durationSec)}
           </span>
           <span className="workout-section-badge">Est. Distance: {estimateStepMiles(step).toFixed(2)} mi</span>
+          <span className="workout-section-badge">{formatTss(step.tss)}</span>
         </div>
 
         <div className="workout-repeat-inner-list">
@@ -193,6 +199,8 @@ const RenderStepCard = ({ step }) => {
           <span className="workout-step-value">{step.paceStr}</span>
           <span className="workout-step-connector">· est.</span>
           <span className="workout-step-value">{estimateStepMiles(step).toFixed(2)} mi</span>
+          <span className="workout-step-connector">·</span>
+          <span className="workout-step-value">{formatTss(step.tss)}</span>
         </span>
       </div>
 
@@ -233,6 +241,7 @@ const RenderStepCard = ({ step }) => {
   const zoneList = paceDetails?.preset_colors;
 
   const parsedSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps, zoneList, paceDetails);
+  const plannedTss = estimateRunningWorkout(workout, paceDetails).tss;
 
   const estimatedDistanceMiles = parsedSteps.reduce((sum, step) => sum + estimateStepMiles(step), 0);
 
@@ -259,6 +268,7 @@ const RenderStepCard = ({ step }) => {
           <span className="workout-section-summary">
             <span className="workout-section-badge">Total Time: {formatDuration(totalWorkoutDurationSec)}</span>
             <span className="workout-section-badge">Est. Distance: {estimatedDistanceMiles.toFixed(2)} mi</span>
+            <span className="workout-section-badge">{formatTss(plannedTss)}</span>
           </span>
         </div>
 
