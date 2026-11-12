@@ -83,3 +83,20 @@ test('threshold percent resolves to threshold-relative speed', () => {
   const result = estimateRunningStep({ duration: 3600, pace: { units: '%pace', value: 80 } }, paces);
   near(result.tss, 64);
 });
+
+test('zone ranges include intermediate zones', () => {
+  const settings = { run_pace_sec: 480, preset_colors: [
+    { zone: 1, pace_fast: '9:00/mi', pace_slow: '10:00/mi' },
+    { zone: 2, pace_fast: '7:00/mi', pace_slow: '11:00/mi' },
+    { zone: 3, pace_fast: '8:00/mi', pace_slow: '9:00/mi' },
+  ] };
+  near(estimateRunningPace({ pace: { units: 'pace_zone', start: 1, end: 3 } }, settings), 2 / (1 / 420 + 1 / 660));
+});
+
+test('nested repeat blocks multiply all levels', () => {
+  const inner = { reps: 2, steps: [{ duration: 360, pace: { units: 'secs', value: 480 } }] };
+  const outer = { reps: 3, steps: [inner] };
+  const result = estimateRunningStep(outer, paces);
+  near(result.tss, 60);
+  near(result.children[0].children[0].tss, 10);
+});
