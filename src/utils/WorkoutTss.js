@@ -29,7 +29,9 @@ const zoneBounds = (value, paces) => {
   }
   const reference = parsePaceSeconds(zone.pace_val_sec);
   const fast = parsePaceSeconds(zone.pace_fast) ?? reference;
-  const slow = parsePaceSeconds(zone.pace_slow) ?? reference;
+  // The pace chart derives an open-ended zone's slow edge as fast + 120 sec/mi.
+  // Match that rule so Zone 1 can be estimated from the same displayed range.
+  const slow = parsePaceSeconds(zone.pace_slow) ?? (fast ? fast + 120 : reference);
   return fast && slow ? { fast, slow } : null;
 };
 export const getRunningThreshold = (paces) => positive(paces?.run_pace_sec) ?? positive(paces?.threshold_pace_sec);
