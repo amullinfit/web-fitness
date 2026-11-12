@@ -13,12 +13,23 @@
 }
 
 .workout-chart-top-bar {
-  display: flex;
-  flex-wrap: wrap; /* Allows badge to wrap below legend on narrow viewports */
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(90px, 0.6fr) minmax(0, 1.5fr) minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  column-gap: 12px;
+  row-gap: 8px;
   margin-bottom: 8px;
+}
+.workout-chart-top-bar > .workout-chart-title { grid-column: 1; }
+.workout-chart-top-bar > .workout-chart-metric-toggle { grid-column: 2; justify-self: center; }
+.workout-chart-top-bar > .workout-chart-legend { grid-column: 3; justify-self: center; }
+.workout-chart-top-bar > .workout-chart-threshold-slot { grid-column: 4; justify-self: end; min-width: 0; }
+@media (max-width: 620px) {
+  .workout-chart-top-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .workout-chart-top-bar > .workout-chart-title { grid-column: 1; }
+  .workout-chart-top-bar > .workout-chart-metric-toggle { grid-column: 2; justify-self: end; }
+  .workout-chart-top-bar > .workout-chart-legend { grid-column: 1; justify-self: start; }
+  .workout-chart-top-bar > .workout-chart-threshold-slot { grid-column: 2; }
 }
 
 .workout-chart-header-info {
