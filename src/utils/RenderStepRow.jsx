@@ -2,6 +2,7 @@
 // RenderStepRow.jsx
 //
 import React, { useMemo } from 'react';
+import { estimateRunningStep } from './WorkoutTss.js';
 import MMSSInput from './MMSSInput';
 import { formatTime, formatMMSS, calculateDynamicPresets } from './WorkoutBuilderHelpers.js';
 import { formatSecPerMileToStr } from './WorkoutChartHelpers.js';
@@ -155,6 +156,8 @@ export default function RenderStepRow({
   readOnly = false
 }) {
   if (!step) return null;
+  const tssEstimate = estimateRunningStep(step, paceDetails);
+  const tssLabel = tssEstimate.tss === null ? 'TSS: — (missing data)' : `TSS: ${tssEstimate.tss.toFixed(1)}`;
 
   // Save threshold pace as sec/mile (e.g. 450)
   const thresholdSecPerMile = paceDetails?.run_pace_sec || paceDetails?.threshold_pace_sec || 450;
@@ -237,7 +240,7 @@ export default function RenderStepRow({
           <div className="repeat-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <strong className="repeat-type-title">Repeat Block × {iterations}</strong>
             <div className="repeat-summary-badge" style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: '600' }}>
-              Total: {formatTime(repeatTotals.totalSec)} ({formatDistanceFixed(repeatTotals.totalMiles)})
+              Total: {formatTime(repeatTotals.totalSec)} ({formatDistanceFixed(repeatTotals.totalMiles)}) · {tssLabel}
             </div>
           </div>
           <div>
@@ -274,6 +277,7 @@ export default function RenderStepRow({
         <span><strong>Time:</strong> {formatTime(totalDurationSec)}</span>
         <span><strong>Pace:</strong> {paceText}{descriptivePace ? ` (${descriptivePace})` : ''}</span>
         <span><strong>Distance:</strong> {formatDistanceFixed(totalDistanceMiles)}</span>
+        <span>{tssLabel}</span>
       </div>
     );
   }
@@ -339,7 +343,7 @@ export default function RenderStepRow({
               borderRadius: '12px'
             }}
           >
-            Total: {formatTime(repeatTotals.totalSec)} ({formatDistanceFixed(repeatTotals.totalMiles)})
+            Total: {formatTime(repeatTotals.totalSec)} ({formatDistanceFixed(repeatTotals.totalMiles)}) · {tssLabel}
           </div>
 
           <button onClick={() => {
@@ -804,6 +808,8 @@ export default function RenderStepRow({
     >
       {/* Step Inputs */}
       {renderStepInputs()}
+
+      <div style={{ fontSize: '12px', fontWeight: 600, marginTop: '4px' }}>{tssLabel}</div>
 
       {/* Dynamic Presets */}
       {renderStepPresets()}
