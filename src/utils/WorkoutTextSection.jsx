@@ -189,7 +189,7 @@ const matchExecutedSteps = (planned, intervals, paces) => {
   return matches;
 };
 
-const RenderStepCard = ({ step, matches, counter }) => {
+const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
   if (step.isRepeat) {
     return (
       <div className="workout-step-card workout-repeat-block">
@@ -214,7 +214,7 @@ const RenderStepCard = ({ step, matches, counter }) => {
             <React.Fragment key={repetition}>
               {step.reps > 1 && <div className="workout-repeat-iteration">Repetition {repetition + 1}</div>}
               {step.innerSteps.map((innerStep, iIdx) => (
-                <RenderStepCard key={iIdx} step={innerStep} matches={matches} counter={counter} />
+                <RenderStepCard key={iIdx} step={innerStep} matches={matches} counter={counter} hasExecution={hasExecution} />
               ))}
             </React.Fragment>
           ))}
@@ -225,7 +225,7 @@ const RenderStepCard = ({ step, matches, counter }) => {
 
   const executed = matches.get(counter.current++);
   return (
-    <div className="workout-step-card workout-step-comparison">
+    <div className={`workout-step-card ${hasExecution ? "workout-step-comparison" : ""}`}>
       <div className="workout-step-planned">
       {/* Line 1: Details */}
       <div className="workout-step-row">
@@ -249,7 +249,7 @@ const RenderStepCard = ({ step, matches, counter }) => {
         <span className="workout-step-text">"{step.text}"</span>
       </div>
       </div>
-      <div className="workout-step-executed">
+      {hasExecution && <div className="workout-step-executed">
         <strong>Executed</strong>
         {executed ? (
           <>
@@ -259,7 +259,7 @@ const RenderStepCard = ({ step, matches, counter }) => {
             <div>{formatTss(executed.tss)}</div>
           </>
         ) : <div className="workout-execution-unmatched">Not matched</div>}
-      </div>
+      </div>}
     </div>
   );
 };
@@ -334,7 +334,7 @@ const RenderStepCard = ({ step, matches, counter }) => {
             ) : (
               <div className="workout-steps-list">
                 {parsedSteps.map((step, sIdx) => (
-                  <RenderStepCard key={sIdx} step={step} matches={hasExecution ? executedMatches : new Map()} counter={executionCounter} />
+                  <RenderStepCard key={sIdx} step={step} matches={hasExecution ? executedMatches : new Map()} counter={executionCounter} hasExecution={hasExecution} />
                 ))}
               </div>
             )}
