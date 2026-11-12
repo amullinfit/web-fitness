@@ -13,7 +13,6 @@ import WorkoutChart from './WorkoutChart';
 import WorkoutTextSection from '../utils/WorkoutTextSection';
 
 import RenderStepRow from '../utils/RenderStepRow';
-import { estimateRunningWorkout } from '../utils/WorkoutTss.js';
 
 import { OptionsMenu } from '../utils/WorkoutBuilderMenus';
 
@@ -60,7 +59,6 @@ export default function WorkoutBuilder() {
 
   const [unalteredWorkout, setUnalteredWorkout] = useState('');
   const [baseWorkout, setBaseWorkout] = useState(null);
-  const plannedTss = useMemo(() => estimateRunningWorkout(baseWorkout, paces), [baseWorkout, paces]);
 
   // ------------------------------------------------------------
   // Workout Options
@@ -1074,9 +1072,6 @@ export default function WorkoutBuilder() {
                   cursor: 'pointer',
                 }}
               >
-                <div style={{ fontSize: '13px', fontWeight: 600, padding: '4px 0' }}>
-                  Planned TSS: {plannedTss.tss === null ? '— (missing data)' : plannedTss.tss.toFixed(1)}
-                </div>
                 <WorkoutChart
                   workout={baseWorkout}
                   thresholdPace={
