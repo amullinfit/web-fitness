@@ -667,6 +667,8 @@ export default function RenderStepRow({
             : `Time: ${formatTime(calculatedTimeSec)}`}
         </span>
 
+        <span className="step-tss-display" style={{ fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap' }}>{tssLabel}</span>
+
         <button onClick={() => {
           onRemove(step.id);
         }} className="btn-remove">✕</button>
@@ -808,8 +810,6 @@ export default function RenderStepRow({
     >
       {/* Step Inputs */}
       {renderStepInputs()}
-
-      <div style={{ fontSize: '12px', fontWeight: 600, marginTop: '4px' }}>{tssLabel}</div>
 
       {/* Dynamic Presets */}
       {renderStepPresets()}
