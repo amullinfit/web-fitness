@@ -174,9 +174,9 @@ const matchExecutedSteps = (planned, intervals, paces) => {
 
   const plannedDuration = flattened.reduce((sum, step) => sum + Number(step.durationSec || 0), 0);
   const recordedDuration = intervals.reduce((sum, interval) => sum + Number(interval.elapsed_time ?? interval.duration ?? 0), 0);
-  // A substantially different activity timeline cannot be safely aligned.
-  if (!(plannedDuration > 0) || !(recordedDuration > 0) ||
-      Math.abs(recordedDuration - plannedDuration) > Math.max(90, plannedDuration * 0.2)) return matches;
+  if (!(plannedDuration > 0) || !(recordedDuration > 0)) return matches;
+  // Intervals may include mile splits and lap markers. Do not reject the
+  // entire workout because its summed interval durations differ from the plan.
 
   const threshold = getRunningThreshold(paces);
   let recordedOffset = 0;
@@ -212,12 +212,13 @@ const matchExecutedSteps = (planned, intervals, paces) => {
       }
       distanceMeters += span.distanceMeters * overlap / span.seconds;
     }
-    if (!complete || coveredSeconds < duration - 1 || !(distanceMeters > 0)) return;
+    if (!complete || coveredSeconds < duration * 0.8 || !(distanceMeters > 0)) return;
     const miles = distanceMeters / 1609.344;
-    const pace = duration / miles;
+    const pace = coveredSeconds / miles;
     matches.set(index, {
-      seconds: duration, pace, miles,
-      tss: threshold ? 100 * (duration / 3600) * (threshold / pace) ** 2 : null
+      seconds: coveredSeconds, pace, miles,
+      partial: coveredSeconds < duration - 1,
+      tss: threshold ? 100 * (coveredSeconds / 3600) * (threshold / pace) ** 2 : null
     });
   });
   return matches;
@@ -284,7 +285,7 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
       </div>
       </div>
       {hasExecution && <div className="workout-step-executed">
-        <strong>Executed</strong>
+        <strong>Executed {executed?.partial ? '(partial)' : ''}</strong>
         {executed ? (
           <>
             <div>Time: {formatDuration(executed.seconds)}</div>
