@@ -158,8 +158,9 @@ const estimateStepMiles = (step) => {
 
 const formatTss = (value) => value === null || value === undefined ? 'TSS: — (missing data)' : `TSS: ${value.toFixed(1)}`;
 
-// First-pass matching: pair intervals only when counts and elapsed durations are
-// reasonably consistent. Extra watch laps are deliberately left unmatched.
+// Match by elapsed-time overlap, not interval count. A recorded mile split can
+// span two planned steps; distribute its distance proportionally across both.
+// This is an approximation until higher-resolution activity samples are available.
 const matchExecutedSteps = (planned, intervals, paces) => {
   const flattened = [];
   const collect = (steps) => steps.forEach((step) => {
@@ -168,22 +169,55 @@ const matchExecutedSteps = (planned, intervals, paces) => {
     } else flattened.push(step);
   });
   collect(planned);
-  if (!intervals.length || flattened.length !== intervals.length) return new Map();
-  const threshold = getRunningThreshold(paces);
   const matches = new Map();
-  flattened.forEach((step, index) => {
-    const interval = intervals[index];
+  if (!flattened.length || !intervals.length) return matches;
+
+  const plannedDuration = flattened.reduce((sum, step) => sum + Number(step.durationSec || 0), 0);
+  const recordedDuration = intervals.reduce((sum, interval) => sum + Number(interval.elapsed_time ?? interval.duration ?? 0), 0);
+  // A substantially different activity timeline cannot be safely aligned.
+  if (!(plannedDuration > 0) || !(recordedDuration > 0) ||
+      Math.abs(recordedDuration - plannedDuration) > Math.max(90, plannedDuration * 0.2)) return matches;
+
+  const threshold = getRunningThreshold(paces);
+  let recordedOffset = 0;
+  const spans = intervals.map((interval) => {
     const seconds = Number(interval.elapsed_time ?? interval.duration);
     const speed = Number(interval.average_speed ?? interval.speed);
-    if (!(seconds > 0) || !(speed > 0)) return;
-    // Avoid attaching a one-mile split or an accidental lap to the wrong step.
-    if (step.durationSec > 0 && Math.abs(seconds - step.durationSec) > Math.max(30, step.durationSec * 0.25)) return;
-    const pace = 1609.344 / speed;
-    const distance = Number(interval.distance);
+    const rawDistance = Number(interval.distance);
+    const start = recordedOffset;
+    recordedOffset += Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+    return {
+      start, end: recordedOffset, seconds,
+      distanceMeters: rawDistance > 0 ? rawDistance : speed > 0 ? speed * seconds : null
+    };
+  });
+
+  let plannedOffset = 0;
+  flattened.forEach((step, index) => {
+    const start = plannedOffset;
+    const duration = Number(step.durationSec || 0);
+    plannedOffset += duration;
+    if (!(duration > 0)) return;
+
+    let coveredSeconds = 0;
+    let distanceMeters = 0;
+    let complete = true;
+    for (const span of spans) {
+      const overlap = Math.max(0, Math.min(plannedOffset, span.end) - Math.max(start, span.start));
+      if (!overlap) continue;
+      coveredSeconds += overlap;
+      if (!(span.seconds > 0) || !(span.distanceMeters > 0)) {
+        complete = false;
+        continue;
+      }
+      distanceMeters += span.distanceMeters * overlap / span.seconds;
+    }
+    if (!complete || coveredSeconds < duration - 1 || !(distanceMeters > 0)) return;
+    const miles = distanceMeters / 1609.344;
+    const pace = duration / miles;
     matches.set(index, {
-      seconds, pace,
-      miles: Number.isFinite(distance) && distance > 0 ? distance / 1609.344 : seconds / pace,
-      tss: threshold ? 100 * (seconds / 3600) * (threshold / pace) ** 2 : null
+      seconds: duration, pace, miles,
+      tss: threshold ? 100 * (duration / 3600) * (threshold / pace) ** 2 : null
     });
   });
   return matches;
