@@ -225,7 +225,7 @@ export default function WorkoutChart({
               {plannedList.length > 0 && executedList.length > 0 ? (
                 <div className="workout-chart-metric-toggle" title={executedOnTop ? 'Executed bars in front' : 'Planned bars in front'}>
                   <span className={executedOnTop ? '' : 'metric-active'}>
-                    <span className="workout-chart-legend-color planned" /> Planned
+                    Planned
                   </span>
                   <button
                     type="button"
@@ -236,7 +236,7 @@ export default function WorkoutChart({
                     onClick={() => setExecutedOnTop((previous) => !previous)}
                   ><span className="workout-chart-metric-thumb" /></button>
                   <span className={executedOnTop ? 'metric-active' : ''}>
-                    <span className="workout-chart-legend-color executed" /> Executed
+                    Executed
                   </span>
                 </div>
               ) : (
