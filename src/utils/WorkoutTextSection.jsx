@@ -3,7 +3,8 @@
 //
 import React, { useState } from 'react';
 import './WorkoutTextSection.css';
-import { formatPaceRange, parsePaceStrToSec } from './WorkoutChartHelpers.js';
+import { formatPaceRange, parsePaceStrToSec, extractExecutedSteps } from './WorkoutChartHelpers.js';
+import { getRunningThreshold } from './WorkoutTss.js';
 import { estimateRunningStep, estimateRunningWorkout } from './WorkoutTss.js';
 
 import {
@@ -157,7 +158,38 @@ const estimateStepMiles = (step) => {
 
 const formatTss = (value) => value === null || value === undefined ? 'TSS: — (missing data)' : `TSS: ${value.toFixed(1)}`;
 
-const RenderStepCard = ({ step }) => {
+// First-pass matching: pair intervals only when counts and elapsed durations are
+// reasonably consistent. Extra watch laps are deliberately left unmatched.
+const matchExecutedSteps = (planned, intervals, paces) => {
+  const flattened = [];
+  const collect = (steps) => steps.forEach((step) => {
+    if (step.isRepeat) {
+      for (let rep = 0; rep < step.reps; rep++) collect(step.innerSteps);
+    } else flattened.push(step);
+  });
+  collect(planned);
+  if (!intervals.length || flattened.length !== intervals.length) return new Map();
+  const threshold = getRunningThreshold(paces);
+  const matches = new Map();
+  flattened.forEach((step, index) => {
+    const interval = intervals[index];
+    const seconds = Number(interval.elapsed_time ?? interval.duration);
+    const speed = Number(interval.average_speed ?? interval.speed);
+    if (!(seconds > 0) || !(speed > 0)) return;
+    // Avoid attaching a one-mile split or an accidental lap to the wrong step.
+    if (step.durationSec > 0 && Math.abs(seconds - step.durationSec) > Math.max(30, step.durationSec * 0.25)) return;
+    const pace = 1609.344 / speed;
+    const distance = Number(interval.distance);
+    matches.set(index, {
+      seconds, pace,
+      miles: Number.isFinite(distance) && distance > 0 ? distance / 1609.344 : seconds / pace,
+      tss: threshold ? 100 * (seconds / 3600) * (threshold / pace) ** 2 : null
+    });
+  });
+  return matches;
+};
+
+const RenderStepCard = ({ step, matches, counter }) => {
   if (step.isRepeat) {
     return (
       <div className="workout-step-card workout-repeat-block">
@@ -178,16 +210,23 @@ const RenderStepCard = ({ step }) => {
         </div>
 
         <div className="workout-repeat-inner-list">
-          {step.innerSteps.map((innerStep, iIdx) => (
-            <RenderStepCard key={iIdx} step={innerStep} />
+          {Array.from({ length: step.reps }, (_, repetition) => (
+            <React.Fragment key={repetition}>
+              {step.reps > 1 && <div className="workout-repeat-iteration">Repetition {repetition + 1}</div>}
+              {step.innerSteps.map((innerStep, iIdx) => (
+                <RenderStepCard key={iIdx} step={innerStep} matches={matches} counter={counter} />
+              ))}
+            </React.Fragment>
           ))}
         </div>
       </div>
     );
   }
 
+  const executed = matches.get(counter.current++);
   return (
-    <div className="workout-step-card">
+    <div className="workout-step-card workout-step-comparison">
+      <div className="workout-step-planned">
       {/* Line 1: Details */}
       <div className="workout-step-row">
         <span className="workout-step-label">Details:</span>
@@ -208,6 +247,18 @@ const RenderStepCard = ({ step }) => {
       <div className="workout-step-row">
         <span className="workout-step-label">Text:</span>
         <span className="workout-step-text">"{step.text}"</span>
+      </div>
+      </div>
+      <div className="workout-step-executed">
+        <strong>Executed</strong>
+        {executed ? (
+          <>
+            <div>Time: {formatDuration(executed.seconds)}</div>
+            <div>Pace: {secondsToPaceStr(executed.pace)}/mi</div>
+            <div>Distance: {executed.miles.toFixed(2)} mi</div>
+            <div>{formatTss(executed.tss)}</div>
+          </>
+        ) : <div className="workout-execution-unmatched">Not matched</div>}
       </div>
     </div>
   );
@@ -241,6 +292,10 @@ const RenderStepCard = ({ step }) => {
   const zoneList = paceDetails?.preset_colors;
 
   const parsedSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps, zoneList, paceDetails);
+  const executedIntervals = extractExecutedSteps(workout);
+  const hasExecution = executedIntervals.length > 0;
+  const executedMatches = matchExecutedSteps(parsedSteps, executedIntervals, paceDetails);
+  const executionCounter = { current: 0 };
   const plannedTss = estimateRunningWorkout(workout, paceDetails).tss;
 
   const estimatedDistanceMiles = parsedSteps.reduce((sum, step) => sum + estimateStepMiles(step), 0);
@@ -279,7 +334,7 @@ const RenderStepCard = ({ step }) => {
             ) : (
               <div className="workout-steps-list">
                 {parsedSteps.map((step, sIdx) => (
-                  <RenderStepCard key={sIdx} step={step} />
+                  <RenderStepCard key={sIdx} step={step} matches={hasExecution ? executedMatches : new Map()} counter={executionCounter} />
                 ))}
               </div>
             )}
