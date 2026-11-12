@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import './WorkoutTextSection.css';
 import { formatPaceRange, parsePaceStrToSec, extractExecutedSteps } from './WorkoutChartHelpers.js';
 import { getRunningThreshold } from './WorkoutTss.js';
-import { estimateRunningStep, estimateRunningWorkout } from './WorkoutTss.js';
+import { estimateRunningStep, estimateRunningWorkout, getExecutedTss } from './WorkoutTss.js';
 
 import {
   detectPaceMethod,
@@ -332,6 +332,14 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
   const executedMatches = matchExecutedSteps(parsedSteps, executedIntervals, paceDetails);
   const executionCounter = { current: 0 };
   const plannedTss = estimateRunningWorkout(workout, paceDetails).tss;
+  const validPositive = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : null;
+  // Prefer activity-level totals; intervals can contain extra splits/laps.
+  const executedTime = validPositive(workout.moving_time) ?? validPositive(workout.elapsed_time) ??
+    (hasExecution ? executedIntervals.reduce((total, interval) => total + (validPositive(interval.elapsed_time ?? interval.duration) ?? 0), 0) : null);
+  const executedDistance = validPositive(workout.distance) ??
+    (hasExecution && executedIntervals.every((interval) => validPositive(interval.distance) !== null)
+      ? executedIntervals.reduce((total, interval) => total + Number(interval.distance), 0) : null);
+  const executedTss = getExecutedTss(workout);
 
   const estimatedDistanceMiles = parsedSteps.reduce((sum, step) => sum + estimateStepMiles(step), 0);
 
@@ -355,10 +363,23 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
           <span className="workout-section-title">
             {isOpen ? '▼' : '►'} Workout Details ({parsedSteps.length} block{parsedSteps.length === 1 ? '' : 's'})
           </span>
-          <span className="workout-section-summary">
-            <span className="workout-section-badge">Total Time: {formatDuration(totalWorkoutDurationSec)}</span>
-            <span className="workout-section-badge">Est. Distance: {estimatedDistanceMiles.toFixed(2)} mi</span>
-            <span className="workout-section-badge">{formatTss(plannedTss)}</span>
+          <span className="workout-section-summary workout-section-summary-stacked">
+            {parsedSteps.length > 0 && (
+              <span className="workout-section-summary-line">
+                <span className="workout-section-summary-label">Planned</span>
+                <span className="workout-section-badge">Time: {formatDuration(totalWorkoutDurationSec)}</span>
+                <span className="workout-section-badge">Distance: {estimatedDistanceMiles.toFixed(2)} mi</span>
+                <span className="workout-section-badge">{formatTss(plannedTss)}</span>
+              </span>
+            )}
+            {hasExecution && (
+              <span className="workout-section-summary-line">
+                <span className="workout-section-summary-label">Executed</span>
+                <span className="workout-section-badge">Time: {executedTime !== null ? formatDuration(executedTime) : '—'}</span>
+                <span className="workout-section-badge">Distance: {executedDistance !== null ? (executedDistance / 1609.344).toFixed(2) + ' mi' : '—'}</span>
+                <span className="workout-section-badge">{formatTss(executedTss)}</span>
+              </span>
+            )}
           </span>
         </div>
 
