@@ -35,7 +35,6 @@ import {
 
 export default function WorkoutBuilder() {
   const { paces } = usePaces();
-  const plannedTss = useMemo(() => estimateRunningWorkout(baseWorkout, paces), [baseWorkout, paces]);
   const readOnly = useReadOnly();
 
   // ------------------------------------------------------------
@@ -61,6 +60,7 @@ export default function WorkoutBuilder() {
 
   const [unalteredWorkout, setUnalteredWorkout] = useState('');
   const [baseWorkout, setBaseWorkout] = useState(null);
+  const plannedTss = useMemo(() => estimateRunningWorkout(baseWorkout, paces), [baseWorkout, paces]);
 
   // ------------------------------------------------------------
   // Workout Options
