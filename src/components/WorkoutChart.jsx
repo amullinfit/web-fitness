@@ -91,10 +91,15 @@ export default function WorkoutChart({
   });
   const validTss = [...plannedTss, ...executedTss].filter((value) => Number.isFinite(value) && value >= 0);
   const maxTss = Math.max(1, ...validTss);
-  const tssTicks = Array.from({ length: 5 }, (_, index) => ({
-    label: (maxTss * (4 - index) / 4).toFixed(1), topPct: index * 25,
-  }));
-  const tssHeight = (value) => value === null || !Number.isFinite(value) ? 0 : Math.max(0, value / maxTss * 100);
+  const tssAxisMax = Math.max(5, Math.ceil(maxTss / 5) * 5);
+  // Use half-point tick increments and a top boundary rounded to a multiple of five.
+  const tickStep = Math.max(0.5, Math.ceil((tssAxisMax / 6) * 2) / 2);
+  const tssTicks = [{ label: tssAxisMax.toFixed(1), topPct: 0 }];
+  for (let value = Math.floor((tssAxisMax - 0.001) / tickStep) * tickStep; value > 0; value -= tickStep) {
+    tssTicks.push({ label: value.toFixed(1), topPct: (1 - value / tssAxisMax) * 100 });
+  }
+  tssTicks.push({ label: '0.0', topPct: 100 });
+  const tssHeight = (value) => value === null || !Number.isFinite(value) ? 0 : Math.max(0, value / tssAxisMax * 100);
 
   const totalPlannedSec = plannedList.reduce((sum, s) => sum + (s.duration || 0), 0);
   const totalExecutedSec = executedList.reduce((sum, s) => sum + (s.duration || 0), 0);
@@ -200,13 +205,13 @@ export default function WorkoutChart({
           )}
 
           {enableTssToggle && (
-            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+            <div className="workout-chart-header-slot workout-chart-metric-toggle" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
               <button type="button" aria-pressed={!isTssMode} onClick={() => setChartMetric('pace')} style={{ fontWeight: !isTssMode ? 700 : 400 }}>Pace</button>
               <button type="button" aria-pressed={isTssMode} onClick={() => setChartMetric('tss')} style={{ fontWeight: isTssMode ? 700 : 400 }}>TSS</button>
             </div>
           )}
           {isLegendVisible && (
-            <div className="workout-chart-legend">
+            <div className="workout-chart-legend workout-chart-header-slot">
               {plannedList.length > 0 && (
                 <div className="workout-chart-legend-item">
                   <span className="workout-chart-legend-color planned" />
@@ -248,11 +253,13 @@ export default function WorkoutChart({
             </div>
           )}
 
-          {isThresholdPaceVisible && !isTssMode && (
-            <span className="workout-section-badge">
-              Threshold ({workout?.type || 'Sport'}): {thresholdDisplayStr}
-            </span>
-          )}
+          <div className="workout-chart-header-slot workout-chart-threshold-slot">
+            {isThresholdPaceVisible && !isTssMode && (
+              <span className="workout-section-badge">
+                Threshold ({workout?.type || 'Sport'}): {thresholdDisplayStr}
+              </span>
+            )}
+          </div>
         </div>
       )}
 
