@@ -41,11 +41,7 @@ export function estimateRunningPace(step, paces) {
   const threshold = getRunningThreshold(paces);
   if (units.includes('zone')) {
     const values = [pace.start ?? pace.value, pace.end ?? pace.value];
-    const zoneNumbers = values.map(Number);
-    if (zoneNumbers.some((value) => !Number.isInteger(value) || value < 1)) return null;
-    const selected = Array.from({ length: Math.abs(zoneNumbers[1] - zoneNumbers[0]) + 1 },
-      (_, index) => Math.min(...zoneNumbers) + index);
-    const bounds = selected.map((value) => zoneBounds(value, paces));
+    const bounds = values.map((value) => zoneBounds(value, paces));
     if (bounds.some((value) => !value)) return null;
     const fast = Math.min(...bounds.map((value) => value.fast));
     const slow = Math.max(...bounds.map((value) => value.slow));
