@@ -339,6 +339,7 @@ export default function MonthlyView() {
                       showLegend={false}
                       minimalXAxis={true}
                       showHoverDetails={false}
+                      enableTssToggle={false}
                     />
                   )}
                 </div>
