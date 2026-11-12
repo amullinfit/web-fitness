@@ -3,6 +3,7 @@
 //
 import React, { useId, useState } from 'react';
 import '../CSS/WorkoutChart.css';
+import { estimateRunningStep, getRunningThreshold } from '../utils/WorkoutTss.js';
 import { usePaces } from '../utils/PacesContext.jsx';
 import {
   formatIntensityTitleCase,
@@ -46,7 +47,8 @@ export default function WorkoutChart({
   showLegend = true,
   minimalXAxis = false,
   showHoverDetails = true,
-  showBarPace = false
+  showBarPace = false,
+  enableTssToggle = true
 }) {
 
   const clipId = useId();
@@ -55,6 +57,7 @@ export default function WorkoutChart({
   const { paces, loading: pacesLoading } = usePaces();
 
   const [executedOnTop, setExecutedOnTop] = useState(true);
+  const [chartMetric, setChartMetric] = useState('pace');
   const [isChartHovered, setIsChartHovered] = useState(false);
 
   // Safely parse boolean props
@@ -75,6 +78,23 @@ export default function WorkoutChart({
   const executedList = extractExecutedSteps(workout);
 
   if (!plannedList.length && !executedList.length) return null;
+
+  const isTssMode = enableTssToggle && chartMetric === 'tss';
+  const runningSport = /run/i.test(String(workout?.type || workout?.sport || workout?.workout_doc?.type || 'Run'));
+  const thresholdForTss = getRunningThreshold(paces);
+  const plannedTss = plannedList.map((step) => runningSport ? estimateRunningStep(step, paces).tss : null);
+  const executedTss = executedList.map((step) => {
+    const seconds = Number(step.duration);
+    const pace = Number(step.pace);
+    return runningSport && thresholdForTss && seconds > 0 && pace > 0
+      ? 100 * (seconds / 3600) * (thresholdForTss / pace) ** 2 : null;
+  });
+  const validTss = [...plannedTss, ...executedTss].filter((value) => Number.isFinite(value) && value >= 0);
+  const maxTss = Math.max(1, ...validTss);
+  const tssTicks = Array.from({ length: 5 }, (_, index) => ({
+    label: (maxTss * (4 - index) / 4).toFixed(1), topPct: index * 25,
+  }));
+  const tssHeight = (value) => value === null || !Number.isFinite(value) ? 0 : Math.max(0, value / maxTss * 100);
 
   const totalPlannedSec = plannedList.reduce((sum, s) => sum + (s.duration || 0), 0);
   const totalExecutedSec = executedList.reduce((sum, s) => sum + (s.duration || 0), 0);
@@ -150,7 +170,7 @@ export default function WorkoutChart({
   };
 
   const hasHiddenDetails = !isWorkoutNameVisible || !isThresholdPaceVisible;
-  const showTopBar = isWorkoutNameVisible || isLegendVisible || isThresholdPaceVisible;
+  const showTopBar = isWorkoutNameVisible || isLegendVisible || isThresholdPaceVisible || enableTssToggle;
 
   return (
     <div 
@@ -179,12 +199,18 @@ export default function WorkoutChart({
             </span>
           )}
 
+          {enableTssToggle && (
+            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+              <button type="button" aria-pressed={!isTssMode} onClick={() => setChartMetric('pace')} style={{ fontWeight: !isTssMode ? 700 : 400 }}>Pace</button>
+              <button type="button" aria-pressed={isTssMode} onClick={() => setChartMetric('tss')} style={{ fontWeight: isTssMode ? 700 : 400 }}>TSS</button>
+            </div>
+          )}
           {isLegendVisible && (
             <div className="workout-chart-legend">
               {plannedList.length > 0 && (
                 <div className="workout-chart-legend-item">
                   <span className="workout-chart-legend-color planned" />
-                  <span>Planned Pace</span>
+                  <span>{isTssMode ? 'Planned TSS' : 'Planned Pace'}</span>
                 </div>
               )}
               {executedList.length > 0 && (
@@ -222,7 +248,7 @@ export default function WorkoutChart({
             </div>
           )}
 
-          {isThresholdPaceVisible && (
+          {isThresholdPaceVisible && !isTssMode && (
             <span className="workout-section-badge">
               Threshold ({workout?.type || 'Sport'}): {thresholdDisplayStr}
             </span>
@@ -243,7 +269,7 @@ export default function WorkoutChart({
 
         {renderYAxis && (
           <div className="workout-chart-yaxis" style={{ height: chartHeight }}>
-            {yTicks.map((tick, idx) => (
+            {(isTssMode ? tssTicks : yTicks).map((tick, idx) => (
               <span 
                 key={idx}
                 className="workout-chart-ytick"
@@ -291,7 +317,8 @@ export default function WorkoutChart({
 
                   const paceDetails = range.formattedText || descriptivePaceStr || 'N/A';
 
-                  const tooltipText = `${durationFormatted} @ ${paceDetails}`;
+                  const tss = plannedTss[idx];
+                  const tooltipText = isTssMode ? `${durationFormatted} · ${tss === null ? 'TSS unavailable' : `${tss.toFixed(1)} TSS`}` : `${durationFormatted} @ ${paceDetails}`;
 
                   return (
                     <div
@@ -300,7 +327,7 @@ export default function WorkoutChart({
                       className="workout-chart-bar-container"
                       style={{ width: `${widthPct}%`, position: 'relative' }}
                     >
-                      {fastHeightPct > slowHeightPct && (
+                      {!isTssMode && fastHeightPct > slowHeightPct && (
                         <div
                           className="workout-chart-bar workout-chart-bar-planned-fast"
                           style={{
@@ -315,13 +342,13 @@ export default function WorkoutChart({
                         className="workout-chart-bar workout-chart-bar-planned-slow"
                         style={{
                           bottom: 0,
-                          height: `${slowHeightPct}%`,
+                          height: `${isTssMode ? tssHeight(tss) : slowHeightPct}%`,
                           backgroundColor: zoneDetails.color
                         }}
                       />
 
                       {/* Display target pace on bar */}
-                      {isBarPaceVisible && (
+                      {isBarPaceVisible && !isTssMode && (
                         <span
                           className="workout-chart-bar-label"
                           style={{
@@ -371,7 +398,8 @@ export default function WorkoutChart({
                     const heightPct = computePaceToHeightPct(range.midSec);
   
                     const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
-                    const tooltipText = `${durationFormatted} @ ${paceRangeFormatted}`;
+                    const tss = executedTss[idx];
+                    const tooltipText = isTssMode ? `${durationFormatted} · ${tss === null ? 'TSS unavailable' : `${tss.toFixed(1)} TSS`}` : `${durationFormatted} @ ${paceRangeFormatted}`;
                   
                     const durationMinutes = durationSecs / 60;
                     const pathData = generateWavyBarPath(durationMinutes);
@@ -387,7 +415,7 @@ export default function WorkoutChart({
                         className="workout-chart-bar-executed-svg"
                         style={{
                           bottom: 0,
-                          height: `${heightPct}%`
+                          height: `${isTssMode ? tssHeight(tss) : heightPct}%`
                         }}
                         viewBox="0 0 100 100"
                         preserveAspectRatio="none"
