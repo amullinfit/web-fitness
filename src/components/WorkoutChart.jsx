@@ -222,43 +222,38 @@ export default function WorkoutChart({
           )}
           {isLegendVisible && (
             <div className="workout-chart-legend workout-chart-header-slot">
-              {plannedList.length > 0 && (
-                <div className="workout-chart-legend-item">
-                  <span className="workout-chart-legend-color planned" />
-                  <span>{isTssMode ? 'Planned TSS' : 'Planned Pace'}</span>
+              {plannedList.length > 0 && executedList.length > 0 ? (
+                <div className="workout-chart-metric-toggle" title={executedOnTop ? 'Executed bars in front' : 'Planned bars in front'}>
+                  <span className={executedOnTop ? '' : 'metric-active'}>
+                    <span className="workout-chart-legend-color planned" /> Planned
+                  </span>
+                  <button
+                    type="button"
+                    className="workout-chart-metric-switch"
+                    role="switch"
+                    aria-label="Show executed bars in front of planned bars"
+                    aria-checked={executedOnTop}
+                    onClick={() => setExecutedOnTop((previous) => !previous)}
+                  ><span className="workout-chart-metric-thumb" /></button>
+                  <span className={executedOnTop ? 'metric-active' : ''}>
+                    <span className="workout-chart-legend-color executed" /> Executed
+                  </span>
                 </div>
-              )}
-              {executedList.length > 0 && (
-                <div className="workout-chart-legend-item">
-                  <span className="workout-chart-legend-color executed" />
-                  <span>Executed</span>
-                </div>
-              )}
-
-              {plannedList.length > 0 && executedList.length > 0 && (
-                <button
-                  type="button"
-                  className="workout-layer-swap-btn"
-                  onClick={() => {
-                    setExecutedOnTop((prev) => !prev);
-                  }}
-                  title={executedOnTop ? "Executed is in front. Click to bring Planned to front." : "Planned is in front. Click to bring Executed to front."}
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    padding: '2px 6px',
-                    marginLeft: '8px',
-                    fontSize: '13px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '2px',
-                    color: 'inherit'
-                  }}
-                >
-                  ⇄
-                </button>
+              ) : (
+                <>
+                  {plannedList.length > 0 && (
+                    <div className="workout-chart-legend-item">
+                      <span className="workout-chart-legend-color planned" />
+                      <span>{isTssMode ? 'Planned TSS' : 'Planned Pace'}</span>
+                    </div>
+                  )}
+                  {executedList.length > 0 && (
+                    <div className="workout-chart-legend-item">
+                      <span className="workout-chart-legend-color executed" />
+                      <span>Executed</span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
