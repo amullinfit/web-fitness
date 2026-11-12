@@ -1,3 +1,5 @@
+import { extractStepPaceRange } from './WorkoutChartHelpers.js';
+
 /**
  * Stage 6-TSS-1: one source for running workout estimates.
  * Planned TSS is derived from CURRENT threshold pace, never written to intervals.icu.
@@ -42,6 +44,13 @@ export function estimateRunningPace(step, paces) {
   const units = String(pace.units || '').toLowerCase();
   const threshold = getRunningThreshold(paces);
   if (units.includes('zone')) {
+    // Reuse the same zone resolution that produces the displayed workout pace range.
+    // This also supports zones with an open-ended boundary (notably Zone 1).
+    const displayed = extractStepPaceRange(pace, paces);
+    if (positive(displayed?.fastSec) && positive(displayed?.slowSec) &&
+        displayed.fastSec > 1 && displayed.slowSec > 1) {
+      return speedMidpointPace(displayed.fastSec, displayed.slowSec);
+    }
     const values = [pace.start ?? pace.value, pace.end ?? pace.value];
     const bounds = values.map((value) => zoneBounds(value, paces));
     if (bounds.some((value) => !value)) return null;
