@@ -100,3 +100,13 @@ test('nested repeat blocks multiply all levels', () => {
   near(result.tss, 60);
   near(result.children[0].children[0].tss, 10);
 });
+
+test('open-ended Zone 1 uses displayed fast pace plus 120 seconds for slow boundary', () => {
+  const settings = { run_pace_sec: 480, preset_colors: [
+    { zone: 1, pace_fast: '10:20', pace_val_sec: 620 },
+  ] };
+  const result = estimateRunningStep({ duration: 121, pace: { units: 'pace_zone', value: 1 } }, settings);
+  const midpoint = 2 / (1 / 620 + 1 / 740);
+  near(result.tss, 100 * (121 / 3600) * (480 / midpoint) ** 2);
+  assert.equal(result.reason, null);
+});
