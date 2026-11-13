@@ -9,31 +9,30 @@ import {
   getSportCategory 
 } from './MonthlyViewHelpers';
 
-// Weekly TSS uses the same sources as Workout Details: planned running
-// estimates and recorded intervals.icu load. Never infer missing values as 0.
+// Match the existing weekly distance semantics: one value per workout,
+// preferring executed training load when available, otherwise planned TSS.
 const getWeeklyTss = (workouts, sport, paces) => {
-  let planned = 0;
-  let executed = 0;
-  let plannedCount = 0;
-  let executedCount = 0;
+  let total = 0;
+  let count = 0;
   workouts.forEach((workout) => {
     if (getSportCategory(workout) !== sport) return;
-    const hasPlan = Boolean(workout.workout_doc?.steps?.length || (typeof workout.workout_doc === 'string' && workout.workout_doc.includes('"steps"')));
-    if (hasPlan && sport === 'Run') {
-      const value = estimateRunningWorkout(workout, paces).tss;
-      if (value !== null) { planned += value; plannedCount++; }
-    }
-    const value = getExecutedTss(workout);
-    if (value !== null && (workout.icu_activity_id || workout.activity_id || workout.feedSource !== 'WORKOUTS')) {
-      executed += value;
-      executedCount++;
-    }
+    const recorded = getExecutedTss(workout);
+    const planned = sport === 'Run' ? estimateRunningWorkout(workout, paces).tss : null;
+    const value = recorded ?? planned;
+    if (value !== null) { total += value; count++; }
   });
-  return {
-    planned: plannedCount ? planned.toFixed(1) : null,
-    executed: executedCount ? executed.toFixed(1) : null
-  };
+  return count ? total.toFixed(1) : null;
 };
+
+const MetricSwitch = ({ metric, onChange }) => (
+  <button type="button" className="monthly-total-metric-switch"
+    role="switch" aria-label="Show weekly TSS instead of distance"
+    aria-checked={metric === 'tss'}
+    title={metric === 'tss' ? 'Show distance' : 'Show TSS'}
+    onClick={(event) => { event.stopPropagation(); onChange(metric === 'tss' ? 'distance' : 'tss'); }}>
+    <span className="monthly-total-metric-thumb" />
+  </button>
+);
 
 /**
  * Determine daily color based on intensity zone breakdown.
@@ -105,7 +104,9 @@ export const WeeklyFrameChart = ({
   isFarRight = false,
   isCollapsed = false,
   onToggleCollapse,
-  paces
+  paces,
+  summaryMetric = 'distance',
+  onSummaryMetricChange = () => {}
 }) => {
   const [hoveredDayIndex, setHoveredDayIndex] = useState(null);
   const [isTotalHovered, setIsTotalHovered] = useState(false);
@@ -172,19 +173,10 @@ export const WeeklyFrameChart = ({
             onClick={isFarRight ? onToggleCollapse : undefined}
             title={isFarRight ? "Collapse Weekly Charts" : undefined}
           >
-            {totalWeeklyMiles} mi total
-            {isFarRight && (
-              <span className={`collapse-triangle-icon ${isTotalHovered ? 'visible' : ''}`}>
-                ▲
-              </span>
-            )}
+            {summaryMetric === 'tss' ? `${weeklyTss ?? '—'} TSS total` : `${totalWeeklyMiles} mi total`}
+            {isFarRight && <span className={`collapse-triangle-icon ${isTotalHovered ? 'visible' : ''}`}>▲</span>}
           </span>
-          {(weeklyTss.planned !== null || weeklyTss.executed !== null) && (
-            <span className="monthly-chart-tss-summary">
-              {weeklyTss.planned !== null && <span>Planned TSS: {weeklyTss.planned}</span>}
-              {weeklyTss.executed !== null && <span>Executed TSS: {weeklyTss.executed}</span>}
-            </span>
-          )}
+          <MetricSwitch metric={summaryMetric} onChange={onSummaryMetricChange} />
         </div>
       </div>
 
@@ -365,19 +357,10 @@ export const CollapsedWeeklySummary = ({
                       onClick={isLastSportInFarRight ? onToggleCollapse : undefined}
                       title={isLastSportInFarRight ? "Expand Weekly Charts" : undefined}
                     >
-                      {totalsBySport[sport]} mi total
-                      {isLastSportInFarRight && (
-                        <span className={`collapse-triangle-icon ${hoveredTotal ? 'visible' : ''}`}>
-                          ▼
-                        </span>
-                      )}
+                      {summaryMetric === 'tss' ? `${tssBySport[sport] ?? '—'} TSS total` : `${totalsBySport[sport]} mi total`}
+                      {isLastSportInFarRight && <span className={`collapse-triangle-icon ${hoveredTotal ? 'visible' : ''}`}>▼</span>}
                     </span>
-                    {(tssBySport[sport]?.planned !== null || tssBySport[sport]?.executed !== null) && (
-                      <span className="monthly-chart-tss-summary">
-                        {tssBySport[sport].planned !== null && <span>P: {tssBySport[sport].planned}</span>}
-                        {tssBySport[sport].executed !== null && <span>E: {tssBySport[sport].executed}</span>}
-                      </span>
-                    )}
+                    <MetricSwitch metric={summaryMetric} onChange={onSummaryMetricChange} />
                   </div>
                 );
               })}
