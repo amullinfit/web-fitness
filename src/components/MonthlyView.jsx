@@ -497,6 +497,7 @@ export default function MonthlyView() {
             fourWeeksDates={fourWeeksDates}
             workoutsByDate={workoutsByDate}
             selectedChartSports={selectedChartSports}
+            paces={paces}
             onToggleCollapse={() => setIsWeeklyChartCollapsed(false)}
           />
         ) : (
@@ -514,6 +515,8 @@ export default function MonthlyView() {
                         weekDates={weekDates}
                         workoutsByDate={workoutsByDate}
                         sportType={sport}
+                      paces={paces}
+                        paces={paces}
                         onDayClick={(sportWorkouts) => handleOpenZoomModal(sportWorkouts)}
                         isFarRight={isLastSportInFarRight}
                         isCollapsed={false}
@@ -544,6 +547,7 @@ export default function MonthlyView() {
                       weekDates={weekDates}
                       workoutsByDate={workoutsByDate}
                       sportType={sport}
+                      paces={paces}
                       onDayClick={(sportWorkouts) => handleOpenZoomModal(sportWorkouts)}
                     />
                   ))}
