@@ -222,3 +222,13 @@
 /* Repeat blocks: aggregate executed time/distance/pace/TSS above the iterations. */
 .workout-repeat-executed-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 10px; width: 100%; padding-top: 5px; border-top: 1px solid #d9e5f7; font-size: 11px; color: #344054; }
 .workout-repeat-executed-summary strong { color: #26496e; }
+
+/* Repeat summary mirrors the Workout Details planned/executed header. */
+.workout-repeat-totals { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; width: 100%; }
+.workout-repeat-totals-line { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 5px 8px; font-size: 11px; }
+.workout-repeat-totals-line > strong { min-width: 64px; text-align: right; color: #344054; }
+@media (max-width: 640px) {
+  .workout-repeat-totals { align-items: flex-start; }
+  .workout-repeat-totals-line { justify-content: flex-start; }
+  .workout-repeat-totals-line > strong { text-align: left; }
+}
