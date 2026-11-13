@@ -210,3 +210,7 @@
   .workout-section-summary-stacked { width: 100%; align-items: flex-start; }
   .workout-section-summary-line { justify-content: flex-start; }
 }
+
+/* Recorded activity continuing beyond the scheduled workout. */
+.workout-extra-execution { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; border-style: dashed; background: #f7f9fc; font-size: 11px; color: #344054; }
+.workout-extra-execution strong { color: #263c58; margin-right: 8px; }
