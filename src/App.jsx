@@ -11,7 +11,7 @@ import { PacesProvider, usePaces } from './utils/PacesContext.jsx';
 import { ReadOnlyProvider, useReadOnly } from './context/ReadOnlyContext.jsx';
 
 const DEFAULT_VIEW = 'monthly';
-const APP_TITLE = 'Web Fitness – Stage 6-TSS-3 (WorkoutChart Pace/TSS Toggle)';
+const APP_TITLE = 'Web Fitness – Stage 6-TSS-4 (DailyView TSS Validation)';
 
 // Timestamped logger utility
 const originalLog = console.log;
