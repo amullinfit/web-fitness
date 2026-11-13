@@ -244,6 +244,26 @@ const matchExecutedSteps = (planned, intervals, paces) => {
   return matches;
 };
 
+const RenderExecutedInterval = ({ interval, index, threshold, running }) => {
+  const seconds = Number(interval.elapsed_time ?? interval.duration);
+  const speed = Number(interval.average_speed ?? interval.speed);
+  const rawDistance = Number(interval.distance);
+  const miles = rawDistance > 0 ? rawDistance / 1609.344
+    : seconds > 0 && speed > 0 ? seconds * speed / 1609.344 : null;
+  const pace = seconds > 0 && miles > 0 ? seconds / miles : null;
+  const tss = running && threshold && pace && seconds > 0
+    ? 100 * (seconds / 3600) * (threshold / pace) ** 2 : null;
+  return (
+    <div className="workout-step-card workout-executed-only-step">
+      <strong>Executed interval {index + 1}</strong>
+      <span>Time: {seconds > 0 ? formatDuration(seconds) : '—'}</span>
+      <span>Pace: {pace ? secondsToPaceStr(pace) : '—'}</span>
+      <span>Distance: {miles !== null ? miles.toFixed(2) + ' mi' : '—'}</span>
+      {running && <span>{formatTss(tss)}</span>}
+    </div>
+  );
+};
+
 const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
   if (step.isRepeat) {
     return (
@@ -349,6 +369,8 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
   const parsedSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps, zoneList, paceDetails);
   const executedIntervals = extractExecutedSteps(workout);
   const hasExecution = executedIntervals.length > 0;
+  const isRunning = /run|running/i.test(String(workout.type || workout.sport || ''));
+  const runningThreshold = isRunning ? getRunningThreshold(paceDetails) : null;
   const executedMatches = matchExecutedSteps(parsedSteps, executedIntervals, paceDetails);
   const executionCounter = { current: 0 };
   const plannedTss = estimateRunningWorkout(workout, paceDetails).tss;
@@ -390,7 +412,7 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
           className="workout-section-toggle"
         >
           <span className="workout-section-title">
-            {isOpen ? '▼' : '►'} Workout Details ({parsedSteps.length} block{parsedSteps.length === 1 ? '' : 's'})
+            {isOpen ? '▼' : '►'} Workout Details ({parsedSteps.length || executedIntervals.length} block{(parsedSteps.length || executedIntervals.length) === 1 ? '' : 's'})
           </span>
           <span className="workout-section-summary workout-section-summary-stacked">
             {parsedSteps.length > 0 && (
@@ -415,7 +437,13 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
         {isOpen && (
           <div className="workout-section-content">
             {parsedSteps.length === 0 ? (
-              <div className="workout-section-empty">No parsed step data available in workout_doc.</div>
+              hasExecution ? (
+                <div className="workout-steps-list">
+                  {executedIntervals.map((interval, index) => (
+                    <RenderExecutedInterval key={index} interval={interval} index={index} threshold={runningThreshold} running={isRunning} />
+                  ))}
+                </div>
+              ) : <div className="workout-section-empty">No planned or executed step data available.</div>
             ) : (
               <div className="workout-steps-list">
                 {parsedSteps.map((step, sIdx) => (
