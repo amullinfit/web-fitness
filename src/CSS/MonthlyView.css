@@ -837,3 +837,8 @@
 .monthly-zoom-calendar-options>button{background:transparent;border:0;cursor:pointer;padding:6px 9px;font-size:18px}
 .monthly-zoom-calendar-options .monthly-calendar-options-menu{z-index:200}
 .monthly-calendar-options-menu{min-width:110px}
+
+/* Stage 6-TSS-5: compact, noninteractive weekly training-load totals. */
+.monthly-chart-tss-summary { display: inline-flex; flex-wrap: wrap; gap: 3px 8px; align-items: center; font-size: 10px; color: #65758a; }
+.monthly-chart-tss-summary span { white-space: nowrap; }
+.monthly-chart-sport-inline { flex-wrap: wrap; }
