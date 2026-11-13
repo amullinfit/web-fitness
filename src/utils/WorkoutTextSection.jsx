@@ -264,8 +264,32 @@ const RenderExecutedInterval = ({ interval, index, threshold, running }) => {
   );
 };
 
+// Aggregate the same flattened step matches used by each repetition card.
+// The counter points to the first executed step inside this repeat block.
+const countRepeatLeaves = (steps) => steps.reduce((total, step) =>
+  total + (step.isRepeat ? step.reps * countRepeatLeaves(step.innerSteps) : 1), 0);
+
+const summarizeRepeatExecution = (step, matches, startIndex, isRunning) => {
+  const count = step.reps * countRepeatLeaves(step.innerSteps);
+  const entries = Array.from({ length: count }, (_, index) => matches.get(startIndex + index));
+  const matched = entries.filter(Boolean);
+  if (!matched.length) return null;
+  const seconds = matched.reduce((total, entry) => total + entry.seconds, 0);
+  const miles = matched.reduce((total, entry) => total + entry.miles, 0);
+  const hasAll = matched.length === count;
+  const tssAvailable = isRunning && matched.every((entry) => entry.tss !== null && Number.isFinite(entry.tss));
+  return {
+    seconds, miles, pace: miles > 0 ? seconds / miles : null,
+    tss: tssAvailable ? matched.reduce((total, entry) => total + entry.tss, 0) : null,
+    partial: !hasAll || matched.some((entry) => entry.partial)
+  };
+};
+
 const RenderStepCard = ({ step, matches, counter, hasExecution, isRunning }) => {
   if (step.isRepeat) {
+    const repeatExecuted = hasExecution
+      ? summarizeRepeatExecution(step, matches, counter.current, isRunning)
+      : null;
     return (
       <div className="workout-step-card workout-repeat-block">
         <div className="workout-repeat-header">
@@ -282,6 +306,19 @@ const RenderStepCard = ({ step, matches, counter, hasExecution, isRunning }) => 
           </span>
           <span className="workout-section-badge">Est. Distance: {estimateStepMiles(step).toFixed(2)} mi</span>
           <span className="workout-section-badge">{isRunning ? formatTss(step.tss) : 'TSS: — (not supported)'}</span>
+          {hasExecution && (
+            <span className="workout-repeat-executed-summary">
+              <strong>Executed{repeatExecuted?.partial ? ' (partial)' : ''}</strong>
+              {repeatExecuted ? (
+                <>
+                  <span>Time: {formatDuration(repeatExecuted.seconds)}</span>
+                  <span>Distance: {repeatExecuted.miles.toFixed(2)} mi</span>
+                  <span>Pace: {repeatExecuted.pace ? secondsToPaceStr(repeatExecuted.pace) : '—'}</span>
+                  <span>{isRunning ? formatTss(repeatExecuted.tss) : 'TSS: — (not supported)'}</span>
+                </>
+              ) : <span>Not matched</span>}
+            </span>
+          )}
         </div>
 
         <div className="workout-repeat-inner-list">
