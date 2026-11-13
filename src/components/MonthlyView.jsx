@@ -110,6 +110,7 @@ export default function MonthlyView() {
 
   // State for Collapsible Weekly Chart Area
   const [isWeeklyChartCollapsed, setIsWeeklyChartCollapsed] = useState(false);
+  const [weeklySummaryMetric, setWeeklySummaryMetric] = useState('distance');
 
   // State for Zoomed Workout Modal (Holds array of workouts for selected day)
   const [zoomWorkouts, setZoomWorkouts] = useState(null);
@@ -498,6 +499,8 @@ export default function MonthlyView() {
             workoutsByDate={workoutsByDate}
             selectedChartSports={selectedChartSports}
             paces={paces}
+            summaryMetric={weeklySummaryMetric}
+            onSummaryMetricChange={setWeeklySummaryMetric}
             onToggleCollapse={() => setIsWeeklyChartCollapsed(false)}
           />
         ) : (
@@ -516,6 +519,8 @@ export default function MonthlyView() {
                         workoutsByDate={workoutsByDate}
                         sportType={sport}
                         paces={paces}
+                        summaryMetric={weeklySummaryMetric}
+                        onSummaryMetricChange={setWeeklySummaryMetric}
                         onDayClick={(sportWorkouts) => handleOpenZoomModal(sportWorkouts)}
                         isFarRight={isLastSportInFarRight}
                         isCollapsed={false}
@@ -547,6 +552,8 @@ export default function MonthlyView() {
                       workoutsByDate={workoutsByDate}
                       sportType={sport}
                       paces={paces}
+                      summaryMetric={weeklySummaryMetric}
+                      onSummaryMetricChange={setWeeklySummaryMetric}
                       onDayClick={(sportWorkouts) => handleOpenZoomModal(sportWorkouts)}
                     />
                   ))}
