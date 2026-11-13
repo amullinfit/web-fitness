@@ -221,6 +221,26 @@ const matchExecutedSteps = (planned, intervals, paces) => {
       tss: threshold ? 100 * (coveredSeconds / 3600) * (threshold / pace) ** 2 : null
     });
   });
+  // Capture recorded intervals beyond the end of the planned timeline.
+  // Do not assign these to the last planned step.
+  let extraSeconds = 0;
+  let extraMeters = 0;
+  let extraComplete = true;
+  for (const span of spans) {
+    const overlap = Math.max(0, span.end - Math.max(plannedDuration, span.start));
+    if (!overlap) continue;
+    extraSeconds += overlap;
+    if (!(span.seconds > 0) || !(span.distanceMeters > 0)) extraComplete = false;
+    else extraMeters += span.distanceMeters * overlap / span.seconds;
+  }
+  if (extraSeconds > 1) {
+    const miles = extraComplete && extraMeters > 0 ? extraMeters / 1609.344 : null;
+    const pace = miles ? extraSeconds / miles : null;
+    matches.extra = {
+      seconds: extraSeconds, miles, pace,
+      tss: threshold && pace ? 100 * (extraSeconds / 3600) * (threshold / pace) ** 2 : null
+    };
+  }
   return matches;
 };
 
@@ -289,7 +309,7 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
         {executed ? (
           <>
             <div>Time: {formatDuration(executed.seconds)}</div>
-            <div>Pace: {secondsToPaceStr(executed.pace)}/mi</div>
+            <div>Pace: {secondsToPaceStr(executed.pace)}</div>
             <div>Distance: {executed.miles.toFixed(2)} mi</div>
             <div>{formatTss(executed.tss)}</div>
           </>
@@ -341,6 +361,15 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
       ? executedIntervals.reduce((total, interval) => total + Number(interval.distance), 0) : null);
   const executedTss = getExecutedTss(workout);
 
+  const extraRecorded = executedMatches.extra ?? null;
+  // If the activity total extends beyond the available interval timeline, report
+  // the remaining time without inventing pace, distance, or step TSS.
+  const unmatchedExtraSeconds = executedTime !== null
+    ? Math.max(0, executedTime - Math.max(
+        parsedSteps.reduce((sum, step) => sum + step.durationSec, 0) + (extraRecorded?.seconds ?? 0),
+        executedIntervals.reduce((sum, interval) => sum + (validPositive(interval.elapsed_time ?? interval.duration) ?? 0), 0)
+      ))
+    : 0;
   const estimatedDistanceMiles = parsedSteps.reduce((sum, step) => sum + estimateStepMiles(step), 0);
 
   // Calculate Total Overall Workout Duration
@@ -392,6 +421,22 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
                 {parsedSteps.map((step, sIdx) => (
                   <RenderStepCard key={sIdx} step={step} matches={hasExecution ? executedMatches : new Map()} counter={executionCounter} hasExecution={hasExecution} />
                 ))}
+                {extraRecorded && (
+                  <div className="workout-step-card workout-extra-execution">
+                    <strong>Additional Executed (after planned workout)</strong>
+                    <span>Time: {formatDuration(extraRecorded.seconds)}</span>
+                    <span>Pace: {extraRecorded.pace ? secondsToPaceStr(extraRecorded.pace) : '—'}</span>
+                    <span>Distance: {extraRecorded.miles !== null ? extraRecorded.miles.toFixed(2) + ' mi' : '—'}</span>
+                    <span>{formatTss(extraRecorded.tss)}</span>
+                  </div>
+                )}
+                {unmatchedExtraSeconds > 1 && (
+                  <div className="workout-step-card workout-extra-execution">
+                    <strong>Additional recorded time (no matching interval details)</strong>
+                    <span>Time: {formatDuration(unmatchedExtraSeconds)}</span>
+                    <span>Pace, distance and step TSS unavailable</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
