@@ -314,7 +314,7 @@ const RenderStepCard = ({ step, matches, counter, hasExecution, isRunning }) => 
           <span className="workout-step-connector">· est.</span>
           <span className="workout-step-value">{estimateStepMiles(step).toFixed(2)} mi</span>
           <span className="workout-step-connector">·</span>
-          <span className="workout-step-value">{formatTss(step.tss)}</span>
+          <span className="workout-step-value">{isRunning ? formatTss(step.tss) : "TSS: — (not supported)"}</span>
         </span>
       </div>
 
