@@ -515,7 +515,6 @@ export default function MonthlyView() {
                         weekDates={weekDates}
                         workoutsByDate={workoutsByDate}
                         sportType={sport}
-                      paces={paces}
                         paces={paces}
                         onDayClick={(sportWorkouts) => handleOpenZoomModal(sportWorkouts)}
                         isFarRight={isLastSportInFarRight}
