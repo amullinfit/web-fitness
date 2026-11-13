@@ -293,38 +293,35 @@ const RenderStepCard = ({ step, matches, counter, hasExecution, isRunning }) => 
     return (
       <div className="workout-step-card workout-repeat-block">
         <div className="workout-repeat-header">
-          <span className="workout-repeat-title">
-            Repeat {step.reps}x
-          </span>
-          {step.text && (
-            <span className="workout-repeat-note-inline">
-              "{step.text}"
-            </span>
-          )}
-          <span className="workout-section-badge">
-            Repeat Time: {formatDuration(step.durationSec)}
-          </span>
-          <span className="workout-section-badge">Est. Distance: {estimateStepMiles(step).toFixed(2)} mi</span>
-          <span className="workout-section-badge">{isRunning ? formatTss(step.tss) : 'TSS: — (not supported)'}</span>
-          {hasExecution && (
-            <span className="workout-repeat-executed-summary">
-              <strong>Executed{repeatExecuted?.partial ? ' (partial)' : ''}</strong>
-              {repeatExecuted ? (
-                <>
-                  <span>Time: {formatDuration(repeatExecuted.seconds)}</span>
-                  <span>Distance: {repeatExecuted.miles.toFixed(2)} mi</span>
-                  <span>Pace: {repeatExecuted.pace ? secondsToPaceStr(repeatExecuted.pace) : '—'}</span>
-                  <span>{isRunning ? formatTss(repeatExecuted.tss) : 'TSS: — (not supported)'}</span>
-                </>
-              ) : <span>Not matched</span>}
-            </span>
-          )}
+          <span className="workout-repeat-title">Repeat {step.reps}x</span>
+          {step.text && <span className="workout-repeat-note-inline">"{step.text}"</span>}
+          <div className="workout-repeat-totals">
+            <div className="workout-repeat-totals-line">
+              <strong>Planned</strong>
+              <span className="workout-section-badge">Time: {formatDuration(step.durationSec)}</span>
+              <span className="workout-section-badge">Distance: {estimateStepMiles(step).toFixed(2)} mi</span>
+              <span className="workout-section-badge">{isRunning ? formatTss(step.tss) : 'TSS: — (not supported)'}</span>
+            </div>
+            {hasExecution && (
+              <div className="workout-repeat-totals-line">
+                <strong>Executed{repeatExecuted?.partial ? ' (partial)' : ''}</strong>
+                {repeatExecuted ? (
+                  <>
+                    <span className="workout-section-badge">Time: {formatDuration(repeatExecuted.seconds)}</span>
+                    <span className="workout-section-badge">Distance: {repeatExecuted.miles.toFixed(2)} mi</span>
+                    <span className="workout-section-badge">Pace: {repeatExecuted.pace ? secondsToPaceStr(repeatExecuted.pace) : '—'}</span>
+                    <span className="workout-section-badge">{isRunning ? formatTss(repeatExecuted.tss) : 'TSS: — (not supported)'}</span>
+                  </>
+                ) : <span className="workout-section-badge">Not matched</span>}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="workout-repeat-inner-list">
-          {Array.from({ length: step.reps }, (_, repetition) => (
+          {Array.from({ length: hasExecution ? step.reps : 1 }, (_, repetition) => (
             <React.Fragment key={repetition}>
-              {step.reps > 1 && <div className="workout-repeat-iteration">Repetition {repetition + 1}</div>}
+              {hasExecution && step.reps > 1 && <div className="workout-repeat-iteration">Repetition {repetition + 1}</div>}
               {step.innerSteps.map((innerStep, iIdx) => (
                 <RenderStepCard key={iIdx} step={innerStep} matches={matches} counter={counter} hasExecution={hasExecution} isRunning={isRunning} />
               ))}
