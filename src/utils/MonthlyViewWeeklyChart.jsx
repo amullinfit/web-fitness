@@ -2,11 +2,38 @@
 // MONTHLYVIEWWEEKLYCHART.JSX
 //
 import React, { useState, useMemo } from 'react';
+import { estimateRunningWorkout, getExecutedTss } from './WorkoutTss.js';
 import { 
   metersToMilesNum, 
   getLocalDateString, 
   getSportCategory 
 } from './MonthlyViewHelpers';
+
+// Weekly TSS uses the same sources as Workout Details: planned running
+// estimates and recorded intervals.icu load. Never infer missing values as 0.
+const getWeeklyTss = (workouts, sport, paces) => {
+  let planned = 0;
+  let executed = 0;
+  let plannedCount = 0;
+  let executedCount = 0;
+  workouts.forEach((workout) => {
+    if (getSportCategory(workout) !== sport) return;
+    const hasPlan = Boolean(workout.workout_doc?.steps?.length || (typeof workout.workout_doc === 'string' && workout.workout_doc.includes('"steps"')));
+    if (hasPlan && sport === 'Run') {
+      const value = estimateRunningWorkout(workout, paces).tss;
+      if (value !== null) { planned += value; plannedCount++; }
+    }
+    const value = getExecutedTss(workout);
+    if (value !== null && (workout.icu_activity_id || workout.activity_id || workout.feedSource !== 'WORKOUTS')) {
+      executed += value;
+      executedCount++;
+    }
+  });
+  return {
+    planned: plannedCount ? planned.toFixed(1) : null,
+    executed: executedCount ? executed.toFixed(1) : null
+  };
+};
 
 /**
  * Determine daily color based on intensity zone breakdown.
@@ -77,7 +104,8 @@ export const WeeklyFrameChart = ({
   onDayClick,
   isFarRight = false,
   isCollapsed = false,
-  onToggleCollapse
+  onToggleCollapse,
+  paces
 }) => {
   const [hoveredDayIndex, setHoveredDayIndex] = useState(null);
   const [isTotalHovered, setIsTotalHovered] = useState(false);
@@ -111,6 +139,8 @@ export const WeeklyFrameChart = ({
       };
     });
   }, [weekDates, workoutsByDate, sportType, todayStr]);
+
+  const weeklyTss = useMemo(() => getWeeklyTss(daysData.flatMap((day) => day.sportWorkouts), sportType, paces), [daysData, sportType, paces]);
 
   const totalWeeklyMiles = useMemo(() => {
     return daysData.reduce((sum, d) => sum + d.miles, 0).toFixed(1);
@@ -149,6 +179,12 @@ export const WeeklyFrameChart = ({
               </span>
             )}
           </span>
+          {(weeklyTss.planned !== null || weeklyTss.executed !== null) && (
+            <span className="monthly-chart-tss-summary">
+              {weeklyTss.planned !== null && <span>Planned TSS: {weeklyTss.planned}</span>}
+              {weeklyTss.executed !== null && <span>Executed TSS: {weeklyTss.executed}</span>}
+            </span>
+          )}
         </div>
       </div>
 
@@ -276,7 +312,8 @@ export const CollapsedWeeklySummary = ({
   fourWeeksDates,
   workoutsByDate,
   selectedChartSports,
-  onToggleCollapse
+  onToggleCollapse,
+  paces
 }) => {
   const [hoveredTotal, setHoveredTotal] = useState(false);
 
@@ -297,15 +334,17 @@ export const CollapsedWeeklySummary = ({
           });
         });
         totalsBySport[sport] = metersToMilesNum(totalMeters).toFixed(1);
+        const weeklySportWorkouts = weekDates.flatMap((dateObj) => (workoutsByDate[getLocalDateString(dateObj)] || []).filter((w) => getSportCategory(w) === sport));
+        tssBySport[sport] = getWeeklyTss(weeklySportWorkouts, sport, paces);
       });
 
-      return { weekIdx, totalsBySport };
+      return { weekIdx, totalsBySport, tssBySport };
     });
-  }, [fourWeeksDates, workoutsByDate, selectedChartSports]);
+  }, [fourWeeksDates, workoutsByDate, selectedChartSports, paces]);
 
   return (
     <div className="monthly-desktop-top-charts monthly-collapsed-grid">
-      {weeklyTotals.map(({ weekIdx, totalsBySport }, idx) => {
+      {weeklyTotals.map(({ weekIdx, totalsBySport, tssBySport }, idx) => {
         const isLastWeek = idx === weeklyTotals.length - 1;
 
         return (
@@ -333,6 +372,12 @@ export const CollapsedWeeklySummary = ({
                         </span>
                       )}
                     </span>
+                    {(tssBySport[sport]?.planned !== null || tssBySport[sport]?.executed !== null) && (
+                      <span className="monthly-chart-tss-summary">
+                        {tssBySport[sport].planned !== null && <span>P: {tssBySport[sport].planned}</span>}
+                        {tssBySport[sport].executed !== null && <span>E: {tssBySport[sport].executed}</span>}
+                      </span>
+                    )}
                   </div>
                 );
               })}
