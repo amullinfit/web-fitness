@@ -107,12 +107,12 @@ const formatPaceString = (s, thresholdPaceMps, zoneList, paceDetails) => {
   return paceStr + (paceMethodStr ? ` ${paceMethodStr}` : '');
 };
 
-const parseSingleStep = (s, idx, thresholdPaceMps, zoneList, paceDetails) => {
+const parseSingleStep = (s, idx, thresholdPaceMps, zoneList, paceDetails, isRunning) => {
   const rawIntensity = s.intensity || (s.warmup ? "warmup" : s.cooldown ? "cooldown" : "active");
   return {
     id: idx,
     isRepeat: false,
-    tss: estimateRunningStep(s, paceDetails).tss,
+    tss: isRunning ? estimateRunningStep(s, paceDetails).tss : null,
     durationSec: s.duration || 0,
     intensity: formatIntensityTitleCase(rawIntensity),
     paceStr: formatPaceString(s, thresholdPaceMps, zoneList, paceDetails),
@@ -120,14 +120,14 @@ const parseSingleStep = (s, idx, thresholdPaceMps, zoneList, paceDetails) => {
   };
 };
 
-const parseWorkoutSteps = (stepList, thresholdPaceMps, zonelist, paceDetails) => {
+const parseWorkoutSteps = (stepList, thresholdPaceMps, zonelist, paceDetails, isRunning) => {
   if (!Array.isArray(stepList)) return [];
 
   return stepList.map((s, idx) => {
     // Handle Repeat Blocks
     if (Array.isArray(s.steps) && s.steps.length > 0) {
       const reps = s.reps && Number.isInteger(s.reps) && s.reps > 0 ? s.reps : 1;
-      const innerSteps = parseWorkoutSteps(s.steps, thresholdPaceMps, zonelist, paceDetails);
+      const innerSteps = parseWorkoutSteps(s.steps, thresholdPaceMps, zonelist, paceDetails, isRunning);
       
       const singleCycleDuration = innerSteps.reduce((sum, inner) => sum + inner.durationSec, 0);
       const totalRepeatDuration = singleCycleDuration * reps;
@@ -144,7 +144,7 @@ const parseWorkoutSteps = (stepList, thresholdPaceMps, zonelist, paceDetails) =>
     }
 
     // Handle Standard Steps
-    return parseSingleStep(s, idx, thresholdPaceMps, zonelist, paceDetails);
+    return parseSingleStep(s, idx, thresholdPaceMps, zonelist, paceDetails, isRunning);
   });
 };
 
@@ -161,7 +161,7 @@ const formatTss = (value) => value === null || value === undefined ? 'TSS: — (
 // Match by elapsed-time overlap, not interval count. A recorded mile split can
 // span two planned steps; distribute its distance proportionally across both.
 // This is an approximation until higher-resolution activity samples are available.
-const matchExecutedSteps = (planned, intervals, paces) => {
+const matchExecutedSteps = (planned, intervals, paces, isRunning) => {
   const flattened = [];
   const collect = (steps) => steps.forEach((step) => {
     if (step.isRepeat) {
@@ -178,7 +178,7 @@ const matchExecutedSteps = (planned, intervals, paces) => {
   // Intervals may include mile splits and lap markers. Do not reject the
   // entire workout because its summed interval durations differ from the plan.
 
-  const threshold = getRunningThreshold(paces);
+  const threshold = isRunning ? getRunningThreshold(paces) : null;
   let recordedOffset = 0;
   const spans = intervals.map((interval) => {
     const seconds = Number(interval.elapsed_time ?? interval.duration);
@@ -264,7 +264,7 @@ const RenderExecutedInterval = ({ interval, index, threshold, running }) => {
   );
 };
 
-const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
+const RenderStepCard = ({ step, matches, counter, hasExecution, isRunning }) => {
   if (step.isRepeat) {
     return (
       <div className="workout-step-card workout-repeat-block">
@@ -281,7 +281,7 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
             Repeat Time: {formatDuration(step.durationSec)}
           </span>
           <span className="workout-section-badge">Est. Distance: {estimateStepMiles(step).toFixed(2)} mi</span>
-          <span className="workout-section-badge">{formatTss(step.tss)}</span>
+          <span className="workout-section-badge">{isRunning ? formatTss(step.tss) : 'TSS: — (not supported)'}</span>
         </div>
 
         <div className="workout-repeat-inner-list">
@@ -289,7 +289,7 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
             <React.Fragment key={repetition}>
               {step.reps > 1 && <div className="workout-repeat-iteration">Repetition {repetition + 1}</div>}
               {step.innerSteps.map((innerStep, iIdx) => (
-                <RenderStepCard key={iIdx} step={innerStep} matches={matches} counter={counter} hasExecution={hasExecution} />
+                <RenderStepCard key={iIdx} step={innerStep} matches={matches} counter={counter} hasExecution={hasExecution} isRunning={isRunning} />
               ))}
             </React.Fragment>
           ))}
@@ -331,7 +331,7 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
             <div>Time: {formatDuration(executed.seconds)}</div>
             <div>Pace: {secondsToPaceStr(executed.pace)}</div>
             <div>Distance: {executed.miles.toFixed(2)} mi</div>
-            <div>{formatTss(executed.tss)}</div>
+            <div>{isRunning ? formatTss(executed.tss) : 'TSS: — (not supported)'}</div>
           </>
         ) : <div className="workout-execution-unmatched">Not matched</div>}
       </div>}
@@ -366,12 +366,12 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
 
   const zoneList = paceDetails?.preset_colors;
 
-  const parsedSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps, zoneList, paceDetails);
+  const isRunning = /run|running/i.test(String(workout.type || workout.sport || ''));
+  const parsedSteps = parseWorkoutSteps(rawSteps, thresholdPaceMps, zoneList, paceDetails, isRunning);
   const executedIntervals = extractExecutedSteps(workout);
   const hasExecution = executedIntervals.length > 0;
-  const isRunning = /run|running/i.test(String(workout.type || workout.sport || ''));
   const runningThreshold = isRunning ? getRunningThreshold(paceDetails) : null;
-  const executedMatches = matchExecutedSteps(parsedSteps, executedIntervals, paceDetails);
+  const executedMatches = matchExecutedSteps(parsedSteps, executedIntervals, paceDetails, isRunning);
   const executionCounter = { current: 0 };
   const plannedTss = estimateRunningWorkout(workout, paceDetails).tss;
   const validPositive = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : null;
@@ -447,7 +447,7 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
             ) : (
               <div className="workout-steps-list">
                 {parsedSteps.map((step, sIdx) => (
-                  <RenderStepCard key={sIdx} step={step} matches={hasExecution ? executedMatches : new Map()} counter={executionCounter} hasExecution={hasExecution} />
+                  <RenderStepCard key={sIdx} step={step} matches={hasExecution ? executedMatches : new Map()} counter={executionCounter} hasExecution={hasExecution} isRunning={isRunning} />
                 ))}
                 {extraRecorded && (
                   <div className="workout-step-card workout-extra-execution">
@@ -455,7 +455,7 @@ const RenderStepCard = ({ step, matches, counter, hasExecution }) => {
                     <span>Time: {formatDuration(extraRecorded.seconds)}</span>
                     <span>Pace: {extraRecorded.pace ? secondsToPaceStr(extraRecorded.pace) : '—'}</span>
                     <span>Distance: {extraRecorded.miles !== null ? extraRecorded.miles.toFixed(2) + ' mi' : '—'}</span>
-                    <span>{formatTss(extraRecorded.tss)}</span>
+                    <span>{isRunning ? formatTss(extraRecorded.tss) : 'TSS: — (not supported)'}</span>
                   </div>
                 )}
                 {unmatchedExtraSeconds > 1 && (
