@@ -284,6 +284,7 @@ export default function TrainingPlanEditor() {
   const [summaryScrollState, setSummaryScrollState] = useState({ left: false, right: false, visibleWeeks: [] });
   const weekGridScrollRef = useRef(null);
   const mileageChartRef = useRef(null);
+  const pendingRemovalSummaryWeekRef = useRef(null);
   const optionsMenuRef = useRef(null);
   useEffect(() => {
     const closeOptionsOnOutsideClick = (event) => {
@@ -455,6 +456,24 @@ export default function TrainingPlanEditor() {
     chart.scrollTo({ left: Math.min(maxLeft, Math.max(0, desiredLeft)), behavior: 'smooth' });
   };
 
+  // Removal changes the summary's bar heights. Scroll after React commits the
+  // updated plan so the new layout cannot interrupt the smooth scroll.
+  useEffect(() => {
+    const weekNumber = pendingRemovalSummaryWeekRef.current;
+    if (weekNumber == null) return;
+    pendingRemovalSummaryWeekRef.current = null;
+    const frame = requestAnimationFrame(() => {
+      const chart = mileageChartRef.current;
+      const column = [...(chart?.querySelectorAll('[data-summary-week-number]') || [])]
+        .find((node) => Number(node.dataset.summaryWeekNumber) === weekNumber);
+      if (!chart || !column) return;
+      const desiredLeft = chart.scrollLeft + column.getBoundingClientRect().left - chart.getBoundingClientRect().left
+        - (chart.clientWidth - column.getBoundingClientRect().width) / 2;
+      chart.scrollTo({ left: Math.max(0, Math.min(chart.scrollWidth - chart.clientWidth, desiredLeft)), behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [plan]);
+
   const scrollCalendarToWeek = (weekNumber) => {
     focusSummaryWeek(weekNumber);
     const container = weekGridScrollRef.current;
@@ -600,7 +619,9 @@ export default function TrainingPlanEditor() {
   };
 
   const removeWorkout = (weekIndex, dayIndex, entryId) => {
-    focusSummaryWeek(plan.weeks[weekIndex]?.weekNumber);
+    const weekNumber = plan.weeks[weekIndex]?.weekNumber;
+    pendingRemovalSummaryWeekRef.current = weekNumber;
+    setFocusedWeekNumber(weekNumber);
     updateDay(weekIndex, dayIndex, (day) => ({
       ...day,
       workouts: day.workouts.filter((entry) => entry.entryId !== entryId),
