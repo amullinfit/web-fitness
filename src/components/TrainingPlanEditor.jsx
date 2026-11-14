@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import WorkoutChart from './WorkoutChart';
-import { estimateRunningWorkout } from '../utils/WorkoutTss.js';
+import { estimateRunningWorkout, formatTssValue } from '../utils/WorkoutTss.js';
 import { activityFeedCache } from '../utils/activityFeedCache.js';
 import { WorkoutZoomModal } from '../modals/MonthlyModal_ZoomWorkout.jsx';
 import { usePaces } from '../utils/PacesContext.jsx';
@@ -1166,7 +1166,7 @@ export default function TrainingPlanEditor() {
                           enableTssToggle={false}
                         />
                         <div className="tpe-workout-card-footer">
-                          <div className="tpe-workout-meta tpe-workout-meta-grid"><span>{formatMiles(estimate.miles)} mi</span><span>{workout.type || workout.sport || "Workout"}</span><span>{/run/i.test(String(workout.type || workout.sport || "")) ? (() => { const tss = estimateRunningWorkout(workout, paces).tss; return tss !== null ? `${tss.toFixed(1)} TSS` : "—"; })() : "—"}</span></div>
+                          <div className="tpe-workout-meta tpe-workout-meta-grid"><span>{formatMiles(estimate.miles)} mi</span><span>{workout.type || workout.sport || "Workout"}</span><span>{/run/i.test(String(workout.type || workout.sport || "")) ? (() => { const tss = estimateRunningWorkout(workout, paces).tss; return tss !== null ? `${formatTssValue(tss)} TSS` : "—"; })() : "—"}</span></div>
                         </div>
                       </div>
                     );
@@ -1184,7 +1184,7 @@ export default function TrainingPlanEditor() {
             <h2>Plan Totals</h2>
             <div><strong aria-label={`Plan time: ${formatDuration(totalSeconds)}`}>{formatDuration(totalSeconds)}</strong></div>
             <div><strong aria-label={`Plan distance: ${formatMiles(totalMiles)} miles`}>{formatMiles(totalMiles)} mi</strong></div>
-            {hasTss && <div><strong aria-label={`Estimated plan TSS: ${totalTss.toFixed(1)}`}>{totalTss.toFixed(1)} TSS</strong></div>}
+            {hasTss && <div><strong aria-label={`Estimated plan TSS: ${formatTssValue(totalTss)}`}>{formatTssValue(totalTss)} TSS</strong></div>}
           </div>
           <div className="tpe-mileage-chart-wrap">
             <button
@@ -1212,7 +1212,7 @@ export default function TrainingPlanEditor() {
                   <div className="tpe-mileage-bar-column" data-summary-week-number={week.weekNumber} key={week.weekNumber}>
                     <div className="tpe-mileage-week-label"><span className={visibleWeekNumbers.includes(week.weekNumber) ? 'is-visible-week' : ''}>Week {week.weekNumber}</span></div>
                     <div className="tpe-mileage-bar-track"><div className="tpe-mileage-bar" style={{ height: `${height}%` }} /></div>
-                    <strong>{summaryMetric === 'tss' ? (week.tssCount ? `${week.tss.toFixed(1)} TSS` : '—') : `${formatMiles(week.miles)} mi`}</strong>
+                    <strong>{summaryMetric === 'tss' ? (week.tssCount ? `${week.formatTssValue(tss)} TSS` : '—') : `${formatMiles(week.miles)} mi`}</strong>
                   </div>
                 );
               })}
@@ -1243,7 +1243,7 @@ export default function TrainingPlanEditor() {
                   <React.Fragment key={week.weekNumber}>
                     <div className="tpe-week-number" data-week-number={week.weekNumber}>
                       <span>Week</span><strong>{week.weekNumber}</strong>
-                      <div className="tpe-week-total-inline"><strong>{formatDuration(totals.seconds)}</strong><span>{formatMiles(totals.miles)} mi</span><span>{totals.tssCount ? `${totals.tss.toFixed(1)} TSS` : "— TSS"}</span></div>
+                      <div className="tpe-week-total-inline"><strong>{formatDuration(totals.seconds)}</strong><span>{formatMiles(totals.miles)} mi</span><span>{totals.tssCount ? `${totals.formatTssValue(tss)} TSS` : "— TSS"}</span></div>
                     </div>
                     {week.days.map((day, dayIndex) => (
                       <div
@@ -1308,7 +1308,7 @@ export default function TrainingPlanEditor() {
                                     showHoverDetails={false}
                           enableTssToggle={false}
                                   />
-                                  <div className="tpe-planned-meta tpe-planned-meta-grid"><span>{formatMiles(estimate.miles)} mi</span><span>{/run/i.test(String(entry.workout.type || entry.workout.sport || "")) ? (() => { const tss = estimateRunningWorkout(entry.workout, paces).tss; return tss !== null ? `${tss.toFixed(1)} TSS` : "—"; })() : "—"}</span></div>
+                                  <div className="tpe-planned-meta tpe-planned-meta-grid"><span>{formatMiles(estimate.miles)} mi</span><span>{/run/i.test(String(entry.workout.type || entry.workout.sport || "")) ? (() => { const tss = estimateRunningWorkout(entry.workout, paces).tss; return tss !== null ? `${formatTssValue(tss)} TSS` : "—"; })() : "—"}</span></div>
                                 </div>
                               );
                             })}
