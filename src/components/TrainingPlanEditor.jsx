@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import WorkoutChart from './WorkoutChart';
+import { estimateRunningWorkout } from '../utils/WorkoutTss.js';
 import { activityFeedCache } from '../utils/activityFeedCache.js';
 import { WorkoutZoomModal } from '../modals/MonthlyModal_ZoomWorkout.jsx';
 import { usePaces } from '../utils/PacesContext.jsx';
@@ -78,7 +79,7 @@ const estimateStep = (step, sport = 'Run', paces = null) => {
       total.seconds += estimate.seconds;
       total.miles += estimate.miles;
       return total;
-    }, { seconds: 0, miles: 0 });
+    }, { seconds: 0, miles: 0, tss: 0, tssCount: 0 });
     const repetitions = Math.max(1, asNumber(step.iterations ?? step.reps) || 1);
     return { seconds: childTotals.seconds * repetitions, miles: childTotals.miles * repetitions };
   }
@@ -234,6 +235,7 @@ export default function TrainingPlanEditor() {
   const [loadingLibrary, setLoadingLibrary] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [plan, setPlan] = useState(() => makePlan());
+  const [summaryMetric, setSummaryMetric] = useState('distance');
   const [hasActivePlan, setHasActivePlan] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [savedPlans, setSavedPlans] = useState([]);
@@ -374,6 +376,10 @@ export default function TrainingPlanEditor() {
         const estimate = estimateWorkout(entry.workout, paces);
         sum.seconds += estimate.seconds;
         sum.miles += estimate.miles;
+        if (/run/i.test(String(entry.workout?.type || entry.workout?.sport || ''))) {
+          const tss = estimateRunningWorkout(entry.workout, paces).tss;
+          if (tss !== null) { sum.tss += tss; sum.tssCount++; }
+        }
       });
       return sum;
     }, { seconds: 0, miles: 0 });
@@ -898,6 +904,8 @@ export default function TrainingPlanEditor() {
   const todayStart = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
 
   const totalMiles = weekTotals.reduce((sum, week) => sum + week.miles, 0);
+  const totalTss = weekTotals.reduce((sum, week) => sum + week.tss, 0);
+  const hasTss = weekTotals.some((week) => week.tssCount > 0);
   const totalSeconds = weekTotals.reduce((sum, week) => sum + week.seconds, 0);
 
   return (
@@ -1155,9 +1163,10 @@ export default function TrainingPlanEditor() {
                           showLegend={false}
                           minimalXAxis={true}
                           showHoverDetails={false}
+                          enableTssToggle={false}
                         />
                         <div className="tpe-workout-card-footer">
-                          <div className="tpe-workout-meta">{formatMiles(estimate.miles)} mi est. · {workout.type || workout.sport || 'Workout'}</div>
+                          <div className="tpe-workout-meta">{formatMiles(estimate.miles)} mi est. · {workout.type || workout.sport || 'Workout'}{ /run/i.test(String(workout.type || workout.sport || '')) && (() => { const tss = estimateRunningWorkout(workout, paces).tss; return tss !== null ? ` · ${tss.toFixed(1)} TSS` : ''; })()}</div>
                         </div>
                       </div>
                     );
@@ -1174,8 +1183,10 @@ export default function TrainingPlanEditor() {
             <h2>Plan Totals</h2>
             <div><strong aria-label={`Plan time: ${formatDuration(totalSeconds)}`}>{formatDuration(totalSeconds)}</strong></div>
             <div><strong aria-label={`Plan distance: ${formatMiles(totalMiles)} miles`}>{formatMiles(totalMiles)} mi</strong></div>
+            {hasTss && <div><strong aria-label={`Estimated plan TSS: ${totalTss.toFixed(1)}`}>{totalTss.toFixed(1)} TSS</strong></div>}
           </div>
           <div className="tpe-mileage-chart-wrap">
+            <button type="button" className="tpe-summary-metric-switch" role="switch" aria-label="Show weekly TSS instead of mileage" aria-checked={summaryMetric === "tss"} title={summaryMetric === "tss" ? "Show distance" : "Show TSS"} onClick={() => setSummaryMetric((current) => current === "tss" ? "distance" : "tss")}><span /></button>
             <button
               type="button"
               className={`tpe-mileage-scroll-arrow tpe-mileage-scroll-arrow-left${visibleWeekNumbers.some((week) => summaryScrollState.visibleWeeks.length && week < Math.min(...summaryScrollState.visibleWeeks)) ? ' has-calendar-weeks' : ''}`}
@@ -1194,13 +1205,14 @@ export default function TrainingPlanEditor() {
               aria-label="Bar chart comparing estimated planned miles by week"
             >
               {weekTotals.map((week) => {
-                const maxMiles = Math.max(1, ...weekTotals.map((item) => item.miles));
-                const height = week.miles > 0 ? Math.max(4, (week.miles / maxMiles) * 100) : 2;
+                const value = summaryMetric === 'tss' ? week.tss : week.miles;
+                const maxValue = Math.max(1, ...weekTotals.map((item) => summaryMetric === 'tss' ? item.tss : item.miles));
+                const height = value > 0 ? Math.max(4, (value / maxValue) * 100) : 2;
                 return (
                   <div className="tpe-mileage-bar-column" data-summary-week-number={week.weekNumber} key={week.weekNumber}>
                     <div className="tpe-mileage-week-label"><span className={visibleWeekNumbers.includes(week.weekNumber) ? 'is-visible-week' : ''}>Week {week.weekNumber}</span></div>
                     <div className="tpe-mileage-bar-track"><div className="tpe-mileage-bar" style={{ height: `${height}%` }} /></div>
-                    <strong>{formatMiles(week.miles)} mi</strong>
+                    <strong>{summaryMetric === 'tss' ? (week.tssCount ? `${week.tss.toFixed(1)} TSS` : '—') : `${formatMiles(week.miles)} mi`}</strong>
                   </div>
                 );
               })}
@@ -1294,8 +1306,9 @@ export default function TrainingPlanEditor() {
                                     showLegend={false}
                                     minimalXAxis={true}
                                     showHoverDetails={false}
+                          enableTssToggle={false}
                                   />
-                                  <div className="tpe-planned-meta">{formatDuration(estimate.seconds)} · {formatMiles(estimate.miles)} mi</div>
+                                  <div className="tpe-planned-meta">{formatDuration(estimate.seconds)} · {formatMiles(estimate.miles)} mi{ /run/i.test(String(entry.workout.type || entry.workout.sport || "")) && (() => { const tss = estimateRunningWorkout(entry.workout, paces).tss; return tss !== null ? ` · ${tss.toFixed(1)} TSS` : ""; })()}</div>
                                 </div>
                               );
                             })}
