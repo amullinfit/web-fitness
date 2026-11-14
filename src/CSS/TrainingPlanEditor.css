@@ -348,3 +348,11 @@
 .tpe-workout-card-footer { margin-top: 0; }
 .tpe-planned-meta-grid { display: flex; justify-content: space-between; align-items: center; gap: 4px; margin-top: 0; }
 .tpe-planned-meta-grid > span:last-child { text-align: right; }
+
+/* Explicit alignment for library workout metadata. */
+.tpe-workout-meta-grid { width: 100%; }
+.tpe-workout-meta-grid > span:first-child { text-align: left; }
+.tpe-workout-meta-grid > span:nth-child(2) { text-align: center; }
+.tpe-workout-meta-grid > span:last-child { text-align: right; }
+.tpe-workout-card-footer { width: 100%; }
+.tpe-workout-card-footer > .tpe-workout-meta-grid { flex: 1 1 100%; }
