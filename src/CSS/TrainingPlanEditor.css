@@ -356,3 +356,13 @@
 .tpe-workout-meta-grid > span:last-child { text-align: right; }
 .tpe-workout-card-footer { width: 100%; }
 .tpe-workout-card-footer > .tpe-workout-meta-grid { flex: 1 1 100%; }
+
+/* Tighten only the library card chart-to-metadata spacing; leave full charts unchanged. */
+.tpe-library-workout .workout-chart-container {
+  margin-bottom: 0;
+  padding-bottom: 2px;
+}
+.tpe-library-workout .tpe-workout-card-footer {
+  margin-top: 0;
+  gap: 0;
+}
