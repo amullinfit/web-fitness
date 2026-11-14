@@ -442,6 +442,19 @@ export default function TrainingPlanEditor() {
     return () => resizeObserver?.disconnect();
   }, [weekTotals.length]);
 
+  const scrollCalendarToWeek = (weekNumber) => {
+    const container = weekGridScrollRef.current;
+    const target = [...(container?.querySelectorAll('.tpe-week-number[data-week-number]') || [])]
+      .find((node) => Number(node.dataset.weekNumber) === weekNumber);
+    if (!container || !target) return;
+    const header = container.querySelector('.tpe-grid-corner');
+    const stickyHeight = header?.getBoundingClientRect().height ?? 0;
+    const offset = target.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    const desiredTop = container.scrollTop + offset - stickyHeight - 5;
+    const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+    container.scrollTo({ top: Math.min(maxTop, Math.max(0, desiredTop)), behavior: 'smooth' });
+  };
+
   const scrollMileageChart = (direction) => {
     const chart = mileageChartRef.current;
     if (!chart) return;
@@ -950,7 +963,7 @@ export default function TrainingPlanEditor() {
             <p>Select a saved training plan folder from Intervals.icu.</p>
             {openPlanError && <div className="tpe-error" role="alert">{openPlanError}</div>}
             <div className="tpe-plan-picker" role="radiogroup" aria-label="Saved training plans">
-              <div className="tpe-plan-picker-head"><span>Plan folder</span><span>Weeks</span><span>Workouts</span><span>Max mi/wk</span></div>
+              <div className="tpe-plan-picker-head"><span>Plan folder</span><span>Weeks</span><span>Workouts</span><span>Max mi/wk</span><span>Max TSS/wk</span></div>
               {openPlanLoading && <p>Loading saved plans…</p>}
               {!openPlanLoading && !savedPlans.length && <p>No saved plans found.</p>}
               {savedPlans.map((saved) => {
@@ -958,12 +971,25 @@ export default function TrainingPlanEditor() {
                 const weeks = details?.weeks || [];
                 const workoutCount = weeks.reduce((count, week) => count + week.days.reduce((sum, day) => sum + day.workouts.length, 0), 0);
                 const maxMiles = weeks.length ? Math.max(...weeks.map((week) => week.days.reduce((sum, day) => sum + day.workouts.reduce((miles, entry) => miles + estimateWorkout(entry.workout, paces).miles, 0), 0))) : 0;
+                const weeklyTss = weeks.map((week) => {
+                  let total = 0;
+                  let count = 0;
+                  week.days.forEach((day) => day.workouts.forEach((entry) => {
+                    if (!/run/i.test(String(entry.workout?.type || entry.workout?.sport || ''))) return;
+                    const value = estimateRunningWorkout(entry.workout, paces).tss;
+                    if (value !== null) { total += value; count++; }
+                  }));
+                  return count ? total : null;
+                });
+                const availableTss = weeklyTss.filter((value) => value !== null);
+                const maxTss = availableTss.length ? formatTssValue(Math.max(...availableTss)) : '—';
                 return (
                   <label className={`tpe-plan-picker-row ${openPlanId === String(saved.id) ? 'selected' : ''}`} key={saved.id}>
                     <span><input type="radio" name="open-plan" value={String(saved.id)} checked={openPlanId === String(saved.id)} onChange={() => setOpenPlanId(String(saved.id))} />{saved.name || 'Untitled Plan'}</span>
                     <span>{details ? weeks.length : '…'}</span>
                     <span>{details ? workoutCount : '…'}</span>
                     <span>{details ? maxMiles.toFixed(1) : '…'}</span>
+                    <span>{details ? maxTss : '…'}</span>
                   </label>
                 );
               })}
@@ -1209,7 +1235,7 @@ export default function TrainingPlanEditor() {
                 const maxValue = Math.max(1, ...weekTotals.map((item) => summaryMetric === 'tss' ? item.tss : item.miles));
                 const height = value > 0 ? Math.max(4, (value / maxValue) * 100) : 2;
                 return (
-                  <div className="tpe-mileage-bar-column" data-summary-week-number={week.weekNumber} key={week.weekNumber}>
+                  <div className="tpe-mileage-bar-column tpe-mileage-bar-column-clickable" data-summary-week-number={week.weekNumber} key={week.weekNumber} role="button" tabIndex={0} aria-label={`Scroll training calendar to week ${week.weekNumber}`} onClick={() => scrollCalendarToWeek(week.weekNumber)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); scrollCalendarToWeek(week.weekNumber); } }}>
                     <div className="tpe-mileage-week-label"><span className={visibleWeekNumbers.includes(week.weekNumber) ? 'is-visible-week' : ''}>Week {week.weekNumber}</span></div>
                     <div className="tpe-mileage-bar-track"><div className="tpe-mileage-bar" style={{ height: `${height}%` }} /></div>
                     <strong>{summaryMetric === 'tss' ? (week.tssCount ? `${formatTssValue(week.tss)} TSS` : '—') : `${formatMiles(week.miles)} mi`}</strong>
