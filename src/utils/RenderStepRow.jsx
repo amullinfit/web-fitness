@@ -2,7 +2,7 @@
 // RenderStepRow.jsx
 //
 import React, { useMemo } from 'react';
-import { estimateRunningStep } from './WorkoutTss.js';
+import { estimateRunningStep, formatTssValue } from './WorkoutTss.js';
 import MMSSInput from './MMSSInput';
 import { formatTime, formatMMSS, calculateDynamicPresets } from './WorkoutBuilderHelpers.js';
 import { formatSecPerMileToStr } from './WorkoutChartHelpers.js';
@@ -157,7 +157,7 @@ export default function RenderStepRow({
 }) {
   if (!step) return null;
   const tssEstimate = estimateRunningStep(step, paceDetails);
-  const tssLabel = tssEstimate.tss === null ? 'TSS: — (missing data)' : `TSS: ${tssEstimate.tss.toFixed(1)}`;
+  const tssLabel = tssEstimate.tss === null ? 'TSS: — (missing data)' : `TSS: ${formatTssValue(tssEstimate.tss)}`;
 
   // Save threshold pace as sec/mile (e.g. 450)
   const thresholdSecPerMile = paceDetails?.run_pace_sec || paceDetails?.threshold_pace_sec || 450;
