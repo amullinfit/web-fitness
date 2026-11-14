@@ -2,7 +2,7 @@
 // MONTHLYVIEWWEEKLYCHART.JSX
 //
 import React, { useState, useMemo } from 'react';
-import { estimateRunningWorkout, getExecutedTss } from './WorkoutTss.js';
+import { estimateRunningWorkout, getExecutedTss, formatTssValue } from './WorkoutTss.js';
 import { 
   metersToMilesNum, 
   getLocalDateString, 
@@ -21,7 +21,7 @@ const getWeeklyTss = (workouts, sport, paces) => {
     const value = recorded ?? planned;
     if (value !== null) { total += value; count++; }
   });
-  return count ? total.toFixed(1) : null;
+  return count ? formatTssValue(total) : null;
 };
 
 const MetricSwitch = ({ metric, onChange }) => (
