@@ -129,3 +129,9 @@ export function getExecutedTss(workout) {
   const number = Number(value);
   return Number.isFinite(number) && number >= 0 ? number : null;
 }
+
+/** Display-only TSS rounding. Keep raw values for all calculations and sums. */
+export const formatTssValue = (value) =>
+  value === null || value === undefined || !Number.isFinite(Number(value))
+    ? '—'
+    : String(Math.max(1, Math.round(Number(value))));
