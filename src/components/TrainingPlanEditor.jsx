@@ -540,7 +540,8 @@ export default function TrainingPlanEditor() {
       }
 
       if (payload.source === 'plan') {
-        focusSummaryWeek(plan.weeks[targetWeekIndex]?.weekNumber);
+        // Keep the moved workout's destination week visible in both views.
+        scrollCalendarToWeek(plan.weeks[targetWeekIndex]?.weekNumber);
         // Find the source by its unique entry ID rather than trusting stored
         // grid indexes. This survives re-renders and avoids losing a move if
         // a payload's week/day coordinates are stale.
@@ -599,6 +600,7 @@ export default function TrainingPlanEditor() {
   };
 
   const removeWorkout = (weekIndex, dayIndex, entryId) => {
+    focusSummaryWeek(plan.weeks[weekIndex]?.weekNumber);
     updateDay(weekIndex, dayIndex, (day) => ({
       ...day,
       workouts: day.workouts.filter((entry) => entry.entryId !== entryId),
