@@ -1212,7 +1212,7 @@ export default function TrainingPlanEditor() {
                   <div className="tpe-mileage-bar-column" data-summary-week-number={week.weekNumber} key={week.weekNumber}>
                     <div className="tpe-mileage-week-label"><span className={visibleWeekNumbers.includes(week.weekNumber) ? 'is-visible-week' : ''}>Week {week.weekNumber}</span></div>
                     <div className="tpe-mileage-bar-track"><div className="tpe-mileage-bar" style={{ height: `${height}%` }} /></div>
-                    <strong>{summaryMetric === 'tss' ? (week.tssCount ? `${week.formatTssValue(tss)} TSS` : '—') : `${formatMiles(week.miles)} mi`}</strong>
+                    <strong>{summaryMetric === 'tss' ? (week.tssCount ? `${formatTssValue(week.tss)} TSS` : '—') : `${formatMiles(week.miles)} mi`}</strong>
                   </div>
                 );
               })}
@@ -1243,7 +1243,7 @@ export default function TrainingPlanEditor() {
                   <React.Fragment key={week.weekNumber}>
                     <div className="tpe-week-number" data-week-number={week.weekNumber}>
                       <span>Week</span><strong>{week.weekNumber}</strong>
-                      <div className="tpe-week-total-inline"><strong>{formatDuration(totals.seconds)}</strong><span>{formatMiles(totals.miles)} mi</span><span>{totals.tssCount ? `${totals.formatTssValue(tss)} TSS` : "— TSS"}</span></div>
+                      <div className="tpe-week-total-inline"><strong>{formatDuration(totals.seconds)}</strong><span>{formatMiles(totals.miles)} mi</span><span>{totals.tssCount ? `${formatTssValue(totals.tss)} TSS` : "— TSS"}</span></div>
                     </div>
                     {week.days.map((day, dayIndex) => (
                       <div
