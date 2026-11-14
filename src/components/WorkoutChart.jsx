@@ -3,7 +3,7 @@
 //
 import React, { useId, useState } from 'react';
 import '../CSS/WorkoutChart.css';
-import { estimateRunningStep, getRunningThreshold } from '../utils/WorkoutTss.js';
+import { estimateRunningStep, getRunningThreshold , formatTssValue } from '../utils/WorkoutTss.js';
 import { usePaces } from '../utils/PacesContext.jsx';
 import {
   formatIntensityTitleCase,
@@ -96,11 +96,11 @@ export default function WorkoutChart({
   const tssAxisMax = Math.max(5, Math.ceil(maxTss / 5) * 5);
   // Use half-point tick increments and a top boundary rounded to a multiple of five.
   const tickStep = Math.max(0.5, Math.ceil((tssAxisMax / 6) * 2) / 2);
-  const tssTicks = [{ label: tssAxisMax.toFixed(1), topPct: 0 }];
+  const tssTicks = [{ label: formatTssValue(tssAxisMax), topPct: 0 }];
   for (let value = Math.floor((tssAxisMax - 0.001) / tickStep) * tickStep; value > 0; value -= tickStep) {
-    tssTicks.push({ label: value.toFixed(1), topPct: (1 - value / tssAxisMax) * 100 });
+    tssTicks.push({ label: formatTssValue(value), topPct: (1 - value / tssAxisMax) * 100 });
   }
-  tssTicks.push({ label: '0.0', topPct: 100 });
+  tssTicks.push({ label: '0', topPct: 100 });
   const tssHeight = (value) => value === null || !Number.isFinite(value) ? 0 : Math.max(0, value / tssAxisMax * 100);
 
   const totalPlannedSec = plannedList.reduce((sum, s) => sum + (s.duration || 0), 0);
@@ -330,7 +330,7 @@ export default function WorkoutChart({
                   const paceDetails = range.formattedText || descriptivePaceStr || 'N/A';
 
                   const tss = plannedTss[idx];
-                  const tooltipText = isTssMode ? `${durationFormatted} · ${tss === null ? 'TSS unavailable' : `${tss.toFixed(1)} TSS`}` : `${durationFormatted} @ ${paceDetails}`;
+                  const tooltipText = isTssMode ? `${durationFormatted} · ${tss === null ? 'TSS unavailable' : `${formatTssValue(tss)} TSS`}` : `${durationFormatted} @ ${paceDetails}`;
 
                   return (
                     <div
@@ -411,7 +411,7 @@ export default function WorkoutChart({
   
                     const paceRangeFormatted = formatSecPerMileToStr(range.midSec);
                     const tss = executedTss[idx];
-                    const tooltipText = isTssMode ? `${durationFormatted} · ${tss === null ? 'TSS unavailable' : `${tss.toFixed(1)} TSS`}` : `${durationFormatted} @ ${paceRangeFormatted}`;
+                    const tooltipText = isTssMode ? `${durationFormatted} · ${tss === null ? 'TSS unavailable' : `${formatTssValue(tss)} TSS`}` : `${durationFormatted} @ ${paceRangeFormatted}`;
                   
                     const durationMinutes = durationSecs / 60;
                     const pathData = generateWavyBarPath(durationMinutes);
