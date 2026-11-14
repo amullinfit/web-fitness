@@ -382,7 +382,7 @@ export default function TrainingPlanEditor() {
         }
       });
       return sum;
-    }, { seconds: 0, miles: 0 });
+    }, { seconds: 0, miles: 0, tss: 0, tssCount: 0 });
     return { weekNumber: week.weekNumber, ...totals };
   }), [plan.weeks, paces]);
 
@@ -1166,7 +1166,7 @@ export default function TrainingPlanEditor() {
                           enableTssToggle={false}
                         />
                         <div className="tpe-workout-card-footer">
-                          <div className="tpe-workout-meta">{formatMiles(estimate.miles)} mi est. · {workout.type || workout.sport || 'Workout'}{ /run/i.test(String(workout.type || workout.sport || '')) && (() => { const tss = estimateRunningWorkout(workout, paces).tss; return tss !== null ? ` · ${tss.toFixed(1)} TSS` : ''; })()}</div>
+                          <div className="tpe-workout-meta tpe-workout-meta-grid"><span>{formatMiles(estimate.miles)} mi</span><span>{workout.type || workout.sport || "Workout"}</span><span>{/run/i.test(String(workout.type || workout.sport || "")) ? (() => { const tss = estimateRunningWorkout(workout, paces).tss; return tss !== null ? `${tss.toFixed(1)} TSS` : "—"; })() : "—"}</span></div>
                         </div>
                       </div>
                     );
@@ -1180,13 +1180,13 @@ export default function TrainingPlanEditor() {
         <div className="tpe-plan-area">
         <section className="tpe-summary-section">
           <div className="tpe-summary-fixed-totals">
+            <button type="button" className="tpe-summary-metric-switch" role="switch" aria-label="Show weekly TSS instead of mileage" aria-checked={summaryMetric === "tss"} title={summaryMetric === "tss" ? "Show distance" : "Show TSS"} onClick={() => setSummaryMetric((current) => current === "tss" ? "distance" : "tss")}><span /></button>
             <h2>Plan Totals</h2>
             <div><strong aria-label={`Plan time: ${formatDuration(totalSeconds)}`}>{formatDuration(totalSeconds)}</strong></div>
             <div><strong aria-label={`Plan distance: ${formatMiles(totalMiles)} miles`}>{formatMiles(totalMiles)} mi</strong></div>
             {hasTss && <div><strong aria-label={`Estimated plan TSS: ${totalTss.toFixed(1)}`}>{totalTss.toFixed(1)} TSS</strong></div>}
           </div>
           <div className="tpe-mileage-chart-wrap">
-            <button type="button" className="tpe-summary-metric-switch" role="switch" aria-label="Show weekly TSS instead of mileage" aria-checked={summaryMetric === "tss"} title={summaryMetric === "tss" ? "Show distance" : "Show TSS"} onClick={() => setSummaryMetric((current) => current === "tss" ? "distance" : "tss")}><span /></button>
             <button
               type="button"
               className={`tpe-mileage-scroll-arrow tpe-mileage-scroll-arrow-left${visibleWeekNumbers.some((week) => summaryScrollState.visibleWeeks.length && week < Math.min(...summaryScrollState.visibleWeeks)) ? ' has-calendar-weeks' : ''}`}
@@ -1202,7 +1202,7 @@ export default function TrainingPlanEditor() {
               onScroll={updateSummaryScrollState}
               style={{ height: '134px', paddingBottom: '0px' }}
               role="img"
-              aria-label="Bar chart comparing estimated planned miles by week"
+              aria-label={`Bar chart comparing estimated planned ${summaryMetric === "tss" ? "TSS" : "miles"} by week`}
             >
               {weekTotals.map((week) => {
                 const value = summaryMetric === 'tss' ? week.tss : week.miles;
@@ -1238,12 +1238,12 @@ export default function TrainingPlanEditor() {
               <div className="tpe-grid-corner">Week</div>
               {WEEKDAY_SHORT.map((day) => <div className="tpe-day-heading" key={day}>{day}</div>)}
               {plan.weeks.map((week, weekIndex) => {
-                const totals = weekTotals[weekIndex] || { seconds: 0, miles: 0 };
+                const totals = weekTotals[weekIndex] || { seconds: 0, miles: 0, tss: 0, tssCount: 0 };
                 return (
                   <React.Fragment key={week.weekNumber}>
                     <div className="tpe-week-number" data-week-number={week.weekNumber}>
                       <span>Week</span><strong>{week.weekNumber}</strong>
-                      <div className="tpe-week-total-inline"><strong>{formatDuration(totals.seconds)}</strong><span>{formatMiles(totals.miles)} mi</span></div>
+                      <div className="tpe-week-total-inline"><strong>{formatDuration(totals.seconds)}</strong><span>{formatMiles(totals.miles)} mi</span><span>{totals.tssCount ? `${totals.tss.toFixed(1)} TSS` : "— TSS"}</span></div>
                     </div>
                     {week.days.map((day, dayIndex) => (
                       <div
@@ -1308,7 +1308,7 @@ export default function TrainingPlanEditor() {
                                     showHoverDetails={false}
                           enableTssToggle={false}
                                   />
-                                  <div className="tpe-planned-meta">{formatDuration(estimate.seconds)} · {formatMiles(estimate.miles)} mi{ /run/i.test(String(entry.workout.type || entry.workout.sport || "")) && (() => { const tss = estimateRunningWorkout(entry.workout, paces).tss; return tss !== null ? ` · ${tss.toFixed(1)} TSS` : ""; })()}</div>
+                                  <div className="tpe-planned-meta tpe-planned-meta-grid"><span>{formatMiles(estimate.miles)} mi</span><span>{/run/i.test(String(entry.workout.type || entry.workout.sport || "")) ? (() => { const tss = estimateRunningWorkout(entry.workout, paces).tss; return tss !== null ? `${tss.toFixed(1)} TSS` : "—"; })() : "—"}</span></div>
                                 </div>
                               );
                             })}
