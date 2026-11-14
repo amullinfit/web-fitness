@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import './WorkoutTextSection.css';
 import { formatPaceRange, parsePaceStrToSec, extractExecutedSteps } from './WorkoutChartHelpers.js';
 import { getRunningThreshold } from './WorkoutTss.js';
-import { estimateRunningStep, estimateRunningWorkout, getExecutedTss } from './WorkoutTss.js';
+import { estimateRunningStep, estimateRunningWorkout, getExecutedTss, formatTssValue } from './WorkoutTss.js';
 
 import {
   detectPaceMethod,
@@ -156,7 +156,7 @@ const estimateStepMiles = (step) => {
   return step.durationSec / (paceSeconds.reduce((sum, seconds) => sum + seconds, 0) / paceSeconds.length);
 };
 
-const formatTss = (value) => value === null || value === undefined ? 'TSS: — (missing data)' : `TSS: ${value.toFixed(1)}`;
+const formatTss = (value) => value === null || value === undefined ? 'TSS: — (missing data)' : `TSS: ${formatTssValue(value)}`;
 
 // Match by elapsed-time overlap, not interval count. A recorded mile split can
 // span two planned steps; distribute its distance proportionally across both.
