@@ -280,6 +280,7 @@ export default function TrainingPlanEditor() {
   const draggedPayloadRef = useRef(null);
   const [activeDropTarget, setActiveDropTarget] = useState('');
   const [visibleWeekNumbers, setVisibleWeekNumbers] = useState([]);
+  const [focusedWeekNumber, setFocusedWeekNumber] = useState(null);
   const [summaryScrollState, setSummaryScrollState] = useState({ left: false, right: false, visibleWeeks: [] });
   const weekGridScrollRef = useRef(null);
   const mileageChartRef = useRef(null);
@@ -442,7 +443,20 @@ export default function TrainingPlanEditor() {
     return () => resizeObserver?.disconnect();
   }, [weekTotals.length]);
 
+  const focusSummaryWeek = (weekNumber) => {
+    setFocusedWeekNumber(weekNumber);
+    const chart = mileageChartRef.current;
+    const column = [...(chart?.querySelectorAll('[data-summary-week-number]') || [])]
+      .find((node) => Number(node.dataset.summaryWeekNumber) === weekNumber);
+    if (!chart || !column) return;
+    const desiredLeft = chart.scrollLeft + column.getBoundingClientRect().left - chart.getBoundingClientRect().left
+      - (chart.clientWidth - column.getBoundingClientRect().width) / 2;
+    const maxLeft = Math.max(0, chart.scrollWidth - chart.clientWidth);
+    chart.scrollTo({ left: Math.min(maxLeft, Math.max(0, desiredLeft)), behavior: 'smooth' });
+  };
+
   const scrollCalendarToWeek = (weekNumber) => {
+    focusSummaryWeek(weekNumber);
     const container = weekGridScrollRef.current;
     const target = [...(container?.querySelectorAll('.tpe-week-number[data-week-number]') || [])]
       .find((node) => Number(node.dataset.weekNumber) === weekNumber);
@@ -474,6 +488,7 @@ export default function TrainingPlanEditor() {
 
   const addWorkoutToDay = (workout, weekIndex, dayIndex, moveEntry = null) => {
     if (!workout) return;
+    focusSummaryWeek(plan.weeks[weekIndex]?.weekNumber);
     updateDay(weekIndex, dayIndex, (day) => ({
       ...day,
       workouts: [...day.workouts, {
@@ -525,6 +540,7 @@ export default function TrainingPlanEditor() {
       }
 
       if (payload.source === 'plan') {
+        focusSummaryWeek(plan.weeks[targetWeekIndex]?.weekNumber);
         // Find the source by its unique entry ID rather than trusting stored
         // grid indexes. This survives re-renders and avoids losing a move if
         // a payload's week/day coordinates are stale.
@@ -1235,8 +1251,8 @@ export default function TrainingPlanEditor() {
                 const maxValue = Math.max(1, ...weekTotals.map((item) => summaryMetric === 'tss' ? item.tss : item.miles));
                 const height = value > 0 ? Math.max(4, (value / maxValue) * 100) : 2;
                 return (
-                  <div className="tpe-mileage-bar-column tpe-mileage-bar-column-clickable" data-summary-week-number={week.weekNumber} key={week.weekNumber} role="button" tabIndex={0} aria-label={`Scroll training calendar to week ${week.weekNumber}`} onClick={() => scrollCalendarToWeek(week.weekNumber)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); scrollCalendarToWeek(week.weekNumber); } }}>
-                    <div className="tpe-mileage-week-label"><span className={visibleWeekNumbers.includes(week.weekNumber) ? 'is-visible-week' : ''}>Week {week.weekNumber}</span></div>
+                  <div className={`tpe-mileage-bar-column tpe-mileage-bar-column-clickable${focusedWeekNumber === week.weekNumber ? ' is-focused-week' : ''}`} data-summary-week-number={week.weekNumber} key={week.weekNumber} role="button" tabIndex={0} aria-label={`Scroll training calendar to week ${week.weekNumber}`} onClick={() => scrollCalendarToWeek(week.weekNumber)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); scrollCalendarToWeek(week.weekNumber); } }}>
+                    <div className="tpe-mileage-week-label"><span className={focusedWeekNumber === week.weekNumber || visibleWeekNumbers.includes(week.weekNumber) ? 'is-visible-week' : ''}>Week {week.weekNumber}</span></div>
                     <div className="tpe-mileage-bar-track"><div className="tpe-mileage-bar" style={{ height: `${height}%` }} /></div>
                     <strong>{summaryMetric === 'tss' ? (week.tssCount ? `${formatTssValue(week.tss)} TSS` : '—') : `${formatMiles(week.miles)} mi`}</strong>
                   </div>
@@ -1267,7 +1283,7 @@ export default function TrainingPlanEditor() {
                 const totals = weekTotals[weekIndex] || { seconds: 0, miles: 0, tss: 0, tssCount: 0 };
                 return (
                   <React.Fragment key={week.weekNumber}>
-                    <div className="tpe-week-number" data-week-number={week.weekNumber}>
+                    <div className="tpe-week-number" data-week-number={week.weekNumber} onClick={() => focusSummaryWeek(week.weekNumber)} title="Highlight this week in the weekly summary" style={{ cursor: 'pointer' }}>
                       <span>Week</span><strong>{week.weekNumber}</strong>
                       <div className="tpe-week-total-inline"><strong>{formatDuration(totals.seconds)}</strong><span>{formatMiles(totals.miles)} mi</span><span>{totals.tssCount ? `${formatTssValue(totals.tss)} TSS` : "— TSS"}</span></div>
                     </div>
